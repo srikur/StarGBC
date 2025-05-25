@@ -20,7 +20,7 @@ enum class Mode {
 struct GameboySettings {
     std::string romName;
     std::string biosPath;
-    Mode mode;
+    Mode mode = Mode::GBC;
 };
 
 class Gameboy {

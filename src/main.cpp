@@ -51,17 +51,30 @@ SDL_AppResult SDL_AppInit(void **appstate, const int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
     const std::vector<std::string_view> args(argv + 1, argv + argc);
-    const GameboySettings settings = [&args] {
-        GameboySettings tmp = {};
-        tmp.mode = args[0] == "--gbc" ? Mode::GBC : Mode::GB;
-        tmp.biosPath = args[1] == "--bios" ? args[2] : "";
-        tmp.romName = args[args.size() - 1];
-        return tmp;
-    }();
+    GameboySettings settings{};
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (args[i] == "--gbc") {
+            settings.mode = Mode::GBC;
+        } else if (args[i] == "--gb") {
+            settings.mode = Mode::GB;
+        } else if (args[i] == "--bios") {
+            if (i + 1 < args.size()) {
+                settings.biosPath = args[++i];
+            } else {
+                std::fprintf(stderr, "Error: --bios requires a path argument\n");
+                return SDL_APP_FAILURE;
+            }
+        } else if (i == args.size() - 1 || args[i].ends_with(".gb") || args[i].ends_with(".gbc")) {
+            settings.romName = args[i];
+        } else {
+            std::fprintf(stderr, "Unknown argument: %s\n", std::string(args[i]).c_str());
+            return SDL_APP_FAILURE;
+        }
+    }
 
     gameboy = Gameboy::init(settings);
 
-    return SDL_APP_FAILURE;
+    return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
