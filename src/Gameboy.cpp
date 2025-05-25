@@ -234,54 +234,61 @@ void Gameboy::UpdateEmulator() {
         }
 
         if (bus->interruptDelay) {
-            icount += 1;
-            if (icount == 2) {
+            if (++icount == 2) {
                 bus->interruptDelay = false;
                 bus->interruptMasterEnable = true;
+                icount = 0;
             }
         }
 
         uint32_t cycles = ProcessInterrupts();
-
-        if (cycles) {
-            stepCycles += cycles;
-        } else if (halted) {
-            stepCycles += 4;
-        } else {
-            cycles = ExecuteInstruction();
-            stepCycles += cycles;
+        if (cycles == 0) {
+            cycles = halted ? 4 : ExecuteInstruction();
         }
 
         const uint8_t hdmaCycles = RunHDMA();
-        bus->UpdateTimers(cycles + static_cast<int>(bus->speed) * hdmaCycles);
-        bus->UpdateGraphics(cycles + 8);
+        const uint32_t total = cycles + static_cast<uint32_t>(bus->speed) * hdmaCycles;
+        bus->UpdateTimers(total);
+        bus->UpdateGraphics(total);
+
+        stepCycles += cycles;
+    }
+}
+
+inline uint8_t interruptAddress(const uint8_t bit) {
+    switch (bit) {
+        case 0: return 0x40; // VBlank
+        case 1: return 0x48; // LCD STAT
+        case 2: return 0x50; // Timer
+        case 3: return 0x58; // Serial
+        case 4: return 0x60; // Joypad
+        default: return 0;
     }
 }
 
 uint32_t Gameboy::ProcessInterrupts() {
-    if (!halted && !bus->interruptMasterEnable) {
+    const uint8_t pending = bus->interruptEnable & bus->interruptFlag;
+    if (pending == 0)
         return 0;
+    if (halted && !bus->interruptMasterEnable) {
+        halted = false;
+        return 4;
     }
-    const uint8_t fired = bus->interruptEnable & bus->interruptFlag;
-    if (fired == 0x00) {
+
+    if (!bus->interruptMasterEnable)
         return 0;
-    }
+
     halted = false;
-    if (!bus->interruptMasterEnable) {
-        return 0;
-    }
     bus->interruptMasterEnable = false;
 
-    const uint8_t shift = 1 << trailingZeros(fired);
-    const uint8_t flip = ~shift;
-    const uint8_t flag = (bus->interruptFlag) & flip;
+    const uint8_t bit = static_cast<uint8_t>(std::countr_zero(pending));
+    const uint8_t mask = static_cast<uint8_t>(1u << bit);
+    bus->interruptFlag &= static_cast<uint8_t>(~mask);
 
-    bus->interruptFlag = flag;
-
-    bus->WriteByte(sp - 1, pc >> 8);
-    bus->WriteByte(sp - 2, pc & 0xFF);
     sp -= 2;
+    bus->WriteByte(sp + 1, static_cast<uint8_t>(pc >> 8));
+    bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
 
-    pc = 0x40 | trailingZeros(fired) << 3;
+    pc = interruptAddress(bit);
     return 16;
 }
