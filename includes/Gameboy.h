@@ -41,17 +41,6 @@ class Gameboy {
 
     [[nodiscard]] inline uint8_t ReadNextByte() const;
 
-    static uint8_t trailingZeros(const uint8_t value) {
-        uint8_t count = 0;
-        for (int i = 0; i < 8; i++) {
-            if (value >> i & 1) {
-                break;
-            }
-            count++;
-        }
-        return count;
-    }
-
     uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
 
     uint8_t ExecuteInstruction();
@@ -70,7 +59,7 @@ public:
     friend class Instructions;
 
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode) : rom_path_(std::move(rom_path)),
-            bios_path_(std::move(bios_path)), mode_(mode) {
+        bios_path_(std::move(bios_path)), mode_(mode) {
         switch (bus->cartridge_->ReadByte(0x143) & 0x80) {
             case 0x80:
                 bus->gpu_->hardware = GPU::Hardware::CGB;
