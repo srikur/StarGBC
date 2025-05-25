@@ -1,0 +1,10 @@
+.vscode
+build/*
+gcm.cache/*
+.idea/*
+.idea_modules/*
+.idea_ws/*
+cmake-build-debug/*
+cmake-build-release/*
+roms/*
+.DS_Store
