@@ -11,46 +11,55 @@ uint8_t Instructions::ReadNextByte(const Gameboy &gameboy) {
     return gameboy.bus->ReadByte(gameboy.pc + 1);
 }
 
+uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
+    uint8_t byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    const uint8_t old = (byte & 0x80) != 0 ? 1 : 0;
+    gameboy.regs->SetCarry(old != 0);
+    byte = byte << 1 | old;
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+    gameboy.regs->SetZero(byte == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.pc += 2;
+    return 16;
+}
+
 uint8_t Instructions::RLC(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t old = 0;
-    using enum ArithmeticSource;
-
-    if (source == HLAddr) {
-        uint8_t byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        old = (byte & 0x80) != 0 ? 1 : 0;
-        gameboy.regs->SetCarry(old != 0);
-        byte = byte << 1 | old;
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
-        gameboy.regs->SetZero(byte == 0);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-    } else {
-        uint8_t *reg = nullptr;
-
+    const uint8_t value = [&]() -> uint8_t {
+        using enum ArithmeticSource;
         switch (source) {
-            case A: reg = &gameboy.regs->a;
-                break;
-            case B: reg = &gameboy.regs->b;
-                break;
-            case C: reg = &gameboy.regs->c;
-                break;
-            case D: reg = &gameboy.regs->d;
-                break;
-            case E: reg = &gameboy.regs->e;
-                break;
-            case H: reg = &gameboy.regs->h;
-                break;
-            case L: reg = &gameboy.regs->l;
-                break;
-            default: throw UnreachableCodeException("Instructions::RLC");
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::RLC -- improper ArithmeticSource");
         }
+    }();
 
-        old = (*reg & 0x80) ? 1 : 0;
-        gameboy.regs->SetCarry(old != 0);
-        *reg = (*reg << 1) | old;
-        gameboy.regs->SetZero(*reg == 0);
-        gameboy.pc += 2;
+    const uint8_t old = (value & 0x80) != 0 ? 1 : 0;
+    gameboy.regs->SetCarry(old != 0);
+    const uint8_t newValue = (value << 1) | old;
+    gameboy.regs->SetZero(newValue == 0);
+
+    switch (source) {
+        case ArithmeticSource::A: gameboy.regs->a = newValue;
+            break;
+        case ArithmeticSource::B: gameboy.regs->b = newValue;
+            break;
+        case ArithmeticSource::C: gameboy.regs->c = newValue;
+            break;
+        case ArithmeticSource::D: gameboy.regs->d = newValue;
+            break;
+        case ArithmeticSource::E: gameboy.regs->e = newValue;
+            break;
+        case ArithmeticSource::H: gameboy.regs->h = newValue;
+            break;
+        case ArithmeticSource::L: gameboy.regs->l = newValue;
+            break;
+        default: throw UnreachableCodeException("Instructions::RLC -- improper ArithmeticSource");
     }
 
     gameboy.regs->SetSubtract(false);
@@ -61,24 +70,23 @@ uint8_t Instructions::RLC(const ArithmeticSource source, Gameboy &gameboy) {
 }
 
 uint8_t Instructions::DAA(Gameboy &gameboy) {
-    bool carry = false;
+    uint8_t adjust = 0;
+    bool carry = gameboy.regs->FlagCarry();
+
     if (!gameboy.regs->FlagSubtract()) {
-        if ((gameboy.regs->FlagCarry()) || (gameboy.regs->a > 0x99)) {
-            gameboy.regs->a += 0x60;
+        if (gameboy.regs->FlagHalf() || (gameboy.regs->a & 0x0F) > 0x09)
+            adjust |= 0x06;
+
+        if (gameboy.regs->FlagCarry() || gameboy.regs->a > 0x99) {
+            adjust |= 0x60;
             carry = true;
         }
-        if (gameboy.regs->FlagHalf() || ((gameboy.regs->a & 0x0F) > 0x09)) {
-            gameboy.regs->a += 0x06;
-        }
-    } else if (gameboy.regs->FlagCarry()) {
-        carry = true;
-        if (gameboy.regs->FlagHalf()) {
-            gameboy.regs->a += 0x9A;
-        } else {
-            gameboy.regs->a += 0xA0;
-        }
-    } else if (gameboy.regs->FlagHalf()) {
-        gameboy.regs->a += 0xFA;
+
+        gameboy.regs->a += adjust;
+    } else {
+        if (gameboy.regs->FlagHalf()) { adjust |= 0x06; }
+        if (gameboy.regs->FlagCarry()) { adjust |= 0x60; }
+        gameboy.regs->a -= adjust;
     }
 
     gameboy.regs->SetCarry(carry);
@@ -129,26 +137,19 @@ uint8_t Instructions::HALT(Gameboy &gameboy) {
 
 
 uint8_t Instructions::RST(const RSTTargets target, Gameboy &gameboy) {
-    uint16_t location;
-    switch (target) {
-        case RSTTargets::H00: location = 0x00;
-            break;
-        case RSTTargets::H08: location = 0x08;
-            break;
-        case RSTTargets::H10: location = 0x10;
-            break;
-        case RSTTargets::H18: location = 0x18;
-            break;
-        case RSTTargets::H20: location = 0x20;
-            break;
-        case RSTTargets::H28: location = 0x28;
-            break;
-        case RSTTargets::H30: location = 0x30;
-            break;
-        case RSTTargets::H38: location = 0x38;
-            break;
-        default: throw UnreachableCodeException("Instructions::RST");
-    }
+    const uint16_t location = [&]() -> uint16_t {
+        switch (target) {
+            case RSTTargets::H00: return 0x00;
+            case RSTTargets::H08: return 0x08;
+            case RSTTargets::H10: return 0x10;
+            case RSTTargets::H18: return 0x18;
+            case RSTTargets::H20: return 0x20;
+            case RSTTargets::H28: return 0x28;
+            case RSTTargets::H30: return 0x30;
+            case RSTTargets::H38: return 0x38;
+            default: throw UnreachableCodeException("Instructions::RST -- improper RSTTarget");
+        }
+    }();
 
     push(gameboy.pc + 1, gameboy);
     gameboy.pc = location;
@@ -156,24 +157,16 @@ uint8_t Instructions::RST(const RSTTargets target, Gameboy &gameboy) {
 }
 
 uint8_t Instructions::CALL(const JumpTest test, Gameboy &gameboy) {
-    bool jumpCondition = false;
-    switch (test) {
-        case JumpTest::NotZero:
-            jumpCondition = !gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Zero:
-            jumpCondition = gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Carry:
-            jumpCondition = gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::NotCarry:
-            jumpCondition = !gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::Always:
-            jumpCondition = true;
-            break;
-    }
+    const bool jumpCondition = [&]() -> bool {
+        switch (test) {
+            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
+            case JumpTest::Zero: return gameboy.regs->FlagZero();
+            case JumpTest::Carry: return gameboy.regs->FlagCarry();
+            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
+            case JumpTest::Always: return true;
+            default: throw UnreachableCodeException("Instructions::CALL -- improper JumpTest");
+        }
+    }();
 
     return call(jumpCondition, gameboy);
 }
@@ -201,38 +194,32 @@ uint8_t Instructions::RLA(Gameboy &gameboy) {
     return 4;
 }
 
-uint8_t Instructions::RL(const ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::HLAddr) {
-        uint8_t byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        const uint8_t flag_c = gameboy.regs->FlagCarry() ? 1 : 0;
-        gameboy.regs->SetCarry((byte & 0x80) != 0);
-        byte = (byte << 1) | flag_c;
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
-        gameboy.regs->SetZero(byte == 0);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-        return 16;
-    }
+uint8_t Instructions::RLAddr(Gameboy &gameboy) {
+    uint8_t byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    const uint8_t flag_c = gameboy.regs->FlagCarry() ? 1 : 0;
+    gameboy.regs->SetCarry((byte & 0x80) != 0);
+    byte = (byte << 1) | flag_c;
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+    gameboy.regs->SetZero(byte == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.pc += 2;
+    return 16;
+}
 
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        default: throw UnreachableCodeException("Instructions::RL");
-    }
+uint8_t Instructions::RL(const ArithmeticSource source, Gameboy &gameboy) {
+    const uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::RL -- improper ArithmeticSource");
+        }
+    }();
 
     const bool flag_c = (value & 0x80) >> 7 == 0x01;
     const uint8_t newValue = value << 1 | static_cast<uint8_t>(gameboy.regs->FlagCarry());
@@ -256,7 +243,7 @@ uint8_t Instructions::RL(const ArithmeticSource source, Gameboy &gameboy) {
             break;
         case ArithmeticSource::L: gameboy.regs->l = newValue;
             break;
-        default: throw UnreachableCodeException("Instructions::RL");
+        default: throw UnreachableCodeException("Instructions::RL -- improper ArithmeticSource");
     }
 
     gameboy.pc += 2;
@@ -298,26 +285,19 @@ uint8_t Instructions::RRCA(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        default: throw UnreachableCodeException("Instructions::RRC");
-    }
+    uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            case ArithmeticSource::HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            default: throw UnreachableCodeException("Instructions::RRC -- improper ArithmeticSource");
+        }
+    }();
 
     if (source == ArithmeticSource::HLAddr) {
         const bool carry = (value & 0x01) == 0x01;
@@ -336,7 +316,7 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
         return 16;
     }
 
-    bool carry = (value & 0x01) == 0x01;
+    const bool carry = (value & 0x01) == 0x01;
     gameboy.regs->SetCarry(carry);
     uint8_t newValue = 0;
     if (gameboy.regs->FlagCarry()) {
@@ -361,7 +341,7 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
             break;
         case ArithmeticSource::L: gameboy.regs->l = newValue;
             break;
-        default: throw UnreachableCodeException("Instructions::RRC");
+        default: throw UnreachableCodeException("Instructions::RRC -- improper ArithmeticSource");
     }
 
     gameboy.regs->SetSubtract(false);
@@ -371,38 +351,33 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::RR(const ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::HLAddr) {
-        uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        bool carry = (value & 0x01) == 0x01;
-        if (gameboy.regs->FlagCarry()) { value = 0x80 | (value >> 1); } else { value = value >> 1; }
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
-        gameboy.regs->SetCarry(carry);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.regs->SetZero(value == 0);
-        gameboy.pc += 2;
-        return 16;
-    }
+uint8_t Instructions::RRAddr(Gameboy &gameboy) {
+    uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    const bool carry = (value & 0x01) == 0x01;
+    if (gameboy.regs->FlagCarry()) { value = 0x80 | (value >> 1); } else { value = value >> 1; }
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
+    gameboy.regs->SetCarry(carry);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.regs->SetZero(value == 0);
+    gameboy.pc += 2;
+    return 16;
+}
 
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        default: throw UnreachableCodeException("Instructions::RR");
-    }
+uint8_t Instructions::RR(const ArithmeticSource source, Gameboy &gameboy) {
+    const uint8_t value = [&]() -> uint8_t {
+        using enum ArithmeticSource;
+        switch (source) {
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::OR -- improper ArithmeticSource");
+        }
+    }();
 
     const bool carry = (value & 0x01) == 0x01;
     uint8_t newValue = 0;
@@ -427,7 +402,7 @@ uint8_t Instructions::RR(const ArithmeticSource source, Gameboy &gameboy) {
             break;
         case ArithmeticSource::L: gameboy.regs->l = newValue;
             break;
-        default: throw UnreachableCodeException("Instructions::RR");
+        default: throw UnreachableCodeException("Instructions::OR -- improper ArithmeticSource");
     }
 
     gameboy.regs->SetCarry(carry);
@@ -458,55 +433,46 @@ uint8_t Instructions::RRA(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::RET(const JumpTest test, Gameboy &gameboy) {
-    bool jumpCondition = false;
-    switch (test) {
-        case JumpTest::NotZero: jumpCondition = !gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Zero: jumpCondition = gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Carry: jumpCondition = gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::NotCarry: jumpCondition = !gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::Always: jumpCondition = true;
-            break;
-    }
+    const bool jumpCondition = [&]() -> bool {
+        switch (test) {
+            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
+            case JumpTest::Zero: return gameboy.regs->FlagZero();
+            case JumpTest::Carry: return gameboy.regs->FlagCarry();
+            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
+            case JumpTest::Always: return true;
+            default: throw UnreachableCodeException("Instructions::RET -- improper JumpTest");
+        }
+    }();
 
     return test == JumpTest::Always ? return_(jumpCondition, gameboy) - 4 : return_(jumpCondition, gameboy);
 }
 
 uint8_t Instructions::JR(const JumpTest test, Gameboy &gameboy) {
-    bool jumpCondition = false;
-    switch (test) {
-        case JumpTest::NotZero: jumpCondition = !gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Zero: jumpCondition = gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Carry: jumpCondition = gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::NotCarry: jumpCondition = !gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::Always: jumpCondition = true;
-            break;
-    }
+    const bool jumpCondition = [&]() -> bool {
+        switch (test) {
+            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
+            case JumpTest::Zero: return gameboy.regs->FlagZero();
+            case JumpTest::Carry: return gameboy.regs->FlagCarry();
+            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
+            case JumpTest::Always: return true;
+            default: throw UnreachableCodeException("Instructions::JR -- improper JumpTest");
+        }
+    }();
 
     return jumpRelative(jumpCondition, gameboy);
 }
 
 uint8_t Instructions::JP(const JumpTest test, Gameboy &gameboy) {
-    bool jumpCondition = false;
-    switch (test) {
-        case JumpTest::NotZero: jumpCondition = !gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Zero: jumpCondition = gameboy.regs->FlagZero();
-            break;
-        case JumpTest::Carry: jumpCondition = gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::NotCarry: jumpCondition = !gameboy.regs->FlagCarry();
-            break;
-        case JumpTest::Always: jumpCondition = true;
-            break;
-    }
+    const bool jumpCondition = [&]() -> bool {
+        switch (test) {
+            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
+            case JumpTest::Zero: return gameboy.regs->FlagZero();
+            case JumpTest::Carry: return gameboy.regs->FlagCarry();
+            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
+            case JumpTest::Always: return true;
+            default: throw UnreachableCodeException("Instructions::JP -- improper JumpTest");
+        }
+    }();
 
     return jump(jumpCondition, gameboy);
 }
@@ -629,28 +595,31 @@ uint8_t Instructions::INC(const IncDecTarget target, Gameboy &gameboy) {
     }
 }
 
-uint8_t Instructions::LDH(LoadOtherTarget target, LoadOtherSource source, Gameboy &gameboy) {
-    if ((target == LoadOtherTarget::A8) && (source == LoadOtherSource::A)) {
+uint8_t Instructions::LDH(const LoadOtherTarget target, const LoadOtherSource source, Gameboy &gameboy) {
+    if (target == LoadOtherTarget::A8 && source == LoadOtherSource::A) {
         // E0
-        uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
+        const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
         gameboy.bus->WriteByte(a, gameboy.regs->a);
         gameboy.pc += 2;
         return 12;
-    } else if ((target == LoadOtherTarget::CAddress) && (source == LoadOtherSource::A)) {
+    }
+    if (target == LoadOtherTarget::CAddress && source == LoadOtherSource::A) {
         // E2
-        uint16_t c = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
+        const uint16_t c = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
         gameboy.bus->WriteByte(c, gameboy.regs->a);
         gameboy.pc += 1;
         return 8;
-    } else if ((target == LoadOtherTarget::A) && (source == LoadOtherSource::A8)) {
+    }
+    if (target == LoadOtherTarget::A && source == LoadOtherSource::A8) {
         // F0
-        uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
+        const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
         gameboy.regs->a = gameboy.bus->ReadByte(a);
         gameboy.pc += 2;
         return 12;
-    } else if ((target == LoadOtherTarget::A) && (source == LoadOtherSource::CAddress)) {
+    }
+    if (target == LoadOtherTarget::A && source == LoadOtherSource::CAddress) {
         // F2
-        uint16_t a = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
+        const uint16_t a = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
         gameboy.regs->a = gameboy.bus->ReadByte(a);
         gameboy.pc += 1;
         return 8;
@@ -660,43 +629,33 @@ uint8_t Instructions::LDH(LoadOtherTarget target, LoadOtherSource source, Gamebo
 }
 
 uint8_t Instructions::LD(const LoadByteTarget target, const LoadByteSource source, Gameboy &gameboy) {
-    uint8_t sourceValue = 0;
-    switch (source) {
-        case LoadByteSource::A: sourceValue = gameboy.regs->a;
-            break;
-        case LoadByteSource::B: sourceValue = gameboy.regs->b;
-            break;
-        case LoadByteSource::C: sourceValue = gameboy.regs->c;
-            break;
-        case LoadByteSource::D: sourceValue = gameboy.regs->d;
-            break;
-        case LoadByteSource::E: sourceValue = gameboy.regs->e;
-            break;
-        case LoadByteSource::H: sourceValue = gameboy.regs->h;
-            break;
-        case LoadByteSource::L: sourceValue = gameboy.regs->l;
-            break;
-        case LoadByteSource::D8: sourceValue = ReadNextByte(gameboy);
-            break;
-        case LoadByteSource::HL: sourceValue = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case LoadByteSource::BC: sourceValue = gameboy.bus->ReadByte(gameboy.regs->GetBC());
-            break;
-        case LoadByteSource::DE: sourceValue = gameboy.bus->ReadByte(gameboy.regs->GetDE());
-            break;
-        case LoadByteSource::HLI: {
-            sourceValue = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
-            break;
+    const uint8_t sourceValue = [&]() -> uint8_t {
+        switch (source) {
+            case LoadByteSource::A: return gameboy.regs->a;
+            case LoadByteSource::B: return gameboy.regs->b;
+            case LoadByteSource::C: return gameboy.regs->c;
+            case LoadByteSource::D: return gameboy.regs->d;
+            case LoadByteSource::E: return gameboy.regs->e;
+            case LoadByteSource::H: return gameboy.regs->h;
+            case LoadByteSource::L: return gameboy.regs->l;
+            case LoadByteSource::D8: return ReadNextByte(gameboy);
+            case LoadByteSource::HL: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case LoadByteSource::BC: return gameboy.bus->ReadByte(gameboy.regs->GetBC());
+            case LoadByteSource::DE: return gameboy.bus->ReadByte(gameboy.regs->GetDE());
+            case LoadByteSource::HLI: {
+                const auto tmp = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+                gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
+                return tmp;
+            }
+            case LoadByteSource::HLD: {
+                const auto tmp = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+                gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
+                return tmp;
+            }
+            case LoadByteSource::A16: return gameboy.bus->ReadByte(ReadNextWord(gameboy));
+            default: throw UnreachableCodeException("Instructions::LD -- improper LoadByteSource");
         }
-        case LoadByteSource::HLD: {
-            sourceValue = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
-            break;
-        }
-        case LoadByteSource::A16: sourceValue = gameboy.bus->ReadByte(ReadNextWord(gameboy));
-            break;
-    }
+    }();
 
     switch (target) {
         case LoadByteTarget::A: gameboy.regs->a = sourceValue;
@@ -772,18 +731,16 @@ uint8_t Instructions::LD(const LoadByteTarget target, const LoadByteSource sourc
 }
 
 uint8_t Instructions::LD16(const LoadWordTarget target, const LoadWordSource source, Gameboy &gameboy) {
-    uint16_t sourceValue = 0;
-    switch (source) {
-        case LoadWordSource::D16: sourceValue = ReadNextWord(gameboy);
-            break;
-        case LoadWordSource::SP: sourceValue = gameboy.sp;
-            break;
-        case LoadWordSource::HL: sourceValue = gameboy.regs->GetHL();
-            break;
-        case LoadWordSource::SPr8: sourceValue = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-                                       ReadNextByte(gameboy))));
-            break;
-    }
+    const uint16_t sourceValue = [&]() -> uint16_t {
+        switch (source) {
+            case LoadWordSource::D16: return ReadNextWord(gameboy);
+            case LoadWordSource::SP: return gameboy.sp;
+            case LoadWordSource::HL: return gameboy.regs->GetHL();
+            case LoadWordSource::SPr8: return static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
+                    ReadNextByte(gameboy))));
+            default: throw UnreachableCodeException("Instructions::LD16 -- improper LoadWordSource");
+        }
+    }();
 
     switch (target) {
         case LoadWordTarget::BC: gameboy.regs->SetBC(sourceValue);
@@ -826,17 +783,19 @@ uint8_t Instructions::LD16(const LoadWordTarget target, const LoadWordSource sou
 }
 
 uint8_t Instructions::PUSH(const StackTarget target, Gameboy &gameboy) {
-    uint16_t value = 0;
-    switch (target) {
-        case StackTarget::BC: value = gameboy.regs->GetBC();
-            break;
-        case StackTarget::DE: value = gameboy.regs->GetDE();
-            break;
-        case StackTarget::HL: value = gameboy.regs->GetHL();
-            break;
-        case StackTarget::AF: value = gameboy.regs->GetAF();
-            break;
-    }
+    const uint16_t value = [&]() -> uint16_t {
+        switch (target) {
+            case StackTarget::BC: return gameboy.regs->GetBC();
+                break;
+            case StackTarget::DE: return gameboy.regs->GetDE();
+                break;
+            case StackTarget::HL: return gameboy.regs->GetHL();
+                break;
+            case StackTarget::AF: return gameboy.regs->GetAF();
+                break;
+            default: throw UnreachableCodeException("Instructions::PUSH -- improper StackTarget");
+        }
+    }();
 
     push(value, gameboy);
     gameboy.pc += 1;
@@ -861,234 +820,171 @@ uint8_t Instructions::POP(const StackTarget target, Gameboy &gameboy) {
 }
 
 uint8_t Instructions::CP(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper CP source");
-    }
+    const auto resolveValue = [&](const ArithmeticSource src) -> uint8_t {
+        using enum ArithmeticSource;
+        switch (src) {
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            case HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Improper CP source");
+        }
+    };
 
+    const uint8_t value = resolveValue(source);
     subtract(value, gameboy);
 
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
 uint8_t Instructions::OR(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper OR source");
-    }
+    const uint8_t value = [&]() -> uint8_t {
+        using enum ArithmeticSource;
+        switch (source) {
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            case HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Instructions::OR -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->a |= value;
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(false);
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
 uint8_t Instructions::XOR(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper XOR source");
-    }
+    const uint8_t value = [&]() -> uint8_t {
+        using enum ArithmeticSource;
+        switch (source) {
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            case HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Instructions::XOR -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->a ^= value;
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(false);
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
 uint8_t Instructions::AND(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper AND source");
-    }
+    const uint8_t value = [&]() -> uint8_t {
+        using enum ArithmeticSource;
+        switch (source) {
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            case HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Instructions::AND -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->a &= value;
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetCarry(false);
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
 uint8_t Instructions::SUB(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper SUB source");
-    }
+    const uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            case ArithmeticSource::HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case ArithmeticSource::U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Instructions::SUB -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->a = subtract(value, gameboy);
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
+}
+
+uint8_t Instructions::SLAAddr(Gameboy &gameboy) {
+    uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    gameboy.regs->SetCarry((value & 0x80) != 0);
+    value <<= 1;
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
+    gameboy.regs->SetZero(value == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.pc += 2;
+    return 16;
 }
 
 uint8_t Instructions::SLA(const ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::HLAddr) {
-        uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        gameboy.regs->SetCarry((value & 0x80) != 0);
-        value <<= 1;
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
-        gameboy.regs->SetZero(value == 0);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-        return 16;
-    }
-
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        default: throw UnreachableCodeException("Improper SLA source");
-    }
+    const uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::SLA -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->SetCarry(((value & 0x80) >> 7) == 0x01);
     const uint8_t newValue = value << 1;
@@ -1108,7 +1004,7 @@ uint8_t Instructions::SLA(const ArithmeticSource source, Gameboy &gameboy) {
             break;
         case ArithmeticSource::L: gameboy.regs->l = newValue;
             break;
-        default: throw UnreachableCodeException("Improper SLA source");
+        default: throw UnreachableCodeException("Instructions::SLA -- improper ArithmeticSource");
     }
 
     gameboy.regs->SetZero(newValue == 0);
@@ -1119,37 +1015,31 @@ uint8_t Instructions::SLA(const ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::SRA(ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::HLAddr) {
-        uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        gameboy.regs->SetCarry((value & 0x01) != 0);
-        value = (value >> 1) | (value & 0x80);
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
-        gameboy.regs->SetZero(value == 0);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-        return 16;
-    }
+uint8_t Instructions::SRAAddr(Gameboy &gameboy) {
+    uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    gameboy.regs->SetCarry((value & 0x01) != 0);
+    value = (value >> 1) | (value & 0x80);
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
+    gameboy.regs->SetZero(value == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.pc += 2;
+    return 16;
+}
 
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        default: throw UnreachableCodeException("Improper SRA source");
-    }
+uint8_t Instructions::SRA(const ArithmeticSource source, Gameboy &gameboy) {
+    const uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::SLA -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->SetCarry((value & 0x01) != 0);
     const uint8_t newValue = (value >> 1) | (value & 0x80);
@@ -1180,37 +1070,31 @@ uint8_t Instructions::SRA(ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::SWAP(ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::HLAddr) {
-        uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        value = (value >> 4) | (value << 4);
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
-        gameboy.regs->SetCarry(false);
-        gameboy.regs->SetZero(value == 0);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-        return 16;
-    }
+uint8_t Instructions::SWAPAddr(Gameboy &gameboy) {
+    uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    value = (value >> 4) | (value << 4);
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
+    gameboy.regs->SetCarry(false);
+    gameboy.regs->SetZero(value == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.pc += 2;
+    return 16;
+}
 
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        default: throw UnreachableCodeException("Improper SWAP source");
-    }
+uint8_t Instructions::SWAP(const ArithmeticSource source, Gameboy &gameboy) {
+    const uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::SWAP -- improper ArithmeticSource");
+        }
+    }();
 
     const uint8_t newValue = value >> 4 | value << 4;
 
@@ -1229,7 +1113,7 @@ uint8_t Instructions::SWAP(ArithmeticSource source, Gameboy &gameboy) {
             break;
         case ArithmeticSource::L: gameboy.regs->l = newValue;
             break;
-        default: throw UnreachableCodeException("Improper SWAP source");
+        default: throw UnreachableCodeException("Instructions::SWAP -- improper ArithmeticSource");
     }
 
     gameboy.regs->SetZero(value == 0);
@@ -1241,37 +1125,31 @@ uint8_t Instructions::SWAP(ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::SRL(ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::HLAddr) {
-        uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        gameboy.regs->SetCarry((value & 0x01) != 0);
-        value >>= 1;
-        gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
-        gameboy.regs->SetZero(value == 0);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-        return 16;
-    }
+uint8_t Instructions::SRLAddr(Gameboy &gameboy) {
+    uint8_t value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    gameboy.regs->SetCarry((value & 0x01) != 0);
+    value >>= 1;
+    gameboy.bus->WriteByte(gameboy.regs->GetHL(), value);
+    gameboy.regs->SetZero(value == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    gameboy.pc += 2;
+    return 16;
+}
 
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        default: throw UnreachableCodeException("Improper SRL source");
-    }
+uint8_t Instructions::SRL(const ArithmeticSource source, Gameboy &gameboy) {
+    uint8_t value = [&]() -> uint8_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            default: throw UnreachableCodeException("Instructions::SRL -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->SetCarry((value & 0x01) != 0);
     value = value >> 1;
@@ -1291,7 +1169,7 @@ uint8_t Instructions::SRL(ArithmeticSource source, Gameboy &gameboy) {
             break;
         case ArithmeticSource::L: gameboy.regs->l = value;
             break;
-        default: throw UnreachableCodeException("Improper SRL source");
+        default: throw UnreachableCodeException("Instructions::SRL -- improper ArithmeticSource");
     }
 
     gameboy.regs->SetZero(value == 0);
@@ -1304,44 +1182,30 @@ uint8_t Instructions::SRL(ArithmeticSource source, Gameboy &gameboy) {
 
 uint8_t Instructions::BIT(const uint8_t target, const ArithmeticSource source, Gameboy &gameboy) {
     const uint8_t value = 1 << target;
-
-    bool zero = true;
-    switch (source) {
-        case ArithmeticSource::A: zero = (gameboy.regs->a & value) == 0;
-            break;
-        case ArithmeticSource::B: zero = (gameboy.regs->b & value) == 0;
-            break;
-        case ArithmeticSource::C: zero = (gameboy.regs->c & value) == 0;
-            break;
-        case ArithmeticSource::D: zero = (gameboy.regs->d & value) == 0;
-            break;
-        case ArithmeticSource::E: zero = (gameboy.regs->e & value) == 0;
-            break;
-        case ArithmeticSource::H: zero = (gameboy.regs->h & value) == 0;
-            break;
-        case ArithmeticSource::L: zero = (gameboy.regs->l & value) == 0;
-            break;
-        case ArithmeticSource::HLAddr: zero = (gameboy.bus->ReadByte(gameboy.regs->GetHL()) & value) == 0;
-            break;
-        default: throw UnreachableCodeException("Invalid source");
-    }
+    const bool zero = [&]() -> bool {
+        switch (source) {
+            case ArithmeticSource::A: return (gameboy.regs->a & value) == 0;
+            case ArithmeticSource::B: return (gameboy.regs->b & value) == 0;
+            case ArithmeticSource::C: return (gameboy.regs->c & value) == 0;
+            case ArithmeticSource::D: return (gameboy.regs->d & value) == 0;
+            case ArithmeticSource::E: return (gameboy.regs->e & value) == 0;
+            case ArithmeticSource::H: return (gameboy.regs->h & value) == 0;
+            case ArithmeticSource::L: return (gameboy.regs->l & value) == 0;
+            case ArithmeticSource::HLAddr: return (gameboy.bus->ReadByte(gameboy.regs->GetHL()) & value) == 0;
+            default: throw UnreachableCodeException("Instructions::BIT -- improper ArithmeticSource");
+        }
+    }();
 
     gameboy.regs->SetZero(zero);
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(false);
 
-    if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 2;
-        return 12;
-    } else {
-        gameboy.pc += 2;
-        return 8;
-    }
+    gameboy.pc += 2;
+    return source == ArithmeticSource::HLAddr ? 12 : 8;
 }
 
 uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, Gameboy &gameboy) {
     const uint8_t value = 1 << target;
-
     switch (source) {
         case ArithmeticSource::A: gameboy.regs->a &= ~value;
             break;
@@ -1360,7 +1224,7 @@ uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, G
         case ArithmeticSource::HLAddr: gameboy.bus->WriteByte(gameboy.regs->GetHL(),
                                                               gameboy.bus->ReadByte(gameboy.regs->GetHL()) & ~value);
             break;
-        default: throw UnreachableCodeException("Invalid RES source");
+        default: throw UnreachableCodeException("Instructions::RES -- improper ArithmeticSource");
     }
 
     gameboy.pc += 2;
@@ -1369,7 +1233,6 @@ uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, G
 
 uint8_t Instructions::SET(const uint8_t target, const ArithmeticSource source, Gameboy &gameboy) {
     const uint8_t value = 1 << target;
-
     switch (source) {
         case ArithmeticSource::A: gameboy.regs->a |= value;
             break;
@@ -1388,36 +1251,28 @@ uint8_t Instructions::SET(const uint8_t target, const ArithmeticSource source, G
         case ArithmeticSource::HLAddr: gameboy.bus->WriteByte(gameboy.regs->GetHL(),
                                                               gameboy.bus->ReadByte(gameboy.regs->GetHL()) | value);
             break;
-        default: throw UnreachableCodeException("Improper SET source");
+        default: throw UnreachableCodeException("Instructions::SET -- improper ArithmeticSource");
     }
 
     gameboy.pc += 2;
     return source == ArithmeticSource::HLAddr ? 16 : 8;
 }
 
-uint8_t Instructions::SBC(ArithmeticSource source, Gameboy &gameboy) {
-    uint16_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper SBC source");
-    }
+uint8_t Instructions::SBC(const ArithmeticSource source, Gameboy &gameboy) {
+    const uint16_t value = [&]() -> uint16_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            case ArithmeticSource::HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case ArithmeticSource::U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Instructions::SBC -- improper ArithmeticSource");
+        }
+    }();
 
     const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
     const uint8_t r = gameboy.regs->a - value - flag_carry;
@@ -1427,41 +1282,28 @@ uint8_t Instructions::SBC(ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetZero(r == 0x0);
     gameboy.regs->a = r;
 
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
-uint8_t Instructions::ADC(ArithmeticSource source, Gameboy &gameboy) {
-    uint16_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Improper ADC source");
-    }
+uint8_t Instructions::ADC(const ArithmeticSource source, Gameboy &gameboy) {
+    const uint16_t value = [&]() -> uint16_t {
+        switch (source) {
+            case ArithmeticSource::A: return gameboy.regs->a;
+            case ArithmeticSource::B: return gameboy.regs->b;
+            case ArithmeticSource::C: return gameboy.regs->c;
+            case ArithmeticSource::D: return gameboy.regs->d;
+            case ArithmeticSource::E: return gameboy.regs->e;
+            case ArithmeticSource::H: return gameboy.regs->h;
+            case ArithmeticSource::L: return gameboy.regs->l;
+            case ArithmeticSource::HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case ArithmeticSource::U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Improper ADC source");
+        }
+    }();
 
     const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
     const uint8_t r = gameboy.regs->a + value + flag_carry;
@@ -1471,92 +1313,81 @@ uint8_t Instructions::ADC(ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetZero(r == 0x0);
     gameboy.regs->a = r;
 
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
-uint8_t Instructions::ADD16(Arithmetic16Target target, Gameboy &gameboy) {
-    uint16_t sourceValue = 0;
-    switch (target) {
-        case Arithmetic16Target::BC: sourceValue = gameboy.regs->GetBC();
-            break;
-        case Arithmetic16Target::DE: sourceValue = gameboy.regs->GetDE();
-            break;
-        case Arithmetic16Target::HL: sourceValue = gameboy.regs->GetHL();
-            break;
-        case Arithmetic16Target::SP: sourceValue = gameboy.sp;
-            break;
-    }
+uint8_t Instructions::ADD16(const Arithmetic16Target target, Gameboy &gameboy) {
+    const uint16_t sourceValue = [&]() -> uint16_t {
+        switch (target) {
+            case Arithmetic16Target::BC: return gameboy.regs->GetBC();
+            case Arithmetic16Target::DE: return gameboy.regs->GetDE();
+            case Arithmetic16Target::HL: return gameboy.regs->GetHL();
+            case Arithmetic16Target::SP: return gameboy.sp;
+            default: throw UnreachableCodeException("Instructions::ADD16 -- improper Arithmetic16Target");
+        }
+    }();
 
     const uint16_t reg = gameboy.regs->GetHL();
     const uint16_t sum = reg + sourceValue;
+
     gameboy.regs->SetCarry(reg > 0xFFFF - sourceValue);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf((reg & 0x07FF) + (sourceValue & 0x07FF) > 0x07FF);
     gameboy.regs->SetHL(sum);
+
     gameboy.pc += 1;
     return 8;
 }
 
 uint8_t Instructions::ADD(const ArithmeticSource source, Gameboy &gameboy) {
-    if (source == ArithmeticSource::I8) {
-        const auto source_value = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-            ReadNextByte(gameboy))));
-        const uint16_t sp_value = gameboy.sp;
-        gameboy.regs->SetCarry(((sp_value & 0xFF) + (source_value & 0xFF)) > 0xFF);
-        gameboy.regs->SetHalf(((sp_value & 0xF) + (source_value & 0xF)) > 0xF);
-        gameboy.regs->SetSubtract(false);
-        gameboy.regs->SetZero(false);
-        gameboy.sp = sp_value + source_value;
-        gameboy.pc += 2;
-        return 16;
-    }
+    const uint8_t value = [&]() -> uint8_t {
+        using enum ArithmeticSource;
+        switch (source) {
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
+            case HLAddr: return gameboy.bus->ReadByte(gameboy.regs->GetHL());
+            case U8: return ReadNextByte(gameboy);
+            default: throw UnreachableCodeException("Instructions::ADD -- improper ArithmeticSource");
+        }
+    }();
 
-    uint8_t value = 0;
-    switch (source) {
-        case ArithmeticSource::A: value = gameboy.regs->a;
-            break;
-        case ArithmeticSource::B: value = gameboy.regs->b;
-            break;
-        case ArithmeticSource::C: value = gameboy.regs->c;
-            break;
-        case ArithmeticSource::D: value = gameboy.regs->d;
-            break;
-        case ArithmeticSource::E: value = gameboy.regs->e;
-            break;
-        case ArithmeticSource::H: value = gameboy.regs->h;
-            break;
-        case ArithmeticSource::L: value = gameboy.regs->l;
-            break;
-        case ArithmeticSource::HLAddr: value = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-            break;
-        case ArithmeticSource::U8: value = ReadNextByte(gameboy);
-            break;
-        default: throw UnreachableCodeException("Invalid source");
-    }
+    const uint8_t a = gameboy.regs->a;
+    const uint8_t new_value = a + value;
+    gameboy.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(value) > 0xFF);
+    gameboy.regs->SetZero(new_value == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf((gameboy.regs->a & 0xF) + (value & 0xF) > 0xF);
 
-    gameboy.regs->a = addition(value, gameboy);
+    gameboy.regs->a = new_value;
 
-    if (source == ArithmeticSource::U8) {
-        gameboy.pc += 2;
-        return 8;
-    } else if (source == ArithmeticSource::HLAddr) {
-        gameboy.pc += 1;
-        return 8;
-    } else {
-        gameboy.pc += 1;
-        return 4;
-    }
+    const bool isU8 = source == ArithmeticSource::U8;
+    const bool isHL = source == ArithmeticSource::HLAddr;
+
+    gameboy.pc += isU8 ? 2 : 1;
+    return isU8 || isHL ? 8 : 4;
 }
 
+uint8_t Instructions::ADDSigned(Gameboy &gameboy) {
+    const auto source_value = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
+        ReadNextByte(gameboy))));
+    const uint16_t sp_value = gameboy.sp;
+    gameboy.regs->SetCarry(((sp_value & 0xFF) + (source_value & 0xFF)) > 0xFF);
+    gameboy.regs->SetHalf(((sp_value & 0xF) + (source_value & 0xF)) > 0xF);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetZero(false);
+    gameboy.sp = sp_value + source_value;
+    gameboy.pc += 2;
+    return 16;
+}
 
 uint8_t Instructions::increment(const uint8_t reg, const Gameboy &gameboy) {
     gameboy.regs->SetHalf((reg & 0xF) == 0xF);

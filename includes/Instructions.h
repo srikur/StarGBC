@@ -76,9 +76,13 @@ public:
 
     static uint8_t RLC(ArithmeticSource source, Gameboy &gameboy);
 
+    static uint8_t RLCAddr(Gameboy &gameboy);
+
     static uint8_t RLA(Gameboy &gameboy);
 
     static uint8_t RL(ArithmeticSource source, Gameboy &gameboy);
+
+    static uint8_t RLAddr(Gameboy &gameboy);
 
     static uint8_t CCF(Gameboy &gameboy);
 
@@ -91,6 +95,8 @@ public:
     static uint8_t RRC(ArithmeticSource source, Gameboy &gameboy);
 
     static uint8_t RR(ArithmeticSource source, Gameboy &gameboy);
+
+    static uint8_t RRAddr(Gameboy &gameboy);
 
     static uint8_t RRA(Gameboy &gameboy);
 
@@ -130,11 +136,19 @@ public:
 
     static uint8_t SLA(ArithmeticSource source, Gameboy &gameboy);
 
+    static uint8_t SLAAddr(Gameboy &gameboy);
+
     static uint8_t SRA(ArithmeticSource source, Gameboy &gameboy);
+
+    static uint8_t SRAAddr(Gameboy &gameboy);
 
     static uint8_t SWAP(ArithmeticSource source, Gameboy &gameboy);
 
+    static uint8_t SWAPAddr(Gameboy &gameboy);
+
     static uint8_t SRL(ArithmeticSource source, Gameboy &gameboy);
+
+    static uint8_t SRLAddr(Gameboy &gameboy);
 
     static uint8_t BIT(uint8_t target, ArithmeticSource source, Gameboy &gameboy);
 
@@ -149,6 +163,8 @@ public:
     static uint8_t ADD16(Arithmetic16Target target, Gameboy &gameboy);
 
     static uint8_t ADD(ArithmeticSource source, Gameboy &gameboy);
+
+    static uint8_t ADDSigned(Gameboy &gameboy);
 
     static uint8_t increment(uint8_t reg, const Gameboy &gameboy);
 
@@ -194,7 +210,7 @@ public:
         table[0x03] = [](Gameboy &gb) -> uint8_t { return RLC(ArithmeticSource::E, gb); };
         table[0x04] = [](Gameboy &gb) -> uint8_t { return RLC(ArithmeticSource::H, gb); };
         table[0x05] = [](Gameboy &gb) -> uint8_t { return RLC(ArithmeticSource::L, gb); };
-        table[0x06] = [](Gameboy &gb) -> uint8_t { return RLC(ArithmeticSource::HLAddr, gb); };
+        table[0x06] = [](Gameboy &gb) -> uint8_t { return RLCAddr(gb); };
         table[0x07] = [](Gameboy &gb) -> uint8_t { return RLC(ArithmeticSource::A, gb); };
         table[0x08] = [](Gameboy &gb) -> uint8_t { return RRC(ArithmeticSource::B, gb); };
         table[0x09] = [](Gameboy &gb) -> uint8_t { return RRC(ArithmeticSource::C, gb); };
@@ -210,7 +226,7 @@ public:
         table[0x13] = [](Gameboy &gb) -> uint8_t { return RL(ArithmeticSource::E, gb); };
         table[0x14] = [](Gameboy &gb) -> uint8_t { return RL(ArithmeticSource::H, gb); };
         table[0x15] = [](Gameboy &gb) -> uint8_t { return RL(ArithmeticSource::L, gb); };
-        table[0x16] = [](Gameboy &gb) -> uint8_t { return RL(ArithmeticSource::HLAddr, gb); };
+        table[0x16] = [](Gameboy &gb) -> uint8_t { return RLAddr(gb); };
         table[0x17] = [](Gameboy &gb) -> uint8_t { return RL(ArithmeticSource::A, gb); };
         table[0x18] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::B, gb); };
         table[0x19] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::C, gb); };
@@ -218,7 +234,7 @@ public:
         table[0x1B] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::E, gb); };
         table[0x1C] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::H, gb); };
         table[0x1D] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::L, gb); };
-        table[0x1E] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::HLAddr, gb); };
+        table[0x1E] = [](Gameboy &gb) -> uint8_t { return RRAddr(gb); };
         table[0x1F] = [](Gameboy &gb) -> uint8_t { return RR(ArithmeticSource::A, gb); };
         table[0x20] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::B, gb); };
         table[0x21] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::C, gb); };
@@ -226,7 +242,7 @@ public:
         table[0x23] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::E, gb); };
         table[0x24] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::H, gb); };
         table[0x25] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::L, gb); };
-        table[0x26] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::HLAddr, gb); };
+        table[0x26] = [](Gameboy &gb) -> uint8_t { return SLAAddr(gb); };
         table[0x27] = [](Gameboy &gb) -> uint8_t { return SLA(ArithmeticSource::A, gb); };
         table[0x28] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::B, gb); };
         table[0x29] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::C, gb); };
@@ -234,7 +250,7 @@ public:
         table[0x2B] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::E, gb); };
         table[0x2C] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::H, gb); };
         table[0x2D] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::L, gb); };
-        table[0x2E] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::HLAddr, gb); };
+        table[0x2E] = [](Gameboy &gb) -> uint8_t { return SRAAddr(gb); };
         table[0x2F] = [](Gameboy &gb) -> uint8_t { return SRA(ArithmeticSource::A, gb); };
         table[0x30] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::B, gb); };
         table[0x31] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::C, gb); };
@@ -242,7 +258,7 @@ public:
         table[0x33] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::E, gb); };
         table[0x34] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::H, gb); };
         table[0x35] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::L, gb); };
-        table[0x36] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::HLAddr, gb); };
+        table[0x36] = [](Gameboy &gb) -> uint8_t { return SWAPAddr(gb); };
         table[0x37] = [](Gameboy &gb) -> uint8_t { return SWAP(ArithmeticSource::A, gb); };
         table[0x38] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::B, gb); };
         table[0x39] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::C, gb); };
@@ -250,7 +266,7 @@ public:
         table[0x3B] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::E, gb); };
         table[0x3C] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::H, gb); };
         table[0x3D] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::L, gb); };
-        table[0x3E] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::HLAddr, gb); };
+        table[0x3E] = [](Gameboy &gb) -> uint8_t { return SRLAddr(gb); };
         table[0x3F] = [](Gameboy &gb) -> uint8_t { return SRL(ArithmeticSource::A, gb); };
         table[0x40] = [](Gameboy &gb) -> uint8_t { return BIT(0, ArithmeticSource::B, gb); };
         table[0x41] = [](Gameboy &gb) -> uint8_t { return BIT(0, ArithmeticSource::C, gb); };
@@ -675,7 +691,7 @@ public:
         table[0xE5] = [](Gameboy &gb) -> uint8_t { return PUSH(StackTarget::HL, gb); };
         table[0xE6] = [](Gameboy &gb) -> uint8_t { return AND(ArithmeticSource::U8, gb); };
         table[0xE7] = [](Gameboy &gb) -> uint8_t { return RST(RSTTargets::H20, gb); };
-        table[0xE8] = [](Gameboy &gb) -> uint8_t { return ADD(ArithmeticSource::I8, gb); };
+        table[0xE8] = [](Gameboy &gb) -> uint8_t { return ADDSigned(gb); };
         table[0xE9] = [](Gameboy &gb) -> uint8_t { return JPHL(gb); };
         table[0xEA] = [](Gameboy &gb) -> uint8_t { return LD(LoadByteTarget::A16, LoadByteSource::A, gb); };
         table[0xEE] = [](Gameboy &gb) -> uint8_t { return XOR(ArithmeticSource::U8, gb); };
