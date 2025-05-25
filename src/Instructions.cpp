@@ -25,27 +25,42 @@ uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::RLC(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t old = 0;
-    uint8_t *reg = [&]() -> uint8_t * {
+    const uint8_t value = [&]() -> uint8_t {
         using enum ArithmeticSource;
         switch (source) {
-            case A: return &gameboy.regs->a;
-            case B: return &gameboy.regs->b;
-            case C: return &gameboy.regs->c;
-            case D: return &gameboy.regs->d;
-            case E: return &gameboy.regs->e;
-            case H: return &gameboy.regs->h;
-            case L: return &gameboy.regs->l;
+            case A: return gameboy.regs->a;
+            case B: return gameboy.regs->b;
+            case C: return gameboy.regs->c;
+            case D: return gameboy.regs->d;
+            case E: return gameboy.regs->e;
+            case H: return gameboy.regs->h;
+            case L: return gameboy.regs->l;
             default: throw UnreachableCodeException("Instructions::RLC -- improper ArithmeticSource");
         }
     }();
 
-    old = (*reg & 0x80) ? 1 : 0;
+    const uint8_t old = (value & 0x80) != 0 ? 1 : 0;
     gameboy.regs->SetCarry(old != 0);
-    *reg = (*reg << 1) | old;
-    gameboy.regs->SetZero(*reg == 0);
-    gameboy.pc += 2;
+    const uint8_t newValue = (value << 1) | old;
+    gameboy.regs->SetZero(newValue == 0);
 
+    switch (source) {
+        case ArithmeticSource::A: gameboy.regs->a = newValue;
+            break;
+        case ArithmeticSource::B: gameboy.regs->b = newValue;
+            break;
+        case ArithmeticSource::C: gameboy.regs->c = newValue;
+            break;
+        case ArithmeticSource::D: gameboy.regs->d = newValue;
+            break;
+        case ArithmeticSource::E: gameboy.regs->e = newValue;
+            break;
+        case ArithmeticSource::H: gameboy.regs->h = newValue;
+            break;
+        case ArithmeticSource::L: gameboy.regs->l = newValue;
+            break;
+        default: throw UnreachableCodeException("Instructions::RLC -- improper ArithmeticSource");
+    }
 
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
