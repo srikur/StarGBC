@@ -1,14 +1,14 @@
 #include "Instructions.h"
 
 uint16_t Instructions::ReadNextWord(const Gameboy &gameboy) {
-    const uint16_t lower = gameboy.bus->ReadByte(gameboy.pc + 1);
-    const uint16_t higher = gameboy.bus->ReadByte(gameboy.pc + 2);
+    const uint16_t lower = gameboy.bus->ReadByte(gameboy.haltBug ? gameboy.pc : gameboy.pc + 1);
+    const uint16_t higher = gameboy.bus->ReadByte(gameboy.haltBug ? gameboy.pc + 1 : gameboy.pc + 2);
     const uint16_t word = higher << 8 | lower;
     return word;
 }
 
 uint8_t Instructions::ReadNextByte(const Gameboy &gameboy) {
-    return gameboy.bus->ReadByte(gameboy.pc + 1);
+    return gameboy.bus->ReadByte(gameboy.haltBug ? gameboy.pc : gameboy.pc + 1);
 }
 
 uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
@@ -123,9 +123,7 @@ uint8_t Instructions::HALT(Gameboy &gameboy) {
     if (const bool bug = (gameboy.bus->interruptEnable & gameboy.bus->interruptFlag & 0x1F) != 0;
         !gameboy.bus->interruptMasterEnable && bug) {
         gameboy.haltBug = true;
-    } else if (!gameboy.bus->interruptMasterEnable && !bug) {
-        gameboy.haltBug = false;
-        gameboy.halted = true;
+        gameboy.halted = false;
     } else {
         gameboy.haltBug = false;
         gameboy.halted = true;

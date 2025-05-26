@@ -82,5 +82,7 @@ public:
 
     void SetInterrupt(InterruptType interrupt);
 
-    [[nodiscard]] inline uint32_t AdjustedCycles(uint32_t cycles) const;
+    [[nodiscard]] uint32_t AdjustedCycles(const uint32_t cycles) const {
+        return cycles << (speed == Speed::Double ? 1 : 0);
+    }
 };

@@ -164,14 +164,20 @@ uint8_t Gameboy::ExecuteInstruction() {
     if (haltBug) {
         haltBug = false;
         pc = pc - 1;
+        haltBugRun = true;
     }
 
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
-        instruction = bus->ReadByte(pc + 1);
+        instruction = bus->ReadByte(haltBug ? pc : pc + 1);
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
+    if (haltBug && haltBugRun) {
+        haltBug = false;
+        haltBugRun = false;
+        pc = pc - 1;
+    }
     return cycleIncrement;
 }
 
@@ -239,7 +245,7 @@ void Gameboy::UpdateEmulator() {
     static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
     const auto frameStart = clock::now();
 
-    stepCycles = 0;
+    uint32_t stepCycles = 0;
     while (stepCycles < Timer::MAX_CYCLES) {
         if (pc == 0x10) {
             bus->ChangeSpeed();
@@ -265,6 +271,8 @@ void Gameboy::UpdateEmulator() {
         stepCycles += cycles;
     }
 
+    elapsedCycles += stepCycles;
+
     const auto elapsed = clock::now() - frameStart;
     const auto modifiedFramePeriod = kFramePeriod / speedMultiplier;
     if (elapsed < modifiedFramePeriod && throttleSpeed)
@@ -288,7 +296,7 @@ uint32_t Gameboy::ProcessInterrupts() {
         return 0;
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
-        return 0;
+        return 4;
     }
 
     if (!bus->interruptMasterEnable)
