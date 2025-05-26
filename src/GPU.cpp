@@ -286,7 +286,7 @@ uint8_t GPU::ReadVRAM(const uint16_t address) const {
     return vram[vramBank * 0x2000 + address - 0x8000];
 }
 
-void GPU::WriteVRAM(uint16_t address, uint8_t value) {
+void GPU::WriteVRAM(const uint16_t address, uint8_t value) {
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
