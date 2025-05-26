@@ -46,7 +46,7 @@ void GPU::RenderSprites() {
         } else {
             tileNumber &= 0xFF;
         }
-        const auto& [priority, xflip, yflip, paletteNumberDMG, vramBank, paletteNumberCGB] = GetAttrsFrom(
+        const auto &[priority, xflip, yflip, paletteNumberDMG, vramBank, paletteNumberCGB] = GetAttrsFrom(
             oam[spriteAddress + 3]);
 
         if (yPos <= (0xFF - spriteSize + 1)) {
@@ -219,16 +219,16 @@ void GPU::RenderTiles() {
             tileX = xPos % 8;
         }
 
-        uint8_t colorLow = (data1 & (0x80 >> tileX)) != 0 ? 1 : 0;
-        uint8_t colorHigh = (data2 & (0x80 >> tileX)) != 0 ? 2 : 0;
+        const uint8_t colorLow = (data1 & (0x80 >> tileX)) != 0 ? 1 : 0;
+        const uint8_t colorHigh = (data2 & (0x80 >> tileX)) != 0 ? 2 : 0;
         uint8_t color = colorHigh | colorLow;
 
         priority_[pixel] = std::make_pair(tileAttrs.priority, color);
 
         if (hardware == Hardware::CGB) {
-            uint8_t r = bgpd[tileAttrs.paletteNumberCGB][color][0];
-            uint8_t g = bgpd[tileAttrs.paletteNumberCGB][color][1];
-            uint8_t b = bgpd[tileAttrs.paletteNumberCGB][color][2];
+            const uint8_t r = bgpd[tileAttrs.paletteNumberCGB][color][0];
+            const uint8_t g = bgpd[tileAttrs.paletteNumberCGB][color][1];
+            const uint8_t b = bgpd[tileAttrs.paletteNumberCGB][color][2];
             SetColor(pixel, r, g, b);
         } else {
             switch ((backgroundPalette >> (2 * color)) & 0x03) {
@@ -252,10 +252,10 @@ void GPU::RenderTiles() {
     }
 }
 
-void GPU::SetColor(uint8_t pixel, uint32_t red, uint32_t green, uint32_t blue) {
-    uint8_t newRed = ((red * 13 + green * 2 + blue) >> 1);
-    uint8_t newGreen = ((green * 3 + blue) << 1);
-    uint8_t newBlue = ((red * 3 + green * 2 + blue * 11) >> 1);
+void GPU::SetColor(const uint8_t pixel, const uint32_t red, const uint32_t green, const uint32_t blue) {
+    const uint8_t newRed = ((red * 13 + green * 2 + blue) >> 1);
+    const uint8_t newGreen = ((green * 3 + blue) << 1);
+    const uint8_t newBlue = ((red * 3 + green * 2 + blue * 11) >> 1);
     screenData[currentLine][pixel][0] = newRed;
     screenData[currentLine][pixel][1] = newGreen;
     screenData[currentLine][pixel][2] = newBlue;
@@ -277,16 +277,16 @@ uint8_t GPU::ReadGpi(const Gpi &gpi) {
     return a | gpi.index;
 }
 
-void GPU::WriteGpi(Gpi &gpi, uint8_t value) {
+void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
     gpi.autoIncrement = (value & 0x80) != 0x00;
     gpi.index = value & 0x3F;
 }
 
-uint8_t GPU::ReadVRAM(uint16_t address) const {
+uint8_t GPU::ReadVRAM(const uint16_t address) const {
     return vram[vramBank * 0x2000 + address - 0x8000];
 }
 
-void GPU::WriteVRAM(uint16_t address, uint8_t value) {
+void GPU::WriteVRAM(const uint16_t address, uint8_t value) {
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
@@ -364,8 +364,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 scanlineCounter = 0;
                 currentLine = 0;
                 stat.mode = 0;
-                for (auto& row : screenData | std::views::all) {
-                    for (auto& pixel : row | std::views::all) {
+                for (auto &row: screenData | std::views::all) {
+                    for (auto &pixel: row | std::views::all) {
                         std::ranges::fill(pixel, 0xFF);
                     }
                 }
