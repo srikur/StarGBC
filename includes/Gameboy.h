@@ -37,6 +37,9 @@ class Gameboy {
     uint32_t stepCycles = 0;
     Mode mode_ = Mode::GB;
 
+    bool throttleSpeed = true;
+    int speedMultiplier = 1;
+
     [[nodiscard]] inline uint16_t ReadNextWord() const;
 
     [[nodiscard]] inline uint8_t ReadNextByte() const;
@@ -97,4 +100,8 @@ public:
     void KeyDown(Keys key) const;
 
     [[nodiscard]] std::tuple<uint32_t, uint32_t, uint32_t> GetPixel(uint32_t x, uint32_t y) const;
+
+    void ToggleSpeed();
+
+    void SetThrottle(bool throttle);
 };

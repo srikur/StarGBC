@@ -396,21 +396,15 @@ void Bus::UpdateTimers(const uint32_t cycles) {
 }
 
 void Bus::SetInterrupt(const InterruptType interrupt) {
-    uint8_t mask = 0x00;
-    switch (interrupt) {
-        case InterruptType::VBlank:
-            mask = 0x01;
-            break;
-        case InterruptType::LCDStat:
-            mask = 0x02;
-            break;
-        case InterruptType::Timer:
-            mask = 0x04;
-            break;
-        case InterruptType::Joypad:
-            mask = 0x10;
-            break;
-    }
+    const uint8_t mask = [&]() -> uint8_t {
+        switch (interrupt) {
+            case InterruptType::VBlank: return 0x01;
+            case InterruptType::LCDStat: return 0x02;
+            case InterruptType::Timer: return 0x04;
+            case InterruptType::Joypad: return 0x10;
+            default: throw UnreachableCodeException("Bus::SetInterrupt -- unknown interrupt type");
+        }
+    }();
 
     interruptFlag |= mask;
 }
