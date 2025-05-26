@@ -4,7 +4,7 @@ Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
     speedShift = false;
     runBootrom = false;
-    speed = Speed::Regular;
+    speed = cartridge_->ReadByte(0x0143) & 0x80 ? Speed::Double : Speed::Regular;
     gpu_->hdmaMode = GPU::HDMAMode::GDMA;
     hdmaSource = 0x0000;
     hdmaDestination = 0x8000;
@@ -86,19 +86,15 @@ uint8_t Bus::ReadByte(uint16_t address) const {
                                     return timer_.timerModulo;
                                 case 0x07: {
                                     const uint8_t clock = timer_.clockEnabled ? 1 : 0;
-                                    uint8_t speed;
-                                    switch (timer_.clockSpeed) {
-                                        case 1024: speed = 0;
-                                            break;
-                                        case 16: speed = 1;
-                                            break;
-                                        case 64: speed = 2;
-                                            break;
-                                        case 256: speed = 3;
-                                            break;
-                                        default: speed = 0;
-                                            break;
-                                    }
+                                    const uint8_t speed = [&] {
+                                        switch (timer_.clockSpeed) {
+                                            case 1024: return 0;
+                                            case 16: return 1;
+                                            case 64: return 2;
+                                            case 256: return 3;
+                                            default: return 0;
+                                        }
+                                    }();
                                     return (clock << 2) | speed;
                                 }
                                 case 0x0F:
@@ -376,9 +372,10 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
 
 void Bus::UpdateTimers(const uint32_t cycles) {
     timer_.dividerCounter += cycles;
-    while (timer_.dividerCounter > 256) {
+    const uint32_t divCycles = AdjustedCycles(cycles);
+    while (timer_.dividerCounter >= divCycles) {
+        timer_.dividerCounter -= divCycles;
         timer_.dividerRegister += 1;
-        timer_.dividerCounter -= 256;
     }
 
     if (timer_.clockEnabled) {
@@ -398,10 +395,11 @@ void Bus::UpdateTimers(const uint32_t cycles) {
 void Bus::SetInterrupt(const InterruptType interrupt) {
     const uint8_t mask = [&]() -> uint8_t {
         switch (interrupt) {
-            case InterruptType::VBlank: return 0x01;
-            case InterruptType::LCDStat: return 0x02;
-            case InterruptType::Timer: return 0x04;
-            case InterruptType::Joypad: return 0x10;
+            using enum InterruptType;
+            case VBlank: return 0x01;
+            case LCDStat: return 0x02;
+            case Timer: return 0x04;
+            case Joypad: return 0x10;
             default: throw UnreachableCodeException("Bus::SetInterrupt -- unknown interrupt type");
         }
     }();
@@ -472,4 +470,8 @@ void Bus::ChangeSpeed() {
         }
     }
     speedShift = false;
+}
+
+inline uint32_t Bus::AdjustedCycles(const uint32_t cycles) const {
+    return cycles << (speed == Speed::Double ? 1 : 0);
 }

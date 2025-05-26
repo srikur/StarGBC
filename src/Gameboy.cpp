@@ -283,12 +283,12 @@ inline uint8_t interruptAddress(const uint8_t bit) {
 }
 
 uint32_t Gameboy::ProcessInterrupts() {
-    const uint8_t pending = bus->interruptEnable & bus->interruptFlag;
+    const uint8_t pending = bus->interruptEnable & bus->interruptFlag & 0x1F;
     if (pending == 0)
         return 0;
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
-        return 4;
+        return 0;
     }
 
     if (!bus->interruptMasterEnable)
@@ -306,5 +306,5 @@ uint32_t Gameboy::ProcessInterrupts() {
     bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
 
     pc = interruptAddress(bit);
-    return 16;
+    return 20;
 }
