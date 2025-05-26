@@ -91,6 +91,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                 event->key.key == SDLK_LEFT) { gameboy->KeyDown(Keys::Left); } else if (event->key.key == SDLK_UP) {
                 gameboy->KeyDown(Keys::Up);
             } else if (event->key.key == SDLK_DOWN) { gameboy->KeyDown(Keys::Down); }
+            else if (event->key.key == SDLK_SPACE) { gameboy->SetThrottle(false); }
+            else if (event->key.key == SDLK_M) { gameboy->ToggleSpeed(); }
             break;
         case SDL_EVENT_KEY_UP:
             if (event->key.key == SDLK_Z) { gameboy->KeyUp(Keys::A); } else if (
@@ -101,6 +103,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                 event->key.key == SDLK_LEFT) { gameboy->KeyUp(Keys::Left); } else if (event->key.key == SDLK_UP) {
                 gameboy->KeyUp(Keys::Up);
             } else if (event->key.key == SDLK_DOWN) { gameboy->KeyUp(Keys::Down); }
+            else if (event->key.key == SDLK_SPACE) { gameboy->SetThrottle(true); }
             break;
         default: break;
     }
