@@ -81,4 +81,6 @@ public:
     bool interruptDelay = false;
 
     void SetInterrupt(InterruptType interrupt);
+
+    [[nodiscard]] inline uint32_t AdjustedCycles(uint32_t cycles) const;
 };
