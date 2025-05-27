@@ -225,7 +225,7 @@ void Gameboy::UpdateEmulator() {
         bus->UpdateTimers(total);
         bus->UpdateGraphics(total);
 
-        stepCycles += cycles;
+        stepCycles += total;
     }
 
     const auto elapsed = clock::now() - frameStart;
