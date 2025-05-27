@@ -55,8 +55,6 @@ class Gameboy {
 
     void InitializeSystem();
 
-    void RunBootrom();
-
     [[nodiscard]] uint32_t RunHDMA() const;
 
     uint32_t ProcessInterrupts();
@@ -102,7 +100,7 @@ public:
 
     void KeyDown(Keys key) const;
 
-    [[nodiscard]] std::tuple<uint32_t, uint32_t, uint32_t> GetPixel(uint32_t x, uint32_t y) const;
+    [[nodiscard]] std::tuple<uint32_t, uint32_t, uint32_t> GetPixel(uint32_t y, uint32_t x) const;
 
     void ToggleSpeed();
 
