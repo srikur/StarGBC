@@ -192,7 +192,7 @@ GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
         .priority = (byte & 0x80) ? true : false, .yflip = (byte & 0x40) ? true : false,
         .xflip = (byte & 0x20) ? true : false,
         .paletteNumberDMG = (byte & 0x10) ? true : false, .vramBank = (byte & 0x08) ? true : false,
-        .paletteNumberCGB = (byte & 0x07) ? true : false
+        .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)
     };
 }
 
