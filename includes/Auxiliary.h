@@ -68,7 +68,7 @@ struct Timer {
     static constexpr uint16_t TIMA = 0xFF05;
     static constexpr uint16_t TMA = 0xFF06;
     static constexpr uint16_t TAC = 0xFF07;
-    static constexpr uint32_t MAX_CYCLES = 69905;
+    static constexpr uint32_t MAX_CYCLES = 70224;
 
     uint32_t clockCounter = 0x400;
     uint32_t dividerCounter = 0x00;
