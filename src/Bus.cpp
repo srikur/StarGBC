@@ -12,7 +12,7 @@ Bus::Bus(const std::string &romLocation) {
     hdmaRemain = 0x00;
 }
 
-uint8_t Bus::ReadByte(uint16_t address) const {
+uint8_t Bus::ReadByte(const uint16_t address) const {
     switch (address & 0xF000) {
         case 0x0000:
         case 0x1000:
@@ -73,30 +73,13 @@ uint8_t Bus::ReadByte(uint16_t address) const {
                     switch (address & 0xF0) {
                         case 0x0:
                             switch (address & 0xFF) {
-                                case 0x00:
-                                    return joypad_.GetJoypadState();
+                                case 0x00: return joypad_.GetJoypadState();
                                 case 0x01:
-                                case 0x02:
-                                    return serial_.ReadSerial(address);
-                                case 0x04:
-                                    return timer_.dividerRegister;
-                                case 0x05:
-                                    return timer_.timerCounter;
-                                case 0x06:
-                                    return timer_.timerModulo;
-                                case 0x07: {
-                                    const uint8_t clock = timer_.clockEnabled ? 1 : 0;
-                                    const uint8_t speed = [&] {
-                                        switch (timer_.clockSpeed) {
-                                            case 1024: return 0;
-                                            case 16: return 1;
-                                            case 64: return 2;
-                                            case 256: return 3;
-                                            default: return 0;
-                                        }
-                                    }();
-                                    return (clock << 2) | speed;
-                                }
+                                case 0x02: return serial_.ReadSerial(address);
+                                case 0x04: return timer_.ReadDIV();
+                                case 0x05: return timer_.tima;
+                                case 0x06: return timer_.tma;
+                                case 0x07: return timer_.ReadTAC();
                                 case 0x0F:
                                     return interruptFlag | 0xE0;
                                 default: throw UnreachableCodeException("Bus::ReadByte case 0xF00");
@@ -212,30 +195,17 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
                                     serial_.WriteSerial(address, value);
                                     break;
                                 case 0x04:
-                                    timer_.dividerRegister = 0;
+                                    timer_.WriteDIV();
                                     break;
                                 case 0x05:
-                                    timer_.timerCounter = value;
+                                    timer_.tima = value;
                                     break;
                                 case 0x06:
-                                    timer_.timerModulo = value;
+                                    timer_.tma = value;
                                     break;
-                                case 0x07: {
-                                    timer_.clockEnabled = (value & 0x04) != 0;
-                                    const int newSpeed = [&] {
-                                        switch (value & 0x03) {
-                                            case 0: return 1024;
-                                            case 1: return 16;
-                                            case 2: return 64;
-                                            case 3: return 256;
-                                            default: return 1024; // Should not happen
-                                        }
-                                    }();
-                                    if (newSpeed != timer_.clockSpeed) {
-                                        timer_.clockSpeed = static_cast<uint32_t>(newSpeed);
-                                    }
+                                case 0x07:
+                                    timer_.tac = value;
                                     break;
-                                }
                                 case 0x0F:
                                     interruptFlag = value;
                                     break;
@@ -319,7 +289,7 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
         return;
     }
 
-    uint32_t c = (cycles - 1) / 80 + 1;
+    const uint8_t c = (cycles - 1) / 80 + 1;
     for (uint8_t i = 0; i < c; i++) {
         if (i == (c - 1)) {
             gpu_->scanlineCounter += cycles % 80;
@@ -369,21 +339,18 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
 }
 
 void Bus::UpdateTimers(const uint32_t cycles) {
-    timer_.dividerCounter += cycles;
-    const uint32_t divCycles = AdjustedCycles(cycles);
-    while (timer_.dividerCounter >= divCycles) {
-        timer_.dividerCounter -= divCycles;
-        timer_.dividerRegister += 1;
-    }
+    for (uint32_t i = 0; i < cycles; ++i) {
+        const bool timerEnabled = timer_.tac & 0x04;
+        const int timerBit = Timer::TimerBit(timer_.tac & 0x03);
+        const bool oldBit = timerEnabled && (timer_.divCounter & (1 << timerBit));
 
-    if (timer_.clockEnabled) {
-        timer_.clockCounter += cycles;
-        const uint32_t rs = timer_.clockCounter / timer_.clockSpeed;
-        timer_.clockCounter %= timer_.clockSpeed;
-        for (uint8_t i = 0; i < rs; i++) {
-            timer_.timerCounter += 1;
-            if (timer_.timerCounter == 0x00) {
-                timer_.timerCounter = timer_.timerModulo;
+        timer_.divCounter++;
+
+        const bool newBit = timerEnabled && (timer_.divCounter & (1 << timerBit));
+
+        if (oldBit && !newBit) { // Falling edge
+            if (++timer_.tima == 0) {
+                timer_.tima = timer_.tma;
                 SetInterrupt(InterruptType::Timer);
             }
         }
@@ -391,9 +358,9 @@ void Bus::UpdateTimers(const uint32_t cycles) {
 }
 
 void Bus::SetInterrupt(const InterruptType interrupt) {
+    using enum InterruptType;
     const uint8_t mask = [&]() -> uint8_t {
         switch (interrupt) {
-            using enum InterruptType;
             case VBlank: return 0x01;
             case LCDStat: return 0x02;
             case Timer: return 0x04;

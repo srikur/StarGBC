@@ -64,19 +64,50 @@ private:
 };
 
 struct Timer {
-    static constexpr uint16_t DIVIDER_REGISTER = 0xFF04;
-    static constexpr uint16_t TIMA = 0xFF05;
-    static constexpr uint16_t TMA = 0xFF06;
-    static constexpr uint16_t TAC = 0xFF07;
     static constexpr uint32_t MAX_CYCLES = 70224;
 
-    uint32_t clockCounter = 0x400;
-    uint32_t dividerCounter = 0x00;
-    uint32_t clockSpeed = 0x400; // tac & 0x03
-    uint8_t timerModulo = 0x00; // tma
-    uint8_t timerCounter = 0x00; // tima
-    uint8_t dividerRegister = 0x00;
-    bool clockEnabled = false; // tac & 0x04
+    uint16_t divCounter = 0;
+    uint8_t tma = 0x00;
+    uint8_t tima = 0x00;
+    uint8_t tac = 0x00;
+
+    [[nodiscard]] uint8_t ReadDIV() const { return divCounter >> 8; }
+    void WriteDIV() { divCounter = 0; }
+
+    [[nodiscard]] uint8_t ReadTAC() const { return tac | 0xF8; }
+
+    void WriteTAC(const uint8_t value) {
+        const bool oldEnabled = tac & 0x04;
+        const int oldBit = TimerBit(tac & 0x03);
+        const bool oldSignal = oldEnabled && (divCounter & (1 << oldBit));
+
+        tac = value;
+
+        const bool newEnabled = tac & 0x04;
+        const int newBit = TimerBit(tac & 0x03);
+        const bool newSignal = newEnabled && (divCounter & (1 << newBit));
+
+        // If changing mode caused a falling edge, increment TIMA
+        if (oldSignal && !newSignal) IncrementTIMA();
+    }
+
+    static int TimerBit(const uint8_t tacMode) {
+        switch (tacMode & 0x03) {
+            case 0x00: return 9; // 4096 Hz
+            case 0x01: return 3; // 262144 Hz
+            case 0x02: return 5; // 65536 Hz
+            case 0x03: return 7; // 16384 Hz
+            default: ;
+        }
+        return 9;
+    }
+
+    void IncrementTIMA() {
+        if (++tima == 0) {
+            tima = tma;
+            // Set interrupt in UpdateTimers
+        }
+    }
 };
 
 struct Serial {

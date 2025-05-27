@@ -202,7 +202,7 @@ void Gameboy::UpdateEmulator() {
     static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
     const auto frameStart = clock::now();
 
-    uint32_t stepCycles = 0;
+    stepCycles = 0;
     while (stepCycles < Timer::MAX_CYCLES) {
         if (pc == 0x10) {
             bus->ChangeSpeed();
