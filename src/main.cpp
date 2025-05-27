@@ -18,8 +18,9 @@ static SDL_Renderer *renderer = nullptr;
 static SDL_Texture *texture = nullptr;
 static std::unique_ptr<Gameboy> gameboy = nullptr;
 
-static Uint32 packRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a = 255) {
-    return (a << 24) | (b << 16) | (g << 8) | r; // SDL_PIXELFORMAT_RGBA8888
+static Uint32 packRGBA(const Uint8 r, const Uint8 g, const Uint8 b) {
+    constexpr Uint8 a = 0xFF;
+    return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
 SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
@@ -44,7 +45,6 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
                                           GB_SCREEN_W,
                                           GB_SCREEN_H,
                                           SDL_LOGICAL_PRESENTATION_INTEGER_SCALE)) {
-        // SDL3
         SDL_Log("Couldn't enable logical presentation: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -94,7 +94,6 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     return SDL_APP_CONTINUE;
 }
 
-/* ------------------------------------------------------------------ */
 SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
     switch (event->type) {
         case SDL_EVENT_QUIT:
@@ -174,7 +173,7 @@ SDL_AppResult SDL_AppIterate(void *) {
 
             for (int x = 0; x < GB_SCREEN_W; ++x) {
                 auto [r, g, b] = gameboy->GetPixel(y, x);
-                row[x] = packRGBA(r, g, b); // 0xAARRGGBB
+                row[x] = packRGBA(r, g, b);
             }
         }
         SDL_UnlockTexture(texture);

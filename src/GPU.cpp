@@ -36,8 +36,8 @@ void GPU::RenderSprites() {
                     paletteNumberDMG, vramBank, paletteNumberCGB] =
                 GetAttrsFrom(oam[spriteAddress + 3]);
 
+        // Y range check, including wrap‑around sprites
         if (yPos > (0xFF - spriteSize + 1)) {
-            // wrap-around handling
             if (currentLine > (yPos + spriteSize - 1)) continue;
         } else if (currentLine < yPos || currentLine > (yPos + spriteSize - 1)) {
             continue;
@@ -50,7 +50,7 @@ void GPU::RenderSprites() {
         const uint16_t tileYAddr = 0x8000 + tileNumber * 16 + tileY * 2;
 
         const bool bank1 = (hardware == Hardware::CGB) && vramBank;
-        const uint16_t base = bank1 ? 0x6000 : 0x8000; // FIX: shared constant
+        const uint16_t base = bank1 ? 0x6000 : 0x8000;
         const uint8_t data1 = vram[tileYAddr - base];
         const uint8_t data2 = vram[tileYAddr + 1 - base];
 
@@ -67,7 +67,7 @@ void GPU::RenderSprites() {
 
             bool skip = false;
             if (hardware == Hardware::CGB && !(lcdc & 0x01)) {
-                skip = false; // FIX: OBJ always wins when BG disabled :contentReference[oaicite:0]{index=0}
+                skip = false; // OBJ always wins when BG disabled
             } else if (bgPrio) {
                 skip = bgCol != 0;
             } else {
@@ -90,7 +90,8 @@ void GPU::RenderSprites() {
                         break;
                     case 2: shade = 96;
                         break;
-                    default: break;
+                    default: shade = 0;
+                        break;
                 }
                 for (auto &c: screenData[currentLine][xPos + pixel]) c = shade;
             }
@@ -115,35 +116,30 @@ void GPU::RenderTiles() {
                                  : scrollX + pixel;
         const uint16_t tileCol = (xPos >> 3) & 0x1F;
 
-        const uint16_t bgMapBase =
-                windowOnThisPixel
-                    ? ((lcdc & 0x40) ? 0x9C00 : 0x9800)
-                    : ((lcdc & 0x08) ? 0x9C00 : 0x9800);
+        const uint16_t bgMapBase = windowOnThisPixel
+                                       ? ((lcdc & 0x40) ? 0x9C00 : 0x9800)
+                                       : ((lcdc & 0x08) ? 0x9C00 : 0x9800);
 
         const uint16_t tileAddr = bgMapBase + tileRow * 32 + tileCol;
         const uint8_t tileNum = vram[tileAddr - 0x8000];
 
-        // Only read attributes in CGB mode – avoids garbage on DMG
         Attributes attrs{};
         if (hardware == Hardware::CGB)
             attrs = GetAttrsFrom(vram[tileAddr - 0x6000]);
 
-        const int16_t signedIndex =
-                (lcdc & 0x10)
-                    ? tileNum
-                    : static_cast<int8_t>(tileNum) + 128;
+        const int16_t signedIndex = (lcdc & 0x10)
+                                        ? tileNum
+                                        : static_cast<int8_t>(tileNum) + 128;
         const uint16_t tileLocation = tileData + (signedIndex * 16);
 
-        const uint8_t tileY =
-                attrs.yflip ? 7 - (yPos & 7) : (yPos & 7);
+        const uint8_t tileY = attrs.yflip ? 7 - (yPos & 7) : (yPos & 7);
         const bool bank1 = (hardware == Hardware::CGB) && attrs.vramBank;
         const uint16_t base = bank1 ? 0x6000 : 0x8000;
 
         const uint8_t data1 = vram[(tileLocation + tileY * 2) - base];
         const uint8_t data2 = vram[(tileLocation + tileY * 2 + 1) - base];
 
-        const uint8_t tileX =
-                attrs.xflip ? 7 - (xPos & 7) : (xPos & 7);
+        const uint8_t tileX = attrs.xflip ? 7 - (xPos & 7) : (xPos & 7);
 
         const uint8_t colorLow = (data1 & (0x80 >> tileX)) ? 1 : 0;
         const uint8_t colorHigh = (data2 & (0x80 >> tileX)) ? 2 : 0;
@@ -165,7 +161,8 @@ void GPU::RenderTiles() {
                     break;
                 case 2: shade = 96;
                     break;
-                default: break;
+                default: shade = 0;
+                    break;
             }
             for (auto &c: screenData[currentLine][pixel]) c = shade;
         }
@@ -177,9 +174,17 @@ static constexpr uint8_t expand5(const uint8_t c) noexcept {
 }
 
 void GPU::SetColor(const uint8_t pixel, const uint32_t red, const uint32_t green, const uint32_t blue) {
-    screenData[currentLine][pixel][0] = expand5(static_cast<uint8_t>(red));
-    screenData[currentLine][pixel][1] = expand5(static_cast<uint8_t>(green));
-    screenData[currentLine][pixel][2] = expand5(static_cast<uint8_t>(blue));
+    const auto r5 = static_cast<uint8_t>(red & 0x1F);
+    const auto g5 = static_cast<uint8_t>(green & 0x1F);
+    const auto b5 = static_cast<uint8_t>(blue & 0x1F);
+
+    const auto corrR5 = static_cast<uint8_t>((26 * r5 + 4 * g5 + 2 * b5) >> 5);
+    const auto corrG5 = static_cast<uint8_t>((6 * r5 + 24 * g5 + 2 * b5) >> 5);
+    const auto corrB5 = static_cast<uint8_t>((2 * r5 + 4 * g5 + 26 * b5) >> 5);
+
+    screenData[currentLine][pixel][0] = expand5(corrR5);
+    screenData[currentLine][pixel][1] = expand5(corrG5);
+    screenData[currentLine][pixel][2] = expand5(corrB5);
 }
 
 GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
@@ -187,13 +192,12 @@ GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
         .priority = (byte & 0x80) ? true : false, .yflip = (byte & 0x40) ? true : false,
         .xflip = (byte & 0x20) ? true : false,
         .paletteNumberDMG = (byte & 0x10) ? true : false, .vramBank = (byte & 0x08) ? true : false,
-        .paletteNumberCGB = (byte & 0x07) ? true : false
+        .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)
     };
 }
 
 uint8_t GPU::ReadGpi(const Gpi &gpi) {
-    uint8_t a = gpi.autoIncrement ? 0x80 : 0x00;
-    return a | gpi.index;
+    return (gpi.autoIncrement ? 0x80 : 0x00) | gpi.index;
 }
 
 void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
@@ -211,8 +215,7 @@ void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
 
 uint8_t GPU::ReadRegisters(const uint16_t address) const {
     switch (address) {
-        case 0xFF40:
-            return lcdc;
+        case 0xFF40: return lcdc;
         case 0xFF41: {
             const uint8_t bit6 = stat.enableLYInterrupt ? 0x40 : 0x00;
             const uint8_t bit5 = stat.enableM2Interrupt ? 0x20 : 0x00;
@@ -221,53 +224,33 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             const uint8_t bit2 = (currentLine == lyc) ? 0x04 : 0x00;
             return bit6 | bit5 | bit4 | bit3 | bit2 | stat.mode;
         }
-        case 0xFF42:
-            return scrollY;
-        case 0xFF43:
-            return scrollX;
-        case 0xFF44:
-            return currentLine;
-        case 0xFF45:
-            return lyc;
-        case 0xFF47:
-            return backgroundPalette;
-        case 0xFF48:
-            return obp0Palette;
-        case 0xFF49:
-            return obp1Palette;
-        case 0xFF4A:
-            return windowY;
-        case 0xFF4B:
-            return windowX;
-        case 0xFF4F:
-            return 0xFE | vramBank;
-        case 0xFF68:
-            return ReadGpi(bgpi);
+        case 0xFF42: return scrollY;
+        case 0xFF43: return scrollX;
+        case 0xFF44: return currentLine;
+        case 0xFF45: return lyc;
+        case 0xFF47: return backgroundPalette;
+        case 0xFF48: return obp0Palette;
+        case 0xFF49: return obp1Palette;
+        case 0xFF4A: return windowY;
+        case 0xFF4B: return windowX;
+        case 0xFF4F: return static_cast<uint8_t>(0xFE | vramBank);
+        case 0xFF68: return ReadGpi(bgpi);
         case 0xFF69: {
             const uint8_t r = bgpi.index >> 3;
             const uint8_t c = (bgpi.index >> 1) & 3;
-            if ((bgpi.index & 0x01) == 0x00) {
-                const uint8_t a = bgpd[r][c][0];
-                const uint8_t b = bgpd[r][c][1] << 5;
-                return a | b;
+            if ((bgpi.index & 0x01) == 0) {
+                return bgpd[r][c][0] | (bgpd[r][c][1] << 5);
             }
-            const uint8_t a = bgpd[r][c][1] >> 3;
-            const uint8_t b = bgpd[r][c][2] << 2;
-            return a | b;
+            return (bgpd[r][c][1] >> 3) | (bgpd[r][c][2] << 2);
         }
-        case 0xFF6A:
-            return ReadGpi(obpi);
+        case 0xFF6A: return ReadGpi(obpi);
         case 0xFF6B: {
             const uint8_t r = obpi.index >> 3;
             const uint8_t c = (obpi.index >> 1) & 3;
-            if ((obpi.index & 0x01) == 0x00) {
-                const uint8_t a = obpd[r][c][0];
-                const uint8_t b = obpd[r][c][1] << 5;
-                return a | b;
+            if ((obpi.index & 0x01) == 0) {
+                return obpd[r][c][0] | (obpd[r][c][1] << 5);
             }
-            const uint8_t a = obpd[r][c][1] >> 3;
-            const uint8_t b = obpd[r][c][2] << 2;
-            return a | b;
+            return (obpd[r][c][1] >> 3) | (obpd[r][c][2] << 2);
         }
         default:
             throw UnreachableCodeException("GPU::ReadRegisters unreachable code");
@@ -278,91 +261,70 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     switch (address) {
         case 0xFF40:
             lcdc = value;
-
             if (!(lcdc & 0x80)) {
                 scanlineCounter = 0;
                 currentLine = 0;
                 stat.mode = 0;
-                for (auto &row: screenData | std::views::all) {
-                    for (auto &pixel: row | std::views::all) {
-                        std::ranges::fill(pixel, 0xFF);
-                    }
+                for (auto &row: screenData) {
+                    for (auto &px: row) std::ranges::fill(px, 0xFF);
                 }
                 vblank = true;
             }
             break;
         case 0xFF41:
-            stat.enableLYInterrupt = (value & 0x40) != 0x00;
-            stat.enableM2Interrupt = (value & 0x20) != 0x00;
-            stat.enableM1Interrupt = (value & 0x10) != 0x00;
-            stat.enableM0Interrupt = (value & 0x08) != 0x00;
+            stat.enableLYInterrupt = value & 0x40;
+            stat.enableM2Interrupt = value & 0x20;
+            stat.enableM1Interrupt = value & 0x10;
+            stat.enableM0Interrupt = value & 0x08;
             break;
-        case 0xFF42:
-            scrollY = value;
+        case 0xFF42: scrollY = value;
             break;
-        case 0xFF43:
-            scrollX = value;
+        case 0xFF43: scrollX = value;
             break;
-        case 0xFF44:
-            currentLine = 0;
+        case 0xFF44: currentLine = 0;
+            break; // writing resets LY
+        case 0xFF45: lyc = value;
+            break; // fixed: store provided value
+        case 0xFF47: backgroundPalette = value;
             break;
-        case 0xFF45:
-            lyc = 0;
+        case 0xFF48: obp0Palette = value;
             break;
-        case 0xFF47:
-            backgroundPalette = value;
+        case 0xFF49: obp1Palette = value;
             break;
-        case 0xFF48:
-            obp0Palette = value;
+        case 0xFF4A: windowY = value;
             break;
-        case 0xFF49:
-            obp1Palette = value;
+        case 0xFF4B: windowX = value;
             break;
-        case 0xFF4A:
-            windowY = value;
+        case 0xFF4F: vramBank = value & 0x01;
             break;
-        case 0xFF4B:
-            windowX = value;
-            break;
-        case 0xFF4F:
-            vramBank = value & 0x01;
-            break;
-        case 0xFF68:
-            WriteGpi(bgpi, value);
+        case 0xFF68: WriteGpi(bgpi, value);
             break;
         case 0xFF69: {
             const uint8_t r = bgpi.index >> 3;
             const uint8_t c = (bgpi.index >> 1) & 0x03;
-            if ((bgpi.index & 0x01) == 0x00) {
+            if ((bgpi.index & 0x01) == 0) {
                 bgpd[r][c][0] = value & 0x1F;
                 bgpd[r][c][1] = (bgpd[r][c][1] & 0x18) | (value >> 5);
             } else {
                 bgpd[r][c][1] = (bgpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
                 bgpd[r][c][2] = (value >> 2) & 0x1F;
             }
-            if (bgpi.autoIncrement) {
-                bgpi.index += 0x01;
-                bgpi.index &= 0x3f;
-            }
+            if (bgpi.autoIncrement) bgpi.index = (bgpi.index + 1) & 0x3F;
             break;
         }
-        case 0xFF6A:
-            WriteGpi(obpi, value);
+        case 0xFF6A: WriteGpi(obpi, value);
             break;
         case 0xFF6B: {
             const uint8_t r = obpi.index >> 3;
             const uint8_t c = (obpi.index >> 1) & 0x03;
-            if ((obpi.index & 0x01) == 0x00) {
+            if ((obpi.index & 0x01) == 0) {
                 obpd[r][c][0] = value & 0x1F;
                 obpd[r][c][1] = (obpd[r][c][1] & 0x18) | (value >> 5);
             } else {
                 obpd[r][c][1] = (obpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
                 obpd[r][c][2] = (value >> 2) & 0x1F;
             }
-            if (obpi.autoIncrement) {
-                obpi.index += 0x01;
-                obpi.index &= 0x3f;
-            }
+            if (obpi.autoIncrement) obpi.index = (obpi.index + 1) & 0x3F;
             break;
         }
         default:
