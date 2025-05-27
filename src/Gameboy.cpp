@@ -34,8 +34,8 @@ void Gameboy::KeyDown(const Keys key) const {
     bus->KeyDown(key);
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t> Gameboy::GetPixel(const uint32_t x, const uint32_t y) const {
-    return {bus->gpu_->screenData[x][y][0], bus->gpu_->screenData[x][y][1], bus->gpu_->screenData[x][y][2]};
+std::tuple<uint32_t, uint32_t, uint32_t> Gameboy::GetPixel(const uint32_t y, const uint32_t x) const {
+    return {bus->gpu_->screenData[y][x][0], bus->gpu_->screenData[y][x][1], bus->gpu_->screenData[y][x][2]};
 }
 
 uint8_t Gameboy::DecodeInstruction(const uint8_t opcode, const bool prefixed) {
@@ -63,49 +63,6 @@ void Gameboy::InitializeBootrom() {
                         std::istream_iterator<uint8_t>(file),
                         std::istream_iterator<uint8_t>());
     file.close();
-}
-
-void Gameboy::RunBootrom() {
-    if (!bus->runBootrom) {
-        return;
-    }
-
-    stepCycles = 0;
-
-    while (stepCycles < Timer::MAX_CYCLES) {
-        if (bus->interruptDelay) {
-            icount += 1;
-            if (icount == 2) {
-                bus->interruptDelay = false;
-                bus->interruptMasterEnable = true;
-            }
-        }
-
-        uint32_t cycles = ProcessInterrupts();
-
-        if (cycles) {
-            stepCycles += cycles;
-        } else if (halted) {
-            stepCycles += 4;
-        } else {
-            cycles = ExecuteInstruction();
-            stepCycles += cycles;
-        }
-
-        const uint8_t hdmaCycles = RunHDMA();
-        bus->UpdateTimers(cycles + static_cast<int>(bus->speed) * hdmaCycles);
-        bus->UpdateGraphics(cycles + 4);
-
-        if ((bus->gpu_->hardware == GPU::Hardware::CGB && pc != 0x100) || (
-                bus->gpu_->hardware == GPU::Hardware::DMG && pc <= 0xFF)) {
-            continue;
-        }
-
-        bus->runBootrom = false;
-        pc = 0x100;
-        InitializeSystem();
-        return;
-    }
 }
 
 uint32_t Gameboy::RunHDMA() const {
@@ -270,8 +227,6 @@ void Gameboy::UpdateEmulator() {
 
         stepCycles += cycles;
     }
-
-    elapsedCycles += stepCycles;
 
     const auto elapsed = clock::now() - frameStart;
     const auto modifiedFramePeriod = kFramePeriod / speedMultiplier;
