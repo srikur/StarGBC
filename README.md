@@ -1,4 +1,4 @@
-# StarGBC -- C++20 Gameboy Color Emulator
+# StarGBC
 
 ## Dependencies
 1. [SDL3](https://github.com/libsdl-org/SDL)
