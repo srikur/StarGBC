@@ -1,54 +1,55 @@
 #include "RealTimeClock.h"
 
-uint64_t RealTimeClock::LoadRTC() const {
-    uint64_t time = std::chrono::system_clock::now().time_since_epoch().count() / 1000;
-    std::ifstream rtcFile(savepath_, std::ios::binary | std::ios::ate);
-    if (!rtcFile.is_open()) {
-        return time;
-    }
-    const std::streamsize length = rtcFile.tellg();
-    rtcFile.seekg(0, std::ios::beg);
-    rtcFile.read(reinterpret_cast<char *>(&time), length);
-    if (!rtcFile) {
-        throw std::runtime_error("Failed to read from RTC file");
-    }
-    return time;
+#include <chrono>
+#include <fstream>
+#include <stdexcept>
+
+using clk = std::chrono::system_clock;
+using secs = std::chrono::seconds;
+
+uint64_t RealTimeClock::NowSeconds() {
+    return std::chrono::duration_cast<secs>(clk::now().time_since_epoch()).count();
 }
 
-void RealTimeClock::Tick() {
-    uint64_t diff = std::chrono::system_clock::now().time_since_epoch().count() / 1000;
-    diff -= zeroTime_;
-    seconds_ = (diff % 60);
-    minutes_ = (diff / 60) % 60;
-    hours_ = (diff / 3600) % 24;
-    const auto days = static_cast<uint16_t>(diff / 3600 / 24);
-    dayLower_ = days % 256;
+uint64_t RealTimeClock::LoadRTC() const {
+    uint64_t saved = NowSeconds();
 
-    if (days < 0xFF) {
-    } else if (days < 0x1FF) {
-        dayUpper_ |= 0x01;
-    } else {
-        dayUpper_ |= 0x01;
-        dayUpper_ |= 0x80;
+    if (std::ifstream rtcFile(savepath_, std::ios::binary); rtcFile.good()) {
+        rtcFile.read(reinterpret_cast<char *>(&saved), sizeof(saved));
+        if (!rtcFile)
+            throw std::runtime_error("Failed to read RTC save file");
     }
+    return saved;
 }
 
 void RealTimeClock::Save() const {
-    std::fstream rtcSave(savepath_);
-    if (rtcSave.is_open()) {
-        rtcSave << zeroTime_;
-    }
-    rtcSave.close();
+    if (std::ofstream rtcFile(savepath_, std::ios::binary | std::ios::trunc); rtcFile.good())
+        rtcFile.write(reinterpret_cast<const char *>(&zeroTime_), sizeof(zeroTime_));
+}
+
+void RealTimeClock::Tick() {
+    const uint64_t diff = NowSeconds() - zeroTime_;
+
+    seconds_ = static_cast<uint8_t>(diff % 60);
+    minutes_ = static_cast<uint8_t>((diff / 60) % 60);
+    hours_ = static_cast<uint8_t>((diff / 3600) % 24);
+
+    const auto days = static_cast<uint16_t>(diff / 86400);
+    dayLower_ = static_cast<uint8_t>(days & 0xFF);
+
+    dayUpper_ = 0;
+    if (days & 0x100) dayUpper_ |= 0x01;
+    if (days > 0x1FF) dayUpper_ |= 0x80;
 }
 
 uint8_t RealTimeClock::ReadRTC(const uint16_t address) const {
     switch (address) {
         case 0x08: return seconds_;
         case 0x09: return minutes_;
-        case 0xA: return hours_;
-        case 0xB: return dayLower_;
-        case 0xC: return dayUpper_;
-        default: throw UnreachableCodeException("Improper read from RTC");
+        case 0x0A: return hours_;
+        case 0x0B: return dayLower_;
+        case 0x0C: return dayUpper_;
+        default: throw std::runtime_error("Invalid RTC read");
     }
 }
 
@@ -58,12 +59,12 @@ void RealTimeClock::WriteRTC(const uint16_t address, const uint8_t value) {
             break;
         case 0x09: minutes_ = value;
             break;
-        case 0xA: hours_ = value;
+        case 0x0A: hours_ = value;
             break;
-        case 0xB: dayLower_ = value;
+        case 0x0B: dayLower_ = value;
             break;
-        case 0xC: dayUpper_ = value;
+        case 0x0C: dayUpper_ = value;
             break;
-        default: throw UnreachableCodeException("Improper write to RTC");
+        default: throw std::runtime_error("Invalid RTC write");
     }
 }
