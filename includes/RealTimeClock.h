@@ -2,6 +2,8 @@
 #include "Common.h"
 
 class RealTimeClock {
+    [[nodiscard]] static uint64_t NowSeconds();
+
     [[nodiscard]] uint64_t LoadRTC() const;
 
     std::string savepath_;
@@ -13,7 +15,8 @@ class RealTimeClock {
     uint8_t dayUpper_ = 0x00;
 
 public:
-    explicit RealTimeClock(std::string filepath) : savepath_(std::move(filepath)), zeroTime_(LoadRTC()) {
+    explicit RealTimeClock(std::string filepath) : savepath_(std::move(filepath)) {
+        zeroTime_ = LoadRTC();
     }
 
     void Tick();
