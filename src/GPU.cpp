@@ -1,6 +1,5 @@
 #include <list>
 #include <algorithm>
-#include <ranges>
 
 #include "GPU.h"
 #include "Common.h"
@@ -32,7 +31,7 @@ void GPU::RenderSprites() {
         uint8_t tileNumber = oam[spriteAddress + 2];
         if (lcdc & 0x04) tileNumber &= 0xFE; // 8×16 OBJ mode
 
-        const auto &[priority, xflip, yflip,
+        const auto &[priority, yflip, xflip,
                     paletteNumberDMG, vramBank, paletteNumberCGB] =
                 GetAttrsFrom(oam[spriteAddress + 3]);
 
@@ -127,9 +126,8 @@ void GPU::RenderTiles() {
         if (hardware == Hardware::CGB)
             attrs = GetAttrsFrom(vram[tileAddr - 0x6000]);
 
-        const int16_t signedIndex = (lcdc & 0x10)
-                                        ? tileNum
-                                        : static_cast<int8_t>(tileNum) + 128;
+        const auto signedIndex = static_cast<int16_t>(
+            (lcdc & 0x10) ? tileNum : static_cast<int8_t>(tileNum) + 128);
         const uint16_t tileLocation = tileData + (signedIndex * 16);
 
         const uint8_t tileY = attrs.yflip ? 7 - (yPos & 7) : (yPos & 7);
