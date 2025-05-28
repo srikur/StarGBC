@@ -13,8 +13,8 @@ public:
 
     struct Attributes {
         bool priority;
-        bool xflip;
         bool yflip;
+        bool xflip;
         bool paletteNumberDMG;
         bool vramBank;
         uint8_t paletteNumberCGB;
