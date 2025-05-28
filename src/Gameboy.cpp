@@ -128,6 +128,9 @@ uint8_t Gameboy::ExecuteInstruction() {
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
         instruction = bus->ReadByte(haltBug ? pc : pc + 1);
+        currentInstruction = 0xCB | instruction;
+    } else {
+        currentInstruction = instruction;
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
@@ -168,21 +171,14 @@ void Gameboy::InitializeSystem() {
 }
 
 void Gameboy::ToggleSpeed() {
-    speedMultiplier = (speedMultiplier == 1) ? 2 : 1;
+    speedMultiplier = (speedMultiplier == 1) ? 4 : 1;
 }
 
 void Gameboy::SetThrottle(const bool throttle) {
     throttleSpeed = throttle;
 }
 
-void Gameboy::UpdateEmulator() {
-    using clock = std::chrono::steady_clock;
-    static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
-    const auto frameStart = clock::now();
-
-    const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
-    const uint32_t frameBudget = kFrameCyclesDMG * (doubleSpeed ? 2u : 1u);
-
+void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
         if (pc == 0x10) {
@@ -207,10 +203,49 @@ void Gameboy::UpdateEmulator() {
 
         stepCycles += total;
     }
+}
+
+void Gameboy::UpdateEmulator() {
+    if (paused) {
+        return;
+    }
+
+    using clock = std::chrono::steady_clock;
+    static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
+    const auto frameStart = clock::now();
+
+    const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
+    const uint32_t frameBudget = kFrameCyclesDMG * (doubleSpeed ? 2u : 1u);
+    AdvanceFrames(frameBudget);
 
     const auto elapsed = clock::now() - frameStart;
     if (const auto effectiveFrameTime = kFramePeriod / speedMultiplier; throttleSpeed && elapsed < effectiveFrameTime)
         std::this_thread::sleep_for(effectiveFrameTime - elapsed);
+}
+
+void Gameboy::DebugNextInstruction() {
+    AdvanceFrames(1);
+    PrintCurrentValues();
+}
+
+void Gameboy::PrintCurrentValues() const {
+    const std::string text = std::format(
+        "----------------------------------------------\n"
+        "PC: {:#06x}  SP: {:#06x}  OP: {:#04x} — {}\n"
+        "A:{:02X}  F: Z{} N{} H{} C{}\n"
+        "B:{:02X}  C:{:02X}  D:{:02X}  E:{:02X}\n"
+        "H:{:02X}  L:{:02X}\n\n"
+        "DIV:{:02X} TIMA:{:02X} TMA:{:02X} TAC:{:02X}"
+        "\n----------------------------------------------\n",
+        pc, sp, currentInstruction, instructions->GetMnemonic(currentInstruction),
+        regs->a,
+        regs->FlagZero() ? 1 : 0, regs->FlagSubtract() ? 1 : 0,
+        regs->FlagHalf() ? 1 : 0, regs->FlagCarry() ? 1 : 0,
+        regs->b, regs->c, regs->d, regs->e,
+        regs->h, regs->l,
+        bus->timer_.divCounter, bus->timer_.tima, bus->timer_.tma, bus->timer_.tac);
+    std::printf("%s", text.c_str());
+    std::fflush(stdout);
 }
 
 inline uint8_t interruptAddress(const uint8_t bit) {
