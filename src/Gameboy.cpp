@@ -4,12 +4,15 @@
 #include <iterator>
 #include <map>
 #include <thread>
+#include <chrono>
+#include <bit>
+
+static constexpr uint32_t kFrameCyclesDMG = 70224;
 
 inline uint16_t Gameboy::ReadNextWord() const {
     const uint16_t lower = bus->ReadByte(pc + 1);
     const uint16_t higher = bus->ReadByte(pc + 2);
-    const uint16_t word = higher << 8 | lower;
-    return word;
+    return static_cast<uint16_t>(higher << 8 | lower);
 }
 
 inline uint8_t Gameboy::ReadNextByte() const {
@@ -35,14 +38,17 @@ void Gameboy::KeyDown(const Keys key) const {
 }
 
 std::tuple<uint32_t, uint32_t, uint32_t> Gameboy::GetPixel(const uint32_t y, const uint32_t x) const {
-    return {bus->gpu_->screenData[y][x][0], bus->gpu_->screenData[y][x][1], bus->gpu_->screenData[y][x][2]};
+    return {
+        bus->gpu_->screenData[y][x][0],
+        bus->gpu_->screenData[y][x][1],
+        bus->gpu_->screenData[y][x][2]
+    };
 }
 
 uint8_t Gameboy::DecodeInstruction(const uint8_t opcode, const bool prefixed) {
-    const uint8_t cycleIncrement = prefixed
-                                       ? instructions->prefixedInstr(opcode, *this)
-                                       : instructions->nonPrefixedInstr(opcode, *this);
-    return cycleIncrement;
+    return prefixed
+               ? instructions->prefixedInstr(opcode, *this)
+               : instructions->nonPrefixedInstr(opcode, *this);
 }
 
 void Gameboy::InitializeBootrom() {
@@ -70,48 +76,43 @@ uint32_t Gameboy::RunHDMA() const {
         return 0;
     }
 
+    const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
+    const uint32_t cyclesPerBlock = doubleSpeed ? 64 : 32;
+
     switch (bus->gpu_->hdmaMode) {
         case GPU::HDMAMode::GDMA: {
-            const uint32_t length = static_cast<uint32_t>(bus->hdmaRemain) + 1;
-            for (uint32_t unused = 0; unused < length; unused++) {
+            const uint32_t blocks = static_cast<uint32_t>(bus->hdmaRemain) + 1;
+            for (uint32_t unused = 0; unused < blocks; ++unused) {
                 const uint16_t memSource = bus->hdmaSource;
-                for (uint16_t i = 0; i < 0x10; i++) {
+                for (uint16_t i = 0; i < 0x10; ++i) {
                     const uint8_t byte = bus->ReadByte(memSource + i);
                     bus->gpu_->WriteVRAM(bus->hdmaDestination + i, byte);
                 }
                 bus->hdmaSource += 0x10;
                 bus->hdmaDestination += 0x10;
-                if (bus->hdmaRemain == 0) {
-                    bus->hdmaRemain = 0x7F;
-                } else {
-                    bus->hdmaRemain -= 1;
-                }
+                bus->hdmaRemain = (bus->hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->hdmaRemain - 1);
             }
             bus->hdmaActive = false;
-            return length * 8 * 4;
+            return blocks * cyclesPerBlock;
         }
         case GPU::HDMAMode::HDMA: {
-            if (!bus->gpu_->hblank) {
+            if (!bus->gpu_->hblank)
                 return 0;
-            }
+
             const uint16_t memSource = bus->hdmaSource;
-            for (uint16_t i = 0; i < 0x10; i++) {
+            for (uint16_t i = 0; i < 0x10; ++i) {
                 const uint8_t byte = bus->ReadByte(memSource + i);
                 bus->gpu_->WriteVRAM(bus->hdmaDestination + i, byte);
             }
             bus->hdmaSource += 0x10;
             bus->hdmaDestination += 0x10;
-            if (bus->hdmaRemain == 0) {
-                bus->hdmaRemain = 0x7F;
-            } else {
-                bus->hdmaRemain -= 1;
-            }
-            if (bus->hdmaRemain == 0x7F) {
+            bus->hdmaRemain = (bus->hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->hdmaRemain - 1);
+            if (bus->hdmaRemain == 0x7F)
                 bus->hdmaActive = false;
-            }
-            return 32;
+            return cyclesPerBlock;
         }
-        default: throw UnreachableCodeException("Gameboy::RunHDMA");
+        default:
+            throw UnreachableCodeException("Gameboy::RunHDMA – invalid mode");
     }
 }
 
@@ -150,38 +151,15 @@ void Gameboy::InitializeSystem() {
     regs->SetHL(0x014D);
     sp = 0xFFFE;
 
-    static std::map<const uint16_t, const uint8_t> initialData = {
-        {0xFF05, 0x00},
-        {0xFF06, 0x00},
-        {0xFF07, 0x00},
-        {0xFF10, 0x80},
-        {0xFF11, 0xBF},
-        {0xFF12, 0xF3},
-        {0xFF14, 0xBF},
-        {0xFF16, 0x3F},
-        {0xFF17, 0x00},
-        {0xFF19, 0xBF},
-        {0xFF1A, 0x7F},
-        {0xFF1B, 0xFF},
-        {0xFF1C, 0x9F},
-        {0xFF1E, 0xBF},
-        {0xFF20, 0xFF},
-        {0xFF21, 0x00},
-        {0xFF22, 0x00},
-        {0xFF23, 0xBF},
-        {0xFF24, 0x77},
-        {0xFF25, 0xF3},
-        {0xFF26, 0xF1},
-        {0xFF40, 0x91},
-        {0xFF42, 0x00},
-        {0xFF43, 0x00},
-        {0xFF45, 0x00},
-        {0xFF47, 0xFC},
-        {0xFF48, 0xFF},
-        {0xFF49, 0xFF},
-        {0xFF4A, 0x00},
-        {0xFF4B, 0x00},
-        {0xFFFF, 0x00},
+    static const std::map<uint16_t, uint8_t> initialData = {
+        {0xFF05, 0x00}, {0xFF06, 0x00}, {0xFF07, 0x00}, {0xFF10, 0x80},
+        {0xFF11, 0xBF}, {0xFF12, 0xF3}, {0xFF14, 0xBF}, {0xFF16, 0x3F},
+        {0xFF17, 0x00}, {0xFF19, 0xBF}, {0xFF1A, 0x7F}, {0xFF1B, 0xFF},
+        {0xFF1C, 0x9F}, {0xFF1E, 0xBF}, {0xFF20, 0xFF}, {0xFF21, 0x00},
+        {0xFF22, 0x00}, {0xFF23, 0xBF}, {0xFF24, 0x77}, {0xFF25, 0xF3},
+        {0xFF26, 0xF1}, {0xFF40, 0x91}, {0xFF42, 0x00}, {0xFF43, 0x00},
+        {0xFF45, 0x00}, {0xFF47, 0xFC}, {0xFF48, 0xFF}, {0xFF49, 0xFF},
+        {0xFF4A, 0x00}, {0xFF4B, 0x00}, {0xFFFF, 0x00},
     };
 
     for (const auto &[address, value]: initialData) {
@@ -202,25 +180,27 @@ void Gameboy::UpdateEmulator() {
     static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
     const auto frameStart = clock::now();
 
+    const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
+    const uint32_t frameBudget = kFrameCyclesDMG * (doubleSpeed ? 2u : 1u);
+
     stepCycles = 0;
-    while (stepCycles < Timer::MAX_CYCLES) {
+    while (stepCycles < frameBudget) {
         if (pc == 0x10) {
             bus->ChangeSpeed();
         }
-
-        if (bus->interruptDelay) {
-            if (++icount == 2) {
-                bus->interruptDelay = false;
-                bus->interruptMasterEnable = true;
-                icount = 0;
-            }
+        if (bus->interruptDelay && ++icount == 2) {
+            bus->interruptDelay = false;
+            bus->interruptMasterEnable = true;
+            icount = 0;
         }
 
         uint32_t cycles = ProcessInterrupts();
-        if (cycles == 0) { cycles = halted ? 4 : ExecuteInstruction(); }
+        if (!cycles) {
+            cycles = halted ? 4 : ExecuteInstruction();
+        }
 
-        const uint8_t hdmaCycles = RunHDMA();
-        const uint32_t total = cycles + static_cast<uint32_t>(bus->speed) * hdmaCycles;
+        const uint32_t hdmaCycles = RunHDMA();
+        const uint32_t total = cycles + hdmaCycles;
 
         bus->UpdateTimers(total);
         bus->UpdateGraphics(total);
@@ -229,9 +209,8 @@ void Gameboy::UpdateEmulator() {
     }
 
     const auto elapsed = clock::now() - frameStart;
-    const auto modifiedFramePeriod = kFramePeriod / speedMultiplier;
-    if (elapsed < modifiedFramePeriod && throttleSpeed)
-        std::this_thread::sleep_for(modifiedFramePeriod - elapsed);
+    if (const auto effectiveFrameTime = kFramePeriod / speedMultiplier; throttleSpeed && elapsed < effectiveFrameTime)
+        std::this_thread::sleep_for(effectiveFrameTime - elapsed);
 }
 
 inline uint8_t interruptAddress(const uint8_t bit) {
@@ -247,8 +226,9 @@ inline uint8_t interruptAddress(const uint8_t bit) {
 
 uint32_t Gameboy::ProcessInterrupts() {
     const uint8_t pending = bus->interruptEnable & bus->interruptFlag & 0x1F;
-    if (pending == 0)
+    if (pending == 0) {
         return 0;
+    }
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
         return 4;

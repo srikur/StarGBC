@@ -296,7 +296,7 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
         } else {
             gpu_->scanlineCounter += 80;
         }
-        uint32_t d = gpu_->scanlineCounter;
+        const uint32_t d = gpu_->scanlineCounter;
         gpu_->scanlineCounter %= 456;
         if (d != gpu_->scanlineCounter) {
             gpu_->currentLine = (gpu_->currentLine + 1) % 154;
