@@ -21,6 +21,8 @@ struct GameboySettings {
     std::string romName;
     std::string biosPath;
     Mode mode = Mode::GBC;
+    bool runBootrom = false;
+    bool debugStart = false;
 };
 
 class Gameboy {
@@ -42,6 +44,8 @@ class Gameboy {
 
     bool throttleSpeed = true;
     int speedMultiplier = 1;
+    bool paused = false;
+    uint16_t currentInstruction = 0x00;
 
     [[nodiscard]] inline uint16_t ReadNextWord() const;
 
@@ -59,11 +63,14 @@ class Gameboy {
 
     uint32_t ProcessInterrupts();
 
+    void PrintCurrentValues() const;
+
 public:
     friend class Instructions;
 
-    explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode) : rom_path_(std::move(rom_path)),
-        bios_path_(std::move(bios_path)), mode_(mode) {
+    explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
+                     const bool debugStart) : rom_path_(std::move(rom_path)),
+                                              bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
         switch (bus->cartridge_->ReadByte(0x143) & 0x80) {
             case 0x80:
                 bus->gpu_->hardware = GPU::Hardware::CGB;
@@ -87,7 +94,7 @@ public:
     ~Gameboy() = default;
 
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) {
-        return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode);
+        return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart);
     }
 
     void UpdateEmulator();
@@ -105,4 +112,17 @@ public:
     void ToggleSpeed();
 
     void SetThrottle(bool throttle);
+
+    void AdvanceFrames(uint32_t frameBudget);
+
+    void DebugNextInstruction();
+
+    void SetPaused(const bool val) {
+        paused = val;
+        PrintCurrentValues();
+    }
+
+    bool IsPaused() const {
+        return paused;
+    }
 };
