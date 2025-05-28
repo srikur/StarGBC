@@ -75,6 +75,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
             settings.mode = Mode::GBC;
         } else if (args[i] == "--gb") {
             settings.mode = Mode::GB;
+        } else if (args[i] == "--debugStart") {
+            settings.debugStart = true;
         } else if (args[i] == "--bios") {
             if (i + 1 < args.size()) {
                 settings.biosPath = args[++i];
@@ -95,7 +97,6 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     return SDL_APP_CONTINUE;
 }
 
-/* ------------------------------------------------------------------ */
 SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
     switch (event->type) {
         case SDL_EVENT_QUIT:
@@ -124,6 +125,15 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
                     break;
                 case SDLK_M: gameboy->ToggleSpeed();
                     break;
+                case SDLK_P: gameboy->SetPaused(true);
+                    break;
+                case SDLK_R: gameboy->SetPaused(false);
+                    break;
+                case SDLK_F8: {
+                    if (gameboy->IsPaused()) {
+                        gameboy->DebugNextInstruction();
+                    }
+                }
                 default: break;
             }
             break;
