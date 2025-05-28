@@ -76,8 +76,8 @@ public:
     };
 
     uint8_t interruptEnable = 0x00;
-    uint8_t interruptFlag = 0x00;
-    bool interruptMasterEnable = true;
+    uint8_t interruptFlag = 0xE1;
+    bool interruptMasterEnable = false;
     bool interruptDelay = false;
 
     void SetInterrupt(InterruptType interrupt);

@@ -209,7 +209,7 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
                                 case 0x0F:
                                     interruptFlag = value;
                                     break;
-                                default: throw UnreachableCodeException("Bus::WriteByte Unreachable Code");
+                                default: break;
                             }
                             break;
                         case 0x10:
@@ -260,14 +260,14 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
                                 memory_.hram_[address - 0xFF80] = value;
                             }
                             break;
-                        default: throw UnreachableCodeException("Bus::WriteByte 0xFF0");
+                        default: break;
                     }
                     break;
-                default: throw UnreachableCodeException("Bus::WriteByte 0xF00");
+                default: break;
             }
             break;
         default:
-            throw UnreachableCodeException("Bus::WriteByte unknown write byte called!");
+            break;
     }
 }
 
@@ -346,9 +346,8 @@ void Bus::UpdateTimers(const uint32_t cycles) {
 
         timer_.divCounter++;
 
-        const bool newBit = timerEnabled && (timer_.divCounter & (1 << timerBit));
-
-        if (oldBit && !newBit) { // Falling edge
+        if (const bool newBit = timerEnabled && (timer_.divCounter & (1 << timerBit)); oldBit && !newBit) {
+            // Falling edge
             if (++timer_.tima == 0) {
                 timer_.tima = timer_.tma;
                 SetInterrupt(InterruptType::Timer);

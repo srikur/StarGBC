@@ -44,6 +44,11 @@ public:
         bool enableM1Interrupt;
         bool enableM0Interrupt;
         uint8_t mode;
+
+        uint8_t value() const {
+            return (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
+                   (enableM1Interrupt << 4) | (enableM0Interrupt << 3) | mode;
+        }
     };
 
     std::vector<uint8_t> vram = std::vector<uint8_t>(VRAM_SIZE);
