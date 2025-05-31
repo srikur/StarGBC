@@ -14,14 +14,7 @@ Bus::Bus(const std::string &romLocation) {
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
     switch (address & 0xF000) {
-        case 0x0000:
-        case 0x1000:
-        case 0x2000:
-        case 0x3000:
-        case 0x4000:
-        case 0x5000:
-        case 0x6000:
-        case 0x7000:
+        case 0x0000 ... 0x7FFF:
             // Rom banks
             if (runBootrom) {
                 if (gpu_->hardware == GPU::Hardware::CGB) {
@@ -52,20 +45,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
             return memory_.wram_[address - 0xE000];
         case 0xF000:
             switch (address & 0xF00) {
-                case 0x000:
-                case 0x100:
-                case 0x200:
-                case 0x300:
-                case 0x400:
-                case 0x500:
-                case 0x600:
-                case 0x700:
-                case 0x800:
-                case 0x900:
-                case 0xA00:
-                case 0xB00:
-                case 0xC00:
-                case 0xD00:
+                case 0x000 ... 0xDFF:
                     return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
                 case 0xE00:
                     return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
@@ -84,9 +64,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                                     return interruptFlag | 0xE0;
                                 default: throw UnreachableCodeException("Bus::ReadByte case 0xF00");
                             }
-                        case 0x10:
-                        case 0x20:
-                        case 0x30:
+                        case 0x10 ... 0x3F:
                             return audio_->ReadByte(address);
                         case 0x40: {
                             if (address == 0xFF4D) {
@@ -112,14 +90,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                         case 0x70:
                             if (address == 0xFF70) return memory_.wramBank_;
                             break;
-                        case 0x80:
-                        case 0x90:
-                        case 0xA0:
-                        case 0xB0:
-                        case 0xC0:
-                        case 0xD0:
-                        case 0xE0:
-                        case 0xF0:
+                        case 0x80 ... 0xFF:
                             return address == 0xFFFF ? interruptEnable : memory_.hram_[address - 0xFF80];
                         default: throw UnreachableCodeException("Bus::ReadByte Unreachable Code");
                     }
@@ -133,24 +104,15 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
     return 0xFF;
 }
 
-void Bus::WriteByte(uint16_t address, uint8_t value) {
+void Bus::WriteByte(const uint16_t address, const uint8_t value) {
     switch (address & 0xF000) {
-        case 0x0000:
-        case 0x1000:
-        case 0x2000:
-        case 0x3000:
-        case 0x4000:
-        case 0x5000:
-        case 0x6000:
-        case 0x7000:
+        case 0x0000 ... 0x7FFF:
             cartridge_->writeByte(address, value);
             break;
-        case 0x8000:
-        case 0x9000:
+        case 0x8000 ... 0x9FFF:
             gpu_->WriteVRAM(address, value);
             break;
-        case 0xA000:
-        case 0xB000:
+        case 0xA000 ... 0xBFFF:
             cartridge_->writeByte(address, value);
             break;
         case 0xC000:
@@ -164,20 +126,7 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
             break;
         case 0xF000:
             switch (address & 0xF00) {
-                case 0x000:
-                case 0x100:
-                case 0x200:
-                case 0x300:
-                case 0x400:
-                case 0x500:
-                case 0x600:
-                case 0x700:
-                case 0x800:
-                case 0x900:
-                case 0xA00:
-                case 0xB00:
-                case 0xC00:
-                case 0xD00:
+                case 0x000 ... 0xDFF:
                     memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
                     break;
                 case 0xE00:
@@ -246,14 +195,7 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
                                 }
                             }
                             break;
-                        case 0x80:
-                        case 0x90:
-                        case 0xA0:
-                        case 0xB0:
-                        case 0xC0:
-                        case 0xD0:
-                        case 0xE0:
-                        case 0xF0:
+                        case 0x80 ... 0xFF:
                             if (address == 0xFFFF) {
                                 interruptEnable = value;
                             } else {
@@ -281,77 +223,81 @@ void Bus::KeyUp(Keys key) {
 }
 
 void Bus::UpdateGraphics(const uint32_t cycles) {
+    static constexpr uint32_t DOTS_PER_LINE = 456;
+    static constexpr uint32_t MODE2_DOTS = 80;
+    static constexpr uint32_t MODE3_MIN_DOTS = 172;
+    static constexpr uint32_t MODE0_BASE_DOTS = DOTS_PER_LINE - MODE2_DOTS - MODE3_MIN_DOTS;
+
     if ((gpu_->lcdc & 0x80) == 0) {
-        gpu_->scanlineCounter = 0;
+        gpu_->scanlineCounter = DOTS_PER_LINE;
         gpu_->currentLine = 0;
-        gpu_->stat.mode = 0;
-        gpu_->hblank = false;
+        gpu_->stat.mode(0);
+        gpu_->hblank = gpu_->vblank = false;
         return;
     }
 
-    gpu_->scanlineCounter += cycles;
-    gpu_->hblank = false;
-    constexpr uint32_t MODE0_CYCLES = 456 - 80 - 172; // 204 – HBlank
+    auto updateCoincidence = [this] {
+        if (gpu_->currentLine == gpu_->lyc) {
+            gpu_->stat.value |= 0x04;
+            if (gpu_->stat.enableLYInterrupt())
+                SetInterrupt(InterruptType::LCDStat);
+        } else {
+            gpu_->stat.value &= ~0x04;
+        }
+    };
 
-    while (true) {
-        constexpr uint32_t LINE_CYCLES = 456;
-        constexpr uint32_t MODE3_CYCLES = 172;
-        constexpr uint32_t MODE2_CYCLES = 80;
-        switch (gpu_->stat.mode) {
+    auto requestStat = [this](const bool condition, const bool enabled) {
+        static bool line = false;
+        const bool newLine = condition && enabled;
+        if (!line && newLine) SetInterrupt(InterruptType::LCDStat);
+        line = newLine;
+    };
+
+    gpu_->scanlineCounter -= cycles;
+
+    while (static_cast<int32_t>(gpu_->scanlineCounter) <= 0) {
+        switch (gpu_->stat.mode() & 0x03) {
+            case 2:
+                gpu_->stat.mode(3);
+                gpu_->scanlineCounter += MODE3_MIN_DOTS;
+                requestStat(true, gpu_->stat.enableM2Interrupt());
+                break;
+            case 3:
+                gpu_->DrawScanline();
+                gpu_->hblank = true;
+                gpu_->stat.mode(0);
+                gpu_->scanlineCounter += MODE0_BASE_DOTS;
+                requestStat(true, gpu_->stat.enableM0Interrupt());
+                break;
             case 0:
-                if (gpu_->scanlineCounter < MODE0_CYCLES) return;
-                gpu_->scanlineCounter -= MODE0_CYCLES;
+                gpu_->hblank = false;
                 ++gpu_->currentLine;
-
-                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
-                    SetInterrupt(InterruptType::LCDStat);
+                updateCoincidence();
 
                 if (gpu_->currentLine == 144) {
-                    gpu_->stat.mode = 1;
+                    gpu_->stat.mode(1);
                     gpu_->vblank = true;
                     SetInterrupt(InterruptType::VBlank);
-                    if (gpu_->stat.enableM1Interrupt)
-                        SetInterrupt(InterruptType::LCDStat);
+                    requestStat(true, gpu_->stat.enableM1Interrupt());
+                    gpu_->scanlineCounter += DOTS_PER_LINE;
                 } else {
-                    gpu_->stat.mode = 2;
-                    if (gpu_->stat.enableM2Interrupt)
-                        SetInterrupt(InterruptType::LCDStat);
+                    gpu_->stat.mode(2);
+                    requestStat(true, gpu_->stat.enableM2Interrupt());
+                    gpu_->scanlineCounter += MODE2_DOTS;
                 }
                 break;
-
             case 1:
-                if (gpu_->scanlineCounter < LINE_CYCLES) return;
-                gpu_->scanlineCounter -= LINE_CYCLES;
                 ++gpu_->currentLine;
+                updateCoincidence();
 
-                // Ten lines in VBlank: LY 144-153
                 if (gpu_->currentLine > 153) {
                     gpu_->currentLine = 0;
-                    gpu_->stat.mode = 2;
-                    if (gpu_->stat.enableM2Interrupt)
-                        SetInterrupt(InterruptType::LCDStat);
+                    gpu_->stat.mode(2);
+                    requestStat(true, gpu_->stat.enableM2Interrupt());
+                    gpu_->scanlineCounter += MODE2_DOTS;
+                } else {
+                    gpu_->scanlineCounter += DOTS_PER_LINE;
                 }
-
-                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
-                    SetInterrupt(InterruptType::LCDStat);
-                break;
-
-            case 2:
-                if (gpu_->scanlineCounter < MODE2_CYCLES) return;
-                gpu_->scanlineCounter -= MODE2_CYCLES;
-                gpu_->stat.mode = 3;
-                break;
-
-            case 3:
-                if (gpu_->scanlineCounter < MODE3_CYCLES) return;
-                gpu_->scanlineCounter -= MODE3_CYCLES;
-
-                gpu_->stat.mode = 0;
-                gpu_->hblank = true;
-                gpu_->DrawScanline();
-
-                if (gpu_->stat.enableM0Interrupt)
-                    SetInterrupt(InterruptType::LCDStat);
                 break;
             default: break;
         }
