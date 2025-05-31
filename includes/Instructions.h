@@ -202,7 +202,7 @@ public:
         return nonPrefixedTable[opcode](std::forward<Args>(args)...);
     }
 
-    std::string GetMnemonic(uint16_t instruction) {
+    static std::string GetMnemonic(uint16_t instruction) {
         const bool prefixed = instruction >> 8 == 0xCB;
         instruction &= 0xFF;
         return prefixed ? prefixedInstructions[instruction] : nonPrefixedInstructions[instruction];
