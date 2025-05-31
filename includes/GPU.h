@@ -45,7 +45,7 @@ public:
         bool enableM0Interrupt;
         uint8_t mode;
 
-        uint8_t value() const {
+        [[nodiscard]] uint8_t value() const {
             return (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
                    (enableM1Interrupt << 4) | (enableM0Interrupt << 3) | mode;
         }
@@ -103,11 +103,11 @@ public:
 
     static void WriteGpi(Gpi &gpi, uint8_t value);
 
-    uint8_t ReadVRAM(uint16_t address) const;
+    [[nodiscard]] uint8_t ReadVRAM(uint16_t address) const;
 
     void WriteVRAM(uint16_t address, uint8_t value);
 
-    uint8_t ReadRegisters(uint16_t address) const;
+    [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
 
     void WriteRegisters(uint16_t address, uint8_t value);
 

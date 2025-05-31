@@ -87,7 +87,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                         case 0x10:
                         case 0x20:
                         case 0x30:
-                            return audio_.ReadByte(address);
+                            return audio_->ReadByte(address);
                         case 0x40: {
                             if (address == 0xFF4D) {
                                 const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
@@ -215,7 +215,7 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
                         case 0x10:
                         case 0x20:
                         case 0x30:
-                            audio_.WriteByte(address, value);
+                            audio_->WriteByte(address, value);
                             break;
                         case 0x40:
                             if (address == 0xFF46) {

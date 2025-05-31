@@ -15,6 +15,7 @@ enum class Mode {
     None = 0x00,
     GB = 0x01,
     GBC = 0x02,
+    GBA = 0x03,
 };
 
 struct GameboySettings {
@@ -122,7 +123,9 @@ public:
         PrintCurrentValues();
     }
 
-    bool IsPaused() const {
+    [[nodiscard]] bool IsPaused() const {
         return paused;
     }
+
+    [[nodiscard]] bool PopSample(StereoSample sample) const;
 };
