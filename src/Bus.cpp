@@ -281,59 +281,79 @@ void Bus::KeyUp(Keys key) {
 }
 
 void Bus::UpdateGraphics(const uint32_t cycles) {
-    gpu_->hblank = false;
-    if (!(gpu_->lcdc & 0x80)) {
-        return;
-    }
-    if (cycles == 0) {
+    if ((gpu_->lcdc & 0x80) == 0) {
+        gpu_->scanlineCounter = 0;
+        gpu_->currentLine = 0;
+        gpu_->stat.mode = 0;
+        gpu_->hblank = false;
         return;
     }
 
-    const uint8_t c = (cycles - 1) / 80 + 1;
-    for (uint8_t i = 0; i < c; i++) {
-        if (i == (c - 1)) {
-            gpu_->scanlineCounter += cycles % 80;
-        } else {
-            gpu_->scanlineCounter += 80;
-        }
-        const uint32_t d = gpu_->scanlineCounter;
-        gpu_->scanlineCounter %= 456;
-        if (d != gpu_->scanlineCounter) {
-            gpu_->currentLine = (gpu_->currentLine + 1) % 154;
-            if (gpu_->stat.enableLYInterrupt && (gpu_->currentLine == gpu_->lyc)) {
-                SetInterrupt(InterruptType::LCDStat);
-            }
-        }
-        if (gpu_->currentLine >= 144) {
-            if (gpu_->stat.mode == 1) {
-                continue;
-            }
-            gpu_->stat.mode = 1;
-            gpu_->vblank = true;
-            SetInterrupt(InterruptType::VBlank);
-            if (gpu_->stat.enableM1Interrupt) {
-                SetInterrupt(InterruptType::LCDStat);
-            }
-        } else if (gpu_->scanlineCounter <= 80) {
-            if (gpu_->stat.mode == 2) {
-                continue;
-            }
-            gpu_->stat.mode = 2;
-            if (gpu_->stat.enableM2Interrupt) {
-                SetInterrupt(InterruptType::LCDStat);
-            }
-        } else if (gpu_->scanlineCounter <= (80 + 172)) {
-            gpu_->stat.mode = 3;
-        } else {
-            if (gpu_->stat.mode == 0) {
-                continue;
-            }
-            gpu_->stat.mode = 0;
-            gpu_->hblank = true;
-            if (gpu_->stat.enableM0Interrupt) {
-                SetInterrupt(InterruptType::LCDStat);
-            }
-            gpu_->DrawScanline();
+    gpu_->scanlineCounter += cycles;
+    gpu_->hblank = false;
+    constexpr uint32_t MODE0_CYCLES = 456 - 80 - 172; // 204 – HBlank
+
+    while (true) {
+        constexpr uint32_t LINE_CYCLES = 456;
+        constexpr uint32_t MODE3_CYCLES = 172;
+        constexpr uint32_t MODE2_CYCLES = 80;
+        switch (gpu_->stat.mode) {
+            case 0:
+                if (gpu_->scanlineCounter < MODE0_CYCLES) return;
+                gpu_->scanlineCounter -= MODE0_CYCLES;
+                ++gpu_->currentLine;
+
+                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
+                    SetInterrupt(InterruptType::LCDStat);
+
+                if (gpu_->currentLine == 144) {
+                    gpu_->stat.mode = 1;
+                    gpu_->vblank = true;
+                    SetInterrupt(InterruptType::VBlank);
+                    if (gpu_->stat.enableM1Interrupt)
+                        SetInterrupt(InterruptType::LCDStat);
+                } else {
+                    gpu_->stat.mode = 2;
+                    if (gpu_->stat.enableM2Interrupt)
+                        SetInterrupt(InterruptType::LCDStat);
+                }
+                break;
+
+            case 1:
+                if (gpu_->scanlineCounter < LINE_CYCLES) return;
+                gpu_->scanlineCounter -= LINE_CYCLES;
+                ++gpu_->currentLine;
+
+                // Ten lines in VBlank: LY 144-153
+                if (gpu_->currentLine > 153) {
+                    gpu_->currentLine = 0;
+                    gpu_->stat.mode = 2;
+                    if (gpu_->stat.enableM2Interrupt)
+                        SetInterrupt(InterruptType::LCDStat);
+                }
+
+                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
+                    SetInterrupt(InterruptType::LCDStat);
+                break;
+
+            case 2:
+                if (gpu_->scanlineCounter < MODE2_CYCLES) return;
+                gpu_->scanlineCounter -= MODE2_CYCLES;
+                gpu_->stat.mode = 3;
+                break;
+
+            case 3:
+                if (gpu_->scanlineCounter < MODE3_CYCLES) return;
+                gpu_->scanlineCounter -= MODE3_CYCLES;
+
+                gpu_->stat.mode = 0;
+                gpu_->hblank = true;
+                gpu_->DrawScanline();
+
+                if (gpu_->stat.enableM0Interrupt)
+                    SetInterrupt(InterruptType::LCDStat);
+                break;
+            default: break;
         }
     }
 }
