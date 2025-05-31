@@ -189,6 +189,10 @@ void Gameboy::SetThrottle(const bool throttle) {
     throttleSpeed = throttle;
 }
 
+bool Gameboy::PopSample(StereoSample sample) const {
+    return bus->audio_->gSampleFifo.pop(sample);
+}
+
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
@@ -211,6 +215,9 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         bus->UpdateTimers(total);
         bus->UpdateGraphics(total);
+        if (auto s = bus->audio_->Tick(total)) {
+            bus->audio_->gSampleFifo.push(*s);
+        }
 
         stepCycles += total;
     }
@@ -251,7 +258,7 @@ void Gameboy::PrintCurrentValues() const {
         "IE:{:02X} IF:{:02X} IME:{:02X}\n"
         "DIV:{:02X} TIMA:{:02X} TMA:{:02X} TAC:{:02X}"
         "\n----------------------------------------------\n",
-        pc, sp, currentInstruction, instructions->GetMnemonic(currentInstruction),
+        pc, sp, currentInstruction, Instructions::GetMnemonic(currentInstruction),
         regs->a,
         regs->FlagZero() ? 1 : 0, regs->FlagSubtract() ? 1 : 0,
         regs->FlagHalf() ? 1 : 0, regs->FlagCarry() ? 1 : 0,

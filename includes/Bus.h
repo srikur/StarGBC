@@ -53,7 +53,7 @@ public:
     Memory memory_ = {};
     Timer timer_ = {};
     Serial serial_ = {};
-    Audio audio_ = {};
+    std::unique_ptr<Audio> audio_ = std::make_unique<Audio>();
 
     // Bootrom
     std::vector<uint8_t> bootrom;

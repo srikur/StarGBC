@@ -1,20 +1,6 @@
 #pragma once
+#include "Audio.h"
 #include "Common.h"
-
-struct Audio {
-    static constexpr uint16_t SOUND_BEGIN = 0xFF10;
-    static constexpr uint16_t SOUND_END = 0xFF3F;
-
-    [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
-        return soundData[address - SOUND_BEGIN];
-    }
-
-    void WriteByte(const uint16_t address, const uint8_t value) {
-        soundData[address - SOUND_BEGIN] = value;
-    }
-
-    uint8_t soundData[0x30];
-};
 
 enum class Keys {
     Right = 0x01,
