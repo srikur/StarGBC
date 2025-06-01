@@ -1,53 +1,31 @@
 #pragma once
 
 struct Registers {
-    [[nodiscard]] uint16_t GetAF() const {
-        return static_cast<uint16_t>(a) << 8 | f;
-    }
+    uint8_t a{}, b{}, c{}, d{}, e{}, f{}, h{}, l{};
 
-    [[nodiscard]] uint16_t GetBC() const {
-        return static_cast<uint16_t>(b) << 8 | c;
-    }
+    [[nodiscard]] uint16_t GetAF() const { return static_cast<uint16_t>(a) << 8 | f; }
 
-    [[nodiscard]] uint16_t GetDE() const {
-        return static_cast<uint16_t>(d) << 8 | e;
-    }
+    [[nodiscard]] uint16_t GetBC() const { return static_cast<uint16_t>(b) << 8 | c; }
 
-    [[nodiscard]] uint16_t GetHL() const {
-        return static_cast<uint16_t>(h) << 8 | l;
-    }
+    [[nodiscard]] uint16_t GetDE() const { return static_cast<uint16_t>(d) << 8 | e; }
 
-    [[nodiscard]] bool FlagZero() const {
-        return !!(f & 0x80);
-    }
+    [[nodiscard]] uint16_t GetHL() const { return static_cast<uint16_t>(h) << 8 | l; }
 
-    [[nodiscard]] bool FlagSubtract() const {
-        return !!(f & 0x40);
-    }
+    [[nodiscard]] bool FlagZero() const { return !!(f & 0x80); }
 
-    [[nodiscard]] bool FlagHalf() const {
-        return !!(f & 0x20);
-    }
+    [[nodiscard]] bool FlagSubtract() const { return !!(f & 0x40); }
 
-    [[nodiscard]] bool FlagCarry() const {
-        return !!(f & 0x10);
-    }
+    [[nodiscard]] bool FlagHalf() const { return !!(f & 0x20); }
 
-    void SetZero(const bool x) {
-        f = (f & 0x7F) | (x << 7);
-    }
+    [[nodiscard]] bool FlagCarry() const { return !!(f & 0x10); }
 
-    void SetSubtract(const bool x) {
-        f = (f & 0xBF) | (x << 6);
-    }
+    void SetZero(const bool x) { f = (f & 0x7F) | (x << 7); }
 
-    void SetHalf(const bool x) {
-        f = (f & 0xDF) | (x << 5);
-    }
+    void SetSubtract(const bool x) { f = (f & 0xBF) | (x << 6); }
 
-    void SetCarry(const bool x) {
-        f = (f & 0xEF) | (x << 4);
-    }
+    void SetHalf(const bool x) { f = (f & 0xDF) | (x << 5); }
+
+    void SetCarry(const bool x) { f = (f & 0xEF) | (x << 4); }
 
     void SetAF(const uint16_t value) {
         a = value >> 8;
@@ -69,12 +47,27 @@ struct Registers {
         l = value & 0xFF;
     }
 
-    uint8_t a = 0x00;
-    uint8_t b = 0x00;
-    uint8_t c = 0x00;
-    uint8_t d = 0x00;
-    uint8_t e = 0x00;
-    uint8_t f = 0x00;
-    uint8_t h = 0x00;
-    uint8_t l = 0x00;
+    enum Model : std::size_t { DMG, CGB };
+
+    void SetStartupValues(Model model);
 };
+
+static constexpr std::array<Registers, 2> DefaultValues = {
+    {
+        /* DMG */ {
+            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
+            .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
+        },
+        /* CGB */ {
+            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
+            .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
+        }
+    }
+};
+
+inline void Registers::SetStartupValues(const Model model) {
+    SetAF(DefaultValues[model].GetAF());
+    SetBC(DefaultValues[model].GetBC());
+    SetDE(DefaultValues[model].GetDE());
+    SetHL(DefaultValues[model].GetHL());
+}
