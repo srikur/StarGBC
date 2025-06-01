@@ -214,7 +214,14 @@ void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
 uint8_t GPU::ReadRegisters(const uint16_t address) const {
     switch (address) {
         case 0xFF40: return lcdc;
-        case 0xFF41: return stat.value;
+        case 0xFF41: {
+            const uint8_t bit6 = stat.enableLYInterrupt ? 0x40 : 0x00;
+            const uint8_t bit5 = stat.enableM2Interrupt ? 0x20 : 0x00;
+            const uint8_t bit4 = stat.enableM1Interrupt ? 0x10 : 0x00;
+            const uint8_t bit3 = stat.enableM0Interrupt ? 0x08 : 0x00;
+            const uint8_t bit2 = (currentLine == lyc) ? 0x04 : 0x00;
+            return bit6 | bit5 | bit4 | bit3 | bit2 | stat.mode;
+        }
         case 0xFF42: return scrollY;
         case 0xFF43: return scrollX;
         case 0xFF44: return currentLine;
@@ -255,7 +262,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             if (!(lcdc & 0x80)) {
                 scanlineCounter = 0;
                 currentLine = 0;
-                stat.mode(0);
+                stat.mode = 0;
                 for (auto &row: screenData) {
                     for (auto &px: row) std::ranges::fill(px, 0xFF);
                 }
@@ -263,7 +270,10 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         case 0xFF41:
-            stat.value = value;
+            stat.enableLYInterrupt = value & 0x40;
+            stat.enableM2Interrupt = value & 0x20;
+            stat.enableM1Interrupt = value & 0x10;
+            stat.enableM0Interrupt = value & 0x08;
             break;
         case 0xFF42: scrollY = value;
             break;
@@ -272,7 +282,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         case 0xFF44: currentLine = 0;
             break; // writing resets LY
         case 0xFF45: lyc = value;
-            break;
+            break; // fixed: store provided value
         case 0xFF47: backgroundPalette = value;
             break;
         case 0xFF48: obp0Palette = value;

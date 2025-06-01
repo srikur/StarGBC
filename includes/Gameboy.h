@@ -21,7 +21,7 @@ enum class Mode {
 struct GameboySettings {
     std::string romName;
     std::string biosPath;
-    Mode mode = Mode::GBC;
+    Mode mode = Mode::None;
     bool runBootrom = false;
     bool debugStart = false;
 };
@@ -72,15 +72,9 @@ public:
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
                      const bool debugStart) : rom_path_(std::move(rom_path)),
                                               bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
-        switch (bus->cartridge_->ReadByte(0x143) & 0x80) {
-            case 0x80:
-                bus->gpu_->hardware = GPU::Hardware::CGB;
-                break;
-            default:
-                bus->gpu_->hardware = GPU::Hardware::DMG;
-                break;
-        }
-
+        bus->gpu_->hardware = (mode_ == Mode::GBC) || (bus->cartridge_->ReadByte(0x143) & 0x80) == 0x80
+                                  ? GPU::Hardware::CGB
+                                  : GPU::Hardware::DMG;
         InitializeBootrom();
     }
 
