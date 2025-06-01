@@ -143,15 +143,7 @@ uint8_t Gameboy::ExecuteInstruction() {
 }
 
 void Gameboy::InitializeSystem() {
-    if (bus->gpu_->hardware == GPU::Hardware::CGB) {
-        regs->a = 0x11;
-    } else {
-        regs->a = 0x01;
-    }
-    regs->f = 0x80;
-    regs->SetBC(0x0013);
-    regs->SetDE(0x00D8);
-    regs->SetHL(0x014D);
+    regs->SetStartupValues(static_cast<Registers::Model>(bus->gpu_->hardware));
     sp = 0xFFFE;
 
     static const std::map<uint16_t, uint8_t> initialData = {
@@ -260,7 +252,7 @@ void Gameboy::PrintCurrentValues() const {
         regs->FlagHalf() ? 1 : 0, regs->FlagCarry() ? 1 : 0,
         regs->b, regs->c, regs->d, regs->e,
         regs->h, regs->l,
-        bus->gpu_->lcdc, bus->gpu_->stat.value, bus->gpu_->currentLine, bus->gpu_->scanlineCounter,
+        bus->gpu_->lcdc, bus->gpu_->stat.value(), bus->gpu_->currentLine, bus->gpu_->scanlineCounter,
         bus->interruptEnable, bus->interruptFlag, bus->interruptMasterEnable ? 1 : 0,
         bus->timer_.divCounter, bus->timer_.tima, bus->timer_.tma, bus->timer_.tac);
     std::printf("%s", text.c_str());
