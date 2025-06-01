@@ -39,36 +39,15 @@ public:
     };
 
     struct Stat {
-        uint8_t value = 0;
+        bool enableLYInterrupt;
+        bool enableM2Interrupt;
+        bool enableM1Interrupt;
+        bool enableM0Interrupt;
+        uint8_t mode;
 
-        [[nodiscard]] bool enableLYInterrupt() const { return value & 0x40; }
-
-        void enableLYInterrupt(const bool value) {
-            this->value = (this->value & 0xBF) | (value << 6);
-        }
-
-        [[nodiscard]] bool enableM2Interrupt() const { return value & 0x20; }
-
-        void enableM2Interrupt(const bool value) {
-            this->value = (this->value & 0xDF) | (value << 5);
-        }
-
-        [[nodiscard]] bool enableM1Interrupt() const { return value & 0x10; }
-
-        void enableM1Interrupt(const bool value) {
-            this->value = (this->value & 0xEF) | (value << 4);
-        }
-
-        [[nodiscard]] bool enableM0Interrupt() const { return value & 0x08; }
-
-        void enableM0Interrupt(const bool value) {
-            this->value = (this->value & 0xF7) | (value << 3);
-        }
-
-        [[nodiscard]] uint8_t mode() const { return value & 0x07; }
-
-        void mode(const int mode) {
-            this->value = (this->value & 0xF8) | mode;
+        [[nodiscard]] uint8_t value() const {
+            return (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
+                   (enableM1Interrupt << 4) | (enableM0Interrupt << 3) | mode;
         }
     };
 
@@ -81,9 +60,13 @@ public:
     std::pair<bool, uint8_t> priority_[160];
     uint8_t lcdc = 0;
     Stat stat{
-        .value = 0x80,
+        .enableLYInterrupt = false,
+        .enableM2Interrupt = false,
+        .enableM1Interrupt = false,
+        .enableM0Interrupt = false,
+        .mode = 0
     }; // 0xFF41
-    uint8_t currentLine = 0x90; // 0xFF44
+    uint8_t currentLine = 0; // 0xFF44
     uint8_t windowX = 0; // 0xFF4B
     uint8_t windowY = 0; // 0xFF4A
     uint8_t backgroundPalette = 0; // 0xFF47
@@ -92,7 +75,7 @@ public:
 
     uint8_t scrollX = 0; // 0xFF43
     uint8_t scrollY = 0; // 0xFF42
-    uint32_t scanlineCounter = 0x144;
+    uint32_t scanlineCounter = 456;
 
     bool vblank = false;
 

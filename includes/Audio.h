@@ -1,6 +1,5 @@
 #pragma once
 #include <array>
-#include <atomic>
 #include <cstdint>
 #include <optional>
 
