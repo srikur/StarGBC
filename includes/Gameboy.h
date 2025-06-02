@@ -32,6 +32,9 @@ class Gameboy {
     std::unique_ptr<Registers> regs = std::make_unique<Registers>();
     std::unique_ptr<Bus> bus = std::make_unique<Bus>(rom_path_);
     std::unique_ptr<Instructions> instructions = std::make_unique<Instructions>();
+    Mode mode_ = Mode::GB;
+    uint16_t currentInstruction = 0x00;
+
     uint16_t pc = 0x00;
     uint16_t sp = 0x00;
     uint8_t icount = 0;
@@ -39,14 +42,12 @@ class Gameboy {
     bool haltBug = false;
     bool haltBugRun = false;
     uint32_t stepCycles = 0;
-    Mode mode_ = Mode::GB;
 
     uint32_t elapsedCycles = 0;
 
     bool throttleSpeed = true;
     int speedMultiplier = 1;
     bool paused = false;
-    uint16_t currentInstruction = 0x00;
 
     [[nodiscard]] inline uint16_t ReadNextWord() const;
 
@@ -111,6 +112,10 @@ public:
     void AdvanceFrames(uint32_t frameBudget);
 
     void DebugNextInstruction();
+
+    void SaveState(int slot) const;
+
+    void LoadState(int slot);
 
     void SetPaused(const bool val) {
         paused = val;

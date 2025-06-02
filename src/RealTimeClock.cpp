@@ -11,20 +11,12 @@ uint64_t RealTimeClock::NowSeconds() {
     return std::chrono::duration_cast<secs>(clk::now().time_since_epoch()).count();
 }
 
-uint64_t RealTimeClock::LoadRTC() const {
-    uint64_t saved = NowSeconds();
-
-    if (std::ifstream rtcFile(savepath_, std::ios::binary); rtcFile.good()) {
-        rtcFile.read(reinterpret_cast<char *>(&saved), sizeof(saved));
-        if (!rtcFile)
-            throw std::runtime_error("Failed to read RTC save file");
-    }
-    return saved;
+void RealTimeClock::Load(std::ifstream &stateFile) {
+    stateFile.read(reinterpret_cast<char *>(&zeroTime_), sizeof(zeroTime_));
 }
 
-void RealTimeClock::Save() const {
-    if (std::ofstream rtcFile(savepath_, std::ios::binary | std::ios::trunc); rtcFile.good())
-        rtcFile.write(reinterpret_cast<const char *>(&zeroTime_), sizeof(zeroTime_));
+void RealTimeClock::Save(std::ofstream &stateFile) const {
+    stateFile.write(reinterpret_cast<const char *>(&zeroTime_), sizeof(zeroTime_));
 }
 
 void RealTimeClock::Tick() {

@@ -7,6 +7,8 @@
 #include <chrono>
 #include <bit>
 
+#include "../../../../../../Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/Headers/usb/IOUSBHostFamilyDefinitions.h"
+
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 
 inline uint16_t Gameboy::ReadNextWord() const {
@@ -296,4 +298,57 @@ uint32_t Gameboy::ProcessInterrupts() {
 
     pc = interruptAddress(bit);
     return 20;
+}
+
+void Gameboy::SaveState(int slot) const {
+    if (pc < 0x100) {
+        std::printf("Error: Cannot save state while bootrom is running\n");
+        return;
+    }
+
+    std::ofstream stateFile(std::format("{}.sgm{}", Cartridge::RemoveExtension(rom_path_), slot), std::ios::binary);
+    if (!stateFile.is_open()) {
+        std::printf("Error: Could not open state file for saving\n");
+        return;
+    }
+
+    stateFile.write(reinterpret_cast<const char *>(&pc), sizeof(pc));
+    stateFile.write(reinterpret_cast<const char *>(&sp), sizeof(sp));
+    stateFile.write(reinterpret_cast<const char *>(&icount), sizeof(icount));
+    stateFile.write(reinterpret_cast<const char *>(&halted), sizeof(halted));
+    stateFile.write(reinterpret_cast<const char *>(&haltBug), sizeof(haltBug));
+    stateFile.write(reinterpret_cast<const char *>(&haltBugRun), sizeof(haltBugRun));
+    stateFile.write(reinterpret_cast<const char *>(&stepCycles), sizeof(stepCycles));
+    stateFile.write(reinterpret_cast<const char *>(&elapsedCycles), sizeof(elapsedCycles));
+    stateFile.write(reinterpret_cast<const char *>(&currentInstruction), sizeof(currentInstruction));
+
+    regs->SaveState(stateFile);
+    bus->SaveState(stateFile);
+
+    stateFile.close();
+}
+
+void Gameboy::LoadState(int slot) {
+    paused = true;
+    std::ifstream stateFile(std::format("{}.sgm{}", Cartridge::RemoveExtension(rom_path_), slot), std::ios::binary);
+    if (!stateFile.is_open()) {
+        std::printf("Error: Could not open state file for loading\n");
+        return;
+    }
+
+    stateFile.read(reinterpret_cast<char *>(&pc), sizeof(pc));
+    stateFile.read(reinterpret_cast<char *>(&sp), sizeof(sp));
+    stateFile.read(reinterpret_cast<char *>(&icount), sizeof(icount));
+    stateFile.read(reinterpret_cast<char *>(&halted), sizeof(halted));
+    stateFile.read(reinterpret_cast<char *>(&haltBug), sizeof(haltBug));
+    stateFile.read(reinterpret_cast<char *>(&haltBugRun), sizeof(haltBugRun));
+    stateFile.read(reinterpret_cast<char *>(&stepCycles), sizeof(stepCycles));
+    stateFile.read(reinterpret_cast<char *>(&elapsedCycles), sizeof(elapsedCycles));
+    stateFile.read(reinterpret_cast<char *>(&currentInstruction), sizeof(currentInstruction));
+
+    regs->LoadState(stateFile);
+    bus->LoadState(stateFile);
+
+    stateFile.close();
+    paused = false;
 }

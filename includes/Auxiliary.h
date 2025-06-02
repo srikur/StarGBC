@@ -1,4 +1,6 @@
 #pragma once
+#include <iostream>
+
 #include "Audio.h"
 #include "Common.h"
 
@@ -42,6 +44,30 @@ struct Joypad {
 
     void SetSelect(const uint8_t value) {
         select_ = value;
+    }
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(&matrix_), sizeof(matrix_));
+            stateFile.write(reinterpret_cast<const char *>(&select_), sizeof(select_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving Joypad state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&matrix_), sizeof(matrix_));
+            stateFile.read(reinterpret_cast<char *>(&select_), sizeof(select_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Joypad state: " << e.what() << std::endl;
+            return false;
+        }
     }
 
 private:
@@ -94,6 +120,34 @@ struct Timer {
             // Set interrupt in UpdateTimers
         }
     }
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(&divCounter), sizeof(divCounter));
+            stateFile.write(reinterpret_cast<const char *>(&tima), sizeof(tima));
+            stateFile.write(reinterpret_cast<const char *>(&tma), sizeof(tma));
+            stateFile.write(reinterpret_cast<const char *>(&tac), sizeof(tac));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving Timer state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&divCounter), sizeof(divCounter));
+            stateFile.read(reinterpret_cast<char *>(&tima), sizeof(tima));
+            stateFile.read(reinterpret_cast<char *>(&tma), sizeof(tma));
+            stateFile.read(reinterpret_cast<char *>(&tac), sizeof(tac));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Timer state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 };
 
 struct Serial {
@@ -118,6 +172,30 @@ struct Serial {
                 break;
             default:
                 throw UnreachableCodeException("Improper write to serial");
+        }
+    }
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(&data_), sizeof(data_));
+            stateFile.write(reinterpret_cast<const char *>(&control_), sizeof(control_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving Serial state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&data_), sizeof(data_));
+            stateFile.read(reinterpret_cast<char *>(&control_), sizeof(control_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Serial state: " << e.what() << std::endl;
+            return false;
         }
     }
 

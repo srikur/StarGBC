@@ -15,6 +15,32 @@ struct Memory {
     std::array<uint8_t, 0x8000> wram_ = {};
     std::array<uint8_t, 0x80> hram_ = {};
     uint8_t wramBank_ = 0x01;
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(wram_.data()), 0x8000);
+            stateFile.write(reinterpret_cast<const char *>(hram_.data()), 0x80);
+            stateFile.write(reinterpret_cast<const char *>(&wramBank_), sizeof(wramBank_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving Memory state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(wram_.data()), 0x8000);
+            stateFile.read(reinterpret_cast<char *>(hram_.data()), 0x80);
+            stateFile.read(reinterpret_cast<char *>(&wramBank_), sizeof(wramBank_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Memory state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 };
 
 class Bus {
@@ -45,6 +71,10 @@ public:
     void WriteHDMA(uint16_t address, uint8_t value);
 
     void ChangeSpeed();
+
+    bool SaveState(std::ofstream &stateFile) const;
+
+    void LoadState(std::ifstream &stateFile);
 
     std::unique_ptr<Cartridge> cartridge_ = nullptr;
     std::unique_ptr<GPU> gpu_ = std::make_unique<GPU>();

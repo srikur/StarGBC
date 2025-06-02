@@ -20,8 +20,8 @@ std::string Cartridge::RemoveExtension(const std::string &filename) {
 }
 
 Cartridge::Cartridge(const std::string &romLocation) {
+    rtc = std::make_unique<RealTimeClock>();
     ReadFile(romLocation);
-    rtc = std::make_unique<RealTimeClock>(RemoveExtension(romLocation).append(".rtc"));
     savepath_ = RemoveExtension(romLocation).append(".sav");
     DetermineMBC();
 }
@@ -33,8 +33,10 @@ void Cartridge::LoadRam(const uint16_t size) {
         std::ranges::fill(gameRam_, 0);
         return;
     }
+    rtc->Load(ifs);
     std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(ifs), {});
     gameRam_ = std::move(buffer);
+    ifs.close();
 }
 
 void Cartridge::DetermineMBC() {
@@ -151,11 +153,16 @@ uint64_t Cartridge::HandleRamBank() const {
 
 void Cartridge::Save() const {
     if (mbc == MBC::None) return;
-    if (mbc == MBC::MBC3) rtc->Save();
-    if (savepath_.empty()) return;
 
     std::ofstream file(savepath_);
     if (!file.is_open()) throw std::runtime_error("Could not open save file");
+    if (mbc == MBC::MBC3) {
+        rtc->Save(file);
+    } else {
+        // Write 0s of size uin64_t for RTC
+        constexpr uint64_t rtcPlaceholder = 0;
+        file.write(reinterpret_cast<const char *>(&rtcPlaceholder), sizeof(rtcPlaceholder));
+    }
     file.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
 }
 
