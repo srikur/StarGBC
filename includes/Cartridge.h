@@ -88,8 +88,7 @@ public:
             stateFile.write(reinterpret_cast<const char *>(&ramBank), sizeof(ramBank));
             stateFile.write(reinterpret_cast<const char *>(&bank), sizeof(bank));
             stateFile.write(reinterpret_cast<const char *>(&mbc), sizeof(mbc));
-
-            rtc->Save();
+            rtc->Save(stateFile);
             return true;
         } catch (const std::exception &e) {
             std::cerr << "Error saving state: " << e.what() << std::endl;
@@ -108,8 +107,7 @@ public:
             stateFile.read(reinterpret_cast<char *>(&ramBank), sizeof(ramBank));
             stateFile.read(reinterpret_cast<char *>(&bank), sizeof(bank));
             stateFile.read(reinterpret_cast<char *>(&mbc), sizeof(mbc));
-
-            // rtc->LoadRTC();
+            rtc->Load(stateFile);
             return true;
         } catch (const std::exception &e) {
             std::cerr << "Error loading state: " << e.what() << std::endl;
