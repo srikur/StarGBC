@@ -4,8 +4,6 @@
 class RealTimeClock {
     [[nodiscard]] static uint64_t NowSeconds();
 
-    [[nodiscard]] uint64_t LoadRTC() const;
-
     std::string savepath_;
     uint64_t zeroTime_ = 0x00;
     uint8_t seconds_ = 0x00;
@@ -15,13 +13,13 @@ class RealTimeClock {
     uint8_t dayUpper_ = 0x00;
 
 public:
-    explicit RealTimeClock(std::string filepath) : savepath_(std::move(filepath)) {
-        zeroTime_ = LoadRTC();
-    }
+    explicit RealTimeClock() = default;
 
     void Tick();
 
-    void Save() const;
+    void Load(std::ifstream &stateFile);
+
+    void Save(std::ofstream &stateFile) const;
 
     [[nodiscard]] uint8_t ReadRTC(uint16_t address) const;
 
