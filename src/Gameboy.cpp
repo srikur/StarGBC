@@ -7,6 +7,8 @@
 #include <chrono>
 #include <bit>
 
+#include "../../../../../../Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/Headers/usb/IOUSBHostFamilyDefinitions.h"
+
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 
 inline uint16_t Gameboy::ReadNextWord() const {
@@ -298,18 +300,19 @@ uint32_t Gameboy::ProcessInterrupts() {
     return 20;
 }
 
-bool Gameboy::SaveState(int slot) const {
+void Gameboy::SaveState(int slot) const {
+    std::printf("Saving state to slot %d...\n", slot);
     // Save Gameboy class state
-    if (currentInstruction < 0x100) {
+    if (pc < 0x100) {
         std::printf("Error: Cannot save state while bootrom is running\n");
-        return false;
+        return;
     }
 
     // Set up stream for saving state
     std::ofstream stateFile(std::format("{}.sgm{}", rom_path_, slot), std::ios::binary);
     if (!stateFile.is_open()) {
         std::printf("Error: Could not open state file for saving\n");
-        return false;
+        return;
     }
 
     // Write Gameboy class vars to stream
@@ -324,5 +327,9 @@ bool Gameboy::SaveState(int slot) const {
     stateFile.write(reinterpret_cast<const char *>(&currentInstruction), sizeof(currentInstruction));
 
     // send statefile to bus
-    return bus->SaveState(stateFile);
+    regs->SaveState(stateFile);
+    bus->SaveState(stateFile);
+
+    stateFile.close();
+    std::printf("State saved successfully to slot %d\n", slot);
 }

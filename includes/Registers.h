@@ -50,6 +50,17 @@ struct Registers {
     enum Model : std::size_t { DMG, CGB };
 
     void SetStartupValues(Model model);
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(this), sizeof(Registers));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving Registers state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 };
 
 static constexpr std::array<Registers, 2> DefaultValues = {

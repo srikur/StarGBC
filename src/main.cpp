@@ -134,28 +134,31 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
                         gameboy->DebugNextInstruction();
                     }
                 }
-                // Shift + FN -- gameboy->SaveState(N);
-                case SDLK_LSHIFT: {
-                    switch (event->key.mod) {
-                        case SDLK_F1: gameboy->SaveState(1);
-                            break;
-                        case SDLK_F2: gameboy->SaveState(2);
-                            break;
-                        case SDLK_F3: gameboy->SaveState(3);
-                            break;
-                        case SDLK_F4: gameboy->SaveState(4);
-                            break;
-                        case SDLK_F5: gameboy->SaveState(5);
-                            break;
-                        case SDLK_F6: gameboy->SaveState(6);
-                            break;
-                        case SDLK_F7: gameboy->SaveState(7);
-                            break;
-                        default: break;
-                    }
-                }
+                // Save states with Shift + 1-9
+                case SDLK_1: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(1);
+                    break;
+                case SDLK_2: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(2);
+                    break;
+                case SDLK_3: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(3);
+                    break;
+                case SDLK_4: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(4);
+                    break;
+                case SDLK_5: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(5);
+                    break;
+                case SDLK_6: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(6);
+                    break;
+                case SDLK_7: 
+                    if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(7);
+                    break;
                 default: break;
             }
+            break;
         }
 
         case SDL_EVENT_KEY_UP: {

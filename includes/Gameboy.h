@@ -113,7 +113,7 @@ public:
 
     void DebugNextInstruction();
 
-    bool SaveState(int slot) const;
+    void SaveState(int slot) const;
 
     void SetPaused(const bool val) {
         paused = val;
