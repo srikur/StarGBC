@@ -1,4 +1,6 @@
 #pragma once
+#include <iostream>
+
 #include "RealTimeClock.h"
 
 class Cartridge {
@@ -74,4 +76,24 @@ public:
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
     void writeByte(uint16_t address, uint8_t value);
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
+            stateFile.write(reinterpret_cast<const char *>(&gameRamSize), sizeof(gameRamSize));
+            stateFile.write(reinterpret_cast<const char *>(&ramEnabled), sizeof(ramEnabled));
+            stateFile.write(reinterpret_cast<const char *>(&bankMode), sizeof(bankMode));
+            stateFile.write(reinterpret_cast<const char *>(&romBank), sizeof(romBank));
+            stateFile.write(reinterpret_cast<const char *>(&ramBank), sizeof(ramBank));
+            stateFile.write(reinterpret_cast<const char *>(&bank), sizeof(bank));
+            stateFile.write(reinterpret_cast<const char *>(&mbc), sizeof(mbc));
+
+            rtc->Save();
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 };

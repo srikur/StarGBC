@@ -297,3 +297,32 @@ uint32_t Gameboy::ProcessInterrupts() {
     pc = interruptAddress(bit);
     return 20;
 }
+
+bool Gameboy::SaveState(int slot) const {
+    // Save Gameboy class state
+    if (currentInstruction < 0x100) {
+        std::printf("Error: Cannot save state while bootrom is running\n");
+        return false;
+    }
+
+    // Set up stream for saving state
+    std::ofstream stateFile(std::format("{}.sgm{}", rom_path_, slot), std::ios::binary);
+    if (!stateFile.is_open()) {
+        std::printf("Error: Could not open state file for saving\n");
+        return false;
+    }
+
+    // Write Gameboy class vars to stream
+    stateFile.write(reinterpret_cast<const char *>(&pc), sizeof(pc));
+    stateFile.write(reinterpret_cast<const char *>(&sp), sizeof(sp));
+    stateFile.write(reinterpret_cast<const char *>(&icount), sizeof(icount));
+    stateFile.write(reinterpret_cast<const char *>(&halted), sizeof(halted));
+    stateFile.write(reinterpret_cast<const char *>(&haltBug), sizeof(haltBug));
+    stateFile.write(reinterpret_cast<const char *>(&haltBugRun), sizeof(haltBugRun));
+    stateFile.write(reinterpret_cast<const char *>(&stepCycles), sizeof(stepCycles));
+    stateFile.write(reinterpret_cast<const char *>(&elapsedCycles), sizeof(elapsedCycles));
+    stateFile.write(reinterpret_cast<const char *>(&currentInstruction), sizeof(currentInstruction));
+
+    // send statefile to bus
+    return bus->SaveState(stateFile);
+}
