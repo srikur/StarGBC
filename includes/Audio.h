@@ -252,6 +252,22 @@ public:
         }
     }
 
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&nr50), sizeof(nr50));
+            stateFile.read(reinterpret_cast<char *>(&nr51), sizeof(nr51));
+            stateFile.read(reinterpret_cast<char *>(&nr52), sizeof(nr52));
+            stateFile.read(reinterpret_cast<char *>(&frameCounter), sizeof(frameCounter));
+            stateFile.read(reinterpret_cast<char *>(&samplePeriod), sizeof(samplePeriod));
+            stateFile.read(reinterpret_cast<char *>(&sampleCounter), sizeof(sampleCounter));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Audio state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
 private:
     Pulse ch1, ch2;
     Wave ch3;

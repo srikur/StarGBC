@@ -10,8 +10,6 @@ class Cartridge {
 
     void DetermineMBC();
 
-    static std::string RemoveExtension(const std::string &filename);
-
     [[nodiscard]] uint8_t ReadByteNone(uint16_t address) const;
 
     [[nodiscard]] uint8_t ReadByteMBC1(uint16_t address) const;
@@ -75,6 +73,8 @@ public:
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
+    static std::string RemoveExtension(const std::string &filename);
+
     void writeByte(uint16_t address, uint8_t value);
 
     bool SaveState(std::ofstream &stateFile) const {
@@ -93,6 +93,26 @@ public:
             return true;
         } catch (const std::exception &e) {
             std::cerr << "Error saving state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(gameRam_.data()), gameRamSize);
+            stateFile.read(reinterpret_cast<char *>(&gameRamSize), sizeof(gameRamSize));
+            stateFile.read(reinterpret_cast<char *>(&ramEnabled), sizeof(ramEnabled));
+            stateFile.read(reinterpret_cast<char *>(&bankMode), sizeof(bankMode));
+            stateFile.read(reinterpret_cast<char *>(&romBank), sizeof(romBank));
+            stateFile.read(reinterpret_cast<char *>(&ramBank), sizeof(ramBank));
+            stateFile.read(reinterpret_cast<char *>(&bank), sizeof(bank));
+            stateFile.read(reinterpret_cast<char *>(&mbc), sizeof(mbc));
+
+            // rtc->LoadRTC();
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading state: " << e.what() << std::endl;
             return false;
         }
     }

@@ -115,6 +115,8 @@ public:
 
     void SaveState(int slot) const;
 
+    void LoadState(int slot);
+
     void SetPaused(const bool val) {
         paused = val;
         PrintCurrentValues();

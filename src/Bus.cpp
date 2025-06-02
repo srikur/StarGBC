@@ -478,3 +478,29 @@ bool Bus::SaveState(std::ofstream &stateFile) const {
         return false;
     }
 }
+
+void Bus::LoadState(std::ifstream &stateFile) {
+    try {
+        stateFile.read(reinterpret_cast<char *>(&speed), sizeof(speed));
+        stateFile.read(reinterpret_cast<char *>(&speedShift), sizeof(speedShift));
+        stateFile.read(reinterpret_cast<char *>(&runBootrom), sizeof(runBootrom));
+        stateFile.read(reinterpret_cast<char *>(&interruptFlag), sizeof(interruptFlag));
+        stateFile.read(reinterpret_cast<char *>(&interruptEnable), sizeof(interruptEnable));
+        stateFile.read(reinterpret_cast<char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
+        stateFile.read(reinterpret_cast<char *>(&interruptDelay), sizeof(interruptDelay));
+        stateFile.read(reinterpret_cast<char *>(&hdmaSource), sizeof(hdmaSource));
+        stateFile.read(reinterpret_cast<char *>(&hdmaDestination), sizeof(hdmaDestination));
+        stateFile.read(reinterpret_cast<char *>(&hdmaActive), sizeof(hdmaActive));
+        stateFile.read(reinterpret_cast<char *>(&hdmaRemain), sizeof(hdmaRemain));
+
+        cartridge_->LoadState(stateFile);
+        gpu_->LoadState(stateFile);
+        joypad_.LoadState(stateFile);
+        memory_.LoadState(stateFile);
+        timer_.LoadState(stateFile);
+        serial_.LoadState(stateFile);
+        audio_->LoadState(stateFile);
+    } catch (const std::exception &e) {
+        std::cerr << "Error loading state: " << e.what() << std::endl;
+    }
+}
