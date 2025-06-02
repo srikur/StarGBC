@@ -156,13 +156,7 @@ void Cartridge::Save() const {
 
     std::ofstream file(savepath_);
     if (!file.is_open()) throw std::runtime_error("Could not open save file");
-    if (mbc == MBC::MBC3) {
-        rtc->Save(file);
-    } else {
-        // Write 0s of size uin64_t for RTC
-        constexpr uint64_t rtcPlaceholder = 0;
-        file.write(reinterpret_cast<const char *>(&rtcPlaceholder), sizeof(rtcPlaceholder));
-    }
+    rtc->Save(file);
     file.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
 }
 

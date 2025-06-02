@@ -2,9 +2,16 @@
 #include "Common.h"
 
 class RealTimeClock {
+    static constexpr uint64_t kSecPerMin = 60;
+    static constexpr uint64_t kSecPerHour = 60 * kSecPerMin;
+    static constexpr uint64_t kSecPerDay = 24 * kSecPerHour;
+
     [[nodiscard]] static uint64_t NowSeconds();
 
-    std::string savepath_;
+    [[nodiscard]] uint64_t ComposeSeconds() const;
+
+    void RecalculateZeroTime();
+
     uint64_t zeroTime_ = 0x00;
     uint8_t seconds_ = 0x00;
     uint8_t minutes_ = 0x00;
