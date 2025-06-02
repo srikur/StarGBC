@@ -1,4 +1,6 @@
 #pragma once
+#include <iostream>
+
 #include "Common.h"
 
 class GPU {
@@ -129,4 +131,36 @@ public:
 
     HDMAMode hdmaMode = HDMAMode::GDMA;
     Hardware hardware = Hardware::DMG;
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            stateFile.write(reinterpret_cast<const char *>(&lcdc), sizeof(lcdc));
+            stateFile.write(reinterpret_cast<const char *>(&stat), sizeof(stat));
+            stateFile.write(reinterpret_cast<const char *>(&vram), VRAM_SIZE);
+            stateFile.write(reinterpret_cast<const char *>(&oam), 0xA0);
+            stateFile.write(reinterpret_cast<const char *>(&screenData), 144 * 160 * 3 * sizeof(uint32_t));
+            stateFile.write(reinterpret_cast<const char *>(&priority_), sizeof(priority_));
+            stateFile.write(reinterpret_cast<const char *>(&lyc), sizeof(lyc));
+            stateFile.write(reinterpret_cast<const char *>(&currentLine), sizeof(currentLine));
+            stateFile.write(reinterpret_cast<const char *>(&windowX), sizeof(windowX));
+            stateFile.write(reinterpret_cast<const char *>(&windowY), sizeof(windowY));
+            stateFile.write(reinterpret_cast<const char *>(&backgroundPalette), sizeof(backgroundPalette));
+            stateFile.write(reinterpret_cast<const char *>(&obp0Palette), sizeof(obp0Palette));
+            stateFile.write(reinterpret_cast<const char *>(&obp1Palette), sizeof(obp1Palette));
+            stateFile.write(reinterpret_cast<const char *>(&scrollX), sizeof(scrollX));
+            stateFile.write(reinterpret_cast<const char *>(&scrollY), sizeof(scrollY));
+            stateFile.write(reinterpret_cast<const char *>(&scanlineCounter), sizeof(scanlineCounter));
+            stateFile.write(reinterpret_cast<const char *>(&vblank), sizeof(vblank));
+            stateFile.write(reinterpret_cast<const char *>(&hblank), sizeof(hblank));
+            stateFile.write(reinterpret_cast<const char *>(&bgpi), sizeof(bgpi));
+            stateFile.write(reinterpret_cast<const char *>(&obpi), sizeof(obpi));
+            stateFile.write(reinterpret_cast<const char *>(&vramBank), sizeof(vramBank));
+            stateFile.write(reinterpret_cast<const char *>(&bgpd), sizeof(bgpd));
+            stateFile.write(reinterpret_cast<const char *>(&obpd), sizeof(obpd));
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving GPU state: " << e.what() << std::endl;
+            return false;
+        }
+        return true;
+    }
 };

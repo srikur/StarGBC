@@ -1,6 +1,8 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <fstream>
+#include <iostream>
 #include <optional>
 
 constexpr double GB_CPU_FREQ = 4'194'304.0;
@@ -233,6 +235,22 @@ public:
     void WriteByte(uint16_t addr, uint8_t value);
 
     SampleFifo gSampleFifo;
+
+    bool SaveState(std::ofstream &stateFile) const {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.write(reinterpret_cast<const char *>(&nr50), sizeof(nr50));
+            stateFile.write(reinterpret_cast<const char *>(&nr51), sizeof(nr51));
+            stateFile.write(reinterpret_cast<const char *>(&nr52), sizeof(nr52));
+            stateFile.write(reinterpret_cast<const char *>(&frameCounter), sizeof(frameCounter));
+            stateFile.write(reinterpret_cast<const char *>(&samplePeriod), sizeof(samplePeriod));
+            stateFile.write(reinterpret_cast<const char *>(&sampleCounter), sizeof(sampleCounter));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error saving Audio state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 
 private:
     Pulse ch1, ch2;

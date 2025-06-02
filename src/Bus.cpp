@@ -455,3 +455,26 @@ void Bus::ChangeSpeed() {
     }
     speedShift = false;
 }
+
+bool Bus::SaveState(std::ofstream &stateFile) const {
+    try {
+        stateFile.write(reinterpret_cast<const char *>(&speed), sizeof(speed));
+        stateFile.write(reinterpret_cast<const char *>(&speedShift), sizeof(speedShift));
+        stateFile.write(reinterpret_cast<const char *>(&runBootrom), sizeof(runBootrom));
+        stateFile.write(reinterpret_cast<const char *>(&interruptFlag), sizeof(interruptFlag));
+        stateFile.write(reinterpret_cast<const char *>(&interruptEnable), sizeof(interruptEnable));
+        stateFile.write(reinterpret_cast<const char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
+        stateFile.write(reinterpret_cast<const char *>(&interruptDelay), sizeof(interruptDelay));
+        stateFile.write(reinterpret_cast<const char *>(&hdmaSource), sizeof(hdmaSource));
+        stateFile.write(reinterpret_cast<const char *>(&hdmaDestination), sizeof(hdmaDestination));
+        stateFile.write(reinterpret_cast<const char *>(&hdmaActive), sizeof(hdmaActive));
+        stateFile.write(reinterpret_cast<const char *>(&hdmaRemain), sizeof(hdmaRemain));
+        return cartridge_->SaveState(stateFile) && gpu_->SaveState(stateFile) &&
+               joypad_.SaveState(stateFile) && memory_.SaveState(stateFile) &&
+               timer_.SaveState(stateFile) && serial_.SaveState(stateFile) &&
+               audio_->SaveState(stateFile);
+    } catch (const std::exception &e) {
+        std::cerr << "Error saving state: " << e.what() << std::endl;
+        return false;
+    }
+}
