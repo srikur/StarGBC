@@ -61,6 +61,17 @@ struct Registers {
             return false;
         }
     }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(this), sizeof(Registers));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Registers state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 };
 
 static constexpr std::array<Registers, 2> DefaultValues = {

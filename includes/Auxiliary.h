@@ -58,6 +58,18 @@ struct Joypad {
         }
     }
 
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&matrix_), sizeof(matrix_));
+            stateFile.read(reinterpret_cast<char *>(&select_), sizeof(select_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Joypad state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
 private:
     uint8_t matrix_ = 0xFF;
     uint8_t select_ = 0x00;
@@ -122,6 +134,20 @@ struct Timer {
             return false;
         }
     }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&divCounter), sizeof(divCounter));
+            stateFile.read(reinterpret_cast<char *>(&tima), sizeof(tima));
+            stateFile.read(reinterpret_cast<char *>(&tma), sizeof(tma));
+            stateFile.read(reinterpret_cast<char *>(&tac), sizeof(tac));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Timer state: " << e.what() << std::endl;
+            return false;
+        }
+    }
 };
 
 struct Serial {
@@ -157,6 +183,18 @@ struct Serial {
             return true;
         } catch (const std::exception &e) {
             std::cerr << "Error saving Serial state: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool LoadState(std::ifstream &stateFile) {
+        try {
+            if (!stateFile.is_open()) return false;
+            stateFile.read(reinterpret_cast<char *>(&data_), sizeof(data_));
+            stateFile.read(reinterpret_cast<char *>(&control_), sizeof(control_));
+            return true;
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading Serial state: " << e.what() << std::endl;
             return false;
         }
     }
