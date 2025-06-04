@@ -1,7 +1,7 @@
 #pragma once
 
 struct Registers {
-    uint8_t a{}, b{}, c{}, d{}, e{}, f{}, h{}, l{};
+    uint8_t a{}, f{}, b{}, c{}, d{}, e{}, h{}, l{};
 
     [[nodiscard]] uint16_t GetAF() const { return static_cast<uint16_t>(a) << 8 | f; }
 

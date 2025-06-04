@@ -20,13 +20,13 @@ class Cartridge {
 
     [[nodiscard]] uint8_t ReadByteMBC5(uint16_t address) const;
 
-    void writeByteMBC1(uint16_t address, uint8_t value);
+    void WriteByteMBC1(uint16_t address, uint8_t value);
 
-    void writeByteMBC2(uint16_t address, uint8_t value);
+    void WriteByteMBC2(uint16_t address, uint8_t value);
 
-    void writeByteMBC3(uint16_t address, uint8_t value);
+    void WriteByteMBC3(uint16_t address, uint8_t value);
 
-    void writeByteMBC5(uint16_t address, uint8_t value);
+    void WriteByteMBC5(uint16_t address, uint8_t value);
 
     [[nodiscard]] uint64_t HandleRomBank() const;
 
@@ -52,6 +52,9 @@ class Cartridge {
     uint8_t bank = 0x01;
     MBC mbc = MBC::None;
 
+    bool ramDirty_ = false;
+    bool prevRamEnable_ = false;
+
 public:
     explicit Cartridge(const std::string &romLocation);
 
@@ -75,7 +78,9 @@ public:
 
     static std::string RemoveExtension(const std::string &filename);
 
-    void writeByte(uint16_t address, uint8_t value);
+    void WriteByte(uint16_t address, uint8_t value);
+
+    inline void HandleRamEnableEdge(bool enable);
 
     bool SaveState(std::ofstream &stateFile) const {
         try {
@@ -88,6 +93,8 @@ public:
             stateFile.write(reinterpret_cast<const char *>(&ramBank), sizeof(ramBank));
             stateFile.write(reinterpret_cast<const char *>(&bank), sizeof(bank));
             stateFile.write(reinterpret_cast<const char *>(&mbc), sizeof(mbc));
+            stateFile.write(reinterpret_cast<const char *>(&ramDirty_), sizeof(ramDirty_));
+            stateFile.write(reinterpret_cast<const char *>(&prevRamEnable_), sizeof(prevRamEnable_));
             rtc->Save(stateFile);
             return true;
         } catch (const std::exception &e) {
@@ -107,6 +114,8 @@ public:
             stateFile.read(reinterpret_cast<char *>(&ramBank), sizeof(ramBank));
             stateFile.read(reinterpret_cast<char *>(&bank), sizeof(bank));
             stateFile.read(reinterpret_cast<char *>(&mbc), sizeof(mbc));
+            stateFile.read(reinterpret_cast<char *>(&ramDirty_), sizeof(ramDirty_));
+            stateFile.read(reinterpret_cast<char *>(&prevRamEnable_), sizeof(prevRamEnable_));
             rtc->Load(stateFile);
             return true;
         } catch (const std::exception &e) {
