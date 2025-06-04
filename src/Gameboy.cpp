@@ -7,8 +7,6 @@
 #include <chrono>
 #include <bit>
 
-#include "../../../../../../Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/Headers/usb/IOUSBHostFamilyDefinitions.h"
-
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 
 inline uint16_t Gameboy::ReadNextWord() const {
