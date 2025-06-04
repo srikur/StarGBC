@@ -304,6 +304,8 @@ void Gameboy::SaveState(int slot) const {
         return;
     }
 
+    bus->cartridge_->Save();
+
     std::ofstream stateFile(std::format("{}.sgm{}", Cartridge::RemoveExtension(rom_path_), slot), std::ios::binary);
     if (!stateFile.is_open()) {
         std::printf("Error: Could not open state file for saving\n");
@@ -327,6 +329,12 @@ void Gameboy::SaveState(int slot) const {
 }
 
 void Gameboy::LoadState(int slot) {
+    if (pc < 0x100) {
+        std::printf("Error: Cannot load state while bootrom is running\n");
+        return;
+    }
+
+    bus->cartridge_->Save();
     paused = true;
     std::ifstream stateFile(std::format("{}.sgm{}", Cartridge::RemoveExtension(rom_path_), slot), std::ios::binary);
     if (!stateFile.is_open()) {
