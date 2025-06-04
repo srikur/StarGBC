@@ -133,17 +133,10 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
     return 0xFF;
 }
 
-void Bus::WriteByte(uint16_t address, uint8_t value) {
+void Bus::WriteByte(const uint16_t address, const uint8_t value) {
     switch (address & 0xF000) {
-        case 0x0000:
-        case 0x1000:
-        case 0x2000:
-        case 0x3000:
-        case 0x4000:
-        case 0x5000:
-        case 0x6000:
-        case 0x7000:
-            cartridge_->writeByte(address, value);
+        case 0x0000 ... 0x7FFF:
+            cartridge_->WriteByte(address, value);
             break;
         case 0x8000:
         case 0x9000:
@@ -151,7 +144,7 @@ void Bus::WriteByte(uint16_t address, uint8_t value) {
             break;
         case 0xA000:
         case 0xB000:
-            cartridge_->writeByte(address, value);
+            cartridge_->WriteByte(address, value);
             break;
         case 0xC000:
             memory_.wram_[address - 0xC000] = value;
