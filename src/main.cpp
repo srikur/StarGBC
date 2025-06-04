@@ -229,7 +229,7 @@ SDL_AppResult SDL_AppIterate(void *) {
 }
 
 void SDL_AppQuit(void *, SDL_AppResult) {
-    if (gameboy) { gameboy->Save(); }
+    // if (gameboy) { gameboy->Save(); }
 
     if (texture) {
         SDL_DestroyTexture(texture);
