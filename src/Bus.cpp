@@ -3,7 +3,6 @@
 Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
     speedShift = false;
-    runBootrom = false;
     speed = cartridge_->ReadByte(0x0143) & 0x80 ? Speed::Double : Speed::Regular;
     gpu_->hdmaMode = GPU::HDMAMode::GDMA;
     hdmaSource = 0x0000;
@@ -23,7 +22,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0x6000:
         case 0x7000:
             // Rom banks
-            if (runBootrom) {
+            if (bootromRunning) {
                 if (gpu_->hardware == GPU::Hardware::CGB) {
                     if ((address < 0x100) || (address > 0x1FF)) {
                         return bootrom[address];
@@ -453,7 +452,7 @@ bool Bus::SaveState(std::ofstream &stateFile) const {
     try {
         stateFile.write(reinterpret_cast<const char *>(&speed), sizeof(speed));
         stateFile.write(reinterpret_cast<const char *>(&speedShift), sizeof(speedShift));
-        stateFile.write(reinterpret_cast<const char *>(&runBootrom), sizeof(runBootrom));
+        stateFile.write(reinterpret_cast<const char *>(&bootromRunning), sizeof(bootromRunning));
         stateFile.write(reinterpret_cast<const char *>(&interruptFlag), sizeof(interruptFlag));
         stateFile.write(reinterpret_cast<const char *>(&interruptEnable), sizeof(interruptEnable));
         stateFile.write(reinterpret_cast<const char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
@@ -476,7 +475,7 @@ void Bus::LoadState(std::ifstream &stateFile) {
     try {
         stateFile.read(reinterpret_cast<char *>(&speed), sizeof(speed));
         stateFile.read(reinterpret_cast<char *>(&speedShift), sizeof(speedShift));
-        stateFile.read(reinterpret_cast<char *>(&runBootrom), sizeof(runBootrom));
+        stateFile.read(reinterpret_cast<char *>(&bootromRunning), sizeof(bootromRunning));
         stateFile.read(reinterpret_cast<char *>(&interruptFlag), sizeof(interruptFlag));
         stateFile.read(reinterpret_cast<char *>(&interruptEnable), sizeof(interruptEnable));
         stateFile.read(reinterpret_cast<char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));

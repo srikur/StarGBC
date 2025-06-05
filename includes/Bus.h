@@ -87,7 +87,7 @@ public:
 
     // Bootrom
     std::vector<uint8_t> bootrom;
-    bool runBootrom;
+    bool bootromRunning = false;
 
     // GBC
     Speed speed = Speed::Regular;
