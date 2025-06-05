@@ -357,10 +357,10 @@ void Cartridge::WriteByteMBC5(const uint16_t address, const uint8_t value) {
             ramEnabled = newEnable;
         }
         break;
-        case 0x2000:
+        case 0x2000 ... 0x2FFF:
             romBank = romBank & 0x100 | value;
             break;
-        case 0x3000:
+        case 0x3000 ... 0x3FFF:
             romBank = romBank & 0x0FF | (value & 0x01) << 8;
             break;
         case 0x4000 ... 0x5FFF:
