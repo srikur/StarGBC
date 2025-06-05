@@ -12,16 +12,8 @@ Bus::Bus(const std::string &romLocation) {
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
-    switch (address & 0xF000) {
-        case 0x0000:
-        case 0x1000:
-        case 0x2000:
-        case 0x3000:
-        case 0x4000:
-        case 0x5000:
-        case 0x6000:
-        case 0x7000:
-            // Rom banks
+    switch (address) {
+        case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
                 if (gpu_->hardware == GPU::Hardware::CGB) {
                     if ((address < 0x100) || (address > 0x1FF)) {
@@ -36,100 +28,47 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                 }
             }
             return cartridge_->ReadByte(address);
-        case 0x8000:
-        case 0x9000:
-            return gpu_->ReadVRAM(address);
-        case 0xA000:
-        case 0xB000:
+        }
+        case 0x8000 ... 0x9FFF: return gpu_->ReadVRAM(address);
+        case 0xA000 ... 0xBFFF:
             // External RAM
             return cartridge_->ReadByte(address);
-        case 0xC000:
+        case 0xC000 ... 0xCFFF:
             return memory_.wram_[address - 0xC000];
-        case 0xD000:
+        case 0xD000 ... 0xDFFF:
             return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
-        case 0xE000:
+        case 0xE000 ... 0xEFFF:
             return memory_.wram_[address - 0xE000];
-        case 0xF000:
-            switch (address & 0xF00) {
-                case 0x000:
-                case 0x100:
-                case 0x200:
-                case 0x300:
-                case 0x400:
-                case 0x500:
-                case 0x600:
-                case 0x700:
-                case 0x800:
-                case 0x900:
-                case 0xA00:
-                case 0xB00:
-                case 0xC00:
-                case 0xD00:
-                    return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
-                case 0xE00:
-                    return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
-                case 0xF00:
-                    switch (address & 0xF0) {
-                        case 0x0:
-                            switch (address & 0xFF) {
-                                case 0x00: return joypad_.GetJoypadState();
-                                case 0x01:
-                                case 0x02: return serial_.ReadSerial(address);
-                                case 0x04: return timer_.ReadDIV();
-                                case 0x05: return timer_.tima;
-                                case 0x06: return timer_.tma;
-                                case 0x07: return timer_.ReadTAC();
-                                case 0x0F:
-                                    return interruptFlag | 0xE0;
-                                default: throw UnreachableCodeException("Bus::ReadByte case 0xF00");
-                            }
-                        case 0x10:
-                        case 0x20:
-                        case 0x30:
-                            return audio_->ReadByte(address);
-                        case 0x40: {
-                            if (address == 0xFF4D) {
-                                const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
-                                const uint8_t second = speedShift ? 0x01 : 0x00;
-                                return first | second;
-                            }
-                            if (address == 0xFF4C) { return 0x00; }
-                            return gpu_->ReadRegisters(address);
-                        }
-                        case 0x50: {
-                            if ((address > 0xFF50) && (address < 0xFF56)) {
-                                return ReadHDMA(address);
-                            }
-                            return 0x00;
-                        }
-                        case 0x60: {
-                            if ((address > 0xFF67) && (address < 0xFF6C)) {
-                                return gpu_->ReadRegisters(address);
-                            }
-                            return 0xFF;
-                        }
-                        case 0x70:
-                            if (address == 0xFF70) return memory_.wramBank_;
-                            break;
-                        case 0x80:
-                        case 0x90:
-                        case 0xA0:
-                        case 0xB0:
-                        case 0xC0:
-                        case 0xD0:
-                        case 0xE0:
-                        case 0xF0:
-                            return address == 0xFFFF ? interruptEnable : memory_.hram_[address - 0xFF80];
-                        default: throw UnreachableCodeException("Bus::ReadByte Unreachable Code");
-                    }
-                    break;
-                default: throw UnreachableCodeException("Bus::ReadByte Unreachable Code");
+        case 0xF000 ... 0xFDFF:
+            return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
+        case 0xFE00 ... 0xFEFF:
+            return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
+        case 0xFF00:
+            return joypad_.GetJoypadState();
+        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
+        case 0xFF04: return timer_.ReadDIV();
+        case 0xFF05: return timer_.tima;
+        case 0xFF06: return timer_.tma;
+        case 0xFF07: return timer_.ReadTAC();
+        case 0xFF0F: return interruptFlag | 0xE0;
+        case 0xFF10 ... 0xFF3F:
+            return audio_->ReadByte(address);
+        case 0xFF40 ... 0xFF4F: {
+            if (address == 0xFF4D) {
+                const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
+                const uint8_t second = speedShift ? 0x01 : 0x00;
+                return first | second;
             }
-            break;
-        default:
-            return 0xFF;
+            if (address == 0xFF4C) { return 0x00; }
+            return gpu_->ReadRegisters(address);
+        }
+        case 0xFF50 ... 0xFF56: return ReadHDMA(address);
+        case 0xFF68 ... 0xFF6B: return gpu_->ReadRegisters(address);
+        case 0xFF70: return memory_.wramBank_;
+        case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
+        case 0xFFFF: return interruptEnable;
+        default: return 0xFF;
     }
-    return 0xFF;
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value) {
