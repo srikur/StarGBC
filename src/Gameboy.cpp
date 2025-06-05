@@ -51,12 +51,8 @@ uint8_t Gameboy::DecodeInstruction(const uint8_t opcode, const bool prefixed) {
                : instructions->nonPrefixedInstr(opcode, *this);
 }
 
-void Gameboy::InitializeBootrom() {
-    if (!bus->runBootrom) {
-        pc = 0x100;
-        InitializeSystem();
-        return;
-    }
+
+void Gameboy::InitializeBootrom() const {
     std::ifstream file(bios_path_, std::ios::binary);
     file.unsetf(std::ios::skipws);
 
@@ -186,6 +182,9 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     while (stepCycles < frameBudget) {
         if (pc == 0x10) {
             bus->ChangeSpeed();
+        }
+        if (pc == 0x100) {
+            bus->bootromRunning = false;
         }
         if (bus->interruptDelay && ++icount == 2) {
             bus->interruptDelay = false;
