@@ -57,7 +57,7 @@ class Gameboy {
 
     uint8_t ExecuteInstruction();
 
-    void InitializeBootrom();
+    void InitializeBootrom() const;
 
     void InitializeSystem();
 
@@ -76,7 +76,13 @@ public:
         bus->gpu_->hardware = (mode_ == Mode::GBC) || (bus->cartridge_->ReadByte(0x143) & 0x80) == 0x80
                                   ? GPU::Hardware::CGB
                                   : GPU::Hardware::DMG;
-        InitializeBootrom();
+        if (!bios_path_.empty()) {
+            bus->bootromRunning = true;
+            InitializeBootrom();
+        } else {
+            pc = 0x100;
+            InitializeSystem();
+        }
     }
 
     Gameboy(const Gameboy &other) = delete;
