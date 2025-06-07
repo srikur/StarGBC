@@ -139,27 +139,27 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(1);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(1);
                     break;
-                case SDLK_2: 
+                case SDLK_2:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(2);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(2);
                     break;
-                case SDLK_3: 
+                case SDLK_3:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(3);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(3);
                     break;
-                case SDLK_4: 
+                case SDLK_4:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(4);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(4);
                     break;
-                case SDLK_5: 
+                case SDLK_5:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(5);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(5);
                     break;
-                case SDLK_6: 
+                case SDLK_6:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(6);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(6);
                     break;
-                case SDLK_7: 
+                case SDLK_7:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(7);
                     else if (event->key.mod & SDL_KMOD_LCTRL) gameboy->LoadState(7);
                     break;
