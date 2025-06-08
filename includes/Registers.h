@@ -47,7 +47,7 @@ struct Registers {
         l = value & 0xFF;
     }
 
-    enum Model : std::size_t { DMG, MGB, SGB, SGB2, CGB_DMG, AGB_DMG, AGS_DMG, CGB_GBC, AGB_GBC, AGS_GBC };
+    enum Model : std::size_t { DMG = 0x01, MGB, SGB, SGB2, CGB_DMG, AGB_DMG, AGS_DMG, CGB_GBC, AGB_GBC, AGS_GBC };
 
     void SetStartupValues(Model model);
 
