@@ -40,7 +40,6 @@ class Gameboy {
     uint8_t icount = 0;
     bool halted = false;
     bool haltBug = false;
-    bool haltBugRun = false;
     uint32_t stepCycles = 0;
 
     uint32_t elapsedCycles = 0;

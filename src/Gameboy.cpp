@@ -114,27 +114,23 @@ uint32_t Gameboy::RunHDMA() const {
 
 uint8_t Gameboy::ExecuteInstruction() {
     uint8_t instruction = bus->ReadByte(pc);
+    pc += 1;
+    // update timers
 
     if (haltBug) {
         haltBug = false;
         pc = pc - 1;
-        haltBugRun = true;
     }
 
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
-        instruction = bus->ReadByte(haltBug ? pc : pc + 1);
+        instruction = bus->ReadByte(pc);
         currentInstruction = 0xCB | instruction;
     } else {
         currentInstruction = instruction;
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
-    if (haltBug && haltBugRun) {
-        haltBug = false;
-        haltBugRun = false;
-        pc = pc - 1;
-    }
     return cycleIncrement;
 }
 
@@ -276,7 +272,7 @@ uint32_t Gameboy::ProcessInterrupts() {
     }
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
-        return 4;
+        return 20;
     }
 
     if (!bus->interruptMasterEnable)
@@ -316,7 +312,6 @@ void Gameboy::SaveState(int slot) const {
     stateFile.write(reinterpret_cast<const char *>(&icount), sizeof(icount));
     stateFile.write(reinterpret_cast<const char *>(&halted), sizeof(halted));
     stateFile.write(reinterpret_cast<const char *>(&haltBug), sizeof(haltBug));
-    stateFile.write(reinterpret_cast<const char *>(&haltBugRun), sizeof(haltBugRun));
     stateFile.write(reinterpret_cast<const char *>(&stepCycles), sizeof(stepCycles));
     stateFile.write(reinterpret_cast<const char *>(&elapsedCycles), sizeof(elapsedCycles));
     stateFile.write(reinterpret_cast<const char *>(&currentInstruction), sizeof(currentInstruction));
@@ -346,7 +341,6 @@ void Gameboy::LoadState(int slot) {
     stateFile.read(reinterpret_cast<char *>(&icount), sizeof(icount));
     stateFile.read(reinterpret_cast<char *>(&halted), sizeof(halted));
     stateFile.read(reinterpret_cast<char *>(&haltBug), sizeof(haltBug));
-    stateFile.read(reinterpret_cast<char *>(&haltBugRun), sizeof(haltBugRun));
     stateFile.read(reinterpret_cast<char *>(&stepCycles), sizeof(stepCycles));
     stateFile.read(reinterpret_cast<char *>(&elapsedCycles), sizeof(elapsedCycles));
     stateFile.read(reinterpret_cast<char *>(&currentInstruction), sizeof(currentInstruction));
