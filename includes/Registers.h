@@ -47,7 +47,7 @@ struct Registers {
         l = value & 0xFF;
     }
 
-    enum Model : std::size_t { DMG, CGB };
+    enum Model : std::size_t { DMG, MGB, SGB, SGB2, CGB_DMG, AGB_DMG, AGS_DMG, CGB_GBC, AGB_GBC, AGS_GBC };
 
     void SetStartupValues(Model model);
 
@@ -74,16 +74,51 @@ struct Registers {
     }
 };
 
-static constexpr std::array<Registers, 2> DefaultValues = {
+static constexpr std::array<Registers, 10> DefaultValues = {
     {
-        /* DMG */ {
+        /* DMG in DMG mode */ {
+            .a = 0x01, .f = 0xB0, .b = 0x00, .c = 0x13,
+            .d = 0x00, .e = 0xD8, .h = 0x01, .l = 0x4D
+        },
+        /* MGB in DMG mode */
+        {
+            .a = 0xFF, .f = 0xB0, .b = 0x00, .c = 0x13,
+            .d = 0x00, .e = 0xD8, .h = 0x01, .l = 0x4D
+        },
+        /* SGB in DMG mode */
+        {
+            .a = 0x01, .f = 0x00, .b = 0x00, .c = 0x14,
+            .d = 0x00, .e = 0x00, .h = 0xC0, .l = 0x60
+        },
+        /* SGB2 in DMG mode -- reusing SGB values since unknown */
+        {
+            .a = 0x01, .f = 0x00, .b = 0x00, .c = 0x14,
+            .d = 0x00, .e = 0x00, .h = 0xC0, .l = 0x60
+        },
+        /* CGB in DMG mode */ {
+            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
+            .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
+        },
+        /* AGB in DMG mode */ {
             .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
             .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
         },
-        /* CGB */ {
-            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
+        /* AGS in DMG mode */ {
+            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
             .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
-        }
+        },
+        /* CGB in GBC mode */ {
+            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
+            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
+        },
+        /* AGB in GBC mode */ {
+            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
+            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
+        },
+        /* AGS in GBC mode */ {
+            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
+            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
+        },
     }
 };
 
