@@ -72,9 +72,9 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     GameboySettings settings{};
     for (std::size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "--gbc") {
-            settings.mode = Mode::GBC;
+            settings.mode = Mode::CGB_GBC;
         } else if (args[i] == "--gb") {
-            settings.mode = Mode::GB;
+            settings.mode = Mode::DMG;
         } else if (args[i] == "--debugStart") {
             settings.debugStart = true;
         } else if (args[i] == "--bios") {

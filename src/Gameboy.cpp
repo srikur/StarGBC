@@ -135,7 +135,7 @@ uint8_t Gameboy::ExecuteInstruction() {
 }
 
 void Gameboy::InitializeSystem() {
-    regs->SetStartupValues(static_cast<Registers::Model>(bus->gpu_->hardware));
+    regs->SetStartupValues(static_cast<Registers::Model>(mode_));
     sp = 0xFFFE;
 
     static const std::map<uint16_t, uint8_t> initialData = {
