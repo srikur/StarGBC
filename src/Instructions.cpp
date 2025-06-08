@@ -1,26 +1,31 @@
 #include "Instructions.h"
 
 uint16_t Instructions::ReadNextWord(const Gameboy &gameboy) {
-    const uint16_t lower = gameboy.bus->ReadByte(gameboy.haltBug ? gameboy.pc : gameboy.pc + 1);
-    const uint16_t higher = gameboy.bus->ReadByte(gameboy.haltBug ? gameboy.pc + 1 : gameboy.pc + 2);
+    const uint16_t lower = gameboy.bus->ReadByte(gameboy.pc);
+    // update timers
+    const uint16_t higher = gameboy.bus->ReadByte(gameboy.pc + 1);
+    // update timers
     const uint16_t word = higher << 8 | lower;
     return word;
 }
 
 uint8_t Instructions::ReadNextByte(const Gameboy &gameboy) {
-    return gameboy.bus->ReadByte(gameboy.haltBug ? gameboy.pc : gameboy.pc + 1);
+    return gameboy.bus->ReadByte(gameboy.pc);
+    // update timers
 }
 
 uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
     uint8_t byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+    // update timers
     const uint8_t old = (byte & 0x80) != 0 ? 1 : 0;
     gameboy.regs->SetCarry(old != 0);
     byte = byte << 1 | old;
     gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+    // update timers
     gameboy.regs->SetZero(byte == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -65,7 +70,7 @@ uint8_t Instructions::RLC(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -93,7 +98,6 @@ uint8_t Instructions::DAA(Gameboy &gameboy) {
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -108,14 +112,12 @@ uint8_t Instructions::RETI(Gameboy &gameboy) {
 uint8_t Instructions::DI(Gameboy &gameboy) {
     gameboy.bus->interruptDelay = false;
     gameboy.bus->interruptMasterEnable = false;
-    gameboy.pc += 1;
     return 4;
 }
 
 uint8_t Instructions::EI(Gameboy &gameboy) {
     gameboy.icount = 0;
     gameboy.bus->interruptDelay = true;
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -129,7 +131,6 @@ uint8_t Instructions::HALT(Gameboy &gameboy) {
         gameboy.halted = true;
     }
 
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -149,7 +150,7 @@ uint8_t Instructions::RST(const RSTTargets target, Gameboy &gameboy) {
         }
     }();
 
-    push(gameboy.pc + 1, gameboy);
+    push(gameboy.pc, gameboy);
     gameboy.pc = location;
     return 16;
 }
@@ -176,7 +177,6 @@ uint8_t Instructions::RLCA(Gameboy &gameboy) {
     gameboy.regs->SetZero(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetSubtract(false);
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -188,7 +188,6 @@ uint8_t Instructions::RLA(Gameboy &gameboy) {
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->a = r;
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -201,7 +200,7 @@ uint8_t Instructions::RLAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(byte == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -244,7 +243,7 @@ uint8_t Instructions::RL(const ArithmeticSource source, Gameboy &gameboy) {
         default: throw UnreachableCodeException("Instructions::RL -- improper ArithmeticSource");
     }
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -252,7 +251,6 @@ uint8_t Instructions::CCF(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetCarry(!gameboy.regs->FlagCarry());
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -260,7 +258,6 @@ uint8_t Instructions::CPL(Gameboy &gameboy) {
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(true);
     gameboy.regs->a = ~gameboy.regs->a;
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -268,7 +265,6 @@ uint8_t Instructions::SCF(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(true);
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -278,7 +274,6 @@ uint8_t Instructions::RRCA(Gameboy &gameboy) {
     gameboy.regs->SetZero(false);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -310,8 +305,8 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
         gameboy.regs->SetZero(value == 0);
         gameboy.regs->SetSubtract(false);
         gameboy.regs->SetHalf(false);
-        gameboy.pc += 2;
-        return 16;
+        gameboy.pc += 1;
+            return 16;
     }
 
     const bool carry = (value & 0x01) == 0x01;
@@ -345,7 +340,7 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -358,7 +353,7 @@ uint8_t Instructions::RRAddr(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetZero(value == 0);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -408,7 +403,7 @@ uint8_t Instructions::RR(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -426,7 +421,6 @@ uint8_t Instructions::RRA(Gameboy &gameboy) {
     gameboy.regs->SetCarry(carry);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -481,7 +475,6 @@ uint8_t Instructions::JPHL(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::NOP(Gameboy &gameboy) {
-    gameboy.pc += 1;
     return 4;
 }
 
@@ -523,18 +516,13 @@ uint8_t Instructions::DEC(const IncDecTarget target, Gameboy &gameboy) {
 
     switch (target) {
         case IncDecTarget::HLAddr:
-            gameboy.pc += 1;
             return 12;
-            break;
         case IncDecTarget::HL:
         case IncDecTarget::BC:
         case IncDecTarget::DE:
         case IncDecTarget::SP:
-            gameboy.pc += 1;
             return 8;
-            break;
         default:
-            gameboy.pc += 1;
             return 4;
     }
 }
@@ -577,18 +565,13 @@ uint8_t Instructions::INC(const IncDecTarget target, Gameboy &gameboy) {
 
     switch (target) {
         case IncDecTarget::HLAddr:
-            gameboy.pc += 1;
             return 12;
-            break;
         case IncDecTarget::HL:
         case IncDecTarget::BC:
         case IncDecTarget::DE:
         case IncDecTarget::SP:
-            gameboy.pc += 1;
             return 8;
-            break;
         default:
-            gameboy.pc += 1;
             return 4;
     }
 }
@@ -598,29 +581,27 @@ uint8_t Instructions::LDH(const LoadOtherTarget target, const LoadOtherSource so
         // E0
         const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
         gameboy.bus->WriteByte(a, gameboy.regs->a);
-        gameboy.pc += 2;
-        return 12;
+        gameboy.pc += 1;
+            return 12;
     }
     if (target == LoadOtherTarget::CAddress && source == LoadOtherSource::A) {
         // E2
         const uint16_t c = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
         gameboy.bus->WriteByte(c, gameboy.regs->a);
-        gameboy.pc += 1;
-        return 8;
+            return 8;
     }
     if (target == LoadOtherTarget::A && source == LoadOtherSource::A8) {
         // F0
         const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
         gameboy.regs->a = gameboy.bus->ReadByte(a);
-        gameboy.pc += 2;
-        return 12;
+        gameboy.pc += 1;
+            return 12;
     }
     if (target == LoadOtherTarget::A && source == LoadOtherSource::CAddress) {
         // F2
         const uint16_t a = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
         gameboy.regs->a = gameboy.bus->ReadByte(a);
-        gameboy.pc += 1;
-        return 8;
+            return 8;
     }
 
     return 0;
@@ -688,43 +669,37 @@ uint8_t Instructions::LD(const LoadByteTarget target, const LoadByteSource sourc
         }
         case LoadByteTarget::A16: {
             gameboy.bus->WriteByte(ReadNextWord(gameboy), sourceValue);
-            gameboy.pc += 3;
-            return 16;
-            break;
+            gameboy.pc += 2;
+                    return 16;
         }
     }
 
     if (source == LoadByteSource::D8) {
         if (target == LoadByteTarget::HL) {
-            gameboy.pc += 2;
-            return 12;
+            gameboy.pc += 1;
+                    return 12;
         } else {
-            gameboy.pc += 2;
-            return 8;
+            gameboy.pc += 1;
+                    return 8;
         }
     } else if (source == LoadByteSource::HL) {
-        gameboy.pc += 1;
-        return 8;
+            return 8;
     } else if (target == LoadByteTarget::HL
                || target == LoadByteTarget::HLD
                || target == LoadByteTarget::HLI) {
-        gameboy.pc += 1;
-        return 8;
+            return 8;
     } else if ((target == LoadByteTarget::BC) || (target == LoadByteTarget::DE)) {
-        gameboy.pc += 1;
-        return 8;
+            return 8;
     } else if (source == LoadByteSource::BC
                || (source == LoadByteSource::DE)
                || (source == LoadByteSource::HLD)
                || (source == LoadByteSource::HLI)) {
-        gameboy.pc += 1;
-        return 8;
+            return 8;
     } else if (source == LoadByteSource::A16) {
-        gameboy.pc += 3;
-        return 16;
+        gameboy.pc += 2;
+            return 16;
     } else {
-        gameboy.pc += 1;
-        return 4;
+            return 4;
     }
 }
 
@@ -764,17 +739,19 @@ uint8_t Instructions::LD16(const LoadWordTarget target, const LoadWordSource sou
     }
 
     if (source == LoadWordSource::HL) {
+            return 8;
+    }
+    if (source == LoadWordSource::SPr8) {
         gameboy.pc += 1;
-        return 8;
-    } else if (source == LoadWordSource::SPr8) {
+            return 12;
+    }
+    if (source == LoadWordSource::D16) {
         gameboy.pc += 2;
-        return 12;
-    } else if (source == LoadWordSource::D16) {
-        gameboy.pc += 3;
-        return 12;
-    } else if (source == LoadWordSource::SP) {
-        gameboy.pc += 3;
-        return 20;
+            return 12;
+    }
+    if (source == LoadWordSource::SP) {
+        gameboy.pc += 2;
+            return 20;
     }
 
     return 0;
@@ -796,7 +773,6 @@ uint8_t Instructions::PUSH(const StackTarget target, Gameboy &gameboy) {
     }();
 
     push(value, gameboy);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -813,7 +789,6 @@ uint8_t Instructions::POP(const StackTarget target, Gameboy &gameboy) {
             break;
     }
 
-    gameboy.pc += 1;
     return 12;
 }
 
@@ -840,7 +815,7 @@ uint8_t Instructions::CP(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -870,7 +845,7 @@ uint8_t Instructions::OR(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -900,7 +875,7 @@ uint8_t Instructions::XOR(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -930,7 +905,7 @@ uint8_t Instructions::AND(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -954,7 +929,7 @@ uint8_t Instructions::SUB(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -966,7 +941,7 @@ uint8_t Instructions::SLAAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -1009,7 +984,7 @@ uint8_t Instructions::SLA(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -1021,7 +996,7 @@ uint8_t Instructions::SRAAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -1064,7 +1039,7 @@ uint8_t Instructions::SRA(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -1076,7 +1051,7 @@ uint8_t Instructions::SWAPAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -1119,7 +1094,7 @@ uint8_t Instructions::SWAP(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -1131,7 +1106,7 @@ uint8_t Instructions::SRLAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -1174,7 +1149,7 @@ uint8_t Instructions::SRL(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 8;
 }
 
@@ -1198,7 +1173,7 @@ uint8_t Instructions::BIT(const uint8_t target, const ArithmeticSource source, G
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(false);
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return source == ArithmeticSource::HLAddr ? 12 : 8;
 }
 
@@ -1225,7 +1200,7 @@ uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, G
         default: throw UnreachableCodeException("Instructions::RES -- improper ArithmeticSource");
     }
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return source == ArithmeticSource::HLAddr ? 16 : 8;
 }
 
@@ -1252,7 +1227,7 @@ uint8_t Instructions::SET(const uint8_t target, const ArithmeticSource source, G
         default: throw UnreachableCodeException("Instructions::SET -- improper ArithmeticSource");
     }
 
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return source == ArithmeticSource::HLAddr ? 16 : 8;
 }
 
@@ -1283,7 +1258,7 @@ uint8_t Instructions::SBC(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -1314,7 +1289,7 @@ uint8_t Instructions::ADC(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -1337,7 +1312,6 @@ uint8_t Instructions::ADD16(const Arithmetic16Target target, Gameboy &gameboy) {
     gameboy.regs->SetHalf((reg & 0x07FF) + (sourceValue & 0x07FF) > 0x07FF);
     gameboy.regs->SetHL(sum);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -1370,7 +1344,7 @@ uint8_t Instructions::ADD(const ArithmeticSource source, Gameboy &gameboy) {
     const bool isU8 = source == ArithmeticSource::U8;
     const bool isHL = source == ArithmeticSource::HLAddr;
 
-    gameboy.pc += isU8 ? 2 : 1;
+    gameboy.pc += isU8 ? 1 : 0;
     return isU8 || isHL ? 8 : 4;
 }
 
@@ -1383,7 +1357,7 @@ uint8_t Instructions::ADDSigned(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetZero(false);
     gameboy.sp = sp_value + source_value;
-    gameboy.pc += 2;
+    gameboy.pc += 1;
     return 16;
 }
 
@@ -1424,25 +1398,24 @@ uint8_t Instructions::addition(const uint8_t value, const Gameboy &gameboy) {
 
 uint8_t Instructions::jump(const bool shouldJump, Gameboy &gameboy) {
     if (shouldJump) {
-        const uint16_t lower_byte = gameboy.bus->ReadByte(gameboy.pc + 1);
-        const uint16_t higher_byte = gameboy.bus->ReadByte(gameboy.pc + 2);
+        const uint16_t lower_byte = gameboy.bus->ReadByte(gameboy.pc);
+        const uint16_t higher_byte = gameboy.bus->ReadByte(gameboy.pc + 1);
         gameboy.pc = (higher_byte << 8) | lower_byte;
-        return 16;
+            return 16;
     }
-    gameboy.pc += 3;
+    gameboy.pc += 2;
     return 12;
 }
 
 uint8_t Instructions::jumpRelative(const bool shouldJump, Gameboy &gameboy) {
-    const uint16_t next = gameboy.pc + 2;
+    const uint16_t next = gameboy.pc + 1;
     if (shouldJump) {
-        if (const auto byte = static_cast<int8_t>(gameboy.bus->ReadByte(gameboy.pc + 1)); byte >= 0) {
+        if (const auto byte = static_cast<int8_t>(gameboy.bus->ReadByte(gameboy.pc)); byte >= 0) {
             gameboy.pc = next + static_cast<uint16_t>(byte);
         } else {
             gameboy.pc = next - static_cast<uint16_t>(abs(byte));
         }
-
-        return 12;
+            return 12;
     }
     gameboy.pc = next;
     return 8;
@@ -1465,11 +1438,11 @@ uint16_t Instructions::pop(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::call(const bool shouldJump, Gameboy &gameboy) {
-    const uint16_t next = gameboy.pc + 3;
+    const uint16_t next = gameboy.pc + 2;
     if (shouldJump) {
         push(next, gameboy);
         gameboy.pc = ReadNextWord(gameboy);
-        return 24;
+            return 24;
     }
     gameboy.pc = next;
     return 12;
@@ -1478,8 +1451,7 @@ uint8_t Instructions::call(const bool shouldJump, Gameboy &gameboy) {
 uint8_t Instructions::return_(const bool shouldJump, Gameboy &gameboy) {
     if (shouldJump) {
         gameboy.pc = pop(gameboy);
-        return 20;
+            return 20;
     }
-    gameboy.pc += 1;
     return 8;
 }
