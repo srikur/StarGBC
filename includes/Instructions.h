@@ -186,9 +186,9 @@ public:
 
     static uint8_t return_(bool shouldJump, Gameboy &gameboy);
 
-    static uint16_t ReadNextWord(const Gameboy &gameboy);
+    static uint16_t ReadNextWord(Gameboy &gameboy);
 
-    static uint8_t ReadNextByte(const Gameboy &gameboy);
+    static uint8_t ReadNextByte(Gameboy &gameboy);
 
     using WrappedFunction = uint8_t(*)(Gameboy &);
 

@@ -13,9 +13,16 @@ class Instructions;
 
 enum class Mode {
     None = 0x00,
-    GB = 0x01,
-    GBC = 0x02,
-    GBA = 0x03,
+    DMG = 0x01,
+    MBG = 0x02,
+    SGB = 0x03,
+    SGB2 = 0x04,
+    CGB_DMG = 0x05,
+    AGB_DMG = 0x06,
+    AGS_DMG = 0x07,
+    CGB_GBC = 0x08,
+    AGB_GBC = 0x09,
+    AGS_GBC = 0x0A,
 };
 
 struct GameboySettings {
@@ -32,7 +39,7 @@ class Gameboy {
     std::unique_ptr<Registers> regs = std::make_unique<Registers>();
     std::unique_ptr<Bus> bus = std::make_unique<Bus>(rom_path_);
     std::unique_ptr<Instructions> instructions = std::make_unique<Instructions>();
-    Mode mode_ = Mode::GB;
+    Mode mode_ = Mode::DMG;
     uint16_t currentInstruction = 0x00;
 
     uint16_t pc = 0x00;
@@ -40,7 +47,6 @@ class Gameboy {
     uint8_t icount = 0;
     bool halted = false;
     bool haltBug = false;
-    bool haltBugRun = false;
     uint32_t stepCycles = 0;
 
     uint32_t elapsedCycles = 0;
@@ -73,9 +79,12 @@ public:
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
                      const bool debugStart) : rom_path_(std::move(rom_path)),
                                               bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
-        bus->gpu_->hardware = (mode_ == Mode::GBC) || (bus->cartridge_->ReadByte(0x143) & 0x80) == 0x80
-                                  ? GPU::Hardware::CGB
-                                  : GPU::Hardware::DMG;
+        if (mode_ != Mode::None) {
+            bus->gpu_->hardware = mode_ == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
+        } else if ((bus->cartridge_->ReadByte(0x143) & 0x80) == 0x80) {
+            mode_ = Mode::CGB_GBC;
+            bus->gpu_->hardware = GPU::Hardware::CGB;
+        }
         if (!bios_path_.empty()) {
             bus->bootromRunning = true;
             InitializeBootrom();

@@ -114,32 +114,32 @@ uint32_t Gameboy::RunHDMA() const {
 
 uint8_t Gameboy::ExecuteInstruction() {
     uint8_t instruction = bus->ReadByte(pc);
+    pc += 1;
+    // update timers
 
     if (haltBug) {
         haltBug = false;
         pc = pc - 1;
-        haltBugRun = true;
     }
 
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
-        instruction = bus->ReadByte(haltBug ? pc : pc + 1);
+        instruction = bus->ReadByte(pc);
         currentInstruction = 0xCB | instruction;
     } else {
         currentInstruction = instruction;
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
-    if (haltBug && haltBugRun) {
-        haltBug = false;
-        haltBugRun = false;
-        pc = pc - 1;
-    }
+
+    bus->UpdateTimers(cycleIncrement);
+    bus->UpdateGraphics(cycleIncrement);
+
     return cycleIncrement;
 }
 
 void Gameboy::InitializeSystem() {
-    regs->SetStartupValues(static_cast<Registers::Model>(bus->gpu_->hardware));
+    regs->SetStartupValues(static_cast<Registers::Model>(mode_));
     sp = 0xFFFE;
 
     static const std::map<uint16_t, uint8_t> initialData = {
@@ -180,12 +180,8 @@ bool Gameboy::PopSample(StereoSample sample) const {
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
-        if (pc == 0x10) {
-            bus->ChangeSpeed();
-        }
-        if (pc == 0x100) {
-            bus->bootromRunning = false;
-        }
+        if (pc == 0x10) { bus->ChangeSpeed(); }
+        if (pc == 0x100) { bus->bootromRunning = false; }
         if (bus->interruptDelay && ++icount == 2) {
             bus->interruptDelay = false;
             bus->interruptMasterEnable = true;
@@ -194,14 +190,12 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         uint32_t cycles = ProcessInterrupts();
         if (!cycles) {
-            cycles = halted ? 4 : ExecuteInstruction();
+            cycles += halted ? 4 : ExecuteInstruction();
         }
 
         const uint32_t hdmaCycles = RunHDMA();
         const uint32_t total = cycles + hdmaCycles;
 
-        bus->UpdateTimers(total);
-        bus->UpdateGraphics(total);
         if (auto s = bus->audio_->Tick(total)) {
             bus->audio_->gSampleFifo.push(*s);
         }
@@ -276,7 +270,7 @@ uint32_t Gameboy::ProcessInterrupts() {
     }
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
-        return 4;
+        return 20;
     }
 
     if (!bus->interruptMasterEnable)
@@ -316,7 +310,6 @@ void Gameboy::SaveState(int slot) const {
     stateFile.write(reinterpret_cast<const char *>(&icount), sizeof(icount));
     stateFile.write(reinterpret_cast<const char *>(&halted), sizeof(halted));
     stateFile.write(reinterpret_cast<const char *>(&haltBug), sizeof(haltBug));
-    stateFile.write(reinterpret_cast<const char *>(&haltBugRun), sizeof(haltBugRun));
     stateFile.write(reinterpret_cast<const char *>(&stepCycles), sizeof(stepCycles));
     stateFile.write(reinterpret_cast<const char *>(&elapsedCycles), sizeof(elapsedCycles));
     stateFile.write(reinterpret_cast<const char *>(&currentInstruction), sizeof(currentInstruction));
@@ -346,7 +339,6 @@ void Gameboy::LoadState(int slot) {
     stateFile.read(reinterpret_cast<char *>(&icount), sizeof(icount));
     stateFile.read(reinterpret_cast<char *>(&halted), sizeof(halted));
     stateFile.read(reinterpret_cast<char *>(&haltBug), sizeof(haltBug));
-    stateFile.read(reinterpret_cast<char *>(&haltBugRun), sizeof(haltBugRun));
     stateFile.read(reinterpret_cast<char *>(&stepCycles), sizeof(stepCycles));
     stateFile.read(reinterpret_cast<char *>(&elapsedCycles), sizeof(elapsedCycles));
     stateFile.read(reinterpret_cast<char *>(&currentInstruction), sizeof(currentInstruction));
