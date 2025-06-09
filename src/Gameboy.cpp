@@ -131,10 +131,6 @@ uint8_t Gameboy::ExecuteInstruction() {
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
-
-    bus->UpdateTimers(cycleIncrement);
-    bus->UpdateGraphics(cycleIncrement);
-
     return cycleIncrement;
 }
 
@@ -195,6 +191,9 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         const uint32_t hdmaCycles = RunHDMA();
         const uint32_t total = cycles + hdmaCycles;
+
+        bus->UpdateTimers(total);
+        bus->UpdateGraphics(total);
 
         if (auto s = bus->audio_->Tick(total)) {
             bus->audio_->gSampleFifo.push(*s);
@@ -311,7 +310,6 @@ void Gameboy::SaveState(int slot) const {
     stateFile.write(reinterpret_cast<const char *>(&halted), sizeof(halted));
     stateFile.write(reinterpret_cast<const char *>(&haltBug), sizeof(haltBug));
     stateFile.write(reinterpret_cast<const char *>(&stepCycles), sizeof(stepCycles));
-    stateFile.write(reinterpret_cast<const char *>(&elapsedCycles), sizeof(elapsedCycles));
     stateFile.write(reinterpret_cast<const char *>(&currentInstruction), sizeof(currentInstruction));
 
     regs->SaveState(stateFile);
@@ -340,7 +338,6 @@ void Gameboy::LoadState(int slot) {
     stateFile.read(reinterpret_cast<char *>(&halted), sizeof(halted));
     stateFile.read(reinterpret_cast<char *>(&haltBug), sizeof(haltBug));
     stateFile.read(reinterpret_cast<char *>(&stepCycles), sizeof(stepCycles));
-    stateFile.read(reinterpret_cast<char *>(&elapsedCycles), sizeof(elapsedCycles));
     stateFile.read(reinterpret_cast<char *>(&currentInstruction), sizeof(currentInstruction));
 
     regs->LoadState(stateFile);

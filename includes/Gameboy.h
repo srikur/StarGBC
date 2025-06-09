@@ -49,8 +49,6 @@ class Gameboy {
     bool haltBug = false;
     uint32_t stepCycles = 0;
 
-    uint32_t elapsedCycles = 0;
-
     bool throttleSpeed = true;
     int speedMultiplier = 1;
     bool paused = false;
