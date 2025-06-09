@@ -131,6 +131,10 @@ uint8_t Gameboy::ExecuteInstruction() {
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
+
+    bus->UpdateTimers(cycleIncrement);
+    bus->UpdateGraphics(cycleIncrement);
+
     return cycleIncrement;
 }
 
@@ -176,12 +180,8 @@ bool Gameboy::PopSample(StereoSample sample) const {
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
-        if (pc == 0x10) {
-            bus->ChangeSpeed();
-        }
-        if (pc == 0x100) {
-            bus->bootromRunning = false;
-        }
+        if (pc == 0x10) { bus->ChangeSpeed(); }
+        if (pc == 0x100) { bus->bootromRunning = false; }
         if (bus->interruptDelay && ++icount == 2) {
             bus->interruptDelay = false;
             bus->interruptMasterEnable = true;
@@ -190,14 +190,12 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         uint32_t cycles = ProcessInterrupts();
         if (!cycles) {
-            cycles = halted ? 4 : ExecuteInstruction();
+            cycles += halted ? 4 : ExecuteInstruction();
         }
 
         const uint32_t hdmaCycles = RunHDMA();
         const uint32_t total = cycles + hdmaCycles;
 
-        bus->UpdateTimers(total);
-        bus->UpdateGraphics(total);
         if (auto s = bus->audio_->Tick(total)) {
             bus->audio_->gSampleFifo.push(*s);
         }
