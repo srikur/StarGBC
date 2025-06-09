@@ -76,7 +76,7 @@ private:
 };
 
 struct Timer {
-    static constexpr uint32_t MAX_CYCLES = 70224;
+    static constexpr uint32_t MAX_CYCLES = 69905;
 
     uint16_t divCounter = 0;
     uint8_t tma = 0x00;
