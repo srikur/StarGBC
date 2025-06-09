@@ -58,11 +58,11 @@ enum class StackTarget {
 
 class Instructions {
 public:
-    static uint8_t DAA(Gameboy &gameboy);
+    static uint8_t DAA(const Gameboy &gameboy);
 
     static uint8_t RETI(Gameboy &gameboy);
 
-    static uint8_t DI(Gameboy &gameboy);
+    static uint8_t DI(const Gameboy &gameboy);
 
     static uint8_t EI(Gameboy &gameboy);
 
@@ -72,25 +72,25 @@ public:
 
     static uint8_t CALL(JumpTest test, Gameboy &gameboy);
 
-    static uint8_t RLCA(Gameboy &gameboy);
+    static uint8_t RLCA(const Gameboy &gameboy);
 
     static uint8_t RLC(ArithmeticSource source, Gameboy &gameboy);
 
     static uint8_t RLCAddr(Gameboy &gameboy);
 
-    static uint8_t RLA(Gameboy &gameboy);
+    static uint8_t RLA(const Gameboy &gameboy);
 
     static uint8_t RL(ArithmeticSource source, Gameboy &gameboy);
 
     static uint8_t RLAddr(Gameboy &gameboy);
 
-    static uint8_t CCF(Gameboy &gameboy);
+    static uint8_t CCF(const Gameboy &gameboy);
 
-    static uint8_t CPL(Gameboy &gameboy);
+    static uint8_t CPL(const Gameboy &gameboy);
 
-    static uint8_t SCF(Gameboy &gameboy);
+    static uint8_t SCF(const Gameboy &gameboy);
 
-    static uint8_t RRCA(Gameboy &gameboy);
+    static uint8_t RRCA(const Gameboy &gameboy);
 
     static uint8_t RRC(ArithmeticSource source, Gameboy &gameboy);
 
@@ -98,7 +98,7 @@ public:
 
     static uint8_t RRAddr(Gameboy &gameboy);
 
-    static uint8_t RRA(Gameboy &gameboy);
+    static uint8_t RRA(const Gameboy &gameboy);
 
     static uint8_t RET(JumpTest test, Gameboy &gameboy);
 
@@ -108,7 +108,7 @@ public:
 
     static uint8_t JPHL(Gameboy &gameboy);
 
-    static uint8_t NOP(Gameboy &gameboy);
+    static uint8_t NOP();
 
     static uint8_t DEC(IncDecTarget target, Gameboy &gameboy);
 
@@ -160,7 +160,7 @@ public:
 
     static uint8_t ADC(ArithmeticSource source, Gameboy &gameboy);
 
-    static uint8_t ADD16(Arithmetic16Target target, Gameboy &gameboy);
+    static uint8_t ADD16(Arithmetic16Target target, const Gameboy &gameboy);
 
     static uint8_t ADD(ArithmeticSource source, Gameboy &gameboy);
 
@@ -471,7 +471,7 @@ public:
 
     static constexpr std::array<WrappedFunction, 256> nonPrefixedTable = [] {
         std::array<WrappedFunction, 256> table{};
-        table[0x00] = [](Gameboy &gb) -> uint8_t { return NOP(gb); };
+        table[0x00] = [](Gameboy &) -> uint8_t { return NOP(); };
         table[0x01] = [](Gameboy &gb) -> uint8_t { return LD16(LoadWordTarget::BC, LoadWordSource::D16, gb); };
         table[0x02] = [](Gameboy &gb) -> uint8_t { return LD(LoadByteTarget::BC, LoadByteSource::A, gb); };
         table[0x03] = [](Gameboy &gb) -> uint8_t { return INC(IncDecTarget::BC, gb); };
@@ -481,7 +481,7 @@ public:
         table[0x07] = [](Gameboy &gb) -> uint8_t { return RLCA(gb); };
         table[0x08] = [](Gameboy &gb) -> uint8_t { return LD16(LoadWordTarget::A16, LoadWordSource::SP, gb); };
         table[0x09] = [](Gameboy &gb) -> uint8_t { return ADD16(Arithmetic16Target::BC, gb); };
-        table[0x10] = [](Gameboy &gb) -> uint8_t { return NOP(gb); };
+        table[0x10] = [](Gameboy &) -> uint8_t { return NOP(); };
         table[0x0A] = [](Gameboy &gb) -> uint8_t { return LD(LoadByteTarget::A, LoadByteSource::BC, gb); };
         table[0x0B] = [](Gameboy &gb) -> uint8_t { return DEC(IncDecTarget::BC, gb); };
         table[0x0C] = [](Gameboy &gb) -> uint8_t { return INC(IncDecTarget::C, gb); };

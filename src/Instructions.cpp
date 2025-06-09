@@ -75,7 +75,7 @@ uint8_t Instructions::RLC(const ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::DAA(Gameboy &gameboy) {
+uint8_t Instructions::DAA(const Gameboy &gameboy) {
     uint8_t adjust = 0;
     bool carry = gameboy.regs->FlagCarry();
 
@@ -110,7 +110,7 @@ uint8_t Instructions::RETI(Gameboy &gameboy) {
     return 16;
 }
 
-uint8_t Instructions::DI(Gameboy &gameboy) {
+uint8_t Instructions::DI(const Gameboy &gameboy) {
     gameboy.bus->interruptDelay = false;
     gameboy.bus->interruptMasterEnable = false;
     return 4;
@@ -171,7 +171,7 @@ uint8_t Instructions::CALL(const JumpTest test, Gameboy &gameboy) {
     return call(jumpCondition, gameboy);
 }
 
-uint8_t Instructions::RLCA(Gameboy &gameboy) {
+uint8_t Instructions::RLCA(const Gameboy &gameboy) {
     const uint8_t old = (gameboy.regs->a & 0x80) != 0 ? 1 : 0;
     gameboy.regs->SetCarry(old != 0);
     gameboy.regs->a = gameboy.regs->a << 1 | old;
@@ -181,7 +181,7 @@ uint8_t Instructions::RLCA(Gameboy &gameboy) {
     return 4;
 }
 
-uint8_t Instructions::RLA(Gameboy &gameboy) {
+uint8_t Instructions::RLA(const Gameboy &gameboy) {
     const bool flag_c = (gameboy.regs->a & 0x80) >> 7 == 0x01;
     const uint8_t r = (gameboy.regs->a << 1) + static_cast<uint8_t>(gameboy.regs->FlagCarry());
     gameboy.regs->SetCarry(flag_c);
@@ -248,28 +248,28 @@ uint8_t Instructions::RL(const ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::CCF(Gameboy &gameboy) {
+uint8_t Instructions::CCF(const Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetCarry(!gameboy.regs->FlagCarry());
     gameboy.regs->SetHalf(false);
     return 4;
 }
 
-uint8_t Instructions::CPL(Gameboy &gameboy) {
+uint8_t Instructions::CPL(const Gameboy &gameboy) {
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(true);
     gameboy.regs->a = ~gameboy.regs->a;
     return 4;
 }
 
-uint8_t Instructions::SCF(Gameboy &gameboy) {
+uint8_t Instructions::SCF(const Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(true);
     return 4;
 }
 
-uint8_t Instructions::RRCA(Gameboy &gameboy) {
+uint8_t Instructions::RRCA(const Gameboy &gameboy) {
     gameboy.regs->SetCarry((gameboy.regs->a & 0x01) != 0);
     gameboy.regs->a = gameboy.regs->a >> 1 | (gameboy.regs->a & 0x01) << 7;
     gameboy.regs->SetZero(false);
@@ -408,7 +408,7 @@ uint8_t Instructions::RR(const ArithmeticSource source, Gameboy &gameboy) {
     return 8;
 }
 
-uint8_t Instructions::RRA(Gameboy &gameboy) {
+uint8_t Instructions::RRA(const Gameboy &gameboy) {
     const bool carry = (gameboy.regs->a & 0x01) == 0x01;
     uint8_t newValue = 0;
     if (gameboy.regs->FlagCarry()) {
@@ -475,7 +475,7 @@ uint8_t Instructions::JPHL(Gameboy &gameboy) {
     return 4;
 }
 
-uint8_t Instructions::NOP(Gameboy &gameboy) {
+uint8_t Instructions::NOP() {
     return 4;
 }
 
@@ -1263,7 +1263,7 @@ uint8_t Instructions::ADC(const ArithmeticSource source, Gameboy &gameboy) {
     return isU8 || isHL ? 8 : 4;
 }
 
-uint8_t Instructions::ADD16(const Arithmetic16Target target, Gameboy &gameboy) {
+uint8_t Instructions::ADD16(const Arithmetic16Target target, const Gameboy &gameboy) {
     const uint16_t sourceValue = [&]() -> uint16_t {
         switch (target) {
             case Arithmetic16Target::BC: return gameboy.regs->GetBC();
