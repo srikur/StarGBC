@@ -1,17 +1,18 @@
 #include "Instructions.h"
 
 uint16_t Instructions::ReadNextWord(Gameboy &gameboy) {
-    const uint16_t lower = gameboy.bus->ReadByte(gameboy.pc++);
+    const uint16_t lower = ReadNextByte(gameboy);
     // update timers
-    const uint16_t higher = gameboy.bus->ReadByte(gameboy.pc++);
+    const uint16_t higher = ReadNextByte(gameboy);
     // update timers
     const uint16_t word = higher << 8 | lower;
     return word;
 }
 
 uint8_t Instructions::ReadNextByte(Gameboy &gameboy) {
-    return gameboy.bus->ReadByte(gameboy.pc++);
+    uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
     // update timers
+    return byte;
 }
 
 uint8_t Instructions::RLCAddr(Gameboy &gameboy) {

@@ -293,11 +293,11 @@ void Bus::UpdateTimers(const uint32_t cycles) {
     for (uint32_t i = 0; i < cycles; ++i) {
         const bool timerEnabled = timer_.tac & 0x04;
         const int timerBit = Timer::TimerBit(timer_.tac & 0x03);
-        const bool oldBit = timerEnabled && (timer_.divCounter & (1 << timerBit));
+        const bool oldBit = timerEnabled && timer_.divCounter & 1 << timerBit;
 
         timer_.divCounter++;
 
-        if (const bool newBit = timerEnabled && (timer_.divCounter & (1 << timerBit)); oldBit && !newBit) {
+        if (const bool newBit = timerEnabled && timer_.divCounter & 1 << timerBit; oldBit && !newBit) {
             // Falling edge
             if (++timer_.tima == 0) {
                 timer_.tima = timer_.tma;

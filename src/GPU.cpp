@@ -19,7 +19,7 @@ void GPU::RenderSprites() {
         if (yPos <= currentLine && (yPos + spriteSize) > currentLine)
             sprites.emplace_back(i, xPos, yPos);
     }
-    if (hardware != Hardware::CGB) sprites.sort();
+    // if (hardware != Hardware::CGB) sprites.sort();
     if (sprites.size() > 10) sprites.resize(10);
     sprites.reverse();
 
@@ -81,8 +81,7 @@ void GPU::RenderSprites() {
                 SetColor(xPos + pixel, r, g, b);
             } else {
                 uint8_t shade = 0;
-                const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette;
-                switch ((src >> (color * 2)) & 0x03) {
+                switch (const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette; (src >> (color * 2)) & 0x03) {
                     case 0: shade = 255;
                         break;
                     case 1: shade = 192;
