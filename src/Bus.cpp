@@ -12,6 +12,8 @@ Bus::Bus(const std::string &romLocation) {
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
+        return 0xFF;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
@@ -59,6 +61,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                 const uint8_t second = speedShift ? 0x01 : 0x00;
                 return first | second;
             }
+            if (address == 0xFF46) { return dma_.writtenValue; }
             if (address == 0xFF4C) { return 0x00; }
             return gpu_->ReadRegisters(address);
         }
@@ -72,6 +75,8 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value) {
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
+        return;
     switch (address & 0xF000) {
         case 0x0000 ... 0x7FFF:
             cartridge_->WriteByte(address, value);
