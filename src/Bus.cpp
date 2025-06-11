@@ -151,13 +151,8 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
                         case 0x40:
                             if (address == 0xFF46) {
                                 /* DMA Transfer */
-                                const uint16_t newVal = static_cast<uint16_t>(value) << 8;
-                                for (uint16_t i = 0; i < 0xA0; i++) {
-                                    gpu_->oam[i] = ReadByte(newVal + i);
-                                }
-                                return;
-                            }
-                            if (((address >= 0xFF40) && (address <= 0xFF4B)) || (address == 0xFF4F)) {
+                                dma_.Set(value);
+                            } else if (((address >= 0xFF40) && (address <= 0xFF4B)) || (address == 0xFF4F)) {
                                 gpu_->WriteRegisters(address, value);
                             }
                             if (address == 0xFF4D) { speedShift = (value & 0x01) == 0x01; }
@@ -303,6 +298,27 @@ void Bus::UpdateTimers(const uint32_t cycles) {
                 timer_.tima = timer_.tma;
                 SetInterrupt(InterruptType::Timer);
             }
+        }
+    }
+}
+
+void Bus::UpdateDMA(uint32_t cycles) {
+    while (cycles-- && dma_.transferActive) {
+        if (dma_.ticks < 4) {
+            ++dma_.ticks;
+            continue;
+        }
+
+        gpu_->oam[dma_.currentByte] =
+                ReadByte(dma_.startAddress + dma_.currentByte);
+
+        ++dma_.currentByte;
+        ++dma_.ticks;
+
+        if (dma_.currentByte == 0xA0) {
+            dma_.transferActive = false;
+            dma_.ticks = 0;
+            dma_.currentByte = 0;
         }
     }
 }
