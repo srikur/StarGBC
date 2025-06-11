@@ -194,6 +194,7 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         bus->UpdateTimers(total);
         bus->UpdateGraphics(total);
+        bus->UpdateDMA(total);
 
         if (auto s = bus->audio_->Tick(total)) {
             bus->audio_->gSampleFifo.push(*s);
