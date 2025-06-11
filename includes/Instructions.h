@@ -190,6 +190,8 @@ public:
 
     static uint8_t ReadNextByte(Gameboy &gameboy);
 
+    static void WriteByte(Gameboy &gameboy, uint16_t address, uint8_t value);
+
     using WrappedFunction = uint8_t(*)(Gameboy &);
 
     template<typename... Args>

@@ -71,6 +71,8 @@ class Gameboy {
 
     void PrintCurrentValues() const;
 
+    void TickM(uint32_t mCycles);
+
 public:
     friend class Instructions;
 

@@ -312,6 +312,9 @@ uint32_t Gameboy::ProcessInterrupts() {
     return 5;
 }
 
+void Gameboy::TickM(uint32_t mCycles) {
+}
+
 void Gameboy::SaveState(int slot) const {
     if (pc < 0x100) {
         std::printf("Error: Cannot save state while bootrom is running\n");
