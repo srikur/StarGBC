@@ -29,8 +29,9 @@ class UnreachableCodeException final : public GameboyException {
     UnreachableCodeException() = default;
 
 public:
-
-    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) {}
+    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) {
+        this->message();
+    }
 };
 
 class FatalErrorException final : public GameboyException {
@@ -45,6 +46,7 @@ class FatalErrorException final : public GameboyException {
     FatalErrorException() = default;
 
 public:
-
-    explicit FatalErrorException(std::string message) : message_(std::move(message)) {}
+    explicit FatalErrorException(std::string message) : message_(std::move(message)) {
+        this->message();
+    }
 };

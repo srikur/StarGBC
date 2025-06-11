@@ -10,8 +10,8 @@ uint16_t Instructions::ReadNextWord(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::ReadNextByte(Gameboy &gameboy) {
-    uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
-    // update timers
+    const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
+    // gameboy.bus->TickM();
     return byte;
 }
 
