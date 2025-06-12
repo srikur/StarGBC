@@ -192,6 +192,8 @@ public:
 
     static void WriteByte(Gameboy &gameboy, uint16_t address, uint8_t value);
 
+    static void WriteWord(Gameboy &gameboy, uint16_t address, uint16_t value);
+
     static uint8_t ReadByte(Gameboy &gameboy, uint16_t address);
 
     using WrappedFunction = uint8_t(*)(Gameboy &);

@@ -2,31 +2,39 @@
 
 uint16_t Instructions::ReadNextWord(Gameboy &gameboy) {
     const uint16_t lower = ReadNextByte(gameboy);
-    // update timers
     const uint16_t higher = ReadNextByte(gameboy);
-    // update timers
     const uint16_t word = higher << 8 | lower;
     return word;
 }
 
 uint8_t Instructions::ReadNextByte(Gameboy &gameboy) {
     const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
-    // gameboy.TickM(1);
-    // gameboy.cyclesThisInstruction += 1;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
     return byte;
 }
 
 uint8_t Instructions::ReadByte(Gameboy &gameboy, const uint16_t address) {
     const uint8_t byte = gameboy.bus->ReadByte(address);
-    // gameboy.TickM(1);
-    // gameboy.cyclesThisInstruction += 1;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
     return byte;
+}
+
+void Instructions::WriteWord(Gameboy &gameboy, const uint16_t address, const uint16_t value) {
+    gameboy.bus->WriteByte(address, static_cast<uint8_t>(value & 0xFF));
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
+
+    gameboy.bus->WriteByte(address + 1, static_cast<uint8_t>(value >> 8));
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
 }
 
 void Instructions::WriteByte(Gameboy &gameboy, const uint16_t address, const uint8_t value) {
     gameboy.bus->WriteByte(address, value);
-    // gameboy.TickM(1);
-    // gameboy.cyclesThisInstruction += 1;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
 }
 
 uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
@@ -597,13 +605,13 @@ uint8_t Instructions::LDH(const LoadOtherTarget target, const LoadOtherSource so
     if (target == LoadOtherTarget::A && source == LoadOtherSource::A8) {
         // F0
         const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
-        gameboy.regs->a = gameboy.bus->ReadByte(a);
+        gameboy.regs->a = ReadByte(gameboy, a);
         return 12;
     }
     if (target == LoadOtherTarget::A && source == LoadOtherSource::CAddress) {
         // F2
         const uint16_t a = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
-        gameboy.regs->a = gameboy.bus->ReadByte(a);
+        gameboy.regs->a = ReadByte(gameboy, a);
         return 8;
     }
 
@@ -728,8 +736,11 @@ uint8_t Instructions::LD16(const LoadWordTarget target, const LoadWordSource sou
             }
             break;
         }
-        case LoadWordTarget::A16: gameboy.bus->WriteWord(ReadNextWord(gameboy), sourceValue);
+        case LoadWordTarget::A16: {
+            const uint16_t word = ReadNextWord(gameboy);
+            WriteWord(gameboy, word, sourceValue);
             break;
+        }
     }
 
     if (source == LoadWordSource::HL) {
@@ -1163,9 +1174,11 @@ uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, G
             break;
         case ArithmeticSource::L: gameboy.regs->l &= ~value;
             break;
-        case ArithmeticSource::HLAddr: gameboy.bus->WriteByte(gameboy.regs->GetHL(),
-                                                              ReadByte(gameboy, gameboy.regs->GetHL()) & ~value);
+        case ArithmeticSource::HLAddr: {
+            const uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());
+            WriteByte(gameboy, gameboy.regs->GetHL(), byte & ~value);
             break;
+        }
         default: throw UnreachableCodeException("Instructions::RES -- improper ArithmeticSource");
     }
 
@@ -1189,9 +1202,11 @@ uint8_t Instructions::SET(const uint8_t target, const ArithmeticSource source, G
             break;
         case ArithmeticSource::L: gameboy.regs->l |= value;
             break;
-        case ArithmeticSource::HLAddr: gameboy.bus->WriteByte(gameboy.regs->GetHL(),
-                                                              ReadByte(gameboy, gameboy.regs->GetHL()) | value);
+        case ArithmeticSource::HLAddr: {
+            const uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());
+            WriteByte(gameboy, gameboy.regs->GetHL(), byte | value);
             break;
+        }
         default: throw UnreachableCodeException("Instructions::SET -- improper ArithmeticSource");
     }
 
@@ -1358,8 +1373,8 @@ uint8_t Instructions::addition(const uint8_t value, const Gameboy &gameboy) {
 
 uint8_t Instructions::jump(const bool shouldJump, Gameboy &gameboy) {
     if (shouldJump) {
-        const uint16_t lower_byte = gameboy.bus->ReadByte(gameboy.pc);
-        const uint16_t higher_byte = gameboy.bus->ReadByte(gameboy.pc + 1);
+        const uint16_t lower_byte = ReadByte(gameboy, gameboy.pc);
+        const uint16_t higher_byte = ReadByte(gameboy, gameboy.pc + 1);
         gameboy.pc = (higher_byte << 8) | lower_byte;
         return 16;
     }
@@ -1389,9 +1404,9 @@ void Instructions::push(const uint16_t value, Gameboy &gameboy) {
 }
 
 uint16_t Instructions::pop(Gameboy &gameboy) {
-    const uint16_t lsb = gameboy.bus->ReadByte(gameboy.sp);
+    const uint16_t lsb = ReadByte(gameboy, gameboy.sp);
     gameboy.sp += 1;
-    const uint16_t msb = gameboy.bus->ReadByte(gameboy.sp);
+    const uint16_t msb = ReadByte(gameboy, gameboy.sp);
     gameboy.sp += 1;
 
     return msb << 8 | lsb;
