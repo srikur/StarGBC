@@ -74,13 +74,13 @@ public:
 
     static uint8_t RLCA(const Gameboy &gameboy);
 
-    static uint8_t RLC(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t RLC(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t RLCAddr(Gameboy &gameboy);
 
     static uint8_t RLA(const Gameboy &gameboy);
 
-    static uint8_t RL(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t RL(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t RLAddr(Gameboy &gameboy);
 
@@ -94,7 +94,7 @@ public:
 
     static uint8_t RRC(ArithmeticSource source, Gameboy &gameboy);
 
-    static uint8_t RR(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t RR(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t RRAddr(Gameboy &gameboy);
 
@@ -134,19 +134,19 @@ public:
 
     static uint8_t SUB(ArithmeticSource source, Gameboy &gameboy);
 
-    static uint8_t SLA(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t SLA(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t SLAAddr(Gameboy &gameboy);
 
-    static uint8_t SRA(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t SRA(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t SRAAddr(Gameboy &gameboy);
 
-    static uint8_t SWAP(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t SWAP(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t SWAPAddr(Gameboy &gameboy);
 
-    static uint8_t SRL(ArithmeticSource source, Gameboy &gameboy);
+    static uint8_t SRL(ArithmeticSource source, const Gameboy &gameboy);
 
     static uint8_t SRLAddr(Gameboy &gameboy);
 
@@ -189,6 +189,12 @@ public:
     static uint16_t ReadNextWord(Gameboy &gameboy);
 
     static uint8_t ReadNextByte(Gameboy &gameboy);
+
+    static void WriteByte(Gameboy &gameboy, uint16_t address, uint8_t value);
+
+    static void WriteWord(Gameboy &gameboy, uint16_t address, uint16_t value);
+
+    static uint8_t ReadByte(Gameboy &gameboy, uint16_t address);
 
     using WrappedFunction = uint8_t(*)(Gameboy &);
 

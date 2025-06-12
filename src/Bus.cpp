@@ -3,7 +3,6 @@
 Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
     speedShift = false;
-    speed = cartridge_->ReadByte(0x0143) & 0x80 ? Speed::Double : Speed::Regular;
     gpu_->hdmaMode = GPU::HDMAMode::GDMA;
     hdmaSource = 0x0000;
     hdmaDestination = 0x8000;
@@ -12,6 +11,8 @@ Bus::Bus(const std::string &romLocation) {
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
+        return 0xFF;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
@@ -59,6 +60,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                 const uint8_t second = speedShift ? 0x01 : 0x00;
                 return first | second;
             }
+            if (address == 0xFF46) { return dma_.writtenValue; }
             if (address == 0xFF4C) { return 0x00; }
             return gpu_->ReadRegisters(address);
         }
@@ -72,6 +74,8 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value) {
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
+        return;
     switch (address & 0xF000) {
         case 0x0000 ... 0x7FFF:
             cartridge_->WriteByte(address, value);
@@ -151,13 +155,8 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
                         case 0x40:
                             if (address == 0xFF46) {
                                 /* DMA Transfer */
-                                const uint16_t newVal = static_cast<uint16_t>(value) << 8;
-                                for (uint16_t i = 0; i < 0xA0; i++) {
-                                    gpu_->oam[i] = ReadByte(newVal + i);
-                                }
-                                return;
-                            }
-                            if (((address >= 0xFF40) && (address <= 0xFF4B)) || (address == 0xFF4F)) {
+                                dma_.Set(value);
+                            } else if (((address >= 0xFF40) && (address <= 0xFF4B)) || (address == 0xFF4F)) {
                                 gpu_->WriteRegisters(address, value);
                             }
                             if (address == 0xFF4D) { speedShift = (value & 0x01) == 0x01; }
@@ -259,6 +258,7 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
                 if (gpu_->currentLine > 153) {
                     gpu_->currentLine = 0;
                     gpu_->stat.mode = 2;
+                    gpu_->scanlineCounter = 0;
                     if (gpu_->stat.enableM2Interrupt)
                         SetInterrupt(InterruptType::LCDStat);
                 }
@@ -307,6 +307,27 @@ void Bus::UpdateTimers(const uint32_t cycles) {
     }
 }
 
+void Bus::UpdateDMA(uint32_t cycles) {
+    while (cycles-- && dma_.transferActive) {
+        if (dma_.ticks < 4) {
+            ++dma_.ticks;
+            continue;
+        }
+
+        gpu_->oam[dma_.currentByte] =
+                ReadByte(dma_.startAddress + dma_.currentByte);
+
+        ++dma_.currentByte;
+        ++dma_.ticks;
+
+        if (dma_.currentByte == 0xA0) {
+            dma_.transferActive = false;
+            dma_.ticks = 0;
+            dma_.currentByte = 0;
+        }
+    }
+}
+
 void Bus::SetInterrupt(const InterruptType interrupt) {
     using enum InterruptType;
     const uint8_t mask = [&]() -> uint8_t {
@@ -320,13 +341,6 @@ void Bus::SetInterrupt(const InterruptType interrupt) {
     }();
 
     interruptFlag |= mask;
-}
-
-void Bus::WriteWord(const uint16_t address, const uint16_t value) {
-    const uint8_t lower = value >> 8;
-    const uint8_t higher = value & 0xFF;
-    WriteByte(address, higher);
-    WriteByte(address + 1, lower);
 }
 
 uint8_t Bus::ReadHDMA(const uint16_t address) const {

@@ -48,14 +48,11 @@ class Gameboy {
     bool halted = false;
     bool haltBug = false;
     uint32_t stepCycles = 0;
+    uint32_t cyclesThisInstruction = 0;
 
     bool throttleSpeed = true;
     int speedMultiplier = 1;
     bool paused = false;
-
-    [[nodiscard]] inline uint16_t ReadNextWord() const;
-
-    [[nodiscard]] inline uint8_t ReadNextByte() const;
 
     uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
 
@@ -70,6 +67,8 @@ class Gameboy {
     uint32_t ProcessInterrupts();
 
     void PrintCurrentValues() const;
+
+    void TickM(uint32_t cycles);
 
 public:
     friend class Instructions;
