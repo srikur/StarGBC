@@ -9,16 +9,6 @@
 
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 
-inline uint16_t Gameboy::ReadNextWord() const {
-    const uint16_t lower = bus->ReadByte(pc + 1);
-    const uint16_t higher = bus->ReadByte(pc + 2);
-    return static_cast<uint16_t>(higher << 8 | lower);
-}
-
-inline uint8_t Gameboy::ReadNextByte() const {
-    return bus->ReadByte(pc + 1);
-}
-
 bool Gameboy::CheckVBlank() const {
     const bool value = bus->gpu_->vblank;
     bus->gpu_->vblank = false;
@@ -189,22 +179,16 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         const auto speedFactor = static_cast<uint32_t>(bus->speed);
         uint32_t tCycles = cycles * 4 * speedFactor;
-
-        bus->UpdateTimers(tCycles);
-        bus->UpdateGraphics(tCycles);
-        bus->UpdateDMA(cycles * speedFactor);
+        TickM(cycles);
 
         if (const uint32_t hdmaCycles = RunHDMA()) {
-            const uint32_t hdmaTCycles = hdmaCycles * 4 * speedFactor;
-            bus->UpdateTimers(hdmaTCycles);
-            bus->UpdateGraphics(hdmaTCycles);
-            bus->UpdateDMA(hdmaCycles * speedFactor);
-            tCycles += hdmaTCycles;
+            TickM(hdmaCycles);
+            tCycles += hdmaCycles * 4 * speedFactor;
         }
 
-        // if (auto s = bus->audio_->Tick(tCycles)) {
-        //     bus->audio_->gSampleFifo.push(*s);
-        // }
+        if (auto s = bus->audio_->Tick(tCycles)) {
+            bus->audio_->gSampleFifo.push(*s);
+        }
 
         stepCycles += tCycles;
     }
@@ -226,6 +210,16 @@ void Gameboy::UpdateEmulator() {
     const auto elapsed = clock::now() - frameStart;
     if (const auto effectiveFrameTime = kFramePeriod / speedMultiplier; throttleSpeed && elapsed < effectiveFrameTime)
         std::this_thread::sleep_for(effectiveFrameTime - elapsed);
+}
+
+void Gameboy::TickM(const uint32_t cycles) {
+    const uint32_t t = cycles * 4 * static_cast<uint32_t>(bus->speed);
+    bus->UpdateTimers(t);
+    bus->UpdateGraphics(t);
+    bus->UpdateDMA(cycles);
+    if (const auto s = bus->audio_->Tick(t)) { bus->audio_->gSampleFifo.push(*s); }
+
+    stepCycles += t;
 }
 
 void Gameboy::DebugNextInstruction() {
