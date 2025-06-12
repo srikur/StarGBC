@@ -178,19 +178,16 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
         }
 
         const auto speedFactor = static_cast<uint32_t>(bus->speed);
-        uint32_t tCycles = cycles * 4 * speedFactor;
+        const uint32_t tCycles = cycles * 4 * speedFactor;
         TickM(cycles);
 
         if (const uint32_t hdmaCycles = RunHDMA()) {
             TickM(hdmaCycles);
-            tCycles += hdmaCycles * 4 * speedFactor;
         }
 
         if (auto s = bus->audio_->Tick(tCycles)) {
             bus->audio_->gSampleFifo.push(*s);
         }
-
-        stepCycles += tCycles;
     }
 }
 
