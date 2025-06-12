@@ -113,7 +113,7 @@ uint8_t Gameboy::ExecuteInstruction() {
 
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
-        instruction = bus->ReadByte(pc);
+        instruction = bus->ReadByte(pc++);
         currentInstruction = 0xCB00 | instruction;
     } else {
         currentInstruction = instruction;
