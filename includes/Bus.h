@@ -43,6 +43,25 @@ struct Memory {
     }
 };
 
+struct DMA {
+    static constexpr int DMA_TOTAL_CYCLES = 160 * 4 + 4;
+
+    uint8_t writtenValue = 0x00;
+    uint16_t startAddress = 0x0000;
+    uint8_t currentByte = 0x00;
+    bool transferActive = false;
+    bool restarted = false;
+    uint16_t ticks = 0x0000;
+
+    void Set(const uint8_t value) {
+        writtenValue = value;
+        startAddress = static_cast<uint16_t>(value) << 8;
+        restarted = restarted || (transferActive && ticks > 4);
+        transferActive = true;
+        ticks = 0;
+    }
+};
+
 class Bus {
 public:
     enum class Speed {
@@ -64,7 +83,7 @@ public:
 
     void UpdateTimers(uint32_t cycles);
 
-    void WriteWord(uint16_t address, uint16_t value);
+    void UpdateDMA(uint32_t cycles);
 
     [[nodiscard]] uint8_t ReadHDMA(uint16_t address) const;
 
@@ -83,6 +102,7 @@ public:
     Memory memory_ = {};
     Timer timer_ = {};
     Serial serial_ = {};
+    DMA dma_ = {};
     std::unique_ptr<Audio> audio_ = std::make_unique<Audio>();
 
     // Bootrom
@@ -111,8 +131,4 @@ public:
     bool interruptDelay = false;
 
     void SetInterrupt(InterruptType interrupt);
-
-    [[nodiscard]] uint32_t AdjustedCycles(const uint32_t cycles) const {
-        return cycles << (speed == Speed::Double ? 1 : 0);
-    }
 };

@@ -9,16 +9,6 @@
 
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 
-inline uint16_t Gameboy::ReadNextWord() const {
-    const uint16_t lower = bus->ReadByte(pc + 1);
-    const uint16_t higher = bus->ReadByte(pc + 2);
-    return static_cast<uint16_t>(higher << 8 | lower);
-}
-
-inline uint8_t Gameboy::ReadNextByte() const {
-    return bus->ReadByte(pc + 1);
-}
-
 bool Gameboy::CheckVBlank() const {
     const bool value = bus->gpu_->vblank;
     bus->gpu_->vblank = false;
@@ -73,7 +63,7 @@ uint32_t Gameboy::RunHDMA() const {
     }
 
     const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
-    const uint32_t cyclesPerBlock = doubleSpeed ? 64 : 32;
+    const uint32_t cyclesPerBlock = doubleSpeed ? 16 : 8;
 
     switch (bus->gpu_->hdmaMode) {
         case GPU::HDMAMode::GDMA: {
@@ -115,7 +105,8 @@ uint32_t Gameboy::RunHDMA() const {
 uint8_t Gameboy::ExecuteInstruction() {
     uint8_t instruction = bus->ReadByte(pc);
     pc += 1;
-    // update timers
+    TickM(1);
+    cyclesThisInstruction += 1;
 
     if (haltBug) {
         haltBug = false;
@@ -124,14 +115,16 @@ uint8_t Gameboy::ExecuteInstruction() {
 
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
-        instruction = bus->ReadByte(pc);
-        currentInstruction = 0xCB | instruction;
+        instruction = bus->ReadByte(pc++);
+        TickM(1);
+        cyclesThisInstruction += 1;
+        currentInstruction = 0xCB00 | instruction;
     } else {
         currentInstruction = instruction;
     }
 
     const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
-    return cycleIncrement;
+    return cycleIncrement / 4;
 }
 
 void Gameboy::InitializeSystem() {
@@ -176,7 +169,7 @@ bool Gameboy::PopSample(StereoSample sample) const {
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
-        if (pc == 0x10) { bus->ChangeSpeed(); }
+        cyclesThisInstruction = 0;
         if (pc == 0x100) { bus->bootromRunning = false; }
         if (bus->interruptDelay && ++icount == 2) {
             bus->interruptDelay = false;
@@ -186,20 +179,20 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         uint32_t cycles = ProcessInterrupts();
         if (!cycles) {
-            cycles += halted ? 4 : ExecuteInstruction();
+            cycles = halted ? 1 : ExecuteInstruction();
         }
 
-        const uint32_t hdmaCycles = RunHDMA();
-        const uint32_t total = cycles + hdmaCycles;
+        const auto speedFactor = static_cast<uint32_t>(bus->speed);
+        const uint32_t tCycles = cycles * 4 * speedFactor;
+        TickM(cycles - cyclesThisInstruction);
 
-        bus->UpdateTimers(total);
-        bus->UpdateGraphics(total);
+        if (const uint32_t hdmaCycles = RunHDMA()) {
+            TickM(hdmaCycles);
+        }
 
-        if (auto s = bus->audio_->Tick(total)) {
+        if (auto s = bus->audio_->Tick(tCycles)) {
             bus->audio_->gSampleFifo.push(*s);
         }
-
-        stepCycles += total;
     }
 }
 
@@ -219,6 +212,17 @@ void Gameboy::UpdateEmulator() {
     const auto elapsed = clock::now() - frameStart;
     if (const auto effectiveFrameTime = kFramePeriod / speedMultiplier; throttleSpeed && elapsed < effectiveFrameTime)
         std::this_thread::sleep_for(effectiveFrameTime - elapsed);
+}
+
+void Gameboy::TickM(const uint32_t cycles) {
+    if (cycles == 0) return;
+    const uint32_t t = cycles * 4 * static_cast<uint32_t>(bus->speed);
+    bus->UpdateTimers(t);
+    bus->UpdateGraphics(t);
+    bus->UpdateDMA(cycles);
+    if (const auto s = bus->audio_->Tick(t)) { bus->audio_->gSampleFifo.push(*s); }
+
+    stepCycles += t;
 }
 
 void Gameboy::DebugNextInstruction() {
@@ -269,7 +273,7 @@ uint32_t Gameboy::ProcessInterrupts() {
     }
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
-        return 20;
+        return 5;
     }
 
     if (!bus->interruptMasterEnable)
@@ -287,7 +291,7 @@ uint32_t Gameboy::ProcessInterrupts() {
     bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
 
     pc = interruptAddress(bit);
-    return 20;
+    return 5;
 }
 
 void Gameboy::SaveState(int slot) const {
