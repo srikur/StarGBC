@@ -343,13 +343,6 @@ void Bus::SetInterrupt(const InterruptType interrupt) {
     interruptFlag |= mask;
 }
 
-void Bus::WriteWord(const uint16_t address, const uint16_t value) {
-    const uint8_t lower = value >> 8;
-    const uint8_t higher = value & 0xFF;
-    WriteByte(address, higher);
-    WriteByte(address + 1, lower);
-}
-
 uint8_t Bus::ReadHDMA(const uint16_t address) const {
     switch (address) {
         case 0xFF51: return hdmaSource >> 8;

@@ -105,6 +105,8 @@ uint32_t Gameboy::RunHDMA() const {
 uint8_t Gameboy::ExecuteInstruction() {
     uint8_t instruction = bus->ReadByte(pc);
     pc += 1;
+    TickM(1);
+    cyclesThisInstruction += 1;
 
     if (haltBug) {
         haltBug = false;
@@ -114,6 +116,8 @@ uint8_t Gameboy::ExecuteInstruction() {
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
         instruction = bus->ReadByte(pc++);
+        TickM(1);
+        cyclesThisInstruction += 1;
         currentInstruction = 0xCB00 | instruction;
     } else {
         currentInstruction = instruction;
@@ -165,6 +169,7 @@ bool Gameboy::PopSample(StereoSample sample) const {
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
+        cyclesThisInstruction = 0;
         if (pc == 0x100) { bus->bootromRunning = false; }
         if (bus->interruptDelay && ++icount == 2) {
             bus->interruptDelay = false;
@@ -179,7 +184,7 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
 
         const auto speedFactor = static_cast<uint32_t>(bus->speed);
         const uint32_t tCycles = cycles * 4 * speedFactor;
-        TickM(cycles);
+        TickM(cycles - cyclesThisInstruction);
 
         if (const uint32_t hdmaCycles = RunHDMA()) {
             TickM(hdmaCycles);
@@ -210,6 +215,7 @@ void Gameboy::UpdateEmulator() {
 }
 
 void Gameboy::TickM(const uint32_t cycles) {
+    if (cycles == 0) return;
     const uint32_t t = cycles * 4 * static_cast<uint32_t>(bus->speed);
     bus->UpdateTimers(t);
     bus->UpdateGraphics(t);
