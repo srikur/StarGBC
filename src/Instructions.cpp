@@ -25,7 +25,6 @@ uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(byte == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -70,7 +69,6 @@ uint8_t Instructions::RLC(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -200,7 +198,6 @@ uint8_t Instructions::RLAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(byte == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -243,7 +240,6 @@ uint8_t Instructions::RL(const ArithmeticSource source, Gameboy &gameboy) {
         default: throw UnreachableCodeException("Instructions::RL -- improper ArithmeticSource");
     }
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -305,7 +301,6 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
         gameboy.regs->SetZero(value == 0);
         gameboy.regs->SetSubtract(false);
         gameboy.regs->SetHalf(false);
-        gameboy.pc += 1;
         return 16;
     }
 
@@ -340,7 +335,6 @@ uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -353,7 +347,6 @@ uint8_t Instructions::RRAddr(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetZero(value == 0);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -403,7 +396,6 @@ uint8_t Instructions::RR(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -914,7 +906,6 @@ uint8_t Instructions::SLAAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -957,7 +948,6 @@ uint8_t Instructions::SLA(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -969,7 +959,6 @@ uint8_t Instructions::SRAAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -1012,7 +1001,6 @@ uint8_t Instructions::SRA(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -1024,7 +1012,6 @@ uint8_t Instructions::SWAPAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -1067,7 +1054,6 @@ uint8_t Instructions::SWAP(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -1079,7 +1065,6 @@ uint8_t Instructions::SRLAddr(Gameboy &gameboy) {
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    gameboy.pc += 1;
     return 16;
 }
 
@@ -1122,7 +1107,6 @@ uint8_t Instructions::SRL(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
 
-    gameboy.pc += 1;
     return 8;
 }
 
@@ -1146,7 +1130,6 @@ uint8_t Instructions::BIT(const uint8_t target, const ArithmeticSource source, G
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(false);
 
-    gameboy.pc += 1;
     return source == ArithmeticSource::HLAddr ? 12 : 8;
 }
 
@@ -1173,7 +1156,6 @@ uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, G
         default: throw UnreachableCodeException("Instructions::RES -- improper ArithmeticSource");
     }
 
-    gameboy.pc += 1;
     return source == ArithmeticSource::HLAddr ? 16 : 8;
 }
 
@@ -1200,7 +1182,6 @@ uint8_t Instructions::SET(const uint8_t target, const ArithmeticSource source, G
         default: throw UnreachableCodeException("Instructions::SET -- improper ArithmeticSource");
     }
 
-    gameboy.pc += 1;
     return source == ArithmeticSource::HLAddr ? 16 : 8;
 }
 
