@@ -3,7 +3,6 @@
 Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
     speedShift = false;
-    speed = cartridge_->ReadByte(0x0143) & 0x80 ? Speed::Double : Speed::Regular;
     gpu_->hdmaMode = GPU::HDMAMode::GDMA;
     hdmaSource = 0x0000;
     hdmaDestination = 0x8000;
@@ -259,6 +258,7 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
                 if (gpu_->currentLine > 153) {
                     gpu_->currentLine = 0;
                     gpu_->stat.mode = 2;
+                    gpu_->scanlineCounter = 0;
                     if (gpu_->stat.enableM2Interrupt)
                         SetInterrupt(InterruptType::LCDStat);
                 }

@@ -133,8 +133,4 @@ public:
     bool interruptDelay = false;
 
     void SetInterrupt(InterruptType interrupt);
-
-    [[nodiscard]] uint32_t AdjustedCycles(const uint32_t cycles) const {
-        return cycles << (speed == Speed::Double ? 1 : 0);
-    }
 };
