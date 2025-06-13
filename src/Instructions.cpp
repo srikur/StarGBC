@@ -8,9 +8,9 @@ uint16_t Instructions::ReadNextWord(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::ReadNextByte(Gameboy &gameboy) {
-    const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
     gameboy.TickM(1);
     gameboy.cyclesThisInstruction += 1;
+    const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
     return byte;
 }
 
@@ -22,13 +22,8 @@ uint8_t Instructions::ReadByte(Gameboy &gameboy, const uint16_t address) {
 }
 
 void Instructions::WriteWord(Gameboy &gameboy, const uint16_t address, const uint16_t value) {
-    gameboy.bus->WriteByte(address, static_cast<uint8_t>(value & 0xFF));
-    gameboy.TickM(1);
-    gameboy.cyclesThisInstruction += 1;
-
-    gameboy.bus->WriteByte(address + 1, static_cast<uint8_t>(value >> 8));
-    gameboy.TickM(1);
-    gameboy.cyclesThisInstruction += 1;
+    WriteByte(gameboy, address, static_cast<uint8_t>(value & 0xFF));
+    WriteByte(gameboy, address + 1, static_cast<uint8_t>(value >> 8));
 }
 
 void Instructions::WriteByte(Gameboy &gameboy, const uint16_t address, const uint8_t value) {
@@ -156,15 +151,16 @@ uint8_t Instructions::HALT(Gameboy &gameboy) {
 
 uint8_t Instructions::RST(const RSTTargets target, Gameboy &gameboy) {
     const uint16_t location = [&]() -> uint16_t {
+        using enum RSTTargets;
         switch (target) {
-            case RSTTargets::H00: return 0x00;
-            case RSTTargets::H08: return 0x08;
-            case RSTTargets::H10: return 0x10;
-            case RSTTargets::H18: return 0x18;
-            case RSTTargets::H20: return 0x20;
-            case RSTTargets::H28: return 0x28;
-            case RSTTargets::H30: return 0x30;
-            case RSTTargets::H38: return 0x38;
+            case H00: return 0x00;
+            case H08: return 0x08;
+            case H10: return 0x10;
+            case H18: return 0x18;
+            case H20: return 0x20;
+            case H28: return 0x28;
+            case H30: return 0x30;
+            case H38: return 0x38;
             default: throw UnreachableCodeException("Instructions::RST -- improper RSTTarget");
         }
     }();

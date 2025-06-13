@@ -76,125 +76,54 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
 void Bus::WriteByte(const uint16_t address, const uint8_t value) {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
         return;
-    switch (address & 0xF000) {
-        case 0x0000 ... 0x7FFF:
-            cartridge_->WriteByte(address, value);
+    switch (address) {
+        case 0x0000 ... 0x7FFF: cartridge_->WriteByte(address, value);
             break;
-        case 0x8000:
-        case 0x9000:
-            gpu_->WriteVRAM(address, value);
+        case 0x8000 ... 0x9FFF: gpu_->WriteVRAM(address, value);
             break;
-        case 0xA000:
-        case 0xB000:
-            cartridge_->WriteByte(address, value);
+        case 0xA000 ... 0xBFFF: cartridge_->WriteByte(address, value);
             break;
-        case 0xC000:
-            memory_.wram_[address - 0xC000] = value;
+        case 0xC000 ... 0xCFFF: memory_.wram_[address - 0xC000] = value;
             break;
-        case 0xD000:
-            memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_] = value;
+        case 0xD000 ... 0xDFFF: memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_] = value;
             break;
-        case 0xE000:
-            memory_.wram_[address - 0xE000] = value;
+        case 0xE000 ... 0xEFFF: memory_.wram_[address - 0xE000] = value;
             break;
-        case 0xF000:
-            switch (address & 0xF00) {
-                case 0x000:
-                case 0x100:
-                case 0x200:
-                case 0x300:
-                case 0x400:
-                case 0x500:
-                case 0x600:
-                case 0x700:
-                case 0x800:
-                case 0x900:
-                case 0xA00:
-                case 0xB00:
-                case 0xC00:
-                case 0xD00:
-                    memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
-                    break;
-                case 0xE00:
-                    if (address < 0xFEA0) { gpu_->oam[address - 0xFE00] = value; }
-                    break;
-                case 0xF00:
-                    switch (address & 0xF0) {
-                        case 0x0:
-                            switch (address & 0xFF) {
-                                case 0x00:
-                                    joypad_.SetJoypadState(value);
-                                    break;
-                                case 0x01:
-                                case 0x02:
-                                    serial_.WriteSerial(address, value);
-                                    break;
-                                case 0x04:
-                                    timer_.WriteDIV();
-                                    break;
-                                case 0x05:
-                                    timer_.tima = value;
-                                    break;
-                                case 0x06:
-                                    timer_.tma = value;
-                                    break;
-                                case 0x07:
-                                    timer_.tac = value;
-                                    break;
-                                case 0x0F:
-                                    interruptFlag = value;
-                                    break;
-                                default: break;
-                            }
-                            break;
-                        case 0x10:
-                        case 0x20:
-                        case 0x30:
-                            audio_->WriteByte(address, value);
-                            break;
-                        case 0x40:
-                            if (address == 0xFF46) {
-                                /* DMA Transfer */
-                                dma_.Set(value);
-                            } else if (((address >= 0xFF40) && (address <= 0xFF4B)) || (address == 0xFF4F)) {
-                                gpu_->WriteRegisters(address, value);
-                            }
-                            if (address == 0xFF4D) { speedShift = (value & 0x01) == 0x01; }
-                            break;
-                        case 0x50:
-                            if ((address > 0xFF50) && (address < 0xFF56)) { WriteHDMA(address, value); }
-                            break;
-                        case 0x60:
-                            if ((address > 0xFF67) && (address < 0xFF6C)) { gpu_->WriteRegisters(address, value); }
-                            break;
-                        case 0x70:
-                            if (address == 0xFF70) {
-                                if (!(value & 0x07)) {
-                                    memory_.wramBank_ = 1;
-                                } else {
-                                    memory_.wramBank_ = value;
-                                }
-                            }
-                            break;
-                        case 0x80:
-                        case 0x90:
-                        case 0xA0:
-                        case 0xB0:
-                        case 0xC0:
-                        case 0xD0:
-                        case 0xE0:
-                        case 0xF0:
-                            if (address == 0xFFFF) {
-                                interruptEnable = value;
-                            } else {
-                                memory_.hram_[address - 0xFF80] = value;
-                            }
-                            break;
-                        default: break;
-                    }
-                    break;
-                default: break;
-            }
+        case 0xF000 ... 0xFDFF: memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
+            break;
+        case 0xFE00 ... 0xFE9F: gpu_->oam[address - 0xFE00] = value;
+            break;
+        case 0xFF00: joypad_.SetJoypadState(value);
+            break;
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value);
+            break;
+        case 0xFF04: timer_.WriteDIV();
+            break;
+        case 0xFF05: timer_.tima = value;
+            break;
+        case 0xFF06: timer_.tma = value;
+            break;
+        case 0xFF07: timer_.tac = value;
+            break;
+        case 0xFF0F: interruptFlag = value;
+            break;
+        case 0xFF10 ... 0xFF3F: audio_->WriteByte(address, value);
+            break;
+        case 0xFF40 ... 0xFF4F: {
+            if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {
+                speedShift = (value & 0x01) == 0x01;
+            } else { gpu_->WriteRegisters(address, value); }
+            break;
+        }
+        case 0xFF51 ... 0xFF55: WriteHDMA(address, value);
+            break;
+        case 0xFF68 ... 0xFF6B: gpu_->WriteRegisters(address, value);
+            break;
+        case 0xFF70: memory_.wramBank_ = (value & 0x07) ? value : 1;
+            break;
+        case 0xFF80 ... 0xFFFE: memory_.hram_[address - 0xFF80] = value;
+            break;
+        case 0xFFFF: interruptEnable = value;
             break;
         default:
             break;
