@@ -111,7 +111,7 @@ public:
 
     // GBC
     Speed speed = Speed::Regular;
-    bool speedShift = false;
+    bool prepareSpeedShift = false;
     uint16_t hdmaSource;
     uint16_t hdmaDestination;
     bool hdmaActive;
