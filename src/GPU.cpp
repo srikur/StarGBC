@@ -1,5 +1,4 @@
 #include <list>
-#include <algorithm>
 
 #include "GPU.h"
 #include "Common.h"
@@ -80,18 +79,16 @@ void GPU::RenderSprites() {
                 const uint8_t b = obpd[paletteNumberCGB][color][2];
                 SetColor(xPos + pixel, r, g, b);
             } else {
-                uint8_t shade = 0;
-                switch (const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette; (src >> (color * 2)) & 0x03) {
-                    case 0: shade = 255;
-                        break;
-                    case 1: shade = 192;
-                        break;
-                    case 2: shade = 96;
-                        break;
-                    default: shade = 0;
-                        break;
-                }
-                for (auto &c: screenData[currentLine][xPos + pixel]) c = shade;
+                const uint8_t shade = [&] {
+                    switch (const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette;
+                        (src >> (color * 2)) & 0x03) {
+                        case 0: return DMG_SHADE[0];
+                        case 1: return DMG_SHADE[1];
+                        case 2: return DMG_SHADE[2];
+                        default: return DMG_SHADE[3];
+                    }
+                }();
+                screenData[currentLine * SCREEN_WIDTH + (xPos + pixel)] = shade;
             }
         }
     }
@@ -150,18 +147,15 @@ void GPU::RenderTiles() {
             const uint8_t b = bgpd[attrs.paletteNumberCGB][color][2];
             SetColor(pixel, r, g, b);
         } else {
-            uint8_t shade = 0;
-            switch ((backgroundPalette >> (color * 2)) & 0x03) {
-                case 0: shade = 255;
-                    break;
-                case 1: shade = 192;
-                    break;
-                case 2: shade = 96;
-                    break;
-                default: shade = 0;
-                    break;
-            }
-            for (auto &c: screenData[currentLine][pixel]) c = shade;
+            const uint8_t shade = [&] {
+                switch (backgroundPalette >> (color * 2) & 0x03) {
+                    case 0: return DMG_SHADE[0];
+                    case 1: return DMG_SHADE[1];
+                    case 2: return DMG_SHADE[2];
+                    default: return DMG_SHADE[3];
+                }
+            }();
+            screenData[currentLine * SCREEN_WIDTH + pixel] = shade;
         }
     }
 }
@@ -179,9 +173,15 @@ void GPU::SetColor(const uint8_t pixel, const uint32_t red, const uint32_t green
     const auto corrG5 = static_cast<uint8_t>((6 * r5 + 24 * g5 + 2 * b5) >> 5);
     const auto corrB5 = static_cast<uint8_t>((2 * r5 + 4 * g5 + 26 * b5) >> 5);
 
-    screenData[currentLine][pixel][0] = expand5(corrR5);
-    screenData[currentLine][pixel][1] = expand5(corrG5);
-    screenData[currentLine][pixel][2] = expand5(corrB5);
+    const uint8_t r = expand5(corrR5);
+    const uint8_t g = expand5(corrG5);
+    const uint8_t b = expand5(corrB5);
+
+    const uint32_t rgba = 0xFF000000u |
+                          (static_cast<uint32_t>(b) << 16) |
+                          (static_cast<uint32_t>(g) << 8) |
+                          r;
+    screenData[currentLine * SCREEN_WIDTH + pixel] = rgba;
 }
 
 GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
@@ -262,9 +262,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 scanlineCounter = 0;
                 currentLine = 0;
                 stat.mode = 0;
-                for (auto &row: screenData) {
-                    for (auto &px: row) std::ranges::fill(px, 0xFF);
-                }
+                screenData.fill(0);
                 vblank = true;
             }
             break;

@@ -5,6 +5,8 @@
 
 class GPU {
 public:
+    static constexpr uint8_t SCREEN_WIDTH = 160;
+    static constexpr uint8_t SCREEN_HEIGHT = 144;
     static constexpr uint16_t VRAM_BEGIN = 0x8000;
     static constexpr uint16_t VRAM_END = 0x9FFF;
     static constexpr uint16_t VRAM_SIZE = 0x4000;
@@ -12,6 +14,13 @@ public:
     static constexpr uint16_t GPU_REGS_END = 0xFF4B;
     static constexpr uint16_t OAM_BEGIN = 0xFE00;
     static constexpr uint16_t OAM_END = 0xFE9F;
+
+    static constexpr uint32_t DMG_SHADE[4] = {
+        0xFFFFFFFFu, // FF FF FF FF
+        0xFFC0C0C0u, // C0 C0 C0 FF
+        0xFF606060u, // 60 60 60 FF
+        0xFF000000u // 00 00 00 FF
+    };
 
     struct Attributes {
         bool priority;
@@ -54,8 +63,7 @@ public:
     };
 
     std::vector<uint8_t> vram = std::vector<uint8_t>(VRAM_SIZE);
-    std::vector<std::vector<std::vector<uint32_t> > > screenData = std::vector(
-        144, std::vector(160, std::vector<uint32_t>(3)));
+    std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
     std::vector<uint8_t> oam = std::vector<uint8_t>(0xA0);
     uint8_t lyc = 0; // 0xFF45
 
@@ -139,12 +147,7 @@ public:
 
             stateFile.write(reinterpret_cast<const char *>(vram.data()), vram.size());
             stateFile.write(reinterpret_cast<const char *>(oam.data()), oam.size());
-
-            for (const auto &row: screenData)
-                for (const auto &col: row)
-                    stateFile.write(reinterpret_cast<const char *>(col.data()),
-                                    col.size() * sizeof(uint32_t));
-
+            stateFile.write(reinterpret_cast<const char *>(screenData.data()), screenData.size());
             stateFile.write(reinterpret_cast<const char *>(priority_), sizeof(priority_));
             stateFile.write(reinterpret_cast<const char *>(&lyc), sizeof(lyc));
             stateFile.write(reinterpret_cast<const char *>(&currentLine), sizeof(currentLine));
@@ -176,12 +179,7 @@ public:
             stateFile.read(reinterpret_cast<char *>(&stat), sizeof(stat));
             stateFile.read(reinterpret_cast<char *>(vram.data()), vram.size());
             stateFile.read(reinterpret_cast<char *>(oam.data()), oam.size());
-
-            for (auto &row: screenData)
-                for (auto &col: row)
-                    stateFile.read(reinterpret_cast<char *>(col.data()),
-                                   col.size() * sizeof(uint32_t));
-
+            stateFile.read(reinterpret_cast<char *>(screenData.data()), screenData.size());
             stateFile.read(reinterpret_cast<char *>(priority_), sizeof(priority_));
             stateFile.read(reinterpret_cast<char *>(&lyc), sizeof(lyc));
             stateFile.read(reinterpret_cast<char *>(&currentLine), sizeof(currentLine));
