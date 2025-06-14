@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_render.h>
 #include <print>
 #include <vector>
 #include <memory>
@@ -17,6 +18,7 @@ static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
 static SDL_Texture *texture = nullptr;
 static std::unique_ptr<Gameboy> gameboy = nullptr;
+static bool useNearest = false;
 
 static Uint32 packRGBA(const SDL_PixelFormat *fmt, const Uint8 r, const Uint8 g, const Uint8 b) {
     constexpr Uint8 a = 0xFF;
@@ -31,47 +33,12 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer("StarGBC",
-                                     WINDOW_W,
-                                     WINDOW_H,
-                                     SDL_WINDOW_RESIZABLE,
-                                     &window,
-                                     &renderer)) {
-        SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
-
-    if (!SDL_SetRenderLogicalPresentation(renderer,
-                                          GB_SCREEN_W,
-                                          GB_SCREEN_H,
-                                          SDL_LOGICAL_PRESENTATION_INTEGER_SCALE)) {
-        // SDL3
-        SDL_Log("Couldn't enable logical presentation: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
-
-    texture = SDL_CreateTexture(renderer,
-                                SDL_PIXELFORMAT_RGBA32,
-                                SDL_TEXTUREACCESS_STREAMING,
-                                GB_SCREEN_W,
-                                GB_SCREEN_H);
-    if (!texture) {
-        SDL_Log("Couldn't create streaming texture: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
-
-    if (argc < 2) {
-        std::printf("USAGE: StarGBC [options] romName\n");
-        std::printf("Options:\n\t--gbc\t\tRun in GBC mode\n\t--gb\t\tRun in GB mode\n");
-        std::printf("\t--bios\t\tPath to BIOS ROM\n");
-        std::printf("If a mode is not supplied, the cartridge mode will be used instead");
-        return SDL_APP_FAILURE;
-    }
-
     const std::vector<std::string_view> args(argv + 1, argv + argc);
     GameboySettings settings{};
     for (std::size_t i = 0; i < args.size(); ++i) {
-        if (args[i] == "--gbc") {
+        if (args[i] == "--no-aliasing") {
+            useNearest = true;
+        } else if (args[i] == "--gbc") {
             settings.mode = Mode::CGB_GBC;
         } else if (args[i] == "--gb") {
             settings.mode = Mode::DMG;
@@ -88,11 +55,43 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
                    args[i].ends_with(".gb") || args[i].ends_with(".gbc")) {
             settings.romName = args[i];
         } else {
-            std::fprintf(stderr, "Unknown argument: %s\n", std::string(args[i]).c_str());
+            std::fprintf(stderr, "USAGE: StarGBC [options] romFile\n"
+                         "Options:\n"
+                         "  --gbc | --gb        force gbc/dmg mode\n"
+                         "  --bios <path>       external BIOS ROM\n"
+                         "  --no-aliasing       nearest-neighbour pixels");
             return SDL_APP_FAILURE;
         }
     }
+    if (settings.romName.empty()) {
+        std::fprintf(stderr, "Error: no ROM specified");
+        return SDL_APP_FAILURE;
+    }
 
+    constexpr int winW = GB_SCREEN_W * WINDOW_SCALE;
+    constexpr int winH = GB_SCREEN_H * WINDOW_SCALE;
+
+    if (!SDL_CreateWindowAndRenderer("StarGBC", winW, winH,
+                                     SDL_WINDOW_RESIZABLE,
+                                     &window, &renderer)) {
+        SDL_Log("CreateWindowAndRenderer: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+
+    SDL_SetRenderLogicalPresentation(renderer,
+                                     GB_SCREEN_W, GB_SCREEN_H,
+                                     SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+
+    texture = SDL_CreateTexture(renderer,
+                                SDL_PIXELFORMAT_RGBA32,
+                                SDL_TEXTUREACCESS_STREAMING,
+                                GB_SCREEN_W, GB_SCREEN_H);
+    if (!texture) {
+        SDL_Log("CreateTexture: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+    SDL_SetTextureScaleMode(texture,
+                            useNearest ? SDL_SCALEMODE_NEAREST : SDL_SCALEMODE_LINEAR);
     gameboy = Gameboy::init(settings);
     return SDL_APP_CONTINUE;
 }
@@ -202,25 +201,10 @@ SDL_AppResult SDL_AppIterate(void *) {
     gameboy->UpdateEmulator();
 
     if (gameboy->CheckVBlank()) {
-        SDL_Surface *surface = nullptr;
-        if (!SDL_LockTextureToSurface(texture, nullptr, &surface)) {
-            SDL_Log("Couldn't lock texture: %s", SDL_GetError());
-            return SDL_APP_FAILURE;
-        }
-
-        for (int y = 0; y < GB_SCREEN_H; ++y) {
-            auto *row = reinterpret_cast<Uint32 *>(
-                static_cast<Uint8 *>(surface->pixels) + y * surface->pitch);
-
-            for (int x = 0; x < GB_SCREEN_W; ++x) {
-                auto [r, g, b] = gameboy->GetPixel(y, x);
-                row[x] = packRGBA(&surface->format, r, g, b);
-            }
-        }
-        SDL_UnlockTexture(texture);
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_RenderClear(renderer);
+        SDL_UpdateTexture(texture,
+                          nullptr,
+                          gameboy->GetScreenData(),
+                          GB_SCREEN_W * sizeof(uint32_t));
 
         SDL_RenderTexture(renderer, texture, nullptr, nullptr);
         SDL_RenderPresent(renderer);
@@ -229,8 +213,6 @@ SDL_AppResult SDL_AppIterate(void *) {
 }
 
 void SDL_AppQuit(void *, SDL_AppResult) {
-    // if (gameboy) { gameboy->Save(); }
-
     if (texture) {
         SDL_DestroyTexture(texture);
         texture = nullptr;
