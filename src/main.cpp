@@ -1,3 +1,4 @@
+// ReSharper disable CppParameterMayBeConstPtrOrRef
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <SDL3/SDL.h>
@@ -18,12 +19,7 @@ static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
 static SDL_Texture *texture = nullptr;
 static std::unique_ptr<Gameboy> gameboy = nullptr;
-static bool useNearest = false;
-
-static Uint32 packRGBA(const SDL_PixelFormat *fmt, const Uint8 r, const Uint8 g, const Uint8 b) {
-    constexpr Uint8 a = 0xFF;
-    return SDL_MapRGBA(SDL_GetPixelFormatDetails(*fmt), nullptr, r, g, b, a);
-}
+static bool useNearest = true;
 
 SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     SDL_SetAppMetadata("StarGBC", "0.0.1", "com.srikur.stargbc");
