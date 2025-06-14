@@ -323,6 +323,6 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         }
         default:
-            throw UnreachableCodeException("GPU::WriteRegisters unreachable code");
+           break;
     }
 }
