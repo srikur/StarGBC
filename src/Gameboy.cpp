@@ -27,12 +27,8 @@ void Gameboy::KeyDown(const Keys key) const {
     bus->KeyDown(key);
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t> Gameboy::GetPixel(const uint32_t y, const uint32_t x) const {
-    return {
-        bus->gpu_->screenData[y][x][0],
-        bus->gpu_->screenData[y][x][1],
-        bus->gpu_->screenData[y][x][2]
-    };
+uint32_t* Gameboy::GetScreenData() const {
+    return bus->gpu_->screenData.data();
 }
 
 uint8_t Gameboy::DecodeInstruction(const uint8_t opcode, const bool prefixed) {
