@@ -32,8 +32,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     const std::vector<std::string_view> args(argv + 1, argv + argc);
     GameboySettings settings{};
     for (std::size_t i = 0; i < args.size(); ++i) {
-        if (args[i] == "--no-aliasing") {
-            useNearest = true;
+        if (args[i] == "--anti-aliasing") {
+            useNearest = false;
         } else if (args[i] == "--gbc") {
             settings.mode = Mode::CGB_GBC;
         } else if (args[i] == "--gb") {

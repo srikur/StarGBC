@@ -79,15 +79,8 @@ void GPU::RenderSprites() {
                 const uint8_t b = obpd[paletteNumberCGB][color][2];
                 SetColor(xPos + pixel, r, g, b);
             } else {
-                const uint8_t shade = [&] {
-                    switch (const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette;
-                        (src >> (color * 2)) & 0x03) {
-                        case 0: return DMG_SHADE[0];
-                        case 1: return DMG_SHADE[1];
-                        case 2: return DMG_SHADE[2];
-                        default: return DMG_SHADE[3];
-                    }
-                }();
+                const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette;
+                const uint32_t shade = DMG_SHADE[(src >> (color * 2)) & 0x03];
                 screenData[currentLine * SCREEN_WIDTH + (xPos + pixel)] = shade;
             }
         }
@@ -147,14 +140,7 @@ void GPU::RenderTiles() {
             const uint8_t b = bgpd[attrs.paletteNumberCGB][color][2];
             SetColor(pixel, r, g, b);
         } else {
-            const uint8_t shade = [&] {
-                switch (backgroundPalette >> (color * 2) & 0x03) {
-                    case 0: return DMG_SHADE[0];
-                    case 1: return DMG_SHADE[1];
-                    case 2: return DMG_SHADE[2];
-                    default: return DMG_SHADE[3];
-                }
-            }();
+            const uint32_t shade = DMG_SHADE[(backgroundPalette >> (color * 2)) & 0x03];
             screenData[currentLine * SCREEN_WIDTH + pixel] = shade;
         }
     }
