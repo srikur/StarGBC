@@ -2,7 +2,7 @@
 
 Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
-    speedShift = false;
+    prepareSpeedShift = false;
     gpu_->hdmaMode = GPU::HDMAMode::GDMA;
     hdmaSource = 0x0000;
     hdmaDestination = 0x8000;
@@ -57,8 +57,8 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
                 const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
-                const uint8_t second = speedShift ? 0x01 : 0x00;
-                return first | second;
+                const uint8_t second = prepareSpeedShift ? 0x01 : 0x00;
+                return first | second | 0x7E;
             }
             if (address == 0xFF46) { return dma_.writtenValue; }
             if (address == 0xFF4C) { return 0x00; }
@@ -111,7 +111,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {
-                speedShift = (value & 0x01) == 0x01;
+                prepareSpeedShift = (value & 0x01) == 0x01;
             } else { gpu_->WriteRegisters(address, value); }
             break;
         }
@@ -320,20 +320,16 @@ void Bus::WriteHDMA(const uint16_t address, const uint8_t value) {
 }
 
 void Bus::ChangeSpeed() {
-    if (speedShift) {
-        if (speed == Speed::Double) {
-            speed = Speed::Regular;
-        } else {
-            speed = Speed::Double;
-        }
+    if (prepareSpeedShift) {
+        speed = speed == Speed::Regular ? Speed::Double : Speed::Regular;
+        prepareSpeedShift = false;
     }
-    speedShift = false;
 }
 
 bool Bus::SaveState(std::ofstream &stateFile) const {
     try {
         stateFile.write(reinterpret_cast<const char *>(&speed), sizeof(speed));
-        stateFile.write(reinterpret_cast<const char *>(&speedShift), sizeof(speedShift));
+        stateFile.write(reinterpret_cast<const char *>(&prepareSpeedShift), sizeof(prepareSpeedShift));
         stateFile.write(reinterpret_cast<const char *>(&bootromRunning), sizeof(bootromRunning));
         stateFile.write(reinterpret_cast<const char *>(&interruptFlag), sizeof(interruptFlag));
         stateFile.write(reinterpret_cast<const char *>(&interruptEnable), sizeof(interruptEnable));
@@ -356,7 +352,7 @@ bool Bus::SaveState(std::ofstream &stateFile) const {
 void Bus::LoadState(std::ifstream &stateFile) {
     try {
         stateFile.read(reinterpret_cast<char *>(&speed), sizeof(speed));
-        stateFile.read(reinterpret_cast<char *>(&speedShift), sizeof(speedShift));
+        stateFile.read(reinterpret_cast<char *>(&prepareSpeedShift), sizeof(prepareSpeedShift));
         stateFile.read(reinterpret_cast<char *>(&bootromRunning), sizeof(bootromRunning));
         stateFile.read(reinterpret_cast<char *>(&interruptFlag), sizeof(interruptFlag));
         stateFile.read(reinterpret_cast<char *>(&interruptEnable), sizeof(interruptEnable));

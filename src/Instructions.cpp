@@ -487,6 +487,16 @@ uint8_t Instructions::NOP() {
     return 4;
 }
 
+uint8_t Instructions::STOP(Gameboy &gameboy) {
+    gameboy.pc += 1;
+    if (gameboy.bus->prepareSpeedShift) {
+        gameboy.bus->ChangeSpeed();
+        // Speed shift takes 128 × 1024 - 76 clock cycles, minus 4 for the instruction
+        gameboy.TickM(128 * 1024 - 76 - 4);
+    }
+    return 4;
+}
+
 uint8_t Instructions::DEC(const IncDecTarget target, Gameboy &gameboy) {
     switch (target) {
         case IncDecTarget::A: gameboy.regs->a = decrement(gameboy.regs->a, gameboy);

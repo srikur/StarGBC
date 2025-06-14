@@ -110,6 +110,8 @@ public:
 
     static uint8_t NOP();
 
+    static uint8_t STOP(Gameboy &gameboy);
+
     static uint8_t DEC(IncDecTarget target, Gameboy &gameboy);
 
     static uint8_t INC(IncDecTarget target, Gameboy &gameboy);
@@ -487,7 +489,7 @@ public:
         table[0x07] = [](Gameboy &gb) -> uint8_t { return RLCA(gb); };
         table[0x08] = [](Gameboy &gb) -> uint8_t { return LD16(LoadWordTarget::A16, LoadWordSource::SP, gb); };
         table[0x09] = [](Gameboy &gb) -> uint8_t { return ADD16(Arithmetic16Target::BC, gb); };
-        table[0x10] = [](Gameboy &) -> uint8_t { return NOP(); };
+        table[0x10] = [](Gameboy &gb) -> uint8_t { return STOP(gb); };
         table[0x0A] = [](Gameboy &gb) -> uint8_t { return LD(LoadByteTarget::A, LoadByteSource::BC, gb); };
         table[0x0B] = [](Gameboy &gb) -> uint8_t { return DEC(IncDecTarget::BC, gb); };
         table[0x0C] = [](Gameboy &gb) -> uint8_t { return INC(IncDecTarget::C, gb); };
