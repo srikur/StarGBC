@@ -115,7 +115,7 @@ public:
 
     void KeyDown(Keys key) const;
 
-    [[nodiscard]] std::tuple<uint32_t, uint32_t, uint32_t> GetPixel(uint32_t y, uint32_t x) const;
+    [[nodiscard]] uint32_t* GetScreenData() const;
 
     void ToggleSpeed();
 
