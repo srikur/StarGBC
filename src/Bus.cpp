@@ -202,19 +202,20 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
 
 void Bus::UpdateTimers(const uint32_t cycles) {
     for (uint32_t i = 0; i < cycles; ++i) {
-        const bool timerEnabled = timer_.tac & 0x04;
-        const int timerBit = Timer::TimerBit(timer_.tac & 0x03);
-        const bool oldBit = timerEnabled && timer_.divCounter & 1 << timerBit;
-
-        timer_.divCounter++;
-
-        if (const bool newBit = timerEnabled && timer_.divCounter & 1 << timerBit; oldBit && !newBit) {
-            // Falling edge
-            if (++timer_.tima == 0) {
-                timer_.tima = timer_.tma;
-                SetInterrupt(InterruptType::Timer);
-            }
+        if (timer_.overflowPending && --timer_.overflowDelay == 0) {
+            timer_.tima = timer_.tma;
+            SetInterrupt(InterruptType::Timer);
+            timer_.overflowPending = false;
         }
+
+        const bool timerEnabled = timer_.tac & 0x04;
+        const int timerBit = Timer::TimerBit(timer_.tac);
+        const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
+
+        ++timer_.divCounter;
+
+        const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
+        if (oldSignal && !newSignal) timer_.IncrementTIMA();
     }
 }
 
