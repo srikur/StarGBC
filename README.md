@@ -1,5 +1,15 @@
 # StarGBC
 
+<p align="center">
+  <img src="images/blue_title.png" width="30%" />
+  <img src="images/blue_ingame.png" width="30%" />
+  <img src="images/gold_title.png" width="30%" />
+  <br/>
+  <img src="images/gold_ingame.png" width="30%" />
+  <img src="images/smb_title.png" width="30%" />
+  <img src="images/crystal_title.png" width="30%" />
+</p>
+
 ## Dependencies
 
 1. [SDL3](https://github.com/libsdl-org/SDL)
