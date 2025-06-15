@@ -81,6 +81,21 @@ struct Timer {
     uint8_t tima = 0x00;
     uint8_t tac = 0x00;
 
+    void WriteByte(const uint16_t address, const uint8_t value) {
+        if (address == 0xFF04) WriteDIV();
+        else if (address == 0xFF05) tima = value;
+        else if (address == 0xFF06) tma = value;
+        else if (address == 0xFF07) WriteTAC(value);
+    }
+
+    [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
+        if (address == 0xFF04) return ReadDIV();
+        if (address == 0xFF05) return tima;
+        if (address == 0xFF06) return tma;
+        if (address == 0xFF07) return ReadTAC();
+        return 0xFF;
+    }
+
     [[nodiscard]] uint8_t ReadDIV() const { return divCounter >> 8; }
     void WriteDIV() { divCounter = 0; }
 

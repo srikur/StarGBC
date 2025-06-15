@@ -31,29 +31,17 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
             return cartridge_->ReadByte(address);
         }
         case 0x8000 ... 0x9FFF: return gpu_->ReadVRAM(address);
-        case 0xA000 ... 0xBFFF:
-            // External RAM
-            return cartridge_->ReadByte(address);
-        case 0xC000 ... 0xCFFF:
-            return memory_.wram_[address - 0xC000];
-        case 0xD000 ... 0xDFFF:
-            return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
-        case 0xE000 ... 0xEFFF:
-            return memory_.wram_[address - 0xE000];
-        case 0xF000 ... 0xFDFF:
-            return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
-        case 0xFE00 ... 0xFEFF:
-            return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
-        case 0xFF00:
-            return joypad_.GetJoypadState();
+        case 0xA000 ... 0xBFFF: return cartridge_->ReadByte(address);
+        case 0xC000 ... 0xCFFF: return memory_.wram_[address - 0xC000];
+        case 0xD000 ... 0xDFFF: return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
+        case 0xE000 ... 0xEFFF: return memory_.wram_[address - 0xE000];
+        case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
+        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
+        case 0xFF00: return joypad_.GetJoypadState();
         case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
-        case 0xFF04: return timer_.ReadDIV();
-        case 0xFF05: return timer_.tima;
-        case 0xFF06: return timer_.tma;
-        case 0xFF07: return timer_.ReadTAC();
+        case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
         case 0xFF0F: return interruptFlag | 0xE0;
-        case 0xFF10 ... 0xFF3F:
-            return audio_->ReadByte(address);
+        case 0xFF10 ... 0xFF3F: return audio_->ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
                 const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
@@ -97,13 +85,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value);
             break;
-        case 0xFF04: timer_.WriteDIV();
-            break;
-        case 0xFF05: timer_.tima = value;
-            break;
-        case 0xFF06: timer_.tma = value;
-            break;
-        case 0xFF07: timer_.tac = value;
+        case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
             break;
         case 0xFF0F: interruptFlag = value;
             break;

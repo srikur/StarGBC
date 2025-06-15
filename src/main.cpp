@@ -196,7 +196,7 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
 SDL_AppResult SDL_AppIterate(void *) {
     gameboy->UpdateEmulator();
 
-    if (gameboy->CheckVBlank()) {
+    if (gameboy->ShouldRender()) {
         SDL_UpdateTexture(texture,
                           nullptr,
                           gameboy->GetScreenData(),
