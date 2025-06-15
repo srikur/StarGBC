@@ -85,7 +85,7 @@
 
 ### Mooneye GB Tests
 
-| Test                                     | StarGBC            |
+| Timer                                    | StarGBC            |
 |------------------------------------------|--------------------|
 | acceptance/timer/div_write.gb            | :white_check_mark: |
 | acceptance/timer/rapid_toggle.gb         | :white_check_mark: |
@@ -100,4 +100,87 @@
 | acceptance/timer/tima_reload.gb          | :white_check_mark: |
 | acceptance/timer/tima_write_reloading.gb | :white_check_mark: |
 | acceptance/timer/tma_write_reloading.gb  | :white_check_mark: |
+
+| General                               | StarGBC            |
+|---------------------------------------|--------------------|
+| acceptance/add_sp_e_timing.gb         | :x:                |
+| acceptance/boot_div-dmg0.gb           | :x:                |
+| acceptance/boot_div-dmgABCmgb.gb      | :x:                |
+| acceptance/boot_div-S.gb              | :x:                |
+| acceptance/boot_div2-s.gb             | :x:                |
+| acceptance/boot_hwio-dmg0.gb          | :x:                |
+| acceptance/boot_hwio-dmgABCmgb.gb     | :x:                |
+| acceptance/boot_hwio-S.gb             | :x:                |
+| acceptance/boot_regs-dmg0.gb          | :white_check_mark: |
+| acceptance/boot_regs-dmgABC.gb        | :white_check_mark: |
+| acceptance/boot_regs-mgb.gb           | :white_check_mark: |
+| acceptance/boot_regs-sgb.gb           | :white_check_mark: |
+| acceptance/boot_regs-sgb2.gb          | :white_check_mark: |
+| acceptance/call_cc_timing.gb          | :x:                |
+| acceptance/call_cc_timing2.gb         | :x:                |
+| acceptance/call_timing.gb             | :x:                |
+| acceptance/call_timing2.gb            | :x:                |
+| acceptance/di_timing-GS.gb            | :white_check_mark: |
+| acceptance/div_timing.gb              | :white_check_mark: |
+| acceptance/ei_sequence.gb             | :x:                |
+| acceptance/ei_timing.gb               | :white_check_mark: |
+| acceptance/halt_ime0_ei.gb            | :white_check_mark: |
+| acceptance/halt_ime0_nointr_timing.gb | :x:                |
+| acceptance/halt_ime1_timing.gb        | :white_check_mark: |
+| acceptance/halt_ime1_timing2-GS.gb    | :white_check_mark: |
+| acceptance/if_ie_registers.gb         | :white_check_mark: |
+| acceptance/intr_timing.gb             | :white_check_mark: |
+| acceptance/jp_cc_timing.gb            | :x:                |
+| acceptance/jp_timing.gb               | :x:                |
+| acceptance/ld_hl_sp_e_timing.gb       | :x:                |
+| acceptance/oam_dma_restart.gb         | :x:                |
+| acceptance/oma_dma_start.gb           | :x:                |
+| acceptance/oam_dma_timing.gb          | :x:                |
+| acceptance/pop_timing.gb              | :white_check_mark: |
+| acceptance/push_timing.gb             | :x:                |
+| acceptance/rapid_di_ei.gb             | :white_check_mark: |
+| acceptance/ret_cc_timing.gb           | :x:                |
+| acceptance/ret_timing.gb              | :x:                |
+| acceptance/reti_intr_timing.gb        | :white_check_mark: |
+| acceptance/reti_timing.gb             | :x:                |
+| acceptance/rst_timing.gb              | :x:                |
+
+| Serial                                         | StarGBC |
+|------------------------------------------------|---------|
+| acceptance/serial/boot_sclk_align-dmgABCmgb.gb | :x:     |
+
+| PPU                                           | StarGBC            |
+|-----------------------------------------------|--------------------|
+| acceptance/ppu/hblank_ly_scx_timing-GS.gb     | :x:                |
+| acceptance/ppu/intr_1_2_timing-GS.gb          | :white_check_mark: |
+| acceptance/ppu/intr_2_0_timing.gb             | :white_check_mark: |
+| acceptance/ppu/intr_2_mode0_timing_sprites.gb | :x:                |
+| acceptance/ppu/intr_2_mode0_timing.gb         | :white_check_mark: |
+| acceptance/ppu/intr_2_mode3_timing.gb         | :white_check_mark: |
+| acceptance/ppu/intr_2_oam_ok_timing.gb        | :x:                |
+| acceptance/ppu/lcdon_timing-GS.gb             | :x:                |
+| acceptance/ppu/lcdon_write_timing-GS.gb       | :x:                |
+| acceptance/ppu/stat_irq_blocking.gb           | :x:                |
+| acceptance/ppu/stat_lyc_onoff.gb              | :x:                |
+| acceptance/ppu/vblank_stat_intr-GS.gb         | :x:                |
+
+| oam_dma                          | StarGBC            |
+|----------------------------------|--------------------|
+| acceptance/oam_dma/basic.gb      | :white_check_mark: |
+| acceptance/oam_dma/reg_read.gb   | :white_check_mark: |
+| acceptance/oam_dma/sources-GS.gb | :x:                |
+
+| interrupts                       | StarGBC |
+|----------------------------------|---------|
+| acceptance/interrupts/ie_push.gb | :x:     |
+
+| instr                        | StarGBC            |
+|------------------------------|--------------------|
+| acceptance/interrupts/daa.gb | :white_check_mark: |
+
+| bits                                    | StarGBC            |
+|-----------------------------------------|--------------------|
+| acceptance/interrupts/mem_oam.gb        | :white_check_mark: |
+| acceptance/interrupts/reg_f.gb          | :white_check_mark: |
+| acceptance/interrupts/unused_hwio-GS.gb | :x:                |
 
