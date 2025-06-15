@@ -9,7 +9,7 @@
 
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 
-bool Gameboy::CheckVBlank() const {
+bool Gameboy::ShouldRender() const {
     const bool value = bus->gpu_->vblank;
     bus->gpu_->vblank = false;
     return value;
