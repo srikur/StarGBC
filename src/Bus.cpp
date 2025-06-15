@@ -202,10 +202,13 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
 
 void Bus::UpdateTimers(const uint32_t cycles) {
     for (uint32_t i = 0; i < cycles; ++i) {
+        timer_.reloadActive = false;
+
         if (timer_.overflowPending && --timer_.overflowDelay == 0) {
             timer_.tima = timer_.tma;
             SetInterrupt(InterruptType::Timer);
             timer_.overflowPending = false;
+            timer_.reloadActive = true;
         }
 
         const bool timerEnabled = timer_.tac & 0x04;
