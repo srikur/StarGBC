@@ -119,8 +119,7 @@ uint8_t Gameboy::ExecuteInstruction() {
         currentInstruction = instruction;
     }
 
-    const uint8_t cycleIncrement = DecodeInstruction(instruction, prefixed);
-    return cycleIncrement / 4;
+    return DecodeInstruction(instruction, prefixed);
 }
 
 void Gameboy::InitializeSystem() {
