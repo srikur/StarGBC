@@ -81,27 +81,69 @@ struct Timer {
     uint8_t tima = 0x00;
     uint8_t tac = 0x00;
 
-    [[nodiscard]] uint8_t ReadDIV() const { return divCounter >> 8; }
-    void WriteDIV() { divCounter = 0; }
+    bool overflowPending = false;
+    uint8_t overflowDelay = 0;
+    bool reloadActive = false;
 
-    [[nodiscard]] uint8_t ReadTAC() const { return tac | 0xF8; }
+    void WriteByte(const uint16_t address, const uint8_t value) {
+        if (address == 0xFF04) WriteDIV();
+        else if (address == 0xFF05) WriteTIMA(value);
+        else if (address == 0xFF06) WriteTMA(value);
+        else if (address == 0xFF07) WriteTAC(value);
+    }
 
-    void WriteTAC(const uint8_t value) {
+    [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
+        if (address == 0xFF04) return divCounter >> 8;
+        if (address == 0xFF05) return tima;
+        if (address == 0xFF06) return tma;
+        if (address == 0xFF07) return tac | 0xF8;
+        return 0xFF;
+    }
+
+    void WriteDIV() {
+        const bool enabled = tac & 0x04;
+        const int bit = TimerBit(tac);
+        const bool oldSignal = enabled && (divCounter & (1u << bit));
+
+        divCounter = 0;
+
+        if (oldSignal) IncrementTIMA();
+    }
+
+    void WriteTAC(uint8_t value) {
+        value &= 0x07;
         const bool oldEnabled = tac & 0x04;
-        const int oldBit = TimerBit(tac & 0x03);
-        const bool oldSignal = oldEnabled && (divCounter & (1 << oldBit));
+        const int oldBit = TimerBit(tac);
+        const bool oldSignal = oldEnabled && (divCounter & (1u << oldBit));
 
         tac = value;
 
         const bool newEnabled = tac & 0x04;
-        const int newBit = TimerBit(tac & 0x03);
-        const bool newSignal = newEnabled && (divCounter & (1 << newBit));
+        const int newBit = TimerBit(tac);
+        const bool newSignal = newEnabled && (divCounter & (1u << newBit));
 
-        // If changing mode caused a falling edge, increment TIMA
         if (oldSignal && !newSignal) IncrementTIMA();
     }
 
-    static int TimerBit(const uint8_t tacMode) {
+    void WriteTIMA(const uint8_t value) {
+        if (reloadActive) return;
+        if (overflowPending) {
+            overflowPending = false;
+            overflowDelay = 0;
+        }
+        tima = value;
+    }
+
+    void WriteTMA(const uint8_t value) {
+        if (reloadActive) {
+            tma = value;
+            tima = value;
+            return;
+        }
+        tma = value;
+    }
+
+    static constexpr int TimerBit(const uint8_t tacMode) {
         switch (tacMode & 0x03) {
             case 0x00: return 9; // 4096 Hz
             case 0x01: return 3; // 262144 Hz
@@ -114,8 +156,8 @@ struct Timer {
 
     void IncrementTIMA() {
         if (++tima == 0) {
-            tima = tma;
-            // Set interrupt in UpdateTimers
+            overflowPending = true;
+            overflowDelay = 4;
         }
     }
 

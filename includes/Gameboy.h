@@ -107,7 +107,7 @@ public:
 
     void UpdateEmulator();
 
-    [[nodiscard]] bool CheckVBlank() const;
+    [[nodiscard]] bool ShouldRender() const;
 
     void Save() const;
 
