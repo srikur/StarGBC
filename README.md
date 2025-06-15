@@ -92,11 +92,12 @@
 | acceptance/timer/tim00.gb                | :white_check_mark: |
 | acceptance/timer/tim00_div_trigger.gb    | :white_check_mark: |
 | acceptance/timer/tim01.gb                | :white_check_mark: |
-| acceptance/timer/tim01_div_trigger.gb    | :x:                |
+| acceptance/timer/tim01_div_trigger.gb    | :white_check_mark: |
 | acceptance/timer/tim10.gb                | :white_check_mark: |
-| acceptance/timer/tim10_div_trigger.gb    | :x:                |
+| acceptance/timer/tim10_div_trigger.gb    | :white_check_mark: |
 | acceptance/timer/tim11.gb                | :white_check_mark: |
-| acceptance/timer/tim11_div_trigger.gb    | :x:                |
+| acceptance/timer/tim11_div_trigger.gb    | :white_check_mark: |
 | acceptance/timer/tima_reload.gb          | :white_check_mark: |
-| acceptance/timer/tima_write_reloading.gb | :x:                |
-| acceptance/timer/tma_write_reloading.gb  | :x:                |
+| acceptance/timer/tima_write_reloading.gb | :white_check_mark: |
+| acceptance/timer/tma_write_reloading.gb  | :white_check_mark: |
+

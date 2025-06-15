@@ -83,11 +83,12 @@ struct Timer {
 
     bool overflowPending = false;
     uint8_t overflowDelay = 0;
+    bool reloadActive = false;
 
     void WriteByte(const uint16_t address, const uint8_t value) {
         if (address == 0xFF04) WriteDIV();
         else if (address == 0xFF05) WriteTIMA(value);
-        else if (address == 0xFF06) tma = value;
+        else if (address == 0xFF06) WriteTMA(value);
         else if (address == 0xFF07) WriteTAC(value);
     }
 
@@ -125,11 +126,21 @@ struct Timer {
     }
 
     void WriteTIMA(const uint8_t value) {
+        if (reloadActive) return;
         if (overflowPending) {
             overflowPending = false;
             overflowDelay = 0;
         }
         tima = value;
+    }
+
+    void WriteTMA(const uint8_t value) {
+        if (reloadActive) {
+            tma = value;
+            tima = value;
+            return;
+        }
+        tma = value;
     }
 
     static constexpr int TimerBit(const uint8_t tacMode) {
