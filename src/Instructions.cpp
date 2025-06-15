@@ -117,9 +117,11 @@ uint8_t Instructions::DAA(const Gameboy &gameboy) {
 
 
 uint8_t Instructions::RETI(Gameboy &gameboy) {
+    const uint16_t newPC = pop(gameboy);
+    gameboy.pc = newPC;
     gameboy.bus->interruptMasterEnable = true;
-    const uint16_t pc = pop(gameboy);
-    gameboy.pc = pc;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
     return 4;
 }
 
@@ -182,7 +184,14 @@ uint8_t Instructions::CALL(const JumpTest test, Gameboy &gameboy) {
         }
     }();
 
-    return call(jumpCondition, gameboy);
+    const uint16_t next = gameboy.pc + 2;
+    if (jumpCondition) {
+        push(next, gameboy);
+        gameboy.pc = ReadNextWord(gameboy);
+        return 6;
+    }
+    gameboy.pc = next;
+    return 3;
 }
 
 uint8_t Instructions::RLCA(const Gameboy &gameboy) {
@@ -445,7 +454,22 @@ uint8_t Instructions::RET(const JumpTest test, Gameboy &gameboy) {
         }
     }();
 
-    return test == JumpTest::Always ? return_(jumpCondition, gameboy) - 1 : return_(jumpCondition, gameboy);
+    if (test != JumpTest::Always) {
+        gameboy.TickM(1);
+        gameboy.cyclesThisInstruction += 1;
+    }
+
+    if (!jumpCondition) {
+        return 2;
+    }
+
+    const uint16_t newPC = pop(gameboy);
+
+    gameboy.pc = newPC;
+
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
+    return test == JumpTest::Always ? 4 : 5;
 }
 
 uint8_t Instructions::JR(const JumpTest test, Gameboy &gameboy) {
@@ -460,7 +484,17 @@ uint8_t Instructions::JR(const JumpTest test, Gameboy &gameboy) {
         }
     }();
 
-    return jumpRelative(jumpCondition, gameboy);
+    const uint16_t next = gameboy.pc + 1;
+    if (jumpCondition) {
+        if (const auto byte = static_cast<int8_t>(ReadByte(gameboy, gameboy.pc)); byte >= 0) {
+            gameboy.pc = next + static_cast<uint16_t>(byte);
+        } else {
+            gameboy.pc = next - static_cast<uint16_t>(abs(byte));
+        }
+        return 3;
+    }
+    gameboy.pc = next;
+    return 2;
 }
 
 uint8_t Instructions::JP(const JumpTest test, Gameboy &gameboy) {
@@ -475,7 +509,14 @@ uint8_t Instructions::JP(const JumpTest test, Gameboy &gameboy) {
         }
     }();
 
-    return jump(jumpCondition, gameboy);
+    if (jumpCondition) {
+        const uint16_t lower_byte = ReadByte(gameboy, gameboy.pc);
+        const uint16_t higher_byte = ReadByte(gameboy, gameboy.pc + 1);
+        gameboy.pc = (higher_byte << 8) | lower_byte;
+        return 4;
+    }
+    gameboy.pc += 2;
+    return 3;
 }
 
 uint8_t Instructions::JPHL(Gameboy &gameboy) {
@@ -766,13 +807,9 @@ uint8_t Instructions::PUSH(const StackTarget target, Gameboy &gameboy) {
     const uint16_t value = [&]() -> uint16_t {
         switch (target) {
             case StackTarget::BC: return gameboy.regs->GetBC();
-                break;
             case StackTarget::DE: return gameboy.regs->GetDE();
-                break;
             case StackTarget::HL: return gameboy.regs->GetHL();
-                break;
             case StackTarget::AF: return gameboy.regs->GetAF();
-                break;
             default: throw UnreachableCodeException("Instructions::PUSH -- improper StackTarget");
         }
     }();
@@ -1367,46 +1404,9 @@ uint8_t Instructions::subtract(const uint8_t value, const Gameboy &gameboy) {
     return new_value;
 }
 
-uint8_t Instructions::addition(const uint8_t value, const Gameboy &gameboy) {
-    const uint8_t a = gameboy.regs->a;
-    const uint8_t new_value = a + value;
-    gameboy.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(value) > 0xFF);
-    gameboy.regs->SetZero(new_value == 0);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf((gameboy.regs->a & 0xF) + (value & 0xF) > 0xF);
-    return new_value;
-}
-
-uint8_t Instructions::jump(const bool shouldJump, Gameboy &gameboy) {
-    if (shouldJump) {
-        const uint16_t lower_byte = ReadByte(gameboy, gameboy.pc);
-        const uint16_t higher_byte = ReadByte(gameboy, gameboy.pc + 1);
-        gameboy.pc = (higher_byte << 8) | lower_byte;
-        return 4;
-    }
-    gameboy.pc += 2;
-    return 3;
-}
-
-uint8_t Instructions::jumpRelative(const bool shouldJump, Gameboy &gameboy) {
-    const uint16_t next = gameboy.pc + 1;
-    if (shouldJump) {
-        if (const auto byte = static_cast<int8_t>(ReadByte(gameboy, gameboy.pc)); byte >= 0) {
-            gameboy.pc = next + static_cast<uint16_t>(byte);
-        } else {
-            gameboy.pc = next - static_cast<uint16_t>(abs(byte));
-        }
-        return 3;
-    }
-    gameboy.pc = next;
-    return 2;
-}
-
 void Instructions::push(const uint16_t value, Gameboy &gameboy) {
-    gameboy.sp -= 1;
-    WriteByte(gameboy, gameboy.sp, (value & 0xFF00) >> 8);
-    gameboy.sp -= 1;
-    WriteByte(gameboy, gameboy.sp, value & 0xFF);
+    WriteByte(gameboy, --gameboy.sp, (value & 0xFF00) >> 8);
+    WriteByte(gameboy, --gameboy.sp, value & 0xFF);
 }
 
 uint16_t Instructions::pop(Gameboy &gameboy) {
@@ -1416,23 +1416,4 @@ uint16_t Instructions::pop(Gameboy &gameboy) {
     gameboy.sp += 1;
 
     return msb << 8 | lsb;
-}
-
-uint8_t Instructions::call(const bool shouldJump, Gameboy &gameboy) {
-    const uint16_t next = gameboy.pc + 2;
-    if (shouldJump) {
-        push(next, gameboy);
-        gameboy.pc = ReadNextWord(gameboy);
-        return 6;
-    }
-    gameboy.pc = next;
-    return 3;
-}
-
-uint8_t Instructions::return_(const bool shouldJump, Gameboy &gameboy) {
-    if (shouldJump) {
-        gameboy.pc = pop(gameboy);
-        return 5;
-    }
-    return 2;
 }
