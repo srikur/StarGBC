@@ -8,9 +8,9 @@ uint16_t Instructions::ReadNextWord(Gameboy &gameboy) {
 }
 
 uint8_t Instructions::ReadNextByte(Gameboy &gameboy) {
+    const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
     gameboy.TickM(1);
     gameboy.cyclesThisInstruction += 1;
-    const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
     return byte;
 }
 
