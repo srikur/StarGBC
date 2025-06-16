@@ -11,7 +11,7 @@ Bus::Bus(const std::string &romLocation) {
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
-    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
@@ -62,7 +62,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value) {
-    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive)
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return;
     switch (address) {
         case 0x0000 ... 0x7FFF: cartridge_->WriteByte(address, value);
@@ -222,23 +222,31 @@ void Bus::UpdateTimers(const uint32_t cycles) {
     }
 }
 
-void Bus::UpdateDMA(uint32_t cycles) {
-    while (cycles-- && dma_.transferActive) {
-        if (dma_.ticks < 4) {
-            ++dma_.ticks;
-            continue;
+void Bus::UpdateDMA(const uint32_t cycles) {
+    if (dma_.transferComplete) {
+        dma_.transferActive = false;
+        dma_.transferComplete = false;
+        dma_.ticks = 0;
+        dma_.currentByte = 0;
+    }
+    for (uint32_t i = 0; i < cycles; ++i) {
+        if (dma_.restartPending && --dma_.restartCountdown == 0) {
+            dma_.restartPending = false;
+            dma_.startAddress = dma_.pendingStart;
+            dma_.currentByte = 0;
+            dma_.ticks = 0;
         }
+        if (!dma_.transferActive) { continue; }
+
+        ++dma_.ticks;
+
+        if (dma_.ticks <= DMA::STARTUP_CYCLES)
+            continue; // OAM still accessible here
 
         gpu_->oam[dma_.currentByte] =
                 ReadByte(dma_.startAddress + dma_.currentByte);
-
-        ++dma_.currentByte;
-        ++dma_.ticks;
-
-        if (dma_.currentByte == 0xA0) {
-            dma_.transferActive = false;
-            dma_.ticks = 0;
-            dma_.currentByte = 0;
+        if (++dma_.currentByte == DMA::TOTAL_BYTES) {
+            dma_.transferComplete = true;
         }
     }
 }

@@ -44,21 +44,35 @@ struct Memory {
 };
 
 struct DMA {
-    static constexpr int DMA_TOTAL_CYCLES = 160 * 4 + 4;
+    static constexpr int STARTUP_CYCLES = 1; // 1 M-cycle
+    static constexpr int TOTAL_BYTES = 0xA0;
 
     uint8_t writtenValue = 0x00;
     uint16_t startAddress = 0x0000;
     uint8_t currentByte = 0x00;
     bool transferActive = false;
-    bool restarted = false;
+    bool restartPending = false;
+    uint16_t pendingStart = 0x0000;
+    uint16_t restartCountdown = 0x0000;
     uint16_t ticks = 0x0000;
+    bool transferComplete = false;
 
     void Set(const uint8_t value) {
         writtenValue = value;
-        startAddress = static_cast<uint16_t>(value) << 8;
-        restarted = restarted || (transferActive && ticks > 4);
-        transferActive = true;
-        ticks = 0;
+        const uint16_t newSource = static_cast<uint16_t>(value) << 8;
+
+        if (transferActive && ticks >= STARTUP_CYCLES) {
+            // A transfer is already past the setup window --> schedule a restart
+            restartPending = true;
+            pendingStart = newSource;
+            restartCountdown = STARTUP_CYCLES + 1;
+        } else {
+            // No DMA (or still in 4-cycle setup) --> start immediately.
+            transferActive = true;
+            startAddress = newSource;
+            currentByte = 0;
+            ticks = 0;
+        }
     }
 };
 
