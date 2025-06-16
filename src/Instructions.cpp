@@ -119,9 +119,9 @@ uint8_t Instructions::DAA(const Gameboy &gameboy) {
 uint8_t Instructions::RETI(Gameboy &gameboy) {
     const uint16_t newPC = pop(gameboy);
     gameboy.pc = newPC;
-    gameboy.bus->interruptMasterEnable = true;
     gameboy.TickM(1);
     gameboy.cyclesThisInstruction += 1;
+    gameboy.bus->interruptMasterEnable = true;
     return 4;
 }
 
@@ -132,8 +132,11 @@ uint8_t Instructions::DI(const Gameboy &gameboy) {
 }
 
 uint8_t Instructions::EI(Gameboy &gameboy) {
-    gameboy.icount = 0;
-    gameboy.bus->interruptDelay = true;
+    if (!gameboy.bus->interruptMasterEnable) {
+        gameboy.icount = 0;
+        gameboy.bus->interruptDelay = true;
+        gameboy.bus->interruptMasterEnable = true;
+    }
     return 1;
 }
 

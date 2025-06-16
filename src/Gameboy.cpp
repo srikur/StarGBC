@@ -166,11 +166,6 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     while (stepCycles < frameBudget) {
         cyclesThisInstruction = 0;
         if (pc == 0x100) { bus->bootromRunning = false; }
-        if (bus->interruptDelay && ++icount == 2) {
-            bus->interruptDelay = false;
-            bus->interruptMasterEnable = true;
-            icount = 0;
-        }
 
         uint32_t cycles = ProcessInterrupts();
         if (!cycles) {
@@ -262,6 +257,13 @@ inline uint8_t interruptAddress(const uint8_t bit) {
 }
 
 uint32_t Gameboy::ProcessInterrupts() {
+    if (bus->interruptDelay && ++icount == 2) {
+        bus->interruptDelay = false;
+        bus->interruptMasterEnable = true;
+        icount = 0;
+    } else {
+        return 0;
+    }
     const uint8_t pending = bus->interruptEnable & bus->interruptFlag & 0x1F;
     if (pending == 0) {
         return 0;
