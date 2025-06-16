@@ -135,7 +135,7 @@
 | acceptance/ei_sequence.gb             | :white_check_mark: |
 | acceptance/ei_timing.gb               | :white_check_mark: |
 | acceptance/halt_ime0_ei.gb            | :white_check_mark: |
-| acceptance/halt_ime0_nointr_timing.gb | :x:                |
+| acceptance/halt_ime0_nointr_timing.gb | :white_check_mark: |
 | acceptance/halt_ime1_timing.gb        | :white_check_mark: |
 | acceptance/halt_ime1_timing2-GS.gb    | :white_check_mark: |
 | acceptance/if_ie_registers.gb         | :white_check_mark: |
@@ -178,7 +178,7 @@
 |----------------------------------|--------------------|
 | acceptance/oam_dma/basic.gb      | :white_check_mark: |
 | acceptance/oam_dma/reg_read.gb   | :white_check_mark: |
-| acceptance/oam_dma/sources-GS.gb | :x:                |
+| acceptance/oam_dma/sources-GS.gb | :white_check_mark: |
 
 | interrupts                       | StarGBC |
 |----------------------------------|---------|

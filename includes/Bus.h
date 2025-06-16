@@ -87,6 +87,8 @@ public:
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
+    [[nodiscard]] uint8_t ReadDMASource(uint16_t src) const;
+
     void WriteByte(uint16_t address, uint8_t value);
 
     void KeyDown(Keys key);
