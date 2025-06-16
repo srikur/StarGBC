@@ -46,22 +46,23 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xE000 ... 0xEFFF: return memory_.wram_[address - 0xE000];
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
         case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
-        case 0xFF00: return joypad_.GetJoypadState();
-        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
+        case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
+        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address, gpu_->hardware == GPU::Hardware::CGB);
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
         case 0xFF0F: return interruptFlag | 0xE0;
         case 0xFF10 ... 0xFF3F: return audio_->ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
+                if (gpu_->hardware == GPU::Hardware::DMG) return 0xFF;
                 const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
                 const uint8_t second = prepareSpeedShift ? 0x01 : 0x00;
                 return first | second | 0x7E;
             }
             if (address == 0xFF46) { return dma_.writtenValue; }
-            if (address == 0xFF4C) { return 0x00; }
+            if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_->ReadRegisters(address);
         }
-        case 0xFF50 ... 0xFF56: return ReadHDMA(address);
+        case 0xFF50 ... 0xFF55: return ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
         case 0xFF68 ... 0xFF6B: return gpu_->ReadRegisters(address);
         case 0xFF70: return memory_.wramBank_;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
@@ -275,15 +276,12 @@ void Bus::SetInterrupt(const InterruptType interrupt) {
     interruptFlag |= mask;
 }
 
-uint8_t Bus::ReadHDMA(const uint16_t address) const {
+uint8_t Bus::ReadHDMA(const uint16_t address, const bool gbc) const {
     switch (address) {
-        case 0xFF51: return hdmaSource >> 8;
-        case 0xFF52: return static_cast<uint8_t>(hdmaSource);
-        case 0xFF53: return hdmaDestination >> 8;
-        case 0xFF54: return static_cast<uint8_t>(hdmaDestination);
-        case 0xFF55: return hdmaRemain | (hdmaActive ? 0x00 : 0x80);
+        case 0xFF50 ... 0xFF54: return 0xFF;
+        case 0xFF55: return gbc ? (hdmaRemain | (hdmaActive ? 0x00 : 0x80)) : 0xFF;
         default:
-            throw UnreachableCodeException("Bus::ReadHDMA unreachable code");
+            throw UnreachableCodeException("Bus::ReadHDMA unreachable code at address: " + std::to_string(address));
     }
 }
 

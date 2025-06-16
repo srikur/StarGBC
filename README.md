@@ -180,9 +180,9 @@
 | acceptance/oam_dma/reg_read.gb   | :white_check_mark: |
 | acceptance/oam_dma/sources-GS.gb | :white_check_mark: |
 
-| interrupts                       | StarGBC |
-|----------------------------------|---------|
-| acceptance/interrupts/ie_push.gb | :x:     |
+| interrupts                       | StarGBC            |
+|----------------------------------|--------------------|
+| acceptance/interrupts/ie_push.gb | :white_check_mark: |
 
 | instr                        | StarGBC            |
 |------------------------------|--------------------|
@@ -194,3 +194,6 @@
 | acceptance/interrupts/reg_f.gb          | :white_check_mark: |
 | acceptance/interrupts/unused_hwio-GS.gb | :x:                |
 
+| manual_only                    | StarGBC |
+|--------------------------------|---------|
+| manual-only/sprite_priority.gb | :x:     |

@@ -27,7 +27,7 @@ void Gameboy::KeyDown(const Keys key) const {
     bus->KeyDown(key);
 }
 
-uint32_t* Gameboy::GetScreenData() const {
+uint32_t *Gameboy::GetScreenData() const {
     return bus->gpu_->screenData.data();
 }
 
@@ -171,16 +171,13 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
         if (!cycles) {
             cycles = halted ? 1 : ExecuteInstruction();
         }
-
-        const auto speedFactor = static_cast<uint32_t>(bus->speed);
-        const uint32_t tCycles = cycles * 4 * speedFactor;
-        TickM(cycles - cyclesThisInstruction);
+        if (const uint8_t rest = cycles - cyclesThisInstruction) TickM(rest);
 
         if (const uint32_t hdmaCycles = RunHDMA()) {
             TickM(hdmaCycles);
         }
 
-        if (auto s = bus->audio_->Tick(tCycles)) {
+        if (auto s = bus->audio_->Tick(cycles * 4 * static_cast<uint32_t>(bus->speed))) {
             bus->audio_->gSampleFifo.push(*s);
         }
     }
@@ -265,6 +262,8 @@ uint32_t Gameboy::ProcessInterrupts() {
     const uint8_t pending = bus->interruptEnable & bus->interruptFlag & 0x1F;
     if (halted && pending) {
         halted = false;
+        TickM(1);
+        cyclesThisInstruction += 1;
         return 1;
     }
 
@@ -273,6 +272,8 @@ uint32_t Gameboy::ProcessInterrupts() {
     }
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
+        TickM(5);
+        cyclesThisInstruction += 5;
         return 5;
     }
 
@@ -283,13 +284,41 @@ uint32_t Gameboy::ProcessInterrupts() {
     halted = false;
     bus->interruptMasterEnable = false;
 
-    const auto bit = static_cast<uint8_t>(std::countr_zero(pending));
-    const auto mask = static_cast<uint8_t>(1u << bit);
-    bus->interruptFlag &= static_cast<uint8_t>(~mask);
+    auto bit = static_cast<uint8_t>(std::countr_zero(pending));
+    auto mask = static_cast<uint8_t>(1u << bit);
 
-    sp -= 2;
-    bus->WriteByte(sp + 1, static_cast<uint8_t>(pc >> 8));
+    TickM(1);
+    cyclesThisInstruction += 1;
+
+    sp -= 1;
+    bus->WriteByte(sp, static_cast<uint8_t>(pc >> 8));
+    TickM(1);
+    cyclesThisInstruction += 1;
+
+    if (const uint8_t newPending = bus->interruptEnable & bus->interruptFlag & 0x1F; !(newPending & mask)) {
+        if (!newPending) {
+            sp--;
+            bus->WriteByte(sp, pc & 0xFF);
+            TickM(1);
+            cyclesThisInstruction += 1;
+
+            TickM(3);
+            cyclesThisInstruction += 3;
+            pc = 0x0000;
+            return 5;
+        }
+
+        bit = std::countr_zero(newPending);
+        mask = 1u << bit;
+    }
+
+    sp -= 1;
     bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
+
+    bus->interruptFlag &= ~mask;
+
+    TickM(3);
+    cyclesThisInstruction += 3;
 
     pc = interruptAddress(bit);
     return 5;
