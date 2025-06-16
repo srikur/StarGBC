@@ -172,6 +172,8 @@ uint8_t Instructions::RST(const RSTTargets target, Gameboy &gameboy) {
 
     push(gameboy.pc, gameboy);
     gameboy.pc = location;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
     return 4;
 }
 
@@ -187,14 +189,16 @@ uint8_t Instructions::CALL(const JumpTest test, Gameboy &gameboy) {
         }
     }();
 
-    const uint16_t next = gameboy.pc + 2;
+    const uint16_t newPC = ReadNextWord(gameboy);
+
     if (jumpCondition) {
-        push(next, gameboy);
-        gameboy.pc = ReadNextWord(gameboy);
-        return 6;
+        push(gameboy.pc, gameboy);
+        gameboy.pc = newPC;
+        gameboy.TickM(1);
+        gameboy.cyclesThisInstruction += 1;
     }
-    gameboy.pc = next;
-    return 3;
+
+    return jumpCondition ? 6 : 3;
 }
 
 uint8_t Instructions::RLCA(const Gameboy &gameboy) {
@@ -816,6 +820,8 @@ uint8_t Instructions::PUSH(const StackTarget target, Gameboy &gameboy) {
     }();
 
     push(value, gameboy);
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
     return 4;
 }
 
@@ -1406,8 +1412,14 @@ uint8_t Instructions::subtract(const uint8_t value, const Gameboy &gameboy) {
 }
 
 void Instructions::push(const uint16_t value, Gameboy &gameboy) {
-    WriteByte(gameboy, --gameboy.sp, (value & 0xFF00) >> 8);
-    WriteByte(gameboy, --gameboy.sp, value & 0xFF);
+    gameboy.sp -= 1;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
+    gameboy.bus->WriteByte(gameboy.sp, (value & 0xFF00) >> 8);
+    gameboy.sp -= 1;
+    gameboy.TickM(1);
+    gameboy.cyclesThisInstruction += 1;
+    gameboy.bus->WriteByte(gameboy.sp, value & 0xFF);
 }
 
 uint16_t Instructions::pop(Gameboy &gameboy) {

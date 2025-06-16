@@ -126,10 +126,10 @@
 | acceptance/boot_regs-mgb.gb           | :white_check_mark: |
 | acceptance/boot_regs-sgb.gb           | :white_check_mark: |
 | acceptance/boot_regs-sgb2.gb          | :white_check_mark: |
-| acceptance/call_cc_timing.gb          | :x:                |
-| acceptance/call_cc_timing2.gb         | :x:                |
-| acceptance/call_timing.gb             | :x:                |
-| acceptance/call_timing2.gb            | :x:                |
+| acceptance/call_cc_timing.gb          | :white_check_mark: |
+| acceptance/call_cc_timing2.gb         | :white_check_mark: |
+| acceptance/call_timing.gb             | :white_check_mark: |
+| acceptance/call_timing2.gb            | :white_check_mark: |
 | acceptance/di_timing-GS.gb            | :white_check_mark: |
 | acceptance/div_timing.gb              | :white_check_mark: |
 | acceptance/ei_sequence.gb             | :white_check_mark: |
@@ -142,18 +142,18 @@
 | acceptance/intr_timing.gb             | :white_check_mark: |
 | acceptance/jp_cc_timing.gb            | :white_check_mark: |
 | acceptance/jp_timing.gb               | :white_check_mark: |
-| acceptance/ld_hl_sp_e_timing.gb       | :x:                |
+| acceptance/ld_hl_sp_e_timing.gb       | :white_check_mark: |
 | acceptance/oam_dma_restart.gb         | :white_check_mark: |
 | acceptance/oma_dma_start.gb           | :white_check_mark: |
 | acceptance/oam_dma_timing.gb          | :white_check_mark: |
 | acceptance/pop_timing.gb              | :white_check_mark: |
-| acceptance/push_timing.gb             | :x:                |
+| acceptance/push_timing.gb             | :white_check_mark: |
 | acceptance/rapid_di_ei.gb             | :white_check_mark: |
 | acceptance/ret_cc_timing.gb           | :white_check_mark: |
 | acceptance/ret_timing.gb              | :white_check_mark: |
 | acceptance/reti_intr_timing.gb        | :white_check_mark: |
 | acceptance/reti_timing.gb             | :white_check_mark: |
-| acceptance/rst_timing.gb              | :x:                |
+| acceptance/rst_timing.gb              | :white_check_mark: |
 
 | Serial                                         | StarGBC |
 |------------------------------------------------|---------|
