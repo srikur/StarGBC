@@ -143,9 +143,9 @@
 | acceptance/jp_cc_timing.gb            | :x:                |
 | acceptance/jp_timing.gb               | :x:                |
 | acceptance/ld_hl_sp_e_timing.gb       | :x:                |
-| acceptance/oam_dma_restart.gb         | :x:                |
-| acceptance/oma_dma_start.gb           | :x:                |
-| acceptance/oam_dma_timing.gb          | :x:                |
+| acceptance/oam_dma_restart.gb         | :white_check_mark: |
+| acceptance/oma_dma_start.gb           | :white_check_mark: |
+| acceptance/oam_dma_timing.gb          | :white_check_mark: |
 | acceptance/pop_timing.gb              | :white_check_mark: |
 | acceptance/push_timing.gb             | :x:                |
 | acceptance/rapid_di_ei.gb             | :white_check_mark: |
