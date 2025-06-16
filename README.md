@@ -132,7 +132,7 @@
 | acceptance/call_timing2.gb            | :x:                |
 | acceptance/di_timing-GS.gb            | :white_check_mark: |
 | acceptance/div_timing.gb              | :white_check_mark: |
-| acceptance/ei_sequence.gb             | :x:                |
+| acceptance/ei_sequence.gb             | :white_check_mark: |
 | acceptance/ei_timing.gb               | :white_check_mark: |
 | acceptance/halt_ime0_ei.gb            | :white_check_mark: |
 | acceptance/halt_ime0_nointr_timing.gb | :x:                |
