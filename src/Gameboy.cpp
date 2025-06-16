@@ -101,7 +101,7 @@ uint32_t Gameboy::RunHDMA() const {
 uint8_t Gameboy::ExecuteInstruction() {
     uint8_t instruction = bus->ReadByte(pc);
     pc += 1;
-    TickM(1);
+    TickM(1); // Corresponds to M2 in GBCTR docs
     cyclesThisInstruction += 1;
 
     if (haltBug) {

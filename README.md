@@ -126,9 +126,9 @@
 | acceptance/boot_regs-mgb.gb           | :white_check_mark: |
 | acceptance/boot_regs-sgb.gb           | :white_check_mark: |
 | acceptance/boot_regs-sgb2.gb          | :white_check_mark: |
-| acceptance/call_cc_timing.gb          | :x:                |
+| acceptance/call_cc_timing.gb          | :white_check_mark: |
 | acceptance/call_cc_timing2.gb         | :x:                |
-| acceptance/call_timing.gb             | :x:                |
+| acceptance/call_timing.gb             | :white_check_mark: |
 | acceptance/call_timing2.gb            | :x:                |
 | acceptance/di_timing-GS.gb            | :white_check_mark: |
 | acceptance/div_timing.gb              | :white_check_mark: |
