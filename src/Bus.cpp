@@ -10,6 +10,15 @@ Bus::Bus(const std::string &romLocation) {
     hdmaRemain = 0x00;
 }
 
+uint8_t Bus::ReadDMASource(const uint16_t src) const {
+    const uint8_t page = src >> 8;
+    if (page <= 0x7F) return cartridge_->ReadByte(src);
+    if (page <= 0x9F) return gpu_->ReadVRAM(src);
+    if (page <= 0xBF) return cartridge_->ReadByte(src);
+    if (page <= 0xFF) return memory_.wram_[src & 0x1FFF];
+    return 0xFF;
+}
+
 uint8_t Bus::ReadByte(const uint16_t address) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
@@ -244,7 +253,7 @@ void Bus::UpdateDMA(const uint32_t cycles) {
             continue; // OAM still accessible here
 
         gpu_->oam[dma_.currentByte] =
-                ReadByte(dma_.startAddress + dma_.currentByte);
+                ReadDMASource(dma_.startAddress + dma_.currentByte);
         if (++dma_.currentByte == DMA::TOTAL_BYTES) {
             dma_.transferComplete = true;
         }
