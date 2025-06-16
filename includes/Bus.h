@@ -101,7 +101,7 @@ public:
 
     void UpdateDMA(uint32_t cycles);
 
-    [[nodiscard]] uint8_t ReadHDMA(uint16_t address) const;
+    [[nodiscard]] uint8_t ReadHDMA(uint16_t address, bool gbc) const;
 
     void WriteHDMA(uint16_t address, uint8_t value);
 
