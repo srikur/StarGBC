@@ -135,7 +135,7 @@
 | acceptance/ei_sequence.gb             | :white_check_mark: |
 | acceptance/ei_timing.gb               | :white_check_mark: |
 | acceptance/halt_ime0_ei.gb            | :white_check_mark: |
-| acceptance/halt_ime0_nointr_timing.gb | :x:                |
+| acceptance/halt_ime0_nointr_timing.gb | :white_check_mark: |
 | acceptance/halt_ime1_timing.gb        | :white_check_mark: |
 | acceptance/halt_ime1_timing2-GS.gb    | :white_check_mark: |
 | acceptance/if_ie_registers.gb         | :white_check_mark: |
@@ -178,19 +178,22 @@
 |----------------------------------|--------------------|
 | acceptance/oam_dma/basic.gb      | :white_check_mark: |
 | acceptance/oam_dma/reg_read.gb   | :white_check_mark: |
-| acceptance/oam_dma/sources-GS.gb | :x:                |
+| acceptance/oam_dma/sources-GS.gb | :white_check_mark: |
 
-| interrupts                       | StarGBC |
-|----------------------------------|---------|
-| acceptance/interrupts/ie_push.gb | :x:     |
+| interrupts                       | StarGBC            |
+|----------------------------------|--------------------|
+| acceptance/interrupts/ie_push.gb | :white_check_mark: |
 
-| instr                        | StarGBC            |
-|------------------------------|--------------------|
-| acceptance/interrupts/daa.gb | :white_check_mark: |
+| instr                   | StarGBC            |
+|-------------------------|--------------------|
+| acceptance/instr/daa.gb | :white_check_mark: |
 
-| bits                                    | StarGBC            |
-|-----------------------------------------|--------------------|
-| acceptance/interrupts/mem_oam.gb        | :white_check_mark: |
-| acceptance/interrupts/reg_f.gb          | :white_check_mark: |
-| acceptance/interrupts/unused_hwio-GS.gb | :x:                |
+| bits                              | StarGBC            |
+|-----------------------------------|--------------------|
+| acceptance/bits/mem_oam.gb        | :white_check_mark: |
+| acceptance/bits/reg_f.gb          | :white_check_mark: |
+| acceptance/bits/unused_hwio-GS.gb | :x:                |
 
+| manual_only                    | StarGBC            |
+|--------------------------------|--------------------|
+| manual-only/sprite_priority.gb | :white_check_mark: |

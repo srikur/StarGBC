@@ -205,7 +205,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             const uint8_t bit4 = stat.enableM1Interrupt ? 0x10 : 0x00;
             const uint8_t bit3 = stat.enableM0Interrupt ? 0x08 : 0x00;
             const uint8_t bit2 = (currentLine == lyc) ? 0x04 : 0x00;
-            return bit6 | bit5 | bit4 | bit3 | bit2 | stat.mode;
+            return 0x80 | bit6 | bit5 | bit4 | bit3 | bit2 | stat.mode;
         }
         case 0xFF42: return scrollY;
         case 0xFF43: return scrollX;
@@ -216,7 +216,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
         case 0xFF49: return obp1Palette;
         case 0xFF4A: return windowY;
         case 0xFF4B: return windowX;
-        case 0xFF4F: return static_cast<uint8_t>(0xFE | vramBank);
+        case 0xFF4F: return hardware == Hardware::CGB ? (0xFE | vramBank) : 0xFF;
         case 0xFF68: return ReadGpi(bgpi);
         case 0xFF69: {
             const uint8_t r = bgpi.index >> 3;
@@ -236,7 +236,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             return (obpd[r][c][1] >> 3) | (obpd[r][c][2] << 2);
         }
         default:
-            throw UnreachableCodeException("GPU::ReadRegisters unreachable code");
+            throw UnreachableCodeException("GPU::ReadRegisters unreachable code at address: " + std::to_string(address));
     }
 }
 
@@ -309,6 +309,6 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         }
         default:
-           break;
+            break;
     }
 }
