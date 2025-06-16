@@ -10,6 +10,15 @@ Bus::Bus(const std::string &romLocation) {
     hdmaRemain = 0x00;
 }
 
+uint8_t Bus::ReadDMASource(const uint16_t src) const {
+    const uint8_t page = src >> 8;
+    if (page <= 0x7F) return cartridge_->ReadByte(src);
+    if (page <= 0x9F) return gpu_->ReadVRAM(src);
+    if (page <= 0xBF) return cartridge_->ReadByte(src);
+    if (page <= 0xFF) return memory_.wram_[src & 0x1FFF];
+    return 0xFF;
+}
+
 uint8_t Bus::ReadByte(const uint16_t address) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
@@ -37,22 +46,23 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xE000 ... 0xEFFF: return memory_.wram_[address - 0xE000];
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
         case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
-        case 0xFF00: return joypad_.GetJoypadState();
-        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
+        case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
+        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address, gpu_->hardware == GPU::Hardware::CGB);
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
         case 0xFF0F: return interruptFlag | 0xE0;
         case 0xFF10 ... 0xFF3F: return audio_->ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
+                if (gpu_->hardware == GPU::Hardware::DMG) return 0xFF;
                 const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
                 const uint8_t second = prepareSpeedShift ? 0x01 : 0x00;
                 return first | second | 0x7E;
             }
             if (address == 0xFF46) { return dma_.writtenValue; }
-            if (address == 0xFF4C) { return 0x00; }
+            if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_->ReadRegisters(address);
         }
-        case 0xFF50 ... 0xFF56: return ReadHDMA(address);
+        case 0xFF50 ... 0xFF55: return ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
         case 0xFF68 ... 0xFF6B: return gpu_->ReadRegisters(address);
         case 0xFF70: return memory_.wramBank_;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
@@ -83,7 +93,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
-        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value);
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, gpu_->hardware == GPU::Hardware::CGB);
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
             break;
@@ -244,9 +254,29 @@ void Bus::UpdateDMA(const uint32_t cycles) {
             continue; // OAM still accessible here
 
         gpu_->oam[dma_.currentByte] =
-                ReadByte(dma_.startAddress + dma_.currentByte);
+                ReadDMASource(dma_.startAddress + dma_.currentByte);
         if (++dma_.currentByte == DMA::TOTAL_BYTES) {
             dma_.transferComplete = true;
+        }
+    }
+}
+
+void Bus::UpdateSerial(uint32_t tCycles) {
+    if (!serial_.active_) return;
+    while (tCycles) {
+        const uint32_t step = (tCycles < serial_.ticksUntilShift_) ? tCycles : serial_.ticksUntilShift_;
+        tCycles -= step;
+        serial_.ticksUntilShift_ -= step;
+
+        if (serial_.ticksUntilShift_ == 0) {
+            serial_.ShiftOneBit();
+            if (++serial_.bitsShifted_ == 8) {
+                serial_.active_ = false;
+                serial_.control_ &= 0x7F;
+                SetInterrupt(InterruptType::Serial);
+                break;
+            }
+            serial_.ticksUntilShift_ = serial_.ticksPerBit_;
         }
     }
 }
@@ -258,6 +288,7 @@ void Bus::SetInterrupt(const InterruptType interrupt) {
             case VBlank: return 0x01;
             case LCDStat: return 0x02;
             case Timer: return 0x04;
+            case Serial: return 0x08;
             case Joypad: return 0x10;
             default: throw UnreachableCodeException("Bus::SetInterrupt -- unknown interrupt type");
         }
@@ -266,15 +297,12 @@ void Bus::SetInterrupt(const InterruptType interrupt) {
     interruptFlag |= mask;
 }
 
-uint8_t Bus::ReadHDMA(const uint16_t address) const {
+uint8_t Bus::ReadHDMA(const uint16_t address, const bool gbc) const {
     switch (address) {
-        case 0xFF51: return hdmaSource >> 8;
-        case 0xFF52: return static_cast<uint8_t>(hdmaSource);
-        case 0xFF53: return hdmaDestination >> 8;
-        case 0xFF54: return static_cast<uint8_t>(hdmaDestination);
-        case 0xFF55: return hdmaRemain | (hdmaActive ? 0x00 : 0x80);
+        case 0xFF50 ... 0xFF54: return 0xFF;
+        case 0xFF55: return gbc ? (hdmaRemain | (hdmaActive ? 0x00 : 0x80)) : 0xFF;
         default:
-            throw UnreachableCodeException("Bus::ReadHDMA unreachable code");
+            throw UnreachableCodeException("Bus::ReadHDMA unreachable code at address: " + std::to_string(address));
     }
 }
 

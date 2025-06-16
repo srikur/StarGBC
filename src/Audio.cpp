@@ -245,7 +245,7 @@ uint8_t Audio::ReadByte(const uint16_t addr) const {
         case 0xFF24: return nr50;
         case 0xFF25: return nr51;
         case 0xFF26: return nr52 | (ch1.active() << 0) | (ch2.active() << 1)
-                            | (ch3.active() << 2) | (ch4.active() << 3);
+                            | (ch3.active() << 2) | (ch4.active() << 3) | 0x70;
         case 0xFF30 ... 0xFF3F: return ch3.readWaveRAM(addr);
         default: return 0xFF;
     }
