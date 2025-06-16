@@ -207,6 +207,7 @@ void Gameboy::TickM(const uint32_t cycles) {
     bus->UpdateTimers(t);
     bus->UpdateGraphics(t);
     bus->UpdateDMA(cycles);
+    bus->UpdateSerial(t);
     if (const auto s = bus->audio_->Tick(t)) { bus->audio_->gSampleFifo.push(*s); }
 
     stepCycles += t;

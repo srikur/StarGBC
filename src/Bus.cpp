@@ -93,7 +93,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
-        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value);
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, gpu_->hardware == GPU::Hardware::CGB);
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
             break;
@@ -261,6 +261,26 @@ void Bus::UpdateDMA(const uint32_t cycles) {
     }
 }
 
+void Bus::UpdateSerial(uint32_t tCycles) {
+    if (!serial_.active_) return;
+    while (tCycles) {
+        const uint32_t step = (tCycles < serial_.ticksUntilShift_) ? tCycles : serial_.ticksUntilShift_;
+        tCycles -= step;
+        serial_.ticksUntilShift_ -= step;
+
+        if (serial_.ticksUntilShift_ == 0) {
+            serial_.ShiftOneBit();
+            if (++serial_.bitsShifted_ == 8) {
+                serial_.active_ = false;
+                serial_.control_ &= 0x7F;
+                SetInterrupt(InterruptType::Serial);
+                break;
+            }
+            serial_.ticksUntilShift_ = serial_.ticksPerBit_;
+        }
+    }
+}
+
 void Bus::SetInterrupt(const InterruptType interrupt) {
     using enum InterruptType;
     const uint8_t mask = [&]() -> uint8_t {
@@ -268,6 +288,7 @@ void Bus::SetInterrupt(const InterruptType interrupt) {
             case VBlank: return 0x01;
             case LCDStat: return 0x02;
             case Timer: return 0x04;
+            case Serial: return 0x08;
             case Joypad: return 0x10;
             default: throw UnreachableCodeException("Bus::SetInterrupt -- unknown interrupt type");
         }
