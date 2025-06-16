@@ -199,13 +199,16 @@ struct Serial {
         }
     }
 
-    void WriteSerial(const uint16_t address, const uint8_t value) {
+    void WriteSerial(const uint16_t address, const uint8_t value, const bool gbc) {
         switch (address) {
             case 0xFF01:
                 data_ = value;
                 break;
             case 0xFF02:
-                control_ = value;
+                control_ = (control_ & 0x7C) | (value & 0x83);
+                if (control_ & 0x80) {
+                    StartTransfer(gbc);
+                }
                 break;
             default:
                 throw UnreachableCodeException("Improper write to serial");
@@ -217,6 +220,9 @@ struct Serial {
             if (!stateFile.is_open()) return false;
             stateFile.write(reinterpret_cast<const char *>(&data_), sizeof(data_));
             stateFile.write(reinterpret_cast<const char *>(&control_), sizeof(control_));
+            stateFile.write(reinterpret_cast<const char *>(&active_), sizeof(active_));
+            stateFile.write(reinterpret_cast<const char *>(&bitsShifted_), sizeof(bitsShifted_));
+            stateFile.write(reinterpret_cast<const char *>(&ticksUntilShift_), sizeof(ticksUntilShift_));
             return true;
         } catch (const std::exception &e) {
             std::cerr << "Error saving Serial state: " << e.what() << std::endl;
@@ -229,6 +235,9 @@ struct Serial {
             if (!stateFile.is_open()) return false;
             stateFile.read(reinterpret_cast<char *>(&data_), sizeof(data_));
             stateFile.read(reinterpret_cast<char *>(&control_), sizeof(control_));
+            stateFile.read(reinterpret_cast<char *>(&active_), sizeof(active_));
+            stateFile.read(reinterpret_cast<char *>(&bitsShifted_), sizeof(bitsShifted_));
+            stateFile.read(reinterpret_cast<char *>(&ticksUntilShift_), sizeof(ticksUntilShift_));
             return true;
         } catch (const std::exception &e) {
             std::cerr << "Error loading Serial state: " << e.what() << std::endl;
@@ -236,7 +245,27 @@ struct Serial {
         }
     }
 
-private:
-    uint8_t data_ = 0;
-    uint8_t control_ = 0;
+    void StartTransfer(const bool doubleSpeed) {
+        if ((control_ & 0x01) == 0) {
+            active_ = false;
+            return;
+        }
+
+        ticksPerBit_ = doubleSpeed ? 256 : 512;
+        ticksUntilShift_ = ticksPerBit_;
+        bitsShifted_ = 0;
+        active_ = true;
+    }
+
+    void ShiftOneBit() {
+        data_ = static_cast<uint8_t>((data_ << 1) | 0x01);
+    }
+
+    uint8_t data_ = 0; // SB
+    uint8_t control_ = 0; // SC
+
+    bool active_ = false;
+    uint8_t bitsShifted_ = 0;
+    uint32_t ticksUntilShift_ = 0;
+    uint32_t ticksPerBit_ = 512;
 };

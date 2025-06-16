@@ -101,6 +101,8 @@ public:
 
     void UpdateDMA(uint32_t cycles);
 
+    void UpdateSerial(uint32_t tCycles);
+
     [[nodiscard]] uint8_t ReadHDMA(uint16_t address, bool gbc) const;
 
     void WriteHDMA(uint16_t address, uint8_t value);
@@ -138,6 +140,7 @@ public:
         VBlank,
         LCDStat,
         Timer,
+        Serial,
         Joypad,
     };
 
@@ -145,6 +148,8 @@ public:
     uint8_t interruptFlag = 0xE1;
     bool interruptMasterEnable = false;
     bool interruptDelay = false;
+
+    uint32_t stepCycles = 0;
 
     void SetInterrupt(InterruptType interrupt);
 };

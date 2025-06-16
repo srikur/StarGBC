@@ -184,16 +184,16 @@
 |----------------------------------|--------------------|
 | acceptance/interrupts/ie_push.gb | :white_check_mark: |
 
-| instr                        | StarGBC            |
-|------------------------------|--------------------|
-| acceptance/interrupts/daa.gb | :white_check_mark: |
+| instr                   | StarGBC            |
+|-------------------------|--------------------|
+| acceptance/instr/daa.gb | :white_check_mark: |
 
-| bits                                    | StarGBC            |
-|-----------------------------------------|--------------------|
-| acceptance/interrupts/mem_oam.gb        | :white_check_mark: |
-| acceptance/interrupts/reg_f.gb          | :white_check_mark: |
-| acceptance/interrupts/unused_hwio-GS.gb | :x:                |
+| bits                              | StarGBC            |
+|-----------------------------------|--------------------|
+| acceptance/bits/mem_oam.gb        | :white_check_mark: |
+| acceptance/bits/reg_f.gb          | :white_check_mark: |
+| acceptance/bits/unused_hwio-GS.gb | :x:                |
 
-| manual_only                    | StarGBC |
-|--------------------------------|---------|
-| manual-only/sprite_priority.gb | :x:     |
+| manual_only                    | StarGBC            |
+|--------------------------------|--------------------|
+| manual-only/sprite_priority.gb | :white_check_mark: |
