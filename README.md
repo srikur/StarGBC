@@ -113,7 +113,7 @@
 
 | General                               | StarGBC            |
 |---------------------------------------|--------------------|
-| acceptance/add_sp_e_timing.gb         | :x:                |
+| acceptance/add_sp_e_timing.gb         | :white_check_mark: |
 | acceptance/boot_div-dmg0.gb           | :x:                |
 | acceptance/boot_div-dmgABCmgb.gb      | :x:                |
 | acceptance/boot_div-S.gb              | :x:                |
@@ -126,9 +126,9 @@
 | acceptance/boot_regs-mgb.gb           | :white_check_mark: |
 | acceptance/boot_regs-sgb.gb           | :white_check_mark: |
 | acceptance/boot_regs-sgb2.gb          | :white_check_mark: |
-| acceptance/call_cc_timing.gb          | :white_check_mark: |
+| acceptance/call_cc_timing.gb          | :x:                |
 | acceptance/call_cc_timing2.gb         | :x:                |
-| acceptance/call_timing.gb             | :white_check_mark: |
+| acceptance/call_timing.gb             | :x:                |
 | acceptance/call_timing2.gb            | :x:                |
 | acceptance/di_timing-GS.gb            | :white_check_mark: |
 | acceptance/div_timing.gb              | :white_check_mark: |
@@ -140,8 +140,8 @@
 | acceptance/halt_ime1_timing2-GS.gb    | :white_check_mark: |
 | acceptance/if_ie_registers.gb         | :white_check_mark: |
 | acceptance/intr_timing.gb             | :white_check_mark: |
-| acceptance/jp_cc_timing.gb            | :x:                |
-| acceptance/jp_timing.gb               | :x:                |
+| acceptance/jp_cc_timing.gb            | :white_check_mark: |
+| acceptance/jp_timing.gb               | :white_check_mark: |
 | acceptance/ld_hl_sp_e_timing.gb       | :x:                |
 | acceptance/oam_dma_restart.gb         | :white_check_mark: |
 | acceptance/oma_dma_start.gb           | :white_check_mark: |
@@ -149,10 +149,10 @@
 | acceptance/pop_timing.gb              | :white_check_mark: |
 | acceptance/push_timing.gb             | :x:                |
 | acceptance/rapid_di_ei.gb             | :white_check_mark: |
-| acceptance/ret_cc_timing.gb           | :x:                |
-| acceptance/ret_timing.gb              | :x:                |
+| acceptance/ret_cc_timing.gb           | :white_check_mark: |
+| acceptance/ret_timing.gb              | :white_check_mark: |
 | acceptance/reti_intr_timing.gb        | :white_check_mark: |
-| acceptance/reti_timing.gb             | :x:                |
+| acceptance/reti_timing.gb             | :white_check_mark: |
 | acceptance/rst_timing.gb              | :x:                |
 
 | Serial                                         | StarGBC |

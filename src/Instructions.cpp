@@ -464,9 +464,7 @@ uint8_t Instructions::RET(const JumpTest test, Gameboy &gameboy) {
     }
 
     const uint16_t newPC = pop(gameboy);
-
     gameboy.pc = newPC;
-
     gameboy.TickM(1);
     gameboy.cyclesThisInstruction += 1;
     return test == JumpTest::Always ? 4 : 5;
@@ -509,21 +507,13 @@ uint8_t Instructions::JP(const JumpTest test, Gameboy &gameboy) {
         }
     }();
 
-    const uint16_t lower_byte = gameboy.bus->ReadByte(gameboy.pc);
-    gameboy.pc += 1;
-    gameboy.TickM(1);
-    gameboy.cyclesThisInstruction += 1;
-    const uint16_t higher_byte = gameboy.bus->ReadByte(gameboy.pc);
-    gameboy.pc += 1;
-    gameboy.TickM(1);
-    gameboy.cyclesThisInstruction += 1;
-
     if (jumpCondition) {
-        gameboy.pc = higher_byte << 8 | lower_byte;
-        gameboy.TickM(1);
-        gameboy.cyclesThisInstruction += 1;
+        const uint16_t lower_byte = ReadByte(gameboy, gameboy.pc);
+        const uint16_t higher_byte = ReadByte(gameboy, gameboy.pc + 1);
+        gameboy.pc = (higher_byte << 8) | lower_byte;
         return 4;
     }
+    gameboy.pc += 2;
     return 3;
 }
 
