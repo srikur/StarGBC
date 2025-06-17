@@ -261,21 +261,12 @@ uint32_t Gameboy::ProcessInterrupts() {
         icount = 0;
     }
     const uint8_t pending = bus->interruptEnable & bus->interruptFlag & 0x1F;
-    if (halted && pending) {
-        halted = false;
-        TickM(1);
-        cyclesThisInstruction += 1;
-        return 1;
-    }
-
     if (pending == 0) {
         return 0;
     }
     if (halted && !bus->interruptMasterEnable) {
         halted = false;
-        TickM(5);
-        cyclesThisInstruction += 5;
-        return 5;
+        return 0;
     }
 
     if (bus->interruptDelay || !bus->interruptMasterEnable) {
