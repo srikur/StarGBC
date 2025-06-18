@@ -3,7 +3,6 @@
 #include <memory>
 #include <utility>
 #include <fstream>
-#include <tuple>
 
 #include "Bus.h"
 #include "Registers.h"
@@ -53,6 +52,7 @@ class Gameboy {
     bool throttleSpeed = true;
     int speedMultiplier = 1;
     bool paused = false;
+    bool stopped = false;
 
     uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
 
@@ -68,7 +68,7 @@ class Gameboy {
 
     void PrintCurrentValues() const;
 
-    void TickM(uint32_t cycles);
+    void TickM(uint32_t cycles, bool countDoubleSpeed);
 
 public:
     friend class Instructions;

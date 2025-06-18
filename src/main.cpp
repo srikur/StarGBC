@@ -59,7 +59,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
             return SDL_APP_FAILURE;
         }
     }
-    if (settings.romName.empty()) {
+    if (settings.romName.empty() || (!settings.romName.ends_with(".gb") &&
+                                     !settings.romName.ends_with(".gbc"))) {
         std::fprintf(stderr, "Error: no ROM specified");
         return SDL_APP_FAILURE;
     }

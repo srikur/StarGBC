@@ -64,7 +64,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         }
         case 0xFF50 ... 0xFF55: return ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
         case 0xFF68 ... 0xFF6B: return gpu_->ReadRegisters(address);
-        case 0xFF70: return memory_.wramBank_;
+        case 0xFF70: return gpu_->hardware == GPU::Hardware::CGB ? memory_.wramBank_ : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
         case 0xFFFF: return interruptEnable;
         default: return 0xFF;
