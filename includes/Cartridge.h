@@ -55,6 +55,10 @@ class Cartridge {
     bool ramDirty_ = false;
     bool prevRamEnable_ = false;
 
+    bool hasRumble_ = false;
+    bool rumbleOn_ = false;
+    std::function<void(bool)> rumbleCallback_;
+
 public:
     explicit Cartridge(const std::string &romLocation);
 

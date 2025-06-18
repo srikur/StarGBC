@@ -199,7 +199,7 @@ struct Serial {
     [[nodiscard]] uint8_t ReadSerial(const uint16_t address, bool gbc) const {
         switch (address) {
             case 0xFF01: return data_;
-            case 0xFF02: return control_ | (gbc ? 0x7C : 0x7E);
+            case 0xFF02: return control_ | 0x7E;
             default: throw UnreachableCodeException("Improper read from serial");
         }
     }

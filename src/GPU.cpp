@@ -180,7 +180,7 @@ GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
 }
 
 uint8_t GPU::ReadGpi(const Gpi &gpi) {
-    return (gpi.autoIncrement ? 0x80 : 0x00) | gpi.index;
+    return (gpi.autoIncrement ? 0x80 : 0x00) | gpi.index | 0x40;
 }
 
 void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {

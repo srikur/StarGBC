@@ -36,6 +36,8 @@
 
 ## Test ROM Performance
 
+Current Performance: (86/163)
+
 ### Blargg's tests
 
 | Test                                  | StarGBC            |
@@ -155,6 +157,15 @@
 | acceptance/reti_timing.gb             | :white_check_mark: |
 | acceptance/rst_timing.gb              | :white_check_mark: |
 
+| Misc Boot                 | StarGBC            |
+|---------------------------|--------------------|
+| misc/boot_div-A.gb        | :x:                |
+| misc/boot_div-cgb0.gb     | :x:                |
+| misc/boot_div-cgbABCDE.gb | :x:                |
+| misc/boot_hwio-C.gb       | :x:                |
+| misc/boot_regs-A.gb       | :x:                |
+| misc/boot_regs-cgb.gb     | :white_check_mark: |
+
 | Serial                                         | StarGBC |
 |------------------------------------------------|---------|
 | acceptance/serial/boot_sclk_align-dmgABCmgb.gb | :x:     |
@@ -173,6 +184,7 @@
 | acceptance/ppu/stat_irq_blocking.gb           | :x:                |
 | acceptance/ppu/stat_lyc_onoff.gb              | :x:                |
 | acceptance/ppu/vblank_stat_intr-GS.gb         | :x:                |
+| misc/ppu/vblank_stat_intr-C.gb                | :x:                |
 
 | oam_dma                          | StarGBC            |
 |----------------------------------|--------------------|
@@ -193,7 +205,45 @@
 | acceptance/bits/mem_oam.gb        | :white_check_mark: |
 | acceptance/bits/reg_f.gb          | :white_check_mark: |
 | acceptance/bits/unused_hwio-GS.gb | :x:                |
+| misc/bits/unused_hwio-C.gb        | :x:                |
 
 | manual_only                    | StarGBC            |
 |--------------------------------|--------------------|
 | manual-only/sprite_priority.gb | :white_check_mark: |
+
+| emulator_only                           | StarGBC            |
+|-----------------------------------------|--------------------|
+| emulator-only/mbc1/bits_bank1.gb        | :white_check_mark: |
+| emulator-only/mbc1/bits_bank2.gb        | :white_check_mark: |
+| emulator-only/mbc1/bits_mode.gb         | :x:                |
+| emulator-only/mbc1/bits_ramg.gb         | :x:                |
+| emulator-only/mbc1/multicart_rom_8Mb.gb | :x:                |
+| emulator-only/mbc1/ram_64kb.gb          | :x:                |
+| emulator-only/mbc1/ram_256kb.gb         | :x:                |
+| emulator-only/mbc1/rom_1Mb.gb           | :x:                |
+| emulator-only/mbc1/rom_2Mb.gb           | :x:                |
+| emulator-only/mbc1/rom_4Mb.gb           | :x:                |
+| emulator-only/mbc1/rom_8Mb.gb           | :x:                |
+| emulator-only/mbc1/rom_16Mb.gb          | :x:                |
+| emulator-only/mbc1/rom_512kb.gb         | :x:                |
+
+| emulator_only                     | StarGBC            |
+|-----------------------------------|--------------------|
+| emulator-only/mbc2/bits_ramg.gb   | :x:                |
+| emulator-only/mbc2/bits_romb.gb   | :x:                |
+| emulator-only/mbc2/bits_unused.gb | :white_check_mark: |
+| emulator-only/mbc2/ram.gb         | :x:                |
+| emulator-only/mbc2/rom_1Mb.gb     | :x:                |
+| emulator-only/mbc2/rom_2Mb.gb     | :x:                |
+| emulator-only/mbc2/rom_512kb.gb   | :x:                |
+
+| emulator_only                   | StarGBC            |
+|---------------------------------|--------------------|
+| emulator-only/mbc5/rom_1Mb.gb   | :x:                |
+| emulator-only/mbc5/rom_2Mb.gb   | :x:                |
+| emulator-only/mbc5/rom_4Mb.gb   | :x:                |
+| emulator-only/mbc5/rom_8Mb.gb   | :x:                |
+| emulator-only/mbc5/rom_16Mb.gb  | :x:                |
+| emulator-only/mbc5/rom_32Mb.gb  | :white_check_mark: |
+| emulator-only/mbc5/rom_64Mb.gb  | :white_check_mark: |
+| emulator-only/mbc5/rom_512kb.gb | :x:                |
