@@ -29,15 +29,14 @@ struct Envelope {
         increase = n & 0x08;
         period = (n & 0x07) ? (n & 0x07) : 8;
         vol = initialVol;
-        timer = 0;
+        timer = period;
     }
 
     void tick() {
         if (!period) return;
-        if (++timer >= period) {
-            timer = 0;
-            if (increase && vol < 15) ++vol;
-            else if (!increase && vol > 0) --vol;
+        if (--timer == 0) {
+            timer = period;
+            if (increase) { if (vol < 15) ++vol; } else { if (vol > 0) --vol; }
         }
     }
 };
@@ -135,7 +134,7 @@ class Pulse {
 public:
     void writeReg(uint16_t a, uint8_t v, bool ch1 = false);
 
-    [[nodiscard]] uint8_t readReg(uint16_t a) const;
+    [[nodiscard]] uint8_t readReg(uint16_t address) const;
 
     void trigger(bool ch1 = false);
 
@@ -177,6 +176,7 @@ public:
     void trigger();
 
     void tickLen();
+
     void tickTimer(uint32_t cycles);
 
     [[nodiscard]] uint8_t output() const;
@@ -197,7 +197,7 @@ private:
 
 class Noise {
 public:
-    void writeReg(uint16_t a, uint8_t v);
+    void writeReg(uint16_t address, uint8_t value);
 
     [[nodiscard]] uint8_t readReg(uint16_t a) const;
 
