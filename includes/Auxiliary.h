@@ -17,62 +17,67 @@ enum class Keys {
 
 struct Joypad {
     [[nodiscard]] uint8_t GetJoypadState() const {
-        if ((select_ & 0x10) == 0x00) {
-            return select_ | matrix_ & 0x0F;
-        }
-        if ((select_ & 0x20) == 0x00) {
-            return select_ | matrix_ >> 4;
-        }
+        if ((select_ & 0x10) == 0x00)
+            return static_cast<uint8_t>(select_ | (matrix_ & 0x0F));
+
+        if ((select_ & 0x20) == 0x00)
+            return static_cast<uint8_t>(select_ | (matrix_ >> 4));
+
         return select_;
     }
 
-    void SetJoypadState(const uint8_t value) {
+    void SetJoypadState(uint8_t value) {
         select_ = value;
+        UpdateKeyFlag();
     }
 
-    void SetMatrix(const uint8_t value) {
+    void SetMatrix(uint8_t value) {
         matrix_ = value;
+        UpdateKeyFlag();
     }
 
-    [[nodiscard]] uint8_t GetMatrix() const {
-        return matrix_;
-    }
+    [[nodiscard]] uint8_t GetMatrix() const { return matrix_; }
+    [[nodiscard]] uint8_t GetSelect() const { return select_; }
 
-    [[nodiscard]] uint8_t GetSelect() const {
-        return select_;
-    }
-
-    void SetSelect(const uint8_t value) {
+    void SetSelect(uint8_t value) {
         select_ = value;
+        UpdateKeyFlag();
     }
 
-    bool SaveState(std::ofstream &stateFile) const {
-        try {
-            if (!stateFile.is_open()) return false;
-            stateFile.write(reinterpret_cast<const char *>(&matrix_), sizeof(matrix_));
-            stateFile.write(reinterpret_cast<const char *>(&select_), sizeof(select_));
-            return true;
-        } catch (const std::exception &e) {
-            std::cerr << "Error saving Joypad state: " << e.what() << std::endl;
-            return false;
-        }
+    [[nodiscard]] bool KeyPressed() const { return keyPressed_; }
+    void ClearKeyPressed() { keyPressed_ = false; }
+
+    bool SaveState(std::ofstream &f) const {
+        if (!f.is_open()) return false;
+        f.write(reinterpret_cast<const char *>(&matrix_), sizeof matrix_);
+        f.write(reinterpret_cast<const char *>(&select_), sizeof select_);
+        f.write(reinterpret_cast<const char *>(&keyPressed_), sizeof keyPressed_);
+        return true;
     }
 
-    bool LoadState(std::ifstream &stateFile) {
-        try {
-            if (!stateFile.is_open()) return false;
-            stateFile.read(reinterpret_cast<char *>(&matrix_), sizeof(matrix_));
-            stateFile.read(reinterpret_cast<char *>(&select_), sizeof(select_));
-            return true;
-        } catch (const std::exception &e) {
-            std::cerr << "Error loading Joypad state: " << e.what() << std::endl;
-            return false;
-        }
+    bool LoadState(std::ifstream &f) {
+        if (!f.is_open()) return false;
+        f.read(reinterpret_cast<char *>(&matrix_), sizeof matrix_);
+        f.read(reinterpret_cast<char *>(&select_), sizeof select_);
+        f.read(reinterpret_cast<char *>(&keyPressed_), sizeof keyPressed_);
+        return true;
     }
 
 private:
+    void UpdateKeyFlag() {
+        const bool dirRowSelected = (select_ & 0x10) == 0;
+        const bool btnRowSelected = (select_ & 0x20) == 0;
+
+        const bool dirKeyLow = (matrix_ & 0x0F) != 0x0F;
+        const bool btnKeyLow = ((matrix_ >> 4) & 0x0F) != 0x0F;
+
+        if ((dirRowSelected && dirKeyLow) || (btnRowSelected && btnKeyLow))
+            keyPressed_ = true;
+    }
+
     uint8_t matrix_ = 0xFF;
     uint8_t select_ = 0x00;
+    bool keyPressed_ = false;
 };
 
 struct Timer {

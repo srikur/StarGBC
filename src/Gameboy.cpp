@@ -54,7 +54,7 @@ void Gameboy::InitializeBootrom() const {
 }
 
 uint32_t Gameboy::RunHDMA() const {
-    if (!bus->hdmaActive) {
+    if (!bus->hdmaActive || bus->gpu_->hardware == GPU::Hardware::DMG) {
         return 0;
     }
 
@@ -101,7 +101,7 @@ uint32_t Gameboy::RunHDMA() const {
 uint8_t Gameboy::ExecuteInstruction() {
     uint8_t instruction = bus->ReadByte(pc);
     pc += 1;
-    TickM(1); // Corresponds to M2 in GBCTR docs
+    TickM(1, true); // Corresponds to M2 in GBCTR docs
     cyclesThisInstruction += 1;
 
     if (haltBug) {
@@ -112,7 +112,7 @@ uint8_t Gameboy::ExecuteInstruction() {
     const bool prefixed = instruction == 0xCB;
     if (prefixed) {
         instruction = bus->ReadByte(pc++);
-        TickM(1);
+        TickM(1, true);
         cyclesThisInstruction += 1;
         currentInstruction = 0xCB00 | instruction;
     } else {
@@ -164,6 +164,13 @@ bool Gameboy::PopSample(StereoSample sample) const {
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
+        if (stopped) {
+            if (bus->joypad_.KeyPressed()) {
+                stopped = false;
+            } else {
+                return;
+            }
+        }
         cyclesThisInstruction = 0;
         if (pc == 0x100) { bus->bootromRunning = false; }
 
@@ -171,10 +178,10 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
         if (!cycles) {
             cycles = halted ? 1 : ExecuteInstruction();
         }
-        if (const uint8_t rest = cycles - cyclesThisInstruction) TickM(rest);
+        if (const uint8_t rest = cycles - cyclesThisInstruction) TickM(rest, true);
 
         if (const uint32_t hdmaCycles = RunHDMA()) {
-            TickM(hdmaCycles);
+            TickM(hdmaCycles, true);
         }
 
         if (auto s = bus->audio_->Tick(cycles * 4 * static_cast<uint32_t>(bus->speed))) {
@@ -201,9 +208,10 @@ void Gameboy::UpdateEmulator() {
         std::this_thread::sleep_for(effectiveFrameTime - elapsed);
 }
 
-void Gameboy::TickM(const uint32_t cycles) {
+void Gameboy::TickM(const uint32_t cycles, const bool countDoubleSpeed) {
     if (cycles == 0) return;
-    const uint32_t t = cycles * 4 * static_cast<uint32_t>(bus->speed);
+    const uint8_t speedFactor = countDoubleSpeed ? static_cast<uint32_t>(bus->speed) : 1;
+    const uint32_t t = cycles * 4 * speedFactor;
     bus->UpdateTimers(t);
     bus->UpdateGraphics(t);
     bus->UpdateDMA(cycles);
@@ -279,22 +287,22 @@ uint32_t Gameboy::ProcessInterrupts() {
     auto bit = static_cast<uint8_t>(std::countr_zero(pending));
     auto mask = static_cast<uint8_t>(1u << bit);
 
-    TickM(1);
+    TickM(1, false);
     cyclesThisInstruction += 1;
 
     sp -= 1;
     bus->WriteByte(sp, static_cast<uint8_t>(pc >> 8));
-    TickM(1);
+    TickM(1, false);
     cyclesThisInstruction += 1;
 
     if (const uint8_t newPending = bus->interruptEnable & bus->interruptFlag & 0x1F; !(newPending & mask)) {
         if (!newPending) {
             sp--;
             bus->WriteByte(sp, pc & 0xFF);
-            TickM(1);
+            TickM(1, false);
             cyclesThisInstruction += 1;
 
-            TickM(3);
+            TickM(3, false);
             cyclesThisInstruction += 3;
             pc = 0x0000;
             return 5;
@@ -309,7 +317,7 @@ uint32_t Gameboy::ProcessInterrupts() {
 
     bus->interruptFlag &= ~mask;
 
-    TickM(3);
+    TickM(3, false);
     cyclesThisInstruction += 3;
 
     pc = interruptAddress(bit);

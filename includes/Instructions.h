@@ -174,19 +174,9 @@ public:
 
     static uint8_t subtract(uint8_t value, const Gameboy &gameboy);
 
-    static uint8_t addition(uint8_t value, const Gameboy &gameboy);
-
-    static uint8_t jump(bool shouldJump, Gameboy &gameboy);
-
-    static uint8_t jumpRelative(bool shouldJump, Gameboy &gameboy);
-
     static void push(uint16_t value, Gameboy &gameboy);
 
     static uint16_t pop(Gameboy &gameboy);
-
-    static uint8_t call(bool shouldJump, Gameboy &gameboy);
-
-    static uint8_t return_(bool shouldJump, Gameboy &gameboy);
 
     static uint16_t ReadNextWord(Gameboy &gameboy);
 
