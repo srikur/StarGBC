@@ -142,12 +142,12 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
 
     gpu_->scanlineCounter += cycles;
     gpu_->hblank = false;
-    constexpr uint32_t MODE0_CYCLES = 456 - 80 - 172; // 204 – HBlank
 
     while (true) {
         constexpr uint32_t LINE_CYCLES = 456;
         constexpr uint32_t MODE3_CYCLES = 172;
         constexpr uint32_t MODE2_CYCLES = 80;
+        constexpr uint32_t MODE0_CYCLES = LINE_CYCLES - MODE2_CYCLES - MODE3_CYCLES; // 204 – HBlank
         switch (gpu_->stat.mode) {
             case 0:
                 if (gpu_->scanlineCounter < MODE0_CYCLES) return;

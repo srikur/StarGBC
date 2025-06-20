@@ -68,7 +68,7 @@ class Gameboy {
 
     void PrintCurrentValues() const;
 
-    void TickM(uint32_t cycles, bool countDoubleSpeed);
+    void TickM(uint32_t mCycles, bool countDoubleSpeed);
 
 public:
     friend class Instructions;

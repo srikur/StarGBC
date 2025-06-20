@@ -542,7 +542,7 @@ uint8_t Instructions::STOP(Gameboy &gameboy) {
     if (speedSwitchRequested) {
         gameboy.TickM(130996, false);
         gameboy.bus->ChangeSpeed();
-        // gameboy.pc += 1;
+        gameboy.pc += 1;
 
         return 1;
     }
