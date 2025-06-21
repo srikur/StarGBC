@@ -86,14 +86,14 @@ Current Performance: (86/163)
 | cgb_sound/10-wave trigger while on.gb | :x:                |
 | cgb_sound/11-regs after power.gb      | :x:                |
 | cgb_sound/12-wave.gb                  | :x:                |
-| oam_bug/1-lcd_sync                    | :x:                |
-| oam_bug/2-causes                      | :x:                |
-| oam_bug/3-non_causes                  | :white_check_mark: |
-| oam_bug/4-scanline_timing             | :x:                |
-| oam_bug/5-timing_bug                  | :x:                |
-| oam_bug/6-timing_no_bug               | :white_check_mark: |
-| oam_bug/7-timing_effect               | :x:                |
-| oam_bug/8-instr_effect                | :x:                |
+| oam_bug/1-lcd_sync.gb                 | :x:                |
+| oam_bug/2-causes.gb                   | :x:                |
+| oam_bug/3-non_causes.gb               | :white_check_mark: |
+| oam_bug/4-scanline_timing.gb          | :x:                |
+| oam_bug/5-timing_bug.gb               | :x:                |
+| oam_bug/6-timing_no_bug.gb            | :white_check_mark: |
+| oam_bug/7-timing_effect.gb            | :x:                |
+| oam_bug/8-instr_effect.gb             | :x:                |
 
 ### Mooneye GB Tests
 
