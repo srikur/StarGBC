@@ -207,9 +207,9 @@ Current Performance: (86/163)
 | acceptance/bits/unused_hwio-GS.gb | :x:                |
 | misc/bits/unused_hwio-C.gb        | :x:                |
 
-| manual_only                    | StarGBC            |
-|--------------------------------|--------------------|
-| manual-only/sprite_priority.gb | :white_check_mark: |
+| manual_only                    | StarGBC |
+|--------------------------------|---------|
+| manual-only/sprite_priority.gb | :x:     |
 
 | emulator_only                           | StarGBC            |
 |-----------------------------------------|--------------------|
