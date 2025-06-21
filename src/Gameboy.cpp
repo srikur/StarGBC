@@ -180,8 +180,10 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
         }
         if (const uint8_t rest = cycles - cyclesThisInstruction) TickM(rest, true);
 
+        bus->UpdateGraphics(cycles * 4);
         if (const uint32_t hdmaCycles = RunHDMA()) {
             TickM(hdmaCycles, true);
+            bus->UpdateGraphics(hdmaCycles * 4);
         }
 
         if (auto s = bus->audio_->Tick(cycles * 4 * static_cast<uint32_t>(bus->speed))) {
@@ -214,7 +216,7 @@ void Gameboy::TickM(const uint32_t mCycles, const bool countDoubleSpeed) {
     const uint32_t tCycles = mCycles * 4 * speedFactor;
     bus->UpdateTimers(tCycles);
     bus->UpdateSerial(tCycles);
-    bus->UpdateGraphics(mCycles * 4);
+    // bus->UpdateGraphics(mCycles * 4);
     bus->UpdateDMA(mCycles * speedFactor);
     if (const auto s = bus->audio_->Tick(tCycles)) { bus->audio_->gSampleFifo.push(*s); }
 
