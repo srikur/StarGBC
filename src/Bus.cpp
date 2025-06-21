@@ -131,26 +131,26 @@ void Bus::KeyUp(Keys key) {
     joypad_.SetMatrix(joypad_.GetMatrix() | static_cast<uint8_t>(key));
 }
 
-void Bus::UpdateGraphics(const uint32_t cycles) {
-    if ((gpu_->lcdc & 0x80) == 0) {
+void Bus::UpdateGraphics(const uint32_t tCycles) {
+    constexpr uint32_t LINE_CYCLES = 456;
+    constexpr uint32_t MODE3_CYCLES = 172;
+    constexpr uint32_t MODE2_CYCLES = 80;
+    constexpr uint32_t MODE0_CYCLES = LINE_CYCLES - MODE2_CYCLES - MODE3_CYCLES; // 204 – HBlank
+
+    if (!gpu_->LCDEnabled()) {
         gpu_->scanlineCounter = 0;
         gpu_->currentLine = 0;
         gpu_->stat.mode = 0;
         gpu_->hblank = false;
         return;
     }
-
-    gpu_->scanlineCounter += cycles;
     gpu_->hblank = false;
-    constexpr uint32_t MODE0_CYCLES = 456 - 80 - 172; // 204 – HBlank
 
-    while (true) {
-        constexpr uint32_t LINE_CYCLES = 456;
-        constexpr uint32_t MODE3_CYCLES = 172;
-        constexpr uint32_t MODE2_CYCLES = 80;
+    for (uint32_t i = 0; i < tCycles; i++) {
+        gpu_->scanlineCounter++;
         switch (gpu_->stat.mode) {
-            case 0:
-                if (gpu_->scanlineCounter < MODE0_CYCLES) return;
+            case 0: {
+                if (gpu_->scanlineCounter < MODE0_CYCLES) break;
                 gpu_->scanlineCounter -= MODE0_CYCLES;
                 ++gpu_->currentLine;
 
@@ -168,10 +168,11 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
                     if (gpu_->stat.enableM2Interrupt)
                         SetInterrupt(InterruptType::LCDStat);
                 }
-                break;
+            }
+            break;
 
-            case 1:
-                if (gpu_->scanlineCounter < LINE_CYCLES) return;
+            case 1: {
+                if (gpu_->scanlineCounter < LINE_CYCLES) break;
                 gpu_->scanlineCounter -= LINE_CYCLES;
                 ++gpu_->currentLine;
 
@@ -186,16 +187,18 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
 
                 if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
                     SetInterrupt(InterruptType::LCDStat);
-                break;
+            }
+            break;
 
-            case 2:
-                if (gpu_->scanlineCounter < MODE2_CYCLES) return;
+            case 2: {
+                if (gpu_->scanlineCounter < MODE2_CYCLES) break;
                 gpu_->scanlineCounter -= MODE2_CYCLES;
                 gpu_->stat.mode = 3;
-                break;
+            }
+            break;
 
-            case 3:
-                if (gpu_->scanlineCounter < MODE3_CYCLES) return;
+            case 3: {
+                if (gpu_->scanlineCounter < MODE3_CYCLES) break;
                 gpu_->scanlineCounter -= MODE3_CYCLES;
 
                 gpu_->stat.mode = 0;
@@ -205,6 +208,7 @@ void Bus::UpdateGraphics(const uint32_t cycles) {
                 if (gpu_->stat.enableM0Interrupt)
                     SetInterrupt(InterruptType::LCDStat);
                 break;
+            }
             default: break;
         }
     }
@@ -233,29 +237,29 @@ void Bus::UpdateTimers(const uint32_t cycles) {
 }
 
 void Bus::UpdateDMA(const uint32_t cycles) {
-    if (dma_.transferComplete) {
-        dma_.transferActive = false;
-        dma_.transferComplete = false;
-        dma_.ticks = 0;
-        dma_.currentByte = 0;
-    }
     for (uint32_t i = 0; i < cycles; ++i) {
+        if (dma_.transferComplete) {
+            dma_.transferActive = false;
+            dma_.transferComplete = false;
+            dma_.ticks = 0;
+            dma_.currentByte = 0;
+        }
+        if (!dma_.transferActive) { continue; }
         if (dma_.restartPending && --dma_.restartCountdown == 0) {
             dma_.restartPending = false;
             dma_.startAddress = dma_.pendingStart;
             dma_.currentByte = 0;
-            dma_.ticks = 0;
+            dma_.ticks = 1;
         }
-        if (!dma_.transferActive) { continue; }
 
         ++dma_.ticks;
 
         if (dma_.ticks <= DMA::STARTUP_CYCLES)
             continue; // OAM still accessible here
 
-        gpu_->oam[dma_.currentByte] =
+        gpu_->oam[dma_.currentByte++] =
                 ReadDMASource(dma_.startAddress + dma_.currentByte);
-        if (++dma_.currentByte == DMA::TOTAL_BYTES) {
+        if (dma_.currentByte == DMA::TOTAL_BYTES) {
             dma_.transferComplete = true;
         }
     }

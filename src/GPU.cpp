@@ -8,6 +8,10 @@ void GPU::DrawScanline() {
     if (lcdc & 0x02) RenderSprites();
 }
 
+bool GPU::LCDEnabled() const {
+    return lcdc & 0x80;
+}
+
 void GPU::RenderSprites() {
     std::list<Sprite> sprites;
     const uint8_t spriteSize = (lcdc & 0x04) ? 16 : 8;
