@@ -233,29 +233,29 @@ void Bus::UpdateTimers(const uint32_t cycles) {
 }
 
 void Bus::UpdateDMA(const uint32_t cycles) {
-    if (dma_.transferComplete) {
-        dma_.transferActive = false;
-        dma_.transferComplete = false;
-        dma_.ticks = 0;
-        dma_.currentByte = 0;
-    }
     for (uint32_t i = 0; i < cycles; ++i) {
+        if (dma_.transferComplete) {
+            dma_.transferActive = false;
+            dma_.transferComplete = false;
+            dma_.ticks = 0;
+            dma_.currentByte = 0;
+        }
+        if (!dma_.transferActive) { continue; }
         if (dma_.restartPending && --dma_.restartCountdown == 0) {
             dma_.restartPending = false;
             dma_.startAddress = dma_.pendingStart;
             dma_.currentByte = 0;
-            dma_.ticks = 0;
+            dma_.ticks = 1;
         }
-        if (!dma_.transferActive) { continue; }
 
         ++dma_.ticks;
 
         if (dma_.ticks <= DMA::STARTUP_CYCLES)
             continue; // OAM still accessible here
 
-        gpu_->oam[dma_.currentByte] =
+        gpu_->oam[dma_.currentByte++] =
                 ReadDMASource(dma_.startAddress + dma_.currentByte);
-        if (++dma_.currentByte == DMA::TOTAL_BYTES) {
+        if (dma_.currentByte == DMA::TOTAL_BYTES) {
             dma_.transferComplete = true;
         }
     }
