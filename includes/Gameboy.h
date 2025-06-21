@@ -150,6 +150,13 @@ public:
 
     void LoadState(int slot);
 
+    void SaveScreen() const {
+        std::ofstream file(rom_path_ + ".screen", std::ios::binary | std::ios::trunc);
+        if (!file.is_open()) throw std::runtime_error("Could not open " + rom_path_ + ".screen");
+        file.write(reinterpret_cast<const char *>(GetScreenData()), 160 * 144 * 4);
+        std::fprintf(stderr, "Saved screen to %s.screen\n", rom_path_.c_str());
+    }
+
     void SetPaused(const bool val) {
         paused = val;
     }
