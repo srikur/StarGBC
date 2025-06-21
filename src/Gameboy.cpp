@@ -180,8 +180,10 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
         }
         if (const uint8_t rest = cycles - cyclesThisInstruction) TickM(rest, true);
 
+        bus->UpdateGraphics(cycles * 4);
         if (const uint32_t hdmaCycles = RunHDMA()) {
             TickM(hdmaCycles, true);
+            bus->UpdateGraphics(hdmaCycles * 4);
         }
 
         if (auto s = bus->audio_->Tick(cycles * 4 * static_cast<uint32_t>(bus->speed))) {
@@ -208,17 +210,17 @@ void Gameboy::UpdateEmulator() {
         std::this_thread::sleep_for(effectiveFrameTime - elapsed);
 }
 
-void Gameboy::TickM(const uint32_t cycles, const bool countDoubleSpeed) {
-    if (cycles == 0) return;
-    const uint8_t speedFactor = countDoubleSpeed ? static_cast<uint32_t>(bus->speed) : 1;
-    const uint32_t t = cycles * 4 * speedFactor;
-    bus->UpdateTimers(t);
-    bus->UpdateGraphics(t);
-    bus->UpdateDMA(cycles);
-    bus->UpdateSerial(t);
-    if (const auto s = bus->audio_->Tick(t)) { bus->audio_->gSampleFifo.push(*s); }
+void Gameboy::TickM(const uint32_t mCycles, const bool countDoubleSpeed) {
+    if (mCycles == 0) return;
+    const uint8_t speedFactor = countDoubleSpeed && bus->speed == Bus::Speed::Double ? 2 : 1;
+    const uint32_t tCycles = mCycles * 4 * speedFactor;
+    bus->UpdateTimers(tCycles);
+    bus->UpdateSerial(tCycles);
+    // bus->UpdateGraphics(mCycles * 4);
+    bus->UpdateDMA(mCycles * speedFactor);
+    if (const auto s = bus->audio_->Tick(tCycles)) { bus->audio_->gSampleFifo.push(*s); }
 
-    stepCycles += t;
+    stepCycles += tCycles;
 }
 
 void Gameboy::DebugNextInstruction() {

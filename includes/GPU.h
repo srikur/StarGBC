@@ -121,6 +121,8 @@ public:
 
     void WriteRegisters(uint16_t address, uint8_t value);
 
+    bool LCDEnabled() const;
+
     enum class HDMAMode {
         GDMA, HDMA
     };
