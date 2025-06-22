@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (96/163)
+Current Performance: (108/163)
 
 ### Blargg's tests
 
@@ -239,11 +239,11 @@ Current Performance: (96/163)
 
 | emulator_only                   | StarGBC            |
 |---------------------------------|--------------------|
-| emulator-only/mbc5/rom_1Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_2Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_4Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_8Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_16Mb.gb  | :x:                |
+| emulator-only/mbc5/rom_1Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_2Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_4Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_8Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_16Mb.gb  | :white_check_mark: |
 | emulator-only/mbc5/rom_32Mb.gb  | :white_check_mark: |
 | emulator-only/mbc5/rom_64Mb.gb  | :white_check_mark: |
-| emulator-only/mbc5/rom_512kb.gb | :x:                |
+| emulator-only/mbc5/rom_512kb.gb | :white_check_mark: |

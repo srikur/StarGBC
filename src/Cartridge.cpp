@@ -351,7 +351,7 @@ uint8_t Cartridge::ReadByteMBC3(const uint16_t address) const {
 uint8_t Cartridge::ReadByteMBC5(const uint16_t address) const {
     switch (address) {
         case 0x0000 ... 0x3FFF: return gameRom_[address];
-        case 0x4000 ... 0x7FFF: return gameRom_[static_cast<uint64_t>(romBank) * 0x4000ULL + (address - 0x4000)];
+        case 0x4000 ... 0x7FFF: return gameRom_[static_cast<uint64_t>(romBank & BankBitmask()) * 0x4000ULL + (address - 0x4000)];
         case 0xA000 ... 0xBFFF: return ramEnabled
                                            ? gameRam_[static_cast<uint64_t>(ramBank) * 0x2000ULL + (address - 0xA000)]
                                            : 0xFF;
