@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (86/163)
+Current Performance: (108/163)
 
 ### Blargg's tests
 
@@ -215,35 +215,35 @@ Current Performance: (86/163)
 |-----------------------------------------|--------------------|
 | emulator-only/mbc1/bits_bank1.gb        | :white_check_mark: |
 | emulator-only/mbc1/bits_bank2.gb        | :white_check_mark: |
-| emulator-only/mbc1/bits_mode.gb         | :x:                |
-| emulator-only/mbc1/bits_ramg.gb         | :x:                |
-| emulator-only/mbc1/multicart_rom_8Mb.gb | :x:                |
-| emulator-only/mbc1/ram_64kb.gb          | :x:                |
-| emulator-only/mbc1/ram_256kb.gb         | :x:                |
-| emulator-only/mbc1/rom_1Mb.gb           | :x:                |
-| emulator-only/mbc1/rom_2Mb.gb           | :x:                |
-| emulator-only/mbc1/rom_4Mb.gb           | :x:                |
-| emulator-only/mbc1/rom_8Mb.gb           | :x:                |
-| emulator-only/mbc1/rom_16Mb.gb          | :x:                |
-| emulator-only/mbc1/rom_512kb.gb         | :x:                |
+| emulator-only/mbc1/bits_mode.gb         | :white_check_mark: |
+| emulator-only/mbc1/bits_ramg.gb         | :white_check_mark: |
+| emulator-only/mbc1/multicart_rom_8Mb.gb | :white_check_mark: |
+| emulator-only/mbc1/ram_64kb.gb          | :white_check_mark: |
+| emulator-only/mbc1/ram_256kb.gb         | :white_check_mark: |
+| emulator-only/mbc1/rom_1Mb.gb           | :white_check_mark: |
+| emulator-only/mbc1/rom_2Mb.gb           | :white_check_mark: |
+| emulator-only/mbc1/rom_4Mb.gb           | :white_check_mark: |
+| emulator-only/mbc1/rom_8Mb.gb           | :white_check_mark: |
+| emulator-only/mbc1/rom_16Mb.gb          | :white_check_mark: |
+| emulator-only/mbc1/rom_512kb.gb         | :white_check_mark: |
 
 | emulator_only                     | StarGBC            |
 |-----------------------------------|--------------------|
-| emulator-only/mbc2/bits_ramg.gb   | :x:                |
-| emulator-only/mbc2/bits_romb.gb   | :x:                |
+| emulator-only/mbc2/bits_ramg.gb   | :white_check_mark: |
+| emulator-only/mbc2/bits_romb.gb   | :white_check_mark: |
 | emulator-only/mbc2/bits_unused.gb | :white_check_mark: |
-| emulator-only/mbc2/ram.gb         | :x:                |
-| emulator-only/mbc2/rom_1Mb.gb     | :x:                |
-| emulator-only/mbc2/rom_2Mb.gb     | :x:                |
-| emulator-only/mbc2/rom_512kb.gb   | :x:                |
+| emulator-only/mbc2/ram.gb         | :white_check_mark: |
+| emulator-only/mbc2/rom_1Mb.gb     | :white_check_mark: |
+| emulator-only/mbc2/rom_2Mb.gb     | :white_check_mark: |
+| emulator-only/mbc2/rom_512kb.gb   | :white_check_mark: |
 
 | emulator_only                   | StarGBC            |
 |---------------------------------|--------------------|
-| emulator-only/mbc5/rom_1Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_2Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_4Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_8Mb.gb   | :x:                |
-| emulator-only/mbc5/rom_16Mb.gb  | :x:                |
+| emulator-only/mbc5/rom_1Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_2Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_4Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_8Mb.gb   | :white_check_mark: |
+| emulator-only/mbc5/rom_16Mb.gb  | :white_check_mark: |
 | emulator-only/mbc5/rom_32Mb.gb  | :white_check_mark: |
 | emulator-only/mbc5/rom_64Mb.gb  | :white_check_mark: |
-| emulator-only/mbc5/rom_512kb.gb | :x:                |
+| emulator-only/mbc5/rom_512kb.gb | :white_check_mark: |
