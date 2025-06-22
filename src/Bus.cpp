@@ -8,6 +8,7 @@ Bus::Bus(const std::string &romLocation) {
     hdmaDestination = 0x8000;
     hdmaActive = false;
     hdmaRemain = 0x00;
+    audio_->SetDMG(gpu_->hardware == GPU::Hardware::DMG);
 }
 
 uint8_t Bus::ReadDMASource(const uint16_t src) const {
@@ -367,8 +368,7 @@ bool Bus::SaveState(std::ofstream &stateFile) const {
         stateFile.write(reinterpret_cast<const char *>(&hdmaRemain), sizeof(hdmaRemain));
         return cartridge_->SaveState(stateFile) && gpu_->SaveState(stateFile) &&
                joypad_.SaveState(stateFile) && memory_.SaveState(stateFile) &&
-               timer_.SaveState(stateFile) && serial_.SaveState(stateFile) &&
-               audio_->SaveState(stateFile);
+               timer_.SaveState(stateFile) && serial_.SaveState(stateFile);
     } catch (const std::exception &e) {
         std::cerr << "Error saving state: " << e.what() << std::endl;
         return false;
@@ -395,7 +395,6 @@ void Bus::LoadState(std::ifstream &stateFile) {
         memory_.LoadState(stateFile);
         timer_.LoadState(stateFile);
         serial_.LoadState(stateFile);
-        audio_->LoadState(stateFile);
     } catch (const std::exception &e) {
         std::cerr << "Error loading state: " << e.what() << std::endl;
     }

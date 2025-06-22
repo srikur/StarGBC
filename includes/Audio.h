@@ -1,9 +1,11 @@
 #pragma once
 
+#include <set>
+
 #include "Common.h"
 
 struct Frequency {
-    uint16_t value = 0; // Only 11 bits used
+    uint16_t value{0}; // Only 11 bits used
 
     void WriteLow(const uint8_t lower) { value = value & 0x700 | lower; }
     void WriteHigh(const uint8_t higher) { value = value & 0x00FF | higher << 8; }
@@ -23,7 +25,7 @@ struct Sweep {
     }
 
     [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>((pace << 4) | (direction ? 0x08 : 0x00) | step | 0x80);
+        return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80);
     }
 };
 
@@ -35,11 +37,11 @@ struct Envelope {
     void Write(const uint8_t value) {
         initialVolume = value >> 4 & 0x0F;
         direction = (value & 0x08) != 0;
-        sweepPace = (value & 0x07);
+        sweepPace = value & 0x07;
     }
 
     [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>((initialVolume << 4) | (direction ? 0x08 : 0x00) | sweepPace | 0x00);
+        return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace | 0x00);
     }
 };
 
@@ -48,8 +50,8 @@ struct Length {
     uint8_t lengthTimer{0};
     uint8_t dutyCycle{0};
 
-    void Write(const uint8_t value) {
-        dutyCycle = value >> 6 & 0x03;
+    void Write(const uint8_t value, const bool audioEnabled) {
+        if (audioEnabled) dutyCycle = value >> 6 & 0x03;
         lengthTimer = value & 0x3F;
     }
 
@@ -70,7 +72,7 @@ struct Noise {
     }
 
     [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>((clockShift << 4) | (lfsr ? 0x08 : 0x00) | clockDivider | 0x00);
+        return static_cast<uint8_t>(clockShift << 4 | (lfsr ? 0x08 : 0x00) | clockDivider | 0x00);
     }
 };
 
@@ -80,7 +82,6 @@ struct Channel1 {
     Frequency frequency{};
     Length lengthTimer{};
     Envelope envelope{};
-
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -93,17 +94,18 @@ struct Channel1 {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value) {
+    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled) {
         switch (address & 0xF) {
             case 0x00: sweep.Write(value);
                 break;
-            case 0x01: lengthTimer.Write(value);
+            case 0x01: lengthTimer.Write(value, audioEnabled);
                 break;
             case 0x02: envelope.Write(value);
                 break;
             case 0x03: frequency.WriteLow(value);
                 break;
             case 0x04: frequency.WriteHigh(value);
+                lengthTimer.enabled = value & 0x40;
                 break;
             default: throw UnreachableCodeException("Channel1::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -127,16 +129,17 @@ struct Channel2 {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value) {
+    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled) {
         switch (address & 0xF) {
             case 0x05: break;
-            case 0x06: lengthTimer.Write(value);
+            case 0x06: lengthTimer.Write(value, audioEnabled);
                 break;
             case 0x07: envelope.Write(value);
                 break;
             case 0x08: frequency.WriteLow(value);
                 break;
             case 0x09: frequency.WriteHigh(value);
+                lengthTimer.enabled = value & 0x40;
                 break;
             default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -191,15 +194,15 @@ struct Channel4 {
             case 0x00: return 0xFF;
             case 0x01: return envelope.Value();
             case 0x02: return noise.Value();
-            case 0x03: return (trigger << 7 | (lengthTimer.enabled ? 0x40 : 0x00) | 0xBF);
+            case 0x03: return trigger << 7 | (lengthTimer.enabled ? 0x40 : 0x00) | 0xBF;
             default: throw UnreachableCodeException("Channel4::ReadByte unreachable code at address: " + std::to_string(address));
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value) {
+    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled) {
         switch (address & 0xF) {
             case 0x0F: break;
-            case 0x00: lengthTimer.Write(value);
+            case 0x00: lengthTimer.Write(value, audioEnabled);
                 break;
             case 0x01: envelope.Write(value);
                 break;
@@ -215,6 +218,7 @@ struct Channel4 {
 
 class Audio {
     bool audioEnabled{false};
+    bool dmg{false};
 
     Channel1 ch1{};
     Channel2 ch2{};
@@ -227,6 +231,8 @@ class Audio {
     std::array<uint8_t, 0xF> waveRam{};
 
 public:
+    void SetDMG(const bool value) { dmg = value; }
+
     void WriteAudioControl(const uint8_t value) {
         if ((value & 0x80) == 0x80) {
             audioEnabled = true;
@@ -260,17 +266,20 @@ public:
     }
 
     void WriteByte(const uint16_t address, const uint8_t value) {
-        if (!audioEnabled && address != 0xFF26) {
+        static const std::set<uint16_t> allowedAddresses = {
+            0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20
+        };
+        if (!audioEnabled && address != 0xFF26 && (!dmg || !allowedAddresses.contains(address))) {
             return;
         }
         switch (address) {
-            case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value);
+            case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled);
                 break;
-            case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value);
+            case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled);
                 break;
             case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value);
                 break;
-            case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value);
+            case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled);
                 break;
             case 0xFF24: nr50 = value;
                 break;
@@ -282,13 +291,5 @@ public:
                 break;
             default: break;
         }
-    }
-
-    bool SaveState(std::ofstream &stateFile) const {
-        return true;
-    }
-
-    void LoadState(std::ifstream &stateFile) {
-        return;
     }
 };
