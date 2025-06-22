@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <span>
 
 void Cartridge::ReadFile(const std::string &file) {
     std::ifstream ifs(file, std::ios::binary);
@@ -26,6 +27,7 @@ Cartridge::Cartridge(const std::string &romLocation) {
     savepath_ = RemoveExtension(romLocation).append(".sav");
     DetermineMBC();
     ramBankCount = gameRam_.size() / 0x2000;
+    multicart = IsLikelyMulticart();
 }
 
 void Cartridge::LoadRam(const uint16_t size) {
@@ -181,6 +183,45 @@ void Cartridge::DetermineMBC() {
     }
 }
 
+bool Cartridge::IsLikelyMulticart() const {
+    if (mbc != MBC::MBC1 || gameRom_.size() != 0x1'00'000) { return false; }
+
+    static constexpr std::array<uint8_t, 48> logo = {
+        0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
+        0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+        0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
+        0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+        0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC,
+        0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
+    };
+
+    constexpr std::size_t bankSize = 0x4000;
+    constexpr std::size_t bankLogoOfs = 0x0104;
+    constexpr std::size_t bank10 = 0x10;
+    const uint8_t *bank10Ptr = gameRom_.data() + bank10 * bankSize;
+
+    const bool foundLogo =
+            std::equal(logo.begin(), logo.end(), bank10Ptr + bankLogoOfs) ||
+            !std::ranges::search(std::span(bank10Ptr, bankSize), logo).empty();
+
+    if (foundLogo) { return true; }
+
+    constexpr std::size_t blockSize = 0x10 * bankSize; // 16 banks = 256 KiB
+
+    const bool dup1 = std::equal(gameRom_.begin() + blockSize, // $10–$1F
+                                 gameRom_.begin() + 2 * blockSize,
+                                 gameRom_.begin()); // $00–$0F
+
+    const bool dup2 = std::equal(gameRom_.begin() + 3 * blockSize, // $30–$3F
+                                 gameRom_.end(), // end of ROM
+                                 gameRom_.begin() + 2 * blockSize); // $20–$2F
+
+    if (dup1 && dup2) { return true; }
+
+    return false;
+}
+
+
 uint64_t Cartridge::GetRomSize(const uint8_t byte) {
     constexpr uint64_t bank = 0x4000;
     switch (byte) {
@@ -222,7 +263,7 @@ uint32_t Cartridge::HandleRomBank(const uint16_t address) const {
     if (multicart) {
         const uint8_t lower = bank1 & 0x0F;
         const uint8_t upper = bank2 & 0x03;
-        return (upper << 4) | lower;
+        return ((upper << 4) | lower) & BankBitmask();
     }
     uint64_t bank = ((bank2 << 5) | bank1) & BankBitmask();
     if (bank >= romBankCount) bank = 1;
