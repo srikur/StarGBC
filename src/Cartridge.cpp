@@ -321,9 +321,10 @@ uint8_t Cartridge::ReadByteMBC2(const uint16_t address) const {
         case 0x0000 ... 0x3FFF:
             return gameRom_[address];
         case 0x4000 ... 0x7FFF:
-            return gameRom_[static_cast<uint64_t>(romBank) * 0x4000ULL + (address - 0x4000)];
-        case 0xA000 ... 0xA1FF: {
-            const uint8_t lower = gameRam_[address - 0xA000] & 0x0F;
+            return gameRom_[(bank1 & 0xF & BankBitmask()) * 0x4000ULL | (address & 0x3FFF)];
+        case 0xA000 ... 0xBFFF: {
+            if (!ramEnabled) return 0xFF;
+            const uint8_t lower = gameRam_[(address - 0xA000) % gameRam_.size()] & 0x0F;
             return 0xF0 | lower;
         }
         default: return 0xFF;
@@ -402,30 +403,27 @@ void Cartridge::WriteByteMBC1(const uint16_t address, const uint8_t value) {
     }
 }
 
-void Cartridge::WriteByteMBC2(const uint16_t address, uint8_t value) {
-    value &= 0xF;
+void Cartridge::WriteByteMBC2(const uint16_t address, const uint8_t value) {
     switch (address) {
-        case 0x0000 ... 0x1FFF:
+        case 0x0000 ... 0x3FFF: {
             if ((address & 0x100) == 0x00) {
-                const bool newEnable = value == 0x0A;
+                const bool newEnable = (value & 0xF) == 0x0A;
                 HandleRamEnableEdge(newEnable);
                 ramEnabled = newEnable;
+            } else {
+                bank1 = value & 0x0F; // romb analogous to bank1
+                if (bank1 == 0) bank1 = 1;
             }
             break;
-        case 0x2000 ... 0x3FFF:
-            if ((address & 0x100) != 0x00) {
-                romBank = value;
-                if (romBank == 0) romBank = 1;
-            }
-            break;
-        case 0xA000 ... 0xA1FF:
+        }
+        case 0xA000 ... 0xBFFF: {
             if (ramEnabled) {
-                gameRam_[address - 0xA000] = value;
+                gameRam_[(address - 0xA000) % gameRam_.size()] = value & 0xF;
                 ramDirty_ = true;
             }
-            break;
-        default:
-            break;
+        }
+        break;
+        default: break;
     }
 }
 
