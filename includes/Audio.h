@@ -145,14 +145,14 @@ struct Channel2 {
 
 struct Channel3 {
     bool enabled{false};
-    bool DACenable{false};
+    bool dac{false};
     uint8_t lengthTimer{0};
     uint8_t outputLevel{0};
     Frequency frequency{};
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
-            case 0x0A: return DACenable << 7 | 0x7F;
+            case 0x0A: return dac << 7 | 0x7F;
             case 0x0B: return 0xFF;
             case 0x0C: return outputLevel << 5 | 0x9F;
             case 0x0D: return frequency.ReadLow();
@@ -163,7 +163,7 @@ struct Channel3 {
 
     void WriteByte(const uint16_t address, const uint8_t value) {
         switch (address & 0xF) {
-            case 0x0A: DACenable = value >> 7 & 0x01;
+            case 0x0A: dac = value >> 7 & 0x01;
                 break;
             case 0x0B: lengthTimer = value;
                 break;
@@ -205,8 +205,7 @@ struct Channel4 {
                 break;
             case 0x02: noise.Write(value);
                 break;
-            case 0x03:
-                trigger = value >> 7 & 0x01;
+            case 0x03: trigger = value >> 7 & 0x01;
                 lengthTimer.enabled = (value & 0x40) != 0;
                 break;
             default: throw UnreachableCodeException("Channel4::WriteByte unreachable code at address: " + std::to_string(address));
@@ -224,13 +223,11 @@ class Audio {
 
     uint8_t nr50{};
     uint8_t nr51{};
-    uint8_t nr52{};
 
     std::array<uint8_t, 0xF> waveRam{};
 
 public:
     void WriteAudioControl(const uint8_t value) {
-        nr52 = value & 0b11110000;
         if ((value & 0x80) == 0x80) {
             audioEnabled = true;
         } else {
@@ -244,6 +241,10 @@ public:
         }
     }
 
+    [[nodiscard]] uint8_t ReadAudioControl() const {
+        return (audioEnabled ? 0x80 : 0x00) | (ch4.enabled << 3) | (ch3.enabled << 2) | (ch2.enabled << 1) | (ch1.enabled << 0) | 0x70;
+    }
+
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address) {
             case 0xFF10 ... 0xFF14: return ch1.ReadByte(address);
@@ -253,7 +254,7 @@ public:
             case 0xFF30 ... 0xFF3F: return waveRam[address - 0xFF30];
             case 0xFF24: return nr50 | 0x00;
             case 0xFF25: return nr51 | 0x00;
-            case 0xFF26: return nr52 | 0x70;
+            case 0xFF26: return ReadAudioControl();
             default: return 0xFF;
         }
     }
