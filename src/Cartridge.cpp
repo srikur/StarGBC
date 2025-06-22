@@ -336,7 +336,7 @@ uint8_t Cartridge::ReadByteMBC3(const uint16_t address) const {
         case 0x0000 ... 0x3FFF:
             return gameRom_[address];
         case 0x4000 ... 0x7FFF:
-            return gameRom_[static_cast<uint64_t>(romBank == 0 ? 1 : romBank) * 0x4000ULL + (address - 0x4000)];
+            return gameRom_[static_cast<uint64_t>(romBank & BankBitmask()) * 0x4000ULL + (address - 0x4000)];
         case 0xA000 ... 0xBFFF: {
             if (!ramEnabled) return 0xFF;
             if (ramBank <= 0x03) {
@@ -437,6 +437,7 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
         break;
         case 0x2000 ... 0x3FFF:
             romBank = value ? (value & 0x7F) : 1;
+            if (romBank == 0) romBank = 1;
             break;
         case 0x4000 ... 0x5FFF:
             ramBank = value & 0x0F;
