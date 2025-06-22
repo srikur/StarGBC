@@ -62,7 +62,7 @@ Current Performance: (86/163)
 | mem_timing-2/03-modify_timing.gb      | :white_check_mark: |
 | interrupt_time                        | :x:                |
 | halt_bug                              | :white_check_mark: |
-| dmg_sound/01-registers.gb             | :x:                |
+| dmg_sound/01-registers.gb             | :white_check_mark: |
 | dmg_sound/02-len ctr.gb               | :x:                |
 | dmg_sound/03-trigger.gb               | :x:                |
 | dmg_sound/04-sweep.gb                 | :x:                |
@@ -74,7 +74,7 @@ Current Performance: (86/163)
 | dmg_sound/10-wave trigger while on.gb | :x:                |
 | dmg_sound/11-regs after power.gb      | :x:                |
 | dmg_sound/12-wave write while on.gb   | :x:                |
-| cgb_sound/01-registers.gb             | :x:                |
+| cgb_sound/01-registers.gb             | :white_check_mark: |
 | cgb_sound/02-len ctr.gb               | :x:                |
 | cgb_sound/03-trigger.gb               | :x:                |
 | cgb_sound/04-sweep.gb                 | :x:                |

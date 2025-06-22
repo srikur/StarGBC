@@ -137,6 +137,4 @@ public:
     [[nodiscard]] bool IsPaused() const {
         return paused;
     }
-
-    [[nodiscard]] bool PopSample(StereoSample sample) const;
 };
