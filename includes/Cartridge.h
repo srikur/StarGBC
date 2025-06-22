@@ -45,11 +45,10 @@ class Cartridge {
     std::string savepath_;
     std::vector<uint8_t> gameRom_;
     std::vector<uint8_t> gameRam_;
-    uint32_t gameRamSize = 0;
     std::unique_ptr<RealTimeClock> rtc = nullptr;
 
     MBC mbc{MBC::None};
-
+    uint32_t gameRamSize{0x00};
     uint32_t romBankCount{0x00};
     uint32_t ramBankCount{0x00};
     uint8_t romBank{0x01};
@@ -57,7 +56,6 @@ class Cartridge {
     uint8_t bank1{0x01};
     uint8_t bank2{0x00};
     uint8_t lowRomMask{0x00};
-
     uint8_t mode{0x00};
 
     bool ramEnabled{false};

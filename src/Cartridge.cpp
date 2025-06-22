@@ -254,17 +254,18 @@ uint32_t Cartridge::GetRamSize(const uint8_t byte) {
 }
 
 uint32_t Cartridge::HandleRomBank(const uint16_t address) const {
+    if (multicart) {
+        return (address < 0x4000)
+                   ? (mode == 0 ? 0 : ((bank2 << 4) & BankBitmask()))
+                   : (((bank2 << 4) | (bank1 & 0xF)) & BankBitmask());
+    }
+
     if (address < 0x4000) {
         uint32_t bank = (mode == 0) ? 0 : ((bank2 << 5) & BankBitmask());
         if (bank >= romBankCount) bank = 1;
         return bank;
     }
 
-    if (multicart) {
-        const uint8_t lower = bank1 & 0x0F;
-        const uint8_t upper = bank2 & 0x03;
-        return ((upper << 4) | lower) & BankBitmask();
-    }
     uint64_t bank = ((bank2 << 5) | bank1) & BankBitmask();
     if (bank >= romBankCount) bank = 1;
     return bank;
