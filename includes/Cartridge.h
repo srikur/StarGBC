@@ -32,6 +32,8 @@ class Cartridge {
 
     [[nodiscard]] uint32_t HandleRamBank() const;
 
+    [[nodiscard]] bool IsLikelyMulticart() const;
+
     [[nodiscard]] uint8_t BankBitmask() const {
         return (lowRomMask >= 8) ? 0xFF : static_cast<uint8_t>((1 << lowRomMask) - 1);
     }
