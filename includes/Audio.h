@@ -77,11 +77,32 @@ struct Noise {
 };
 
 struct Channel1 {
-    bool enabled{false};
+    bool channelEnable{false};
+    bool dacEnable{false};
     Sweep sweep{};
     Frequency frequency{};
     Length lengthTimer{};
     Envelope envelope{};
+
+    // Counters
+    uint8_t sweepCounter{0};
+
+    void Trigger() {
+        channelEnable = true;
+        if (lengthTimer.lengthTimer == 64) lengthTimer.lengthTimer = 0;
+        lengthTimer.enabled = true;
+    }
+
+    void StepLength() {
+        if (lengthTimer.enabled && lengthTimer.lengthTimer < 64) {
+            lengthTimer.lengthTimer++;
+            if (lengthTimer.lengthTimer == 64) channelEnable = false;
+        }
+    }
+
+    void StepSweep() {
+
+    }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -101,11 +122,13 @@ struct Channel1 {
             case 0x01: lengthTimer.Write(value, audioEnabled);
                 break;
             case 0x02: envelope.Write(value);
+                if ((value & 0xF8) != 0) dacEnable = true;
                 break;
             case 0x03: frequency.WriteLow(value);
                 break;
             case 0x04: frequency.WriteHigh(value);
                 lengthTimer.enabled = value & 0x40;
+                if (value & 0x80) Trigger();
                 break;
             default: throw UnreachableCodeException("Channel1::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -117,6 +140,17 @@ struct Channel2 {
     Frequency frequency{};
     Length lengthTimer{};
     Envelope envelope{};
+
+    void Trigger() {
+
+    }
+
+    void StepLength() {
+        if (lengthTimer.enabled && lengthTimer.lengthTimer < 64) {
+            lengthTimer.lengthTimer++;
+            if (lengthTimer.lengthTimer == 64) enabled = false;
+        }
+    }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -140,6 +174,7 @@ struct Channel2 {
                 break;
             case 0x09: frequency.WriteHigh(value);
                 lengthTimer.enabled = value & 0x40;
+                if (value & 0x80) Trigger();
                 break;
             default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -152,6 +187,10 @@ struct Channel3 {
     uint8_t lengthTimer{0};
     uint8_t outputLevel{0};
     Frequency frequency{};
+
+    void Trigger() {
+
+    }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -187,6 +226,10 @@ struct Channel4 {
     Envelope envelope{};
     Noise noise{};
     uint8_t trigger{0};
+
+    void Trigger() {
+
+    }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -248,7 +291,7 @@ public:
     }
 
     [[nodiscard]] uint8_t ReadAudioControl() const {
-        return (audioEnabled ? 0x80 : 0x00) | (ch4.enabled << 3) | (ch3.enabled << 2) | (ch2.enabled << 1) | (ch1.enabled << 0) | 0x70;
+        return (audioEnabled ? 0x80 : 0x00) | (ch4.enabled << 3) | (ch3.enabled << 2) | (ch2.enabled << 1) | (ch1.channelEnable << 0) | 0x70;
     }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
