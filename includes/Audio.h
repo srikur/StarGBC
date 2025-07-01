@@ -1,8 +1,12 @@
 #pragma once
 
+#include <array>
 #include <set>
+#include <string>
 
 #include "Common.h"
+
+class Audio;
 
 struct Frequency {
     uint16_t value{0}; // Only 11 bits used
@@ -17,6 +21,10 @@ struct Sweep {
     uint8_t pace{0};
     bool direction{false};
     uint8_t step{0};
+
+    uint8_t timer{0};
+    bool enabled{false};
+    uint16_t shadowFreq{0};
 
     void Write(const uint8_t v) {
         pace = v >> 4 & 0x07;
@@ -33,6 +41,8 @@ struct Envelope {
     uint8_t initialVolume{0};
     bool direction{false};
     uint8_t sweepPace{0};
+    uint8_t periodTimer{0};
+    uint8_t currentVolume{0};
 
     void Write(const uint8_t value) {
         initialVolume = value >> 4 & 0x0F;
@@ -47,7 +57,7 @@ struct Envelope {
 
 struct Length {
     bool enabled{false};
-    uint8_t lengthTimer{0};
+    uint16_t lengthTimer{0};
     uint8_t dutyCycle{0};
 
     void Write(const uint8_t value, const bool audioEnabled) {
@@ -62,46 +72,111 @@ struct Length {
 
 struct Noise {
     uint8_t clockShift{0x00};
-    bool lfsr{false};
+    bool lfsrWidth{false};
     uint8_t clockDivider{0x00};
 
     void Write(const uint8_t value) {
         clockShift = value >> 4 & 0x0F;
-        lfsr = (value & 0x08) != 0;
+        lfsrWidth = (value & 0x08) != 0;
         clockDivider = value & 0x07;
     }
 
     [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(clockShift << 4 | (lfsr ? 0x08 : 0x00) | clockDivider | 0x00);
+        return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider | 0x00);
     }
 };
 
-struct Channel1 {
-    bool channelEnable{false};
-    bool dacEnable{false};
+struct Channel {
+    bool enabled{false};
+    bool dacEnabled{false};
+
+    virtual ~Channel() = default;
+
+    virtual void TickLength() = 0;
+
+    virtual void TickEnvelope() {
+    }
+};
+
+struct Channel1 : Channel {
     Sweep sweep{};
-    Frequency frequency{};
     Length lengthTimer{};
     Envelope envelope{};
+    Frequency frequency{};
 
-    // Counters
-    uint8_t sweepCounter{0};
+    int32_t freqTimer{0};
+    uint8_t dutyStep{0};
+    float_t currentOutput{0.0f};
 
     void Trigger() {
-        channelEnable = true;
-        if (lengthTimer.lengthTimer == 64) lengthTimer.lengthTimer = 0;
-        lengthTimer.enabled = true;
-    }
+        enabled = true;
+        dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-    void StepLength() {
-        if (lengthTimer.enabled && lengthTimer.lengthTimer < 64) {
-            lengthTimer.lengthTimer++;
-            if (lengthTimer.lengthTimer == 64) channelEnable = false;
+        if (lengthTimer.lengthTimer >= 64) lengthTimer.lengthTimer = 0;
+
+        freqTimer = (2048 - frequency.value) * 4;
+
+        envelope.periodTimer = envelope.sweepPace;
+        envelope.currentVolume = envelope.initialVolume;
+        sweep.shadowFreq = frequency.value;
+        sweep.timer = sweep.pace ? sweep.pace : 8;
+        sweep.enabled = sweep.pace > 0 || sweep.step > 0;
+        if (sweep.step > 0) {
+            CalculateSweep(true);
         }
     }
 
-    void StepSweep() {
+    void TickLength() override {
+        if (lengthTimer.enabled && enabled) {
+            lengthTimer.lengthTimer++;
+            std::fprintf(stderr, "Channel 1 Length increased to: %d\n", lengthTimer.lengthTimer);
+        }
+    }
 
+    void TickSweep() {
+        if (!sweep.enabled) return;
+
+        sweep.timer--;
+        if (sweep.timer == 0) {
+            sweep.timer = sweep.pace ? sweep.pace : 8;
+            if (sweep.pace > 0) {
+                const uint16_t newFreq = CalculateSweep(false);
+                if (newFreq <= 2047 && sweep.step > 0) {
+                    frequency.value = newFreq;
+                    sweep.shadowFreq = newFreq;
+                    CalculateSweep(true);
+                }
+            }
+        }
+    }
+
+    void TickEnvelope() override {
+        if (envelope.sweepPace > 0) {
+            envelope.periodTimer--;
+            if (envelope.periodTimer == 0) {
+                envelope.periodTimer = envelope.sweepPace;
+                if (envelope.direction && envelope.currentVolume < 15) {
+                    envelope.currentVolume++;
+                } else if (!envelope.direction && envelope.currentVolume > 0) {
+                    envelope.currentVolume--;
+                }
+            }
+        }
+    }
+
+    uint16_t CalculateSweep(bool update) {
+        uint16_t newFreq = sweep.shadowFreq >> sweep.step;
+        if (sweep.direction) {
+            newFreq = sweep.shadowFreq - newFreq;
+        } else {
+            newFreq = sweep.shadowFreq + newFreq;
+        }
+
+        if (newFreq > 2047) {
+            enabled = false;
+        }
+
+        return newFreq;
     }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
@@ -120,9 +195,15 @@ struct Channel1 {
             case 0x00: sweep.Write(value);
                 break;
             case 0x01: lengthTimer.Write(value, audioEnabled);
+                lengthTimer.lengthTimer = 64 - lengthTimer.lengthTimer;
+                std::fprintf(stderr, "Length timer set to: %d\n", lengthTimer.lengthTimer);
+                if (lengthTimer.lengthTimer == 0) {
+                    enabled = false;
+                }
                 break;
             case 0x02: envelope.Write(value);
-                if ((value & 0xF8) != 0) dacEnable = true;
+                dacEnabled = (value & 0xF8) != 0;
+                if (!dacEnabled) enabled = false;
                 break;
             case 0x03: frequency.WriteLow(value);
                 break;
@@ -135,20 +216,42 @@ struct Channel1 {
     }
 };
 
-struct Channel2 {
-    bool enabled{false};
-    Frequency frequency{};
+struct Channel2 : Channel {
     Length lengthTimer{};
     Envelope envelope{};
+    Frequency frequency{};
+    int32_t freqTimer{0};
+    uint8_t dutyStep{0};
+    float_t currentOutput{0.0f};
 
     void Trigger() {
+        enabled = true;
+        dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
+        if (lengthTimer.lengthTimer >= 64) lengthTimer.lengthTimer = 0;
+        freqTimer = (2048 - frequency.value) * 4;
+
+        envelope.periodTimer = envelope.sweepPace;
+        envelope.currentVolume = envelope.initialVolume;
     }
 
-    void StepLength() {
-        if (lengthTimer.enabled && lengthTimer.lengthTimer < 64) {
+    void TickLength() override {
+        if (lengthTimer.enabled && enabled) {
             lengthTimer.lengthTimer++;
-            if (lengthTimer.lengthTimer == 64) enabled = false;
+        }
+    }
+
+    void TickEnvelope() override {
+        if (envelope.sweepPace > 0) {
+            envelope.periodTimer--;
+            if (envelope.periodTimer == 0) {
+                envelope.periodTimer = envelope.sweepPace;
+                if (envelope.direction && envelope.currentVolume < 15) {
+                    envelope.currentVolume++;
+                } else if (!envelope.direction && envelope.currentVolume > 0) {
+                    envelope.currentVolume--;
+                }
+            }
         }
     }
 
@@ -167,8 +270,14 @@ struct Channel2 {
         switch (address & 0xF) {
             case 0x05: break;
             case 0x06: lengthTimer.Write(value, audioEnabled);
+                lengthTimer.lengthTimer = 64 - lengthTimer.lengthTimer;
+                if (lengthTimer.lengthTimer == 0) {
+                    enabled = false;
+                }
                 break;
             case 0x07: envelope.Write(value);
+                dacEnabled = (value & 0xF8) != 0;
+                if (!dacEnabled) enabled = false;
                 break;
             case 0x08: frequency.WriteLow(value);
                 break;
@@ -181,20 +290,34 @@ struct Channel2 {
     }
 };
 
-struct Channel3 {
-    bool enabled{false};
-    bool dac{false};
-    uint8_t lengthTimer{0};
+struct Channel3 : Channel {
+    bool lengthEnabled{false};
+    uint16_t lengthTimer{0};
     uint8_t outputLevel{0};
     Frequency frequency{};
 
-    void Trigger() {
+    int32_t freqTimer{0};
+    uint8_t waveStep{0};
+    float_t currentOutput{0.0f};
 
+    void Trigger() {
+        enabled = true;
+        dacEnabled = true;
+
+        if (lengthTimer >= 256) lengthTimer = 0;
+        freqTimer = (2048 - frequency.value) * 2;
+        waveStep = 0;
+    }
+
+    void TickLength() override {
+        if (lengthEnabled && enabled) {
+            lengthTimer++;
+        }
     }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
-            case 0x0A: return dac << 7 | 0x7F;
+            case 0x0A: return (dacEnabled ? 0x80 : 0x00) | 0x7F;
             case 0x0B: return 0xFF;
             case 0x0C: return outputLevel << 5 | 0x9F;
             case 0x0D: return frequency.ReadLow();
@@ -205,31 +328,83 @@ struct Channel3 {
 
     void WriteByte(const uint16_t address, const uint8_t value) {
         switch (address & 0xF) {
-            case 0x0A: dac = value >> 7 & 0x01;
+            case 0x0A: dacEnabled = (value & 0x80) != 0;
+                if (!dacEnabled) enabled = false;
                 break;
-            case 0x0B: lengthTimer = value;
+            case 0x0B: lengthTimer = 256 - value;
+                lengthEnabled = true;
+                if (lengthTimer == 0) {
+                    enabled = false;
+                }
                 break;
             case 0x0C: outputLevel = value >> 5 & 0x03;
                 break;
             case 0x0D: frequency.WriteLow(value);
                 break;
             case 0x0E: frequency.WriteHigh(value);
+                lengthEnabled = (value & 0x40) != 0;
+                if (value & 0x80) Trigger();
                 break;
             default: throw UnreachableCodeException("Channel3::WriteByte unreachable code at address: " + std::to_string(address));
         }
     }
 };
 
-struct Channel4 {
-    bool enabled{false};
+struct Channel4 : Channel {
     Length lengthTimer{};
     Envelope envelope{};
     Noise noise{};
+
+    int32_t freqTimer{0};
+    uint16_t lfsr{0xFFFF};
+    float_t currentOutput{0.0f};
     uint8_t trigger{0};
 
     void Trigger() {
+        enabled = true;
+        dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
+        if (lengthTimer.lengthTimer >= 64) lengthTimer.lengthTimer = 0;
+
+        int divisor = (noise.clockDivider == 0) ? 8 : (noise.clockDivider * 16);
+        freqTimer = divisor << noise.clockShift;
+
+        envelope.periodTimer = envelope.sweepPace;
+        envelope.currentVolume = envelope.initialVolume;
+
+        lfsr = 0xFFFF;
     }
+
+    void TickLength() override {
+        if (lengthTimer.enabled && enabled) {
+            lengthTimer.lengthTimer++;
+        }
+    }
+
+    void TickEnvelope() override {
+        if (envelope.sweepPace > 0) {
+            envelope.periodTimer--;
+            if (envelope.periodTimer == 0) {
+                envelope.periodTimer = envelope.sweepPace;
+                if (envelope.direction && envelope.currentVolume < 15) {
+                    envelope.currentVolume++;
+                } else if (!envelope.direction && envelope.currentVolume > 0) {
+                    envelope.currentVolume--;
+                }
+            }
+        }
+    }
+
+    void TickLfsr() {
+        const uint8_t xor_result = (lfsr & 1) ^ ((lfsr >> 1) & 1);
+        lfsr >>= 1;
+        lfsr |= (xor_result << 14);
+        if (noise.lfsrWidth) {
+            lfsr &= ~(1 << 6);
+            lfsr |= (xor_result << 6);
+        }
+    }
+
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -246,13 +421,20 @@ struct Channel4 {
         switch (address & 0xF) {
             case 0x0F: break;
             case 0x00: lengthTimer.Write(value, audioEnabled);
+                lengthTimer.lengthTimer = 64 - lengthTimer.lengthTimer;
+                if (lengthTimer.lengthTimer == 0) {
+                    enabled = false;
+                }
                 break;
             case 0x01: envelope.Write(value);
+                dacEnabled = (value & 0xF8) != 0;
+                if (!dacEnabled) enabled = false;
                 break;
             case 0x02: noise.Write(value);
                 break;
             case 0x03: trigger = value >> 7 & 0x01;
                 lengthTimer.enabled = (value & 0x40) != 0;
+                if (value & 0x80) Trigger();
                 break;
             default: throw UnreachableCodeException("Channel4::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -262,7 +444,10 @@ struct Channel4 {
 class Audio {
     bool audioEnabled{false};
     bool dmg{false};
+    int32_t cycleCounter{0};
+    uint8_t frameSeqStep{0};
 
+public:
     Channel1 ch1{};
     Channel2 ch2{};
     Channel3 ch3{};
@@ -273,13 +458,134 @@ class Audio {
 
     std::array<uint8_t, 0xF> waveRam{};
 
-public:
     void SetDMG(const bool value) { dmg = value; }
+    [[nodiscard]] bool IsDMG() const { return dmg; }
+
+    // DIV-APU
+    void TickFrameSequencer() {
+        if (!audioEnabled) return;
+
+        switch (frameSeqStep) {
+            case 0: ch1.TickLength();
+                ch2.TickLength();
+                ch3.TickLength();
+                ch4.TickLength();
+                break;
+            case 1: break;
+            case 2: ch1.TickLength();
+                ch1.TickSweep();
+                ch2.TickLength();
+                ch3.TickLength();
+                ch4.TickLength();
+                break;
+            case 3: break;
+            case 4: ch1.TickLength();
+                ch2.TickLength();
+                ch3.TickLength();
+                ch4.TickLength();
+                break;
+            case 5: break;
+            case 6: ch1.TickLength();
+                ch1.TickSweep();
+                ch2.TickLength();
+                ch3.TickLength();
+                ch4.TickLength();
+                break;
+            case 7: ch1.TickEnvelope();
+                ch2.TickEnvelope();
+                ch4.TickEnvelope();
+                break;
+            default: throw UnreachableCodeException("Audio::TickFrameSequencer unreachable code at step: " + std::to_string(frameSeqStep));
+        }
+
+        frameSeqStep = (frameSeqStep + 1) & 7;
+    }
+
+    void Tick(const uint32_t tCycles) {
+        if (!audioEnabled) return;
+
+        static const uint8_t DUTY_PATTERNS[4][8] = {
+            {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
+            {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
+            {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
+            {0, 1, 1, 1, 1, 1, 1, 0} // 75%
+        };
+
+        for (uint32_t i = 0; i < tCycles; ++i) {
+            if (ch1.enabled) {
+                ch1.freqTimer--;
+                if (ch1.lengthTimer.lengthTimer == 64) {
+                    ch1.enabled = false;
+                }
+                if (ch1.freqTimer <= 0) {
+                    ch1.freqTimer = (2048 - ch1.frequency.value) * 4;
+                    ch1.dutyStep = (ch1.dutyStep + 1) % 8;
+                    if (ch1.dacEnabled) {
+                        ch1.currentOutput = static_cast<float>(DUTY_PATTERNS[ch1.lengthTimer.dutyCycle][ch1.dutyStep]) * static_cast<float>(ch1.envelope.currentVolume);
+                    }
+                }
+            }
+
+            if (ch2.enabled) {
+                ch2.freqTimer--;
+                if (ch2.lengthTimer.lengthTimer == 64) {
+                    ch2.enabled = false;
+                }
+                if (ch2.freqTimer <= 0) {
+                    ch2.freqTimer = (2048 - ch2.frequency.value) * 4;
+                    ch2.dutyStep = (ch2.dutyStep + 1) % 8;
+                    if (ch2.dacEnabled) {
+                        ch2.currentOutput = static_cast<float>(DUTY_PATTERNS[ch2.lengthTimer.dutyCycle][ch2.dutyStep]) * static_cast<float>(ch2.envelope.currentVolume);
+                    }
+                }
+            }
+
+            if (ch3.enabled) {
+                ch3.freqTimer--;
+                if (ch3.lengthTimer == 256) {
+                    ch3.enabled = false;
+                }
+                if (ch3.freqTimer <= 0) {
+                    ch3.freqTimer = (2048 - ch3.frequency.value) * 2;
+                    ch3.waveStep = (ch3.waveStep + 1) % 32;
+                    if (ch3.dacEnabled) {
+                        uint8_t sampleByte = waveRam[ch3.waveStep / 2];
+                        uint8_t sample = (ch3.waveStep % 2 == 0) ? (sampleByte >> 4) : (sampleByte & 0x0F);
+                        if (ch3.outputLevel > 0) {
+                            ch3.currentOutput = static_cast<float>(sample >> (ch3.outputLevel - 1));
+                        } else {
+                            ch3.currentOutput = 0;
+                        }
+                    }
+                }
+            }
+
+            if (ch4.enabled) {
+                ch4.freqTimer--;
+                if (ch4.lengthTimer.lengthTimer == 64) {
+                    ch4.enabled = false;
+                }
+                if (ch4.freqTimer <= 0) {
+                    int divisor = (ch4.noise.clockDivider == 0) ? 8 : (ch4.noise.clockDivider * 16);
+                    ch4.freqTimer = divisor << ch4.noise.clockShift;
+                    ch4.TickLfsr();
+                    if (ch4.dacEnabled && (~ch4.lfsr & 1)) {
+                        ch4.currentOutput = ch4.envelope.currentVolume;
+                    } else {
+                        ch4.currentOutput = 0;
+                    }
+                }
+            }
+        }
+    }
+
 
     void WriteAudioControl(const uint8_t value) {
-        if ((value & 0x80) == 0x80) {
-            audioEnabled = true;
-        } else {
+        const bool wasEnabled = audioEnabled;
+        audioEnabled = (value & 0x80) != 0;
+
+        if (wasEnabled && !audioEnabled) {
+            // Turning APU off clears all registers except for Wave RAM on DMG
             audioEnabled = false;
             ch1 = {};
             ch2 = {};
@@ -287,11 +593,14 @@ public:
             ch4 = {};
             nr50 = 0;
             nr51 = 0;
+        } else if (!wasEnabled && audioEnabled) {
+            // Turning APU on resets frame sequencer
+            frameSeqStep = 0;
         }
     }
 
     [[nodiscard]] uint8_t ReadAudioControl() const {
-        return (audioEnabled ? 0x80 : 0x00) | (ch4.enabled << 3) | (ch3.enabled << 2) | (ch2.enabled << 1) | (ch1.channelEnable << 0) | 0x70;
+        return (audioEnabled ? 0x80 : 0x00) | (ch4.enabled << 3) | (ch3.enabled << 2) | (ch2.enabled << 1) | (ch1.enabled << 0) | 0x70;
     }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
@@ -313,6 +622,7 @@ public:
             0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20
         };
         if (!audioEnabled && address != 0xFF26 && (!dmg || !allowedAddresses.contains(address))) {
+            std::cout << "Audio not enabled, ignoring write to address: " << std::hex << std::setfill('0') << std::setw(4) << address << std::endl;
             return;
         }
         switch (address) {

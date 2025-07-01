@@ -21,8 +21,7 @@ uint8_t Bus::ReadDMASource(const uint16_t src) const {
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
-    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
-        return 0xFF;
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
@@ -73,8 +72,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value) {
-    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
-        return;
+    if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return;
     switch (address) {
         case 0x0000 ... 0x7FFF: cartridge_->WriteByte(address, value);
             break;
@@ -118,8 +116,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFFFF: interruptEnable = value;
             break;
-        default:
-            break;
+        default: break;
     }
 }
 
@@ -155,19 +152,16 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
                 gpu_->scanlineCounter -= MODE0_CYCLES;
                 ++gpu_->currentLine;
 
-                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
-                    SetInterrupt(InterruptType::LCDStat);
+                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
 
                 if (gpu_->currentLine == 144) {
                     gpu_->stat.mode = 1;
                     gpu_->vblank = true;
                     SetInterrupt(InterruptType::VBlank);
-                    if (gpu_->stat.enableM1Interrupt)
-                        SetInterrupt(InterruptType::LCDStat);
+                    if (gpu_->stat.enableM1Interrupt) SetInterrupt(InterruptType::LCDStat);
                 } else {
                     gpu_->stat.mode = 2;
-                    if (gpu_->stat.enableM2Interrupt)
-                        SetInterrupt(InterruptType::LCDStat);
+                    if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
                 }
             }
             break;
@@ -182,12 +176,10 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
                     gpu_->currentLine = 0;
                     gpu_->stat.mode = 2;
                     gpu_->scanlineCounter = 0;
-                    if (gpu_->stat.enableM2Interrupt)
-                        SetInterrupt(InterruptType::LCDStat);
+                    if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
                 }
 
-                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc)
-                    SetInterrupt(InterruptType::LCDStat);
+                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
             }
             break;
 
@@ -206,8 +198,7 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
                 gpu_->hblank = true;
                 gpu_->DrawScanline();
 
-                if (gpu_->stat.enableM0Interrupt)
-                    SetInterrupt(InterruptType::LCDStat);
+                if (gpu_->stat.enableM0Interrupt) SetInterrupt(InterruptType::LCDStat);
                 break;
             }
             default: break;
@@ -216,6 +207,8 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
 }
 
 void Bus::UpdateTimers(const uint32_t cycles) {
+    const int frameSeqBit = audio_->IsDMG() ? 8 : 9;
+
     for (uint32_t i = 0; i < cycles; ++i) {
         timer_.reloadActive = false;
 
@@ -229,11 +222,22 @@ void Bus::UpdateTimers(const uint32_t cycles) {
         const bool timerEnabled = timer_.tac & 0x04;
         const int timerBit = Timer::TimerBit(timer_.tac);
         const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
+        const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
 
         ++timer_.divCounter;
+        // std::fprintf(stderr, "Timer: %d\n", timer_.divCounter);
 
         const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-        if (oldSignal && !newSignal) timer_.IncrementTIMA();
+        if (oldSignal && !newSignal) {
+            timer_.IncrementTIMA();
+        }
+
+        // Check for a falling edge for the APU Frame Sequencer
+        const bool newFrameSeqSignal = (timer_.divCounter & (1u << frameSeqBit));
+        if (oldFrameSeqSignal && !newFrameSeqSignal) {
+            // std::fprintf(stderr, "FrameSeq: %d\n", timer_.divCounter);
+            audio_->TickFrameSequencer();
+        }
     }
 }
 
@@ -255,8 +259,7 @@ void Bus::UpdateDMA(const uint32_t cycles) {
 
         ++dma_.ticks;
 
-        if (dma_.ticks <= DMA::STARTUP_CYCLES)
-            continue; // OAM still accessible here
+        if (dma_.ticks <= DMA::STARTUP_CYCLES) continue; // OAM still accessible here
 
         gpu_->oam[dma_.currentByte++] =
                 ReadDMASource(dma_.startAddress + dma_.currentByte);
@@ -306,24 +309,19 @@ uint8_t Bus::ReadHDMA(const uint16_t address, const bool gbc) const {
     switch (address) {
         case 0xFF50 ... 0xFF54: return 0xFF;
         case 0xFF55: return gbc ? (hdmaRemain | (hdmaActive ? 0x00 : 0x80)) : 0xFF;
-        default:
-            throw UnreachableCodeException("Bus::ReadHDMA unreachable code at address: " + std::to_string(address));
+        default: throw UnreachableCodeException("Bus::ReadHDMA unreachable code at address: " + std::to_string(address));
     }
 }
 
 void Bus::WriteHDMA(const uint16_t address, const uint8_t value) {
     switch (address) {
-        case 0xFF51:
-            hdmaSource = (static_cast<uint16_t>(value) << 8) | (hdmaSource & 0xFF);
+        case 0xFF51: hdmaSource = (static_cast<uint16_t>(value) << 8) | (hdmaSource & 0xFF);
             break;
-        case 0xFF52:
-            hdmaSource = (hdmaSource & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
+        case 0xFF52: hdmaSource = (hdmaSource & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
-        case 0xFF53:
-            hdmaDestination = 0x8000 | (static_cast<uint16_t>(value & 0x1F) << 8) | (hdmaDestination & 0xFF);
+        case 0xFF53: hdmaDestination = 0x8000 | (static_cast<uint16_t>(value & 0x1F) << 8) | (hdmaDestination & 0xFF);
             break;
-        case 0xFF54:
-            hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
+        case 0xFF54: hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF55: {
             if (hdmaActive && gpu_->hdmaMode == GPU::HDMAMode::HDMA) {
@@ -341,8 +339,7 @@ void Bus::WriteHDMA(const uint16_t address, const uint8_t value) {
             }
             break;
         }
-        default:
-            throw UnreachableCodeException("Bus::WriteHDMA unreachable code");
+        default: throw UnreachableCodeException("Bus::WriteHDMA unreachable code");
     }
 }
 
