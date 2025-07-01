@@ -206,9 +206,9 @@ void Gameboy::TickM(const uint32_t mCycles, const bool countDoubleSpeed) {
     if (mCycles == 0) return;
     const uint8_t speedFactor = countDoubleSpeed && bus->speed == Bus::Speed::Double ? 2 : 1;
     const uint32_t tCycles = mCycles * 4 * speedFactor;
+    bus->audio_->Tick(tCycles);
     bus->UpdateTimers(tCycles);
     bus->UpdateSerial(tCycles);
-    // bus->UpdateGraphics(mCycles * 4);
     bus->UpdateDMA(mCycles * speedFactor);
 
     stepCycles += tCycles;
