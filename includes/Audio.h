@@ -112,7 +112,7 @@ struct Channel1 : Channel {
         enabled = true;
         dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-        if (lengthTimer.lengthTimer >= 64) lengthTimer.lengthTimer = 0;
+        if (lengthTimer.lengthTimer == 0) lengthTimer.lengthTimer = 64;
 
         freqTimer = (2048 - frequency.value) * 4;
 
@@ -127,9 +127,9 @@ struct Channel1 : Channel {
     }
 
     void TickLength() override {
-        if (lengthTimer.enabled && enabled) {
-            lengthTimer.lengthTimer++;
-            std::fprintf(stderr, "Channel 1 Length increased to: %d\n", lengthTimer.lengthTimer);
+        if (lengthTimer.enabled && enabled && lengthTimer.lengthTimer > 0) {
+            lengthTimer.lengthTimer--;
+            std::fprintf(stderr, "Channel 1 Length decreased to: %d\n", lengthTimer.lengthTimer);
         }
     }
 
@@ -195,11 +195,7 @@ struct Channel1 : Channel {
             case 0x00: sweep.Write(value);
                 break;
             case 0x01: lengthTimer.Write(value, audioEnabled);
-                lengthTimer.lengthTimer = 64 - lengthTimer.lengthTimer;
-                std::fprintf(stderr, "Length timer set to: %d\n", lengthTimer.lengthTimer);
-                if (lengthTimer.lengthTimer == 0) {
-                    enabled = false;
-                }
+                std::fprintf(stderr, "Channel 1 length timer set to: %d\n", lengthTimer.lengthTimer);
                 break;
             case 0x02: envelope.Write(value);
                 dacEnabled = (value & 0xF8) != 0;
@@ -228,7 +224,7 @@ struct Channel2 : Channel {
         enabled = true;
         dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-        if (lengthTimer.lengthTimer >= 64) lengthTimer.lengthTimer = 0;
+        if (lengthTimer.lengthTimer == 0) lengthTimer.lengthTimer = 64;
         freqTimer = (2048 - frequency.value) * 4;
 
         envelope.periodTimer = envelope.sweepPace;
@@ -236,8 +232,9 @@ struct Channel2 : Channel {
     }
 
     void TickLength() override {
-        if (lengthTimer.enabled && enabled) {
-            lengthTimer.lengthTimer++;
+        if (lengthTimer.enabled && enabled && lengthTimer.lengthTimer > 0) {
+            lengthTimer.lengthTimer--;
+            std::fprintf(stderr, "Channel 2 Length decreased to: %d\n", lengthTimer.lengthTimer);
         }
     }
 
@@ -270,10 +267,7 @@ struct Channel2 : Channel {
         switch (address & 0xF) {
             case 0x05: break;
             case 0x06: lengthTimer.Write(value, audioEnabled);
-                lengthTimer.lengthTimer = 64 - lengthTimer.lengthTimer;
-                if (lengthTimer.lengthTimer == 0) {
-                    enabled = false;
-                }
+                std::fprintf(stderr, "Channel 2 length timer set to: %d\n", lengthTimer.lengthTimer);
                 break;
             case 0x07: envelope.Write(value);
                 dacEnabled = (value & 0xF8) != 0;
@@ -304,14 +298,14 @@ struct Channel3 : Channel {
         enabled = true;
         dacEnabled = true;
 
-        if (lengthTimer >= 256) lengthTimer = 0;
+        if (lengthTimer == 0) lengthTimer = 256;
         freqTimer = (2048 - frequency.value) * 2;
         waveStep = 0;
     }
 
     void TickLength() override {
-        if (lengthEnabled && enabled) {
-            lengthTimer++;
+        if (lengthEnabled && enabled && lengthTimer > 0) {
+            lengthTimer--;
         }
     }
 
@@ -331,11 +325,7 @@ struct Channel3 : Channel {
             case 0x0A: dacEnabled = (value & 0x80) != 0;
                 if (!dacEnabled) enabled = false;
                 break;
-            case 0x0B: lengthTimer = 256 - value;
-                lengthEnabled = true;
-                if (lengthTimer == 0) {
-                    enabled = false;
-                }
+            case 0x0B: lengthTimer = value;
                 break;
             case 0x0C: outputLevel = value >> 5 & 0x03;
                 break;
@@ -364,7 +354,7 @@ struct Channel4 : Channel {
         enabled = true;
         dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-        if (lengthTimer.lengthTimer >= 64) lengthTimer.lengthTimer = 0;
+        if (lengthTimer.lengthTimer == 0) lengthTimer.lengthTimer = 64;
 
         int divisor = (noise.clockDivider == 0) ? 8 : (noise.clockDivider * 16);
         freqTimer = divisor << noise.clockShift;
@@ -376,8 +366,8 @@ struct Channel4 : Channel {
     }
 
     void TickLength() override {
-        if (lengthTimer.enabled && enabled) {
-            lengthTimer.lengthTimer++;
+        if (lengthTimer.enabled && enabled && lengthTimer.lengthTimer > 0) {
+            lengthTimer.lengthTimer--;
         }
     }
 
@@ -421,10 +411,6 @@ struct Channel4 : Channel {
         switch (address & 0xF) {
             case 0x0F: break;
             case 0x00: lengthTimer.Write(value, audioEnabled);
-                lengthTimer.lengthTimer = 64 - lengthTimer.lengthTimer;
-                if (lengthTimer.lengthTimer == 0) {
-                    enabled = false;
-                }
                 break;
             case 0x01: envelope.Write(value);
                 dacEnabled = (value & 0xF8) != 0;
@@ -514,7 +500,8 @@ public:
         for (uint32_t i = 0; i < tCycles; ++i) {
             if (ch1.enabled) {
                 ch1.freqTimer--;
-                if (ch1.lengthTimer.lengthTimer == 64) {
+                if (ch1.lengthTimer.lengthTimer == 0) {
+                    std::fprintf(stderr, "Channel 1 Length expired\n");
                     ch1.enabled = false;
                 }
                 if (ch1.freqTimer <= 0) {
@@ -528,7 +515,8 @@ public:
 
             if (ch2.enabled) {
                 ch2.freqTimer--;
-                if (ch2.lengthTimer.lengthTimer == 64) {
+                if (ch2.lengthTimer.lengthTimer == 0) {
+                    std::fprintf(stderr, "Channel 2 Length expired\n");
                     ch2.enabled = false;
                 }
                 if (ch2.freqTimer <= 0) {
@@ -542,7 +530,8 @@ public:
 
             if (ch3.enabled) {
                 ch3.freqTimer--;
-                if (ch3.lengthTimer == 256) {
+                if (ch3.lengthTimer == 0) {
+                    std::fprintf(stderr, "Channel 3 Length expired\n");
                     ch3.enabled = false;
                 }
                 if (ch3.freqTimer <= 0) {
@@ -562,7 +551,8 @@ public:
 
             if (ch4.enabled) {
                 ch4.freqTimer--;
-                if (ch4.lengthTimer.lengthTimer == 64) {
+                if (ch4.lengthTimer.lengthTimer == 0) {
+                    std::fprintf(stderr, "Channel 4 Length expired\n");
                     ch4.enabled = false;
                 }
                 if (ch4.freqTimer <= 0) {
