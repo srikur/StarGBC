@@ -63,7 +63,7 @@ Current Performance: (86/163)
 | interrupt_time                        | :x:                |
 | halt_bug                              | :white_check_mark: |
 | dmg_sound/01-registers.gb             | :white_check_mark: |
-| dmg_sound/02-len ctr.gb               | :x:                |
+| dmg_sound/02-len ctr.gb               | :white_check_mark: |
 | dmg_sound/03-trigger.gb               | :x:                |
 | dmg_sound/04-sweep.gb                 | :x:                |
 | dmg_sound/05-sweep details.gb         | :x:                |
