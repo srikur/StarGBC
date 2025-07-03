@@ -98,7 +98,7 @@ struct Channel {
     }
 };
 
-struct Channel1 : Channel {
+struct Channel1 final : Channel {
     Sweep sweep{};
     Length lengthTimer{};
     Envelope envelope{};
@@ -108,11 +108,16 @@ struct Channel1 : Channel {
     uint8_t dutyStep{0};
     float_t currentOutput{0.0f};
 
-    void Trigger() {
+    void Trigger(const uint8_t freqStep) {
         if (dacEnabled) enabled = true;
         dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-        if (lengthTimer.lengthTimer == 64) lengthTimer.lengthTimer = 0;
+        if (lengthTimer.lengthTimer == 64) {
+            lengthTimer.lengthTimer = 0;
+            if (lengthTimer.enabled && (freqStep % 2 != 0)) {
+                lengthTimer.lengthTimer++;
+            }
+        }
 
         freqTimer = (2048 - frequency.value) * 4;
 
@@ -189,7 +194,18 @@ struct Channel1 : Channel {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled) {
+    void HandleNR14Write(const uint8_t value, const uint8_t freqStep) {
+        frequency.WriteHigh(value);
+        const bool oldEnabled = lengthTimer.enabled;
+        lengthTimer.enabled = value & 0x40;
+        if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
+            if (lengthTimer.lengthTimer < 64) lengthTimer.lengthTimer++;
+            if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
+        }
+        if (value & 0x80) Trigger(freqStep);
+    }
+
+    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
         switch (address & 0xF) {
             case 0x00: sweep.Write(value);
                 break;
@@ -201,16 +217,14 @@ struct Channel1 : Channel {
                 break;
             case 0x03: frequency.WriteLow(value);
                 break;
-            case 0x04: frequency.WriteHigh(value);
-                lengthTimer.enabled = value & 0x40;
-                if (value & 0x80) Trigger();
+            case 0x04: HandleNR14Write(value, freqStep);
                 break;
             default: throw UnreachableCodeException("Channel1::WriteByte unreachable code at address: " + std::to_string(address));
         }
     }
 };
 
-struct Channel2 : Channel {
+struct Channel2 final : Channel {
     Length lengthTimer{};
     Envelope envelope{};
     Frequency frequency{};
@@ -218,11 +232,16 @@ struct Channel2 : Channel {
     uint8_t dutyStep{0};
     float_t currentOutput{0.0f};
 
-    void Trigger() {
+    void Trigger(const uint8_t freqStep) {
         if (dacEnabled) enabled = true;
         dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-        if (lengthTimer.lengthTimer == 64) lengthTimer.lengthTimer = 0;
+        if (lengthTimer.lengthTimer == 64) {
+            lengthTimer.lengthTimer = 0;
+            if (lengthTimer.enabled && (freqStep % 2 != 0)) {
+                lengthTimer.lengthTimer++;
+            }
+        }
         freqTimer = (2048 - frequency.value) * 4;
 
         envelope.periodTimer = envelope.sweepPace;
@@ -249,6 +268,17 @@ struct Channel2 : Channel {
         }
     }
 
+    void HandleNR24Write(const uint8_t value, const uint8_t freqStep) {
+        frequency.WriteHigh(value);
+        const bool oldEnabled = lengthTimer.enabled;
+        lengthTimer.enabled = value & 0x40;
+        if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
+            if (lengthTimer.lengthTimer < 64) lengthTimer.lengthTimer++;
+            if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
+        }
+        if (value & 0x80) Trigger(freqStep);
+    }
+
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
             case 0x05: return 0xFF;
@@ -260,7 +290,7 @@ struct Channel2 : Channel {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled) {
+    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
         switch (address & 0xF) {
             case 0x05: break;
             case 0x06: lengthTimer.Write(value, audioEnabled);
@@ -271,16 +301,14 @@ struct Channel2 : Channel {
                 break;
             case 0x08: frequency.WriteLow(value);
                 break;
-            case 0x09: frequency.WriteHigh(value);
-                lengthTimer.enabled = value & 0x40;
-                if (value & 0x80) Trigger();
+            case 0x09: HandleNR24Write(value, freqStep);
                 break;
             default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
         }
     }
 };
 
-struct Channel3 : Channel {
+struct Channel3 final : Channel {
     bool lengthEnabled{false};
     uint16_t lengthTimer{0};
     uint8_t outputLevel{0};
@@ -290,11 +318,16 @@ struct Channel3 : Channel {
     uint8_t waveStep{0};
     float_t currentOutput{0.0f};
 
-    void Trigger() {
+    void Trigger(const uint8_t freqStep) {
         if (dacEnabled) enabled = true;
         dacEnabled = true;
 
-        if (lengthTimer == 256) lengthTimer = 0;
+        if (lengthTimer == 256) {
+            lengthTimer = 0;
+            if (lengthEnabled && (freqStep % 2 != 0)) {
+                lengthTimer++;
+            }
+        }
         freqTimer = (2048 - frequency.value) * 2;
         waveStep = 0;
     }
@@ -303,6 +336,17 @@ struct Channel3 : Channel {
         if (lengthEnabled && lengthTimer < 256) {
             lengthTimer++;
         }
+    }
+
+    void HandleNR34Write(const uint8_t value, const uint8_t freqStep) {
+        frequency.WriteHigh(value);
+        const bool oldEnabled = lengthEnabled;
+        lengthEnabled = value & 0x40;
+        if (!oldEnabled && lengthEnabled && (freqStep % 2 != 0)) {
+            if (lengthTimer < 256) lengthTimer++;
+            if (lengthTimer == 256 && !(value & 0x80)) enabled = false;
+        }
+        if (value & 0x80) Trigger(freqStep);
     }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
@@ -316,7 +360,7 @@ struct Channel3 : Channel {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value) {
+    void WriteByte(const uint16_t address, const uint8_t value, const uint8_t freqStep) {
         switch (address & 0xF) {
             case 0x0A: dacEnabled = (value & 0x80) != 0;
                 if (!dacEnabled) enabled = false;
@@ -327,16 +371,14 @@ struct Channel3 : Channel {
                 break;
             case 0x0D: frequency.WriteLow(value);
                 break;
-            case 0x0E: frequency.WriteHigh(value);
-                lengthEnabled = (value & 0x40) != 0;
-                if (value & 0x80) Trigger();
+            case 0x0E: HandleNR34Write(value, freqStep);
                 break;
             default: throw UnreachableCodeException("Channel3::WriteByte unreachable code at address: " + std::to_string(address));
         }
     }
 };
 
-struct Channel4 : Channel {
+struct Channel4 final : Channel {
     Length lengthTimer{};
     Envelope envelope{};
     Noise noise{};
@@ -346,13 +388,18 @@ struct Channel4 : Channel {
     float_t currentOutput{0.0f};
     uint8_t trigger{0};
 
-    void Trigger() {
+    void Trigger(const uint8_t freqStep) {
         if (dacEnabled) enabled = true;
         dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
-        if (lengthTimer.lengthTimer == 64) lengthTimer.lengthTimer = 0;
+        if (lengthTimer.lengthTimer == 64) {
+            lengthTimer.lengthTimer = 0;
+            if (lengthTimer.enabled && (freqStep % 2 != 0)) {
+                lengthTimer.lengthTimer++;
+            }
+        }
 
-        int divisor = noise.clockDivider == 0 ? 8 : noise.clockDivider * 16;
+        const int divisor = noise.clockDivider == 0 ? 8 : noise.clockDivider * 16;
         freqTimer = divisor << noise.clockShift;
 
         envelope.periodTimer = envelope.sweepPace;
@@ -391,6 +438,16 @@ struct Channel4 : Channel {
         }
     }
 
+    void HandleNR44Write(const uint8_t value, const uint8_t freqStep) {
+        trigger = value >> 7 & 0x01;
+        const bool oldEnabled = lengthTimer.enabled;
+        lengthTimer.enabled = value & 0x40;
+        if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
+            if (lengthTimer.lengthTimer != 64) lengthTimer.lengthTimer++;
+            if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
+        }
+        if (value & 0x80) Trigger(freqStep);
+    }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
         switch (address & 0xF) {
@@ -403,7 +460,7 @@ struct Channel4 : Channel {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled) {
+    void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
         switch (address & 0xF) {
             case 0x0F: break;
             case 0x00: lengthTimer.Write(value, audioEnabled);
@@ -414,9 +471,7 @@ struct Channel4 : Channel {
                 break;
             case 0x02: noise.Write(value);
                 break;
-            case 0x03: trigger = value >> 7 & 0x01;
-                lengthTimer.enabled = (value & 0x40) != 0;
-                if (value & 0x80) Trigger();
+            case 0x03: HandleNR44Write(value, freqStep);
                 break;
             default: throw UnreachableCodeException("Channel4::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -531,8 +586,8 @@ public:
                     ch3.freqTimer = (2048 - ch3.frequency.value) * 2;
                     ch3.waveStep = (ch3.waveStep + 1) % 32;
                     if (ch3.dacEnabled) {
-                        uint8_t sampleByte = waveRam[ch3.waveStep / 2];
-                        uint8_t sample = (ch3.waveStep % 2 == 0) ? (sampleByte >> 4) : (sampleByte & 0x0F);
+                        const uint8_t sampleByte = waveRam[ch3.waveStep / 2];
+                        const uint8_t sample = (ch3.waveStep % 2 == 0) ? (sampleByte >> 4) : (sampleByte & 0x0F);
                         if (ch3.outputLevel > 0) {
                             ch3.currentOutput = static_cast<float>(sample >> (ch3.outputLevel - 1));
                         } else {
@@ -604,17 +659,16 @@ public:
             0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20
         };
         if (!audioEnabled && address != 0xFF26 && (!dmg || !allowedAddresses.contains(address))) {
-            std::cout << "Audio not enabled, ignoring write to address: " << std::hex << std::setfill('0') << std::setw(4) << address << std::endl;
             return;
         }
         switch (address) {
-            case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled);
+            case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep);
                 break;
-            case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled);
+            case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep);
                 break;
-            case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value);
+            case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep);
                 break;
-            case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled);
+            case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled, frameSeqStep);
                 break;
             case 0xFF24: nr50 = value;
                 break;
