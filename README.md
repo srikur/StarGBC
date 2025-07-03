@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (86/163)
+Current Performance: (101/163)
 
 ### Blargg's tests
 
@@ -65,10 +65,10 @@ Current Performance: (86/163)
 | dmg_sound/01-registers.gb             | :white_check_mark: |
 | dmg_sound/02-len ctr.gb               | :white_check_mark: |
 | dmg_sound/03-trigger.gb               | :white_check_mark: |
-| dmg_sound/04-sweep.gb                 | :x:                |
-| dmg_sound/05-sweep details.gb         | :x:                |
-| dmg_sound/06-overflow on trigger.gb   | :x:                |
-| dmg_sound/07-len sweep period sync.gb | :x:                |
+| dmg_sound/04-sweep.gb                 | :white_check_mark: |
+| dmg_sound/05-sweep details.gb         | :white_check_mark: |
+| dmg_sound/06-overflow on trigger.gb   | :white_check_mark: |
+| dmg_sound/07-len sweep period sync.gb | :white_check_mark: |
 | dmg_sound/08-len ctr during power.gb  | :white_check_mark: |
 | dmg_sound/09-wave read while on.gb    | :x:                |
 | dmg_sound/10-wave trigger while on.gb | :x:                |
@@ -77,11 +77,11 @@ Current Performance: (86/163)
 | cgb_sound/01-registers.gb             | :white_check_mark: |
 | cgb_sound/02-len ctr.gb               | :white_check_mark: |
 | cgb_sound/03-trigger.gb               | :white_check_mark: |
-| cgb_sound/04-sweep.gb                 | :x:                |
-| cgb_sound/05-sweep details.gb         | :x:                |
-| cgb_sound/06-overflow on trigger.gb   | :x:                |
-| cgb_sound/07-len sweep period sync.gb | :x:                |
-| cgb_sound/08-len ctr during power.gb  | :x:                |
+| cgb_sound/04-sweep.gb                 | :white_check_mark: |
+| cgb_sound/05-sweep details.gb         | :white_check_mark: |
+| cgb_sound/06-overflow on trigger.gb   | :white_check_mark: |
+| cgb_sound/07-len sweep period sync.gb | :white_check_mark: |
+| cgb_sound/08-len ctr during power.gb  | :white_check_mark: |
 | cgb_sound/09-wave read while on.gb    | :x:                |
 | cgb_sound/10-wave trigger while on.gb | :x:                |
 | cgb_sound/11-regs after power.gb      | :x:                |

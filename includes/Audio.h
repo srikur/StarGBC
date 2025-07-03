@@ -14,6 +14,7 @@ struct Frequency {
     void Write(const uint16_t v) { value = v & 0x7FF; }
     void WriteLow(const uint8_t lower) { value = value & 0x700 | lower; }
     void WriteHigh(const uint8_t higher) { value = value & 0x00FF | higher << 8; }
+    [[nodiscard]] uint16_t Value() const { return value & 0x7FF; }
     [[nodiscard]] uint8_t ReadLow() const { return static_cast<uint8_t>(value & 0xFF) | 0xFF; }
     [[nodiscard]] uint8_t ReadHigh() const { return static_cast<uint8_t>(value >> 8) | 0xBF; }
 };
@@ -30,8 +31,7 @@ struct Sweep {
 
     void Write(const uint8_t v) {
         pace = v >> 4 & 0x07;
-        timer = pace ? pace : 8;
-        direction = (v & 0x08) != 0;
+        direction = v & 0x08;
         step = v & 0x07;
     }
 
@@ -54,7 +54,7 @@ struct Envelope {
     }
 
     [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace | 0x00);
+        return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace);
     }
 };
 
@@ -85,7 +85,7 @@ struct Noise {
     }
 
     [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider | 0x00);
+        return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider);
     }
 };
 
@@ -134,13 +134,13 @@ struct Channel1 final : Channel {
         envelope.periodTimer = envelope.sweepPace;
         envelope.currentVolume = envelope.initialVolume;
 
-        sweep.shadowFreq = frequency.value;
-        sweep.timer = sweep.pace ? sweep.pace : 8;
         sweep.enabled = sweep.pace > 0 || sweep.step > 0;
-        if (sweep.step > 0) {
-            CalculateSweep();
-        }
+        sweep.shadowFreq = frequency.Value();
+        sweep.timer = sweep.pace ? sweep.pace : 8;
         sweep.subtractionCalculationMade = false;
+        if (sweep.step > 0 && CalculateSweep() > 2047) {
+            enabled = false;
+        }
     }
 
     void TickLength() override {
@@ -150,18 +150,27 @@ struct Channel1 final : Channel {
     }
 
     void TickSweep() {
-        if (!sweep.enabled) return;
-        sweep.timer--;
-        if (sweep.timer == 0) {
-            sweep.timer = sweep.pace ? sweep.pace : 8;
-            if (sweep.pace > 0) {
-                const uint16_t newFreq = CalculateSweep();
-                if (newFreq <= 2047 && sweep.step > 0) {
+        if (!sweep.enabled || !enabled) return;
+        if (--sweep.timer > 0) {
+            return;
+        }
+
+        if (sweep.pace != 0) {
+            sweep.timer = sweep.pace;
+            if (const uint16_t newFreq = CalculateSweep(); newFreq > 2047) {
+                enabled = false;
+            } else {
+                if (sweep.step > 0) {
                     frequency.Write(newFreq);
                     sweep.shadowFreq = newFreq;
-                    CalculateSweep();
+                    freqTimer = (2048 - frequency.value) * 4;
+                }
+                if (CalculateSweep() > 2047) {
+                    enabled = false;
                 }
             }
+        } else {
+            sweep.timer = 8;
         }
     }
 
@@ -187,11 +196,6 @@ struct Channel1 final : Channel {
         } else {
             newFreq = sweep.shadowFreq + newFreq;
         }
-
-        if (newFreq > 2047) {
-            enabled = false;
-        }
-
         return newFreq;
     }
 
@@ -236,9 +240,12 @@ struct Channel1 final : Channel {
 
     void WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
         switch (address & 0xF) {
-            case 0x00: sweep.Write(value);
-                if (!sweep.direction) enabled = false;
-                break;
+            case 0x00: {
+                const bool oldDirection = sweep.direction;
+                sweep.Write(value);
+                if (oldDirection && !sweep.direction && sweep.subtractionCalculationMade) enabled = false;
+            }
+            break;
             case 0x01: lengthTimer.Write(value, audioEnabled);
                 break;
             case 0x02: envelope.Write(value);
@@ -631,7 +638,7 @@ public:
             default: throw UnreachableCodeException("Audio::TickFrameSequencer unreachable code at step: " + std::to_string(frameSeqStep));
         }
 
-        frameSeqStep = (frameSeqStep + 1) & 7;
+        frameSeqStep = (frameSeqStep + 1) % 8;
     }
 
     void Tick(const uint32_t tCycles) {
