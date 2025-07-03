@@ -207,7 +207,7 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
 }
 
 void Bus::UpdateTimers(const uint32_t cycles) {
-    const int frameSeqBit = audio_->IsDMG() ? 8 : 9;
+    const int frameSeqBit = audio_->IsDMG() ? 12 : 13;
 
     for (uint32_t i = 0; i < cycles; ++i) {
         timer_.reloadActive = false;
