@@ -131,7 +131,7 @@ struct Channel1 final : Channel {
 
         freqTimer = (2048 - frequency.Value()) * 4;
 
-        envelope.periodTimer = envelope.sweepPace;
+        envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
         envelope.currentVolume = envelope.initialVolume;
 
         sweep.enabled = sweep.pace > 0 || sweep.step > 0;
@@ -281,7 +281,7 @@ struct Channel2 final : Channel {
         }
         freqTimer = (2048 - frequency.Value()) * 4;
 
-        envelope.periodTimer = envelope.sweepPace;
+        envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
         envelope.currentVolume = envelope.initialVolume;
     }
 
@@ -428,7 +428,7 @@ struct Channel3 final : Channel {
         }
     }
 
-    void Tick(uint32_t frames) {
+    void Tick() {
         if (!enabled) return;
         if (lengthEnabled && lengthTimer == 256) {
             enabled = false;
@@ -524,7 +524,7 @@ struct Channel4 final : Channel {
         const int divisor = noise.clockDivider == 0 ? 8 : noise.clockDivider * 16;
         freqTimer = divisor << noise.clockShift;
 
-        envelope.periodTimer = envelope.sweepPace;
+        envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
         envelope.currentVolume = envelope.initialVolume;
 
         lfsr = 0xFFFF;
@@ -683,7 +683,7 @@ public:
             ch3.alternateRead = false;
             ch1.Tick();
             ch2.Tick();
-            ch3.Tick(tCycles);
+            ch3.Tick();
             ch4.Tick();
         }
     }
