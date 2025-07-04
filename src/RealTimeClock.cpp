@@ -72,7 +72,7 @@ uint8_t RealTimeClock::ReadRTC(const uint16_t address) const {
         case 0x0A: return hours_;
         case 0x0B: return dayLower_;
         case 0x0C: return dayUpper_;
-        default: throw std::runtime_error("Invalid RTC read");
+        default: return 0xFF;
     }
 }
 
@@ -88,7 +88,7 @@ void RealTimeClock::WriteRTC(const uint16_t address, const uint8_t value) {
             if (const bool nowRunning = !(dayUpper_ & 0x40); wasHalted && nowRunning) RecalculateZeroTime();
             break;
         }
-        default: throw std::runtime_error("Invalid RTC write");
+        default: break;
     }
 
     if (!(dayUpper_ & 0x40))

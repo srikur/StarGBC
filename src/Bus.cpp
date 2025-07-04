@@ -2,12 +2,6 @@
 
 Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
-    prepareSpeedShift = false;
-    gpu_->hdmaMode = GPU::HDMAMode::GDMA;
-    hdmaSource = 0x0000;
-    hdmaDestination = 0x8000;
-    hdmaActive = false;
-    hdmaRemain = 0x00;
 }
 
 uint8_t Bus::ReadDMASource(const uint16_t src) const {
