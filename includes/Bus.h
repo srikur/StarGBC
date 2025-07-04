@@ -129,11 +129,11 @@ public:
 
     // GBC
     Speed speed = Speed::Regular;
-    bool prepareSpeedShift = false;
-    uint16_t hdmaSource;
-    uint16_t hdmaDestination;
-    bool hdmaActive;
-    uint8_t hdmaRemain;
+    bool prepareSpeedShift{false};
+    uint16_t hdmaSource{0x0000};
+    uint16_t hdmaDestination{0x8000};
+    bool hdmaActive{false};
+    uint8_t hdmaRemain{0x00};
 
     //Interrupts
     enum class InterruptType {
