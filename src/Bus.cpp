@@ -8,7 +8,6 @@ Bus::Bus(const std::string &romLocation) {
     hdmaDestination = 0x8000;
     hdmaActive = false;
     hdmaRemain = 0x00;
-    audio_->SetDMG(gpu_->hardware == GPU::Hardware::DMG);
 }
 
 uint8_t Bus::ReadDMASource(const uint16_t src) const {
@@ -207,7 +206,7 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
 }
 
 void Bus::UpdateTimers(const uint32_t cycles) {
-    const int frameSeqBit = audio_->IsDMG() ? 12 : 13;
+    const int frameSeqBit = audio_->IsDMG() || speed == Speed::Regular ? 12 : 13;
 
     for (uint32_t i = 0; i < cycles; ++i) {
         timer_.reloadActive = false;
@@ -225,7 +224,6 @@ void Bus::UpdateTimers(const uint32_t cycles) {
         const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
 
         ++timer_.divCounter;
-        // std::fprintf(stderr, "Timer: %d\n", timer_.divCounter);
 
         const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
         if (oldSignal && !newSignal) {
@@ -235,7 +233,6 @@ void Bus::UpdateTimers(const uint32_t cycles) {
         // Check for a falling edge for the APU Frame Sequencer
         const bool newFrameSeqSignal = (timer_.divCounter & (1u << frameSeqBit));
         if (oldFrameSeqSignal && !newFrameSeqSignal) {
-            // std::fprintf(stderr, "FrameSeq: %d\n", timer_.divCounter);
             audio_->TickFrameSequencer();
         }
     }

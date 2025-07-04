@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (124/163)
+Current Performance: (131/163)
 
 ### Blargg's tests
 
@@ -70,10 +70,10 @@ Current Performance: (124/163)
 | dmg_sound/06-overflow on trigger.gb   | :white_check_mark: |
 | dmg_sound/07-len sweep period sync.gb | :white_check_mark: |
 | dmg_sound/08-len ctr during power.gb  | :white_check_mark: |
-| dmg_sound/09-wave read while on.gb    | :x:                |
-| dmg_sound/10-wave trigger while on.gb | :x:                |
-| dmg_sound/11-regs after power.gb      | :x:                |
-| dmg_sound/12-wave write while on.gb   | :x:                |
+| dmg_sound/09-wave read while on.gb    | :white_check_mark: |
+| dmg_sound/10-wave trigger while on.gb | :white_check_mark: |
+| dmg_sound/11-regs after power.gb      | :white_check_mark: |
+| dmg_sound/12-wave write while on.gb   | :white_check_mark: |
 | cgb_sound/01-registers.gb             | :white_check_mark: |
 | cgb_sound/02-len ctr.gb               | :white_check_mark: |
 | cgb_sound/03-trigger.gb               | :white_check_mark: |
@@ -82,9 +82,9 @@ Current Performance: (124/163)
 | cgb_sound/06-overflow on trigger.gb   | :white_check_mark: |
 | cgb_sound/07-len sweep period sync.gb | :white_check_mark: |
 | cgb_sound/08-len ctr during power.gb  | :white_check_mark: |
-| cgb_sound/09-wave read while on.gb    | :x:                |
-| cgb_sound/10-wave trigger while on.gb | :x:                |
-| cgb_sound/11-regs after power.gb      | :x:                |
+| cgb_sound/09-wave read while on.gb    | :white_check_mark: |
+| cgb_sound/10-wave trigger while on.gb | :white_check_mark: |
+| cgb_sound/11-regs after power.gb      | :white_check_mark: |
 | cgb_sound/12-wave.gb                  | :x:                |
 | oam_bug/1-lcd_sync                    | :x:                |
 | oam_bug/2-causes                      | :x:                |
