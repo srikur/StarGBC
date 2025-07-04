@@ -157,10 +157,6 @@ void Gameboy::SetThrottle(const bool throttle) {
     throttleSpeed = throttle;
 }
 
-bool Gameboy::PopSample(StereoSample sample) const {
-    return bus->audio_->gSampleFifo.pop(sample);
-}
-
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
@@ -184,10 +180,6 @@ void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
         if (const uint32_t hdmaCycles = RunHDMA()) {
             TickM(hdmaCycles, true);
             bus->UpdateGraphics(hdmaCycles * 4);
-        }
-
-        if (auto s = bus->audio_->Tick(cycles * 4 * static_cast<uint32_t>(bus->speed))) {
-            bus->audio_->gSampleFifo.push(*s);
         }
     }
 }
@@ -214,11 +206,10 @@ void Gameboy::TickM(const uint32_t mCycles, const bool countDoubleSpeed) {
     if (mCycles == 0) return;
     const uint8_t speedFactor = countDoubleSpeed && bus->speed == Bus::Speed::Double ? 2 : 1;
     const uint32_t tCycles = mCycles * 4 * speedFactor;
+    bus->audio_->Tick(tCycles);
     bus->UpdateTimers(tCycles);
     bus->UpdateSerial(tCycles);
-    // bus->UpdateGraphics(mCycles * 4);
     bus->UpdateDMA(mCycles * speedFactor);
-    if (const auto s = bus->audio_->Tick(tCycles)) { bus->audio_->gSampleFifo.push(*s); }
 
     stepCycles += tCycles;
 }

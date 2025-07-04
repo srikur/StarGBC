@@ -78,6 +78,7 @@ public:
                                               bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
         if (mode_ != Mode::None) {
             bus->gpu_->hardware = mode_ == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
+            bus->audio_->SetDMG(bus->gpu_->hardware == GPU::Hardware::DMG);
         } else if ((bus->cartridge_->ReadByte(0x143) & 0x80) == 0x80) {
             mode_ = Mode::CGB_GBC;
             bus->gpu_->hardware = GPU::Hardware::CGB;
@@ -137,6 +138,4 @@ public:
     [[nodiscard]] bool IsPaused() const {
         return paused;
     }
-
-    [[nodiscard]] bool PopSample(StereoSample sample) const;
 };
