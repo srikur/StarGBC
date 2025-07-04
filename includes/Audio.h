@@ -129,7 +129,7 @@ struct Channel1 final : Channel {
             }
         }
 
-        freqTimer = (2048 - frequency.value) * 4;
+        freqTimer = (2048 - frequency.Value()) * 4;
 
         envelope.periodTimer = envelope.sweepPace;
         envelope.currentVolume = envelope.initialVolume;
@@ -163,7 +163,7 @@ struct Channel1 final : Channel {
                 if (sweep.step > 0) {
                     frequency.Write(newFreq);
                     sweep.shadowFreq = newFreq;
-                    freqTimer = (2048 - frequency.value) * 4;
+                    freqTimer = (2048 - frequency.Value()) * 4;
                 }
                 if (CalculateSweep() > 2047) {
                     enabled = false;
@@ -206,7 +206,7 @@ struct Channel1 final : Channel {
             enabled = false;
         }
         if (freqTimer <= 0) {
-            freqTimer = (2048 - frequency.value) * 4;
+            freqTimer = (2048 - frequency.Value()) * 4;
             dutyStep = (dutyStep + 1) % 8;
             if (dacEnabled) {
                 currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) * static_cast<float>(envelope.currentVolume);
@@ -279,7 +279,7 @@ struct Channel2 final : Channel {
                 lengthTimer.lengthTimer++;
             }
         }
-        freqTimer = (2048 - frequency.value) * 4;
+        freqTimer = (2048 - frequency.Value()) * 4;
 
         envelope.periodTimer = envelope.sweepPace;
         envelope.currentVolume = envelope.initialVolume;
@@ -312,7 +312,7 @@ struct Channel2 final : Channel {
             enabled = false;
         }
         if (freqTimer <= 0) {
-            freqTimer = (2048 - frequency.value) * 4;
+            freqTimer = (2048 - frequency.Value()) * 4;
             dutyStep = (dutyStep + 1) % 8;
             if (dacEnabled) {
                 currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) * static_cast<float>(envelope.currentVolume);
@@ -361,30 +361,43 @@ struct Channel2 final : Channel {
 };
 
 struct Channel3 final : Channel {
+    static constexpr uint8_t volumeShifts[4] = {4, 0, 1, 2};
+
     bool lengthEnabled{false};
+    bool playing{false};
+    bool alternateRead{false};
     uint16_t lengthTimer{0};
     uint8_t outputLevel{0};
+    uint8_t volumeShift{0};
     Frequency frequency{};
-
-    int32_t freqTimer{0};
+    uint8_t sampleByte{0};
+    int32_t period{0};
     uint8_t waveStep{0};
+    uint8_t ticks{0};
     float_t currentOutput{0.0f};
 
-    std::array<uint8_t, 0xF> waveRam{};
+    std::array<uint8_t, 0x10> waveRam{};
 
-    void Reset() {
-        lengthTimer = 0;
-        outputLevel = 0;
-        frequency.value = 0;
-        waveStep = 0;
-        freqTimer = 0;
-        currentOutput = 0.0f;
-        lengthEnabled = false;
-        enabled = false;
-        dacEnabled = false;
+    [[nodiscard]] uint8_t ReadWaveRam(const uint16_t address, const bool dmg) const {
+        if (!enabled) return waveRam[address - 0xFF30];
+        return (!dmg || alternateRead) ? waveRam[waveStep >> 1] : 0xFF;
     }
 
-    void Trigger(const uint8_t freqStep) {
+    void WriteWaveRam(const uint16_t address, const uint8_t value, const bool dmg) {
+        if (!enabled) {
+            waveRam[address - 0xFF30] = value;
+        } else if (!dmg || alternateRead) {
+            waveRam[waveStep >> 1] = value;
+        }
+    }
+
+    void Reset() {
+        lengthTimer = outputLevel = frequency.value = waveStep = period = ticks = sampleByte = 0;
+        currentOutput = 0.0f;
+        lengthEnabled = enabled = dacEnabled = playing = alternateRead = false;
+    }
+
+    void Trigger(const uint8_t freqStep, const bool dmg) {
         if (dacEnabled) enabled = true;
         dacEnabled = true;
 
@@ -394,8 +407,19 @@ struct Channel3 final : Channel {
                 lengthTimer++;
             }
         }
-        freqTimer = (2048 - frequency.value) * 2;
+        period = (2048 - frequency.Value()) * 2;
+        if (dmg && playing && (ticks == 2)) {
+            const uint8_t position = (waveStep + 1) & 31;
+            const uint8_t sampleByte = waveRam[position >> 1];
+            if ((position >> 3) == 0) {
+                waveRam[0] = sampleByte;
+            } else if ((position >> 3) <= 3) {
+                std::memcpy(&waveRam[0x00], &waveRam[(position >> 1) & 12], 4);
+            }
+        }
         waveStep = 0;
+        ticks = period + 6;
+        playing = true;
     }
 
     void TickLength() override {
@@ -404,28 +428,32 @@ struct Channel3 final : Channel {
         }
     }
 
-    void Tick() {
+    void Tick(uint32_t frames) {
         if (!enabled) return;
-        freqTimer--;
         if (lengthEnabled && lengthTimer == 256) {
             enabled = false;
         }
-        if (freqTimer <= 0) {
-            freqTimer = (2048 - frequency.value) * 2;
+
+        ticks--;
+        if (ticks <= 0) {
             waveStep = (waveStep + 1) % 32;
+            const uint8_t byte = waveRam[waveStep >> 1];
+            if ((waveStep & 1) == 0) {
+                sampleByte = byte >> 4;
+            } else {
+                sampleByte = byte & 0x0F;
+            }
+            alternateRead = true;
+            ticks = period;
             if (dacEnabled) {
-                const uint8_t sampleByte = waveRam[waveStep / 2];
-                const uint8_t sample = (waveStep % 2 == 0) ? (sampleByte >> 4) : (sampleByte & 0x0F);
-                if (outputLevel > 0) {
-                    currentOutput = static_cast<float>(sample >> (outputLevel - 1));
-                } else {
-                    currentOutput = 0;
-                }
+                currentOutput = static_cast<float>(sampleByte >> volumeShift);
+            } else {
+                currentOutput = 0.0f;
             }
         }
     }
 
-    void HandleNR34Write(const uint8_t value, const uint8_t freqStep) {
+    void HandleNR34Write(const uint8_t value, const uint8_t freqStep, const bool dmg) {
         frequency.WriteHigh(value);
         const bool oldEnabled = lengthEnabled;
         lengthEnabled = value & 0x40;
@@ -433,7 +461,9 @@ struct Channel3 final : Channel {
             if (lengthTimer < 256) lengthTimer++;
             if (lengthTimer == 256 && !(value & 0x80)) enabled = false;
         }
-        if (value & 0x80) Trigger(freqStep);
+        if (value & 0x80) {
+            Trigger(freqStep, dmg);
+        }
     }
 
     [[nodiscard]] uint8_t ReadByte(const uint16_t address) const {
@@ -447,18 +477,23 @@ struct Channel3 final : Channel {
         }
     }
 
-    void WriteByte(const uint16_t address, const uint8_t value, const uint8_t freqStep) {
+    void WriteByte(const uint16_t address, const uint8_t value, const uint8_t freqStep, const bool dmg) {
         switch (address & 0xF) {
             case 0x0A: dacEnabled = (value & 0x80) != 0;
-                if (!dacEnabled) enabled = false;
+                if (!dacEnabled) {
+                    enabled = false;
+                    playing = false;
+                }
                 break;
             case 0x0B: lengthTimer = value;
                 break;
             case 0x0C: outputLevel = value >> 5 & 0x03;
+                volumeShift = volumeShifts[outputLevel];
                 break;
             case 0x0D: frequency.WriteLow(value);
+                period = (2048 - frequency.Value()) * 2;
                 break;
-            case 0x0E: HandleNR34Write(value, freqStep);
+            case 0x0E: HandleNR34Write(value, freqStep, dmg);
                 break;
             default: throw UnreachableCodeException("Channel3::WriteByte unreachable code at address: " + std::to_string(address));
         }
@@ -532,7 +567,7 @@ struct Channel4 final : Channel {
             enabled = false;
         }
         if (freqTimer <= 0) {
-            int divisor = (noise.clockDivider == 0) ? 8 : (noise.clockDivider * 16);
+            const int divisor = (noise.clockDivider == 0) ? 8 : (noise.clockDivider * 16);
             freqTimer = divisor << noise.clockShift;
             TickLfsr();
             if (dacEnabled && (~lfsr & 1)) {
@@ -645,9 +680,10 @@ public:
         if (!audioEnabled) return;
 
         for (uint32_t i = 0; i < tCycles; ++i) {
+            ch3.alternateRead = false;
             ch1.Tick();
             ch2.Tick();
-            ch3.Tick();
+            ch3.Tick(tCycles);
             ch4.Tick();
         }
     }
@@ -681,7 +717,7 @@ public:
             case 0xFF15 ... 0xFF19: return ch2.ReadByte(address);
             case 0xFF1A ... 0xFF1E: return ch3.ReadByte(address);
             case 0xFF1F ... 0xFF23: return ch4.ReadByte(address);
-            case 0xFF30 ... 0xFF3F: return ch3.waveRam[address - 0xFF30];
+            case 0xFF30 ... 0xFF3F: return ch3.ReadWaveRam(address, dmg);
             case 0xFF24: return nr50 | 0x00;
             case 0xFF25: return nr51 | 0x00;
             case 0xFF26: return ReadAudioControl();
@@ -701,7 +737,7 @@ public:
                 break;
             case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep);
                 break;
-            case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep);
+            case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep, dmg);
                 break;
             case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled, frameSeqStep);
                 break;
@@ -711,7 +747,7 @@ public:
                 break;
             case 0xFF26: WriteAudioControl(value);
                 break;
-            case 0xFF30 ... 0xFF3F: ch3.waveRam[address - 0xFF30] = value;
+            case 0xFF30 ... 0xFF3F: ch3.WriteWaveRam(address, value, dmg);
                 break;
             default: break;
         }
