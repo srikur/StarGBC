@@ -36,214 +36,278 @@
 
 ## Test ROM Performance
 
-Current Performance: (131/163)
+Current Performance: (131/271)
 
-### Blargg's tests
-
-| Test                                  | StarGBC            |
-|---------------------------------------|--------------------|
-| cpu_instrs/01-special.gb              | :white_check_mark: |
-| cpu_instrs/02-interrupts.gb           | :white_check_mark: |
-| cpu_instrs/03-op sp,hl.gb             | :white_check_mark: |
-| cpu_instrs/04-op r,imm.gb             | :white_check_mark: |
-| cpu_instrs/05-op rp.gb                | :white_check_mark: |
-| cpu_instrs/06-ld r,r.gb               | :white_check_mark: |
-| cpu_instrs/07-jr,jp,call,ret,rst.gb   | :white_check_mark: |
-| cpu_instrs/08-misc instrs.gb          | :white_check_mark: |
-| cpu_instrs/09-op r,r.gb               | :white_check_mark: |
-| cpu_instrs/10-bit ops.gb              | :white_check_mark: |
-| cpu_instrs/11-op a,(hl).gb            | :white_check_mark: |
-| instr_timing.gb                       | :white_check_mark: |
-| mem_timing/01-read_timing.gb          | :white_check_mark: |
-| mem_timing/02-write_timing.gb         | :white_check_mark: |
-| mem_timing/03-modify_timing.gb        | :white_check_mark: |
-| mem_timing-2/01-read_timing.gb        | :white_check_mark: |
-| mem_timing-2/02-write_timing.gb       | :white_check_mark: |
-| mem_timing-2/03-modify_timing.gb      | :white_check_mark: |
-| interrupt_time                        | :x:                |
-| halt_bug                              | :white_check_mark: |
-| dmg_sound/01-registers.gb             | :white_check_mark: |
-| dmg_sound/02-len ctr.gb               | :white_check_mark: |
-| dmg_sound/03-trigger.gb               | :white_check_mark: |
-| dmg_sound/04-sweep.gb                 | :white_check_mark: |
-| dmg_sound/05-sweep details.gb         | :white_check_mark: |
-| dmg_sound/06-overflow on trigger.gb   | :white_check_mark: |
-| dmg_sound/07-len sweep period sync.gb | :white_check_mark: |
-| dmg_sound/08-len ctr during power.gb  | :white_check_mark: |
-| dmg_sound/09-wave read while on.gb    | :white_check_mark: |
-| dmg_sound/10-wave trigger while on.gb | :white_check_mark: |
-| dmg_sound/11-regs after power.gb      | :white_check_mark: |
-| dmg_sound/12-wave write while on.gb   | :white_check_mark: |
-| cgb_sound/01-registers.gb             | :white_check_mark: |
-| cgb_sound/02-len ctr.gb               | :white_check_mark: |
-| cgb_sound/03-trigger.gb               | :white_check_mark: |
-| cgb_sound/04-sweep.gb                 | :white_check_mark: |
-| cgb_sound/05-sweep details.gb         | :white_check_mark: |
-| cgb_sound/06-overflow on trigger.gb   | :white_check_mark: |
-| cgb_sound/07-len sweep period sync.gb | :white_check_mark: |
-| cgb_sound/08-len ctr during power.gb  | :white_check_mark: |
-| cgb_sound/09-wave read while on.gb    | :white_check_mark: |
-| cgb_sound/10-wave trigger while on.gb | :white_check_mark: |
-| cgb_sound/11-regs after power.gb      | :white_check_mark: |
-| cgb_sound/12-wave.gb                  | :x:                |
-| oam_bug/1-lcd_sync                    | :x:                |
-| oam_bug/2-causes                      | :x:                |
-| oam_bug/3-non_causes                  | :white_check_mark: |
-| oam_bug/4-scanline_timing             | :x:                |
-| oam_bug/5-timing_bug                  | :x:                |
-| oam_bug/6-timing_no_bug               | :white_check_mark: |
-| oam_bug/7-timing_effect               | :x:                |
-| oam_bug/8-instr_effect                | :x:                |
-
-### Mooneye GB Tests
-
-| Timer                                    | StarGBC            |
-|------------------------------------------|--------------------|
-| acceptance/timer/div_write.gb            | :white_check_mark: |
-| acceptance/timer/rapid_toggle.gb         | :white_check_mark: |
-| acceptance/timer/tim00.gb                | :white_check_mark: |
-| acceptance/timer/tim00_div_trigger.gb    | :white_check_mark: |
-| acceptance/timer/tim01.gb                | :white_check_mark: |
-| acceptance/timer/tim01_div_trigger.gb    | :white_check_mark: |
-| acceptance/timer/tim10.gb                | :white_check_mark: |
-| acceptance/timer/tim10_div_trigger.gb    | :white_check_mark: |
-| acceptance/timer/tim11.gb                | :white_check_mark: |
-| acceptance/timer/tim11_div_trigger.gb    | :white_check_mark: |
-| acceptance/timer/tima_reload.gb          | :white_check_mark: |
-| acceptance/timer/tima_write_reloading.gb | :white_check_mark: |
-| acceptance/timer/tma_write_reloading.gb  | :white_check_mark: |
-
-| General                               | StarGBC            |
-|---------------------------------------|--------------------|
-| acceptance/add_sp_e_timing.gb         | :white_check_mark: |
-| acceptance/boot_div-dmg0.gb           | :x:                |
-| acceptance/boot_div-dmgABCmgb.gb      | :x:                |
-| acceptance/boot_div-S.gb              | :x:                |
-| acceptance/boot_div2-s.gb             | :x:                |
-| acceptance/boot_hwio-dmg0.gb          | :x:                |
-| acceptance/boot_hwio-dmgABCmgb.gb     | :x:                |
-| acceptance/boot_hwio-S.gb             | :x:                |
-| acceptance/boot_regs-dmg0.gb          | :white_check_mark: |
-| acceptance/boot_regs-dmgABC.gb        | :white_check_mark: |
-| acceptance/boot_regs-mgb.gb           | :white_check_mark: |
-| acceptance/boot_regs-sgb.gb           | :white_check_mark: |
-| acceptance/boot_regs-sgb2.gb          | :white_check_mark: |
-| acceptance/call_cc_timing.gb          | :white_check_mark: |
-| acceptance/call_cc_timing2.gb         | :white_check_mark: |
-| acceptance/call_timing.gb             | :white_check_mark: |
-| acceptance/call_timing2.gb            | :white_check_mark: |
-| acceptance/di_timing-GS.gb            | :white_check_mark: |
-| acceptance/div_timing.gb              | :white_check_mark: |
-| acceptance/ei_sequence.gb             | :white_check_mark: |
-| acceptance/ei_timing.gb               | :white_check_mark: |
-| acceptance/halt_ime0_ei.gb            | :white_check_mark: |
-| acceptance/halt_ime0_nointr_timing.gb | :white_check_mark: |
-| acceptance/halt_ime1_timing.gb        | :white_check_mark: |
-| acceptance/halt_ime1_timing2-GS.gb    | :white_check_mark: |
-| acceptance/if_ie_registers.gb         | :white_check_mark: |
-| acceptance/intr_timing.gb             | :white_check_mark: |
-| acceptance/jp_cc_timing.gb            | :white_check_mark: |
-| acceptance/jp_timing.gb               | :white_check_mark: |
-| acceptance/ld_hl_sp_e_timing.gb       | :white_check_mark: |
-| acceptance/oam_dma_restart.gb         | :white_check_mark: |
-| acceptance/oma_dma_start.gb           | :white_check_mark: |
-| acceptance/oam_dma_timing.gb          | :white_check_mark: |
-| acceptance/pop_timing.gb              | :white_check_mark: |
-| acceptance/push_timing.gb             | :white_check_mark: |
-| acceptance/rapid_di_ei.gb             | :white_check_mark: |
-| acceptance/ret_cc_timing.gb           | :white_check_mark: |
-| acceptance/ret_timing.gb              | :white_check_mark: |
-| acceptance/reti_intr_timing.gb        | :white_check_mark: |
-| acceptance/reti_timing.gb             | :white_check_mark: |
-| acceptance/rst_timing.gb              | :white_check_mark: |
-
-| Misc Boot                 | StarGBC            |
-|---------------------------|--------------------|
-| misc/boot_div-A.gb        | :x:                |
-| misc/boot_div-cgb0.gb     | :x:                |
-| misc/boot_div-cgbABCDE.gb | :x:                |
-| misc/boot_hwio-C.gb       | :x:                |
-| misc/boot_regs-A.gb       | :x:                |
-| misc/boot_regs-cgb.gb     | :white_check_mark: |
-
-| Serial                                         | StarGBC |
-|------------------------------------------------|---------|
-| acceptance/serial/boot_sclk_align-dmgABCmgb.gb | :x:     |
-
-| PPU                                           | StarGBC            |
-|-----------------------------------------------|--------------------|
-| acceptance/ppu/hblank_ly_scx_timing-GS.gb     | :x:                |
-| acceptance/ppu/intr_1_2_timing-GS.gb          | :white_check_mark: |
-| acceptance/ppu/intr_2_0_timing.gb             | :white_check_mark: |
-| acceptance/ppu/intr_2_mode0_timing_sprites.gb | :x:                |
-| acceptance/ppu/intr_2_mode0_timing.gb         | :white_check_mark: |
-| acceptance/ppu/intr_2_mode3_timing.gb         | :white_check_mark: |
-| acceptance/ppu/intr_2_oam_ok_timing.gb        | :x:                |
-| acceptance/ppu/lcdon_timing-GS.gb             | :x:                |
-| acceptance/ppu/lcdon_write_timing-GS.gb       | :x:                |
-| acceptance/ppu/stat_irq_blocking.gb           | :x:                |
-| acceptance/ppu/stat_lyc_onoff.gb              | :x:                |
-| acceptance/ppu/vblank_stat_intr-GS.gb         | :x:                |
-| misc/ppu/vblank_stat_intr-C.gb                | :x:                |
-
-| oam_dma                          | StarGBC            |
-|----------------------------------|--------------------|
-| acceptance/oam_dma/basic.gb      | :white_check_mark: |
-| acceptance/oam_dma/reg_read.gb   | :white_check_mark: |
-| acceptance/oam_dma/sources-GS.gb | :white_check_mark: |
-
-| interrupts                       | StarGBC            |
-|----------------------------------|--------------------|
-| acceptance/interrupts/ie_push.gb | :white_check_mark: |
-
-| instr                   | StarGBC            |
-|-------------------------|--------------------|
-| acceptance/instr/daa.gb | :white_check_mark: |
-
-| bits                              | StarGBC            |
-|-----------------------------------|--------------------|
-| acceptance/bits/mem_oam.gb        | :white_check_mark: |
-| acceptance/bits/reg_f.gb          | :white_check_mark: |
-| acceptance/bits/unused_hwio-GS.gb | :x:                |
-| misc/bits/unused_hwio-C.gb        | :x:                |
-
-| manual_only                    | StarGBC |
-|--------------------------------|---------|
-| manual-only/sprite_priority.gb | :x:     |
-
-| emulator_only                           | StarGBC            |
-|-----------------------------------------|--------------------|
-| emulator-only/mbc1/bits_bank1.gb        | :white_check_mark: |
-| emulator-only/mbc1/bits_bank2.gb        | :white_check_mark: |
-| emulator-only/mbc1/bits_mode.gb         | :white_check_mark: |
-| emulator-only/mbc1/bits_ramg.gb         | :white_check_mark: |
-| emulator-only/mbc1/multicart_rom_8Mb.gb | :white_check_mark: |
-| emulator-only/mbc1/ram_64kb.gb          | :white_check_mark: |
-| emulator-only/mbc1/ram_256kb.gb         | :white_check_mark: |
-| emulator-only/mbc1/rom_1Mb.gb           | :white_check_mark: |
-| emulator-only/mbc1/rom_2Mb.gb           | :white_check_mark: |
-| emulator-only/mbc1/rom_4Mb.gb           | :white_check_mark: |
-| emulator-only/mbc1/rom_8Mb.gb           | :white_check_mark: |
-| emulator-only/mbc1/rom_16Mb.gb          | :white_check_mark: |
-| emulator-only/mbc1/rom_512kb.gb         | :white_check_mark: |
-
-| emulator_only                     | StarGBC            |
-|-----------------------------------|--------------------|
-| emulator-only/mbc2/bits_ramg.gb   | :white_check_mark: |
-| emulator-only/mbc2/bits_romb.gb   | :white_check_mark: |
-| emulator-only/mbc2/bits_unused.gb | :white_check_mark: |
-| emulator-only/mbc2/ram.gb         | :white_check_mark: |
-| emulator-only/mbc2/rom_1Mb.gb     | :white_check_mark: |
-| emulator-only/mbc2/rom_2Mb.gb     | :white_check_mark: |
-| emulator-only/mbc2/rom_512kb.gb   | :white_check_mark: |
-
-| emulator_only                   | StarGBC            |
-|---------------------------------|--------------------|
-| emulator-only/mbc5/rom_1Mb.gb   | :white_check_mark: |
-| emulator-only/mbc5/rom_2Mb.gb   | :white_check_mark: |
-| emulator-only/mbc5/rom_4Mb.gb   | :white_check_mark: |
-| emulator-only/mbc5/rom_8Mb.gb   | :white_check_mark: |
-| emulator-only/mbc5/rom_16Mb.gb  | :white_check_mark: |
-| emulator-only/mbc5/rom_32Mb.gb  | :white_check_mark: |
-| emulator-only/mbc5/rom_64Mb.gb  | :white_check_mark: |
-| emulator-only/mbc5/rom_512kb.gb | :white_check_mark: |
+| Test                                                                  | StarGBC            |
+|-----------------------------------------------------------------------|--------------------|
+| acid/dmg-acid2.gb                                                     | :x:                |
+| acid/cgb-acid2.gbc                                                    | :x:                |
+| acid/cgb-acid-hell.gbc                                                | :x:                |
+| cpu_instrs/01-special.gb                                              | :white_check_mark: |
+| cpu_instrs/02-interrupts.gb                                           | :white_check_mark: |
+| cpu_instrs/03-op sp,hl.gb                                             | :white_check_mark: |
+| cpu_instrs/04-op r,imm.gb                                             | :white_check_mark: |
+| cpu_instrs/05-op rp.gb                                                | :white_check_mark: |
+| cpu_instrs/06-ld r,r.gb                                               | :white_check_mark: |
+| cpu_instrs/07-jr,jp,call,ret,rst.gb                                   | :white_check_mark: |
+| cpu_instrs/08-misc instrs.gb                                          | :white_check_mark: |
+| cpu_instrs/09-op r,r.gb                                               | :white_check_mark: |
+| cpu_instrs/10-bit ops.gb                                              | :white_check_mark: |
+| cpu_instrs/11-op a,(hl).gb                                            | :white_check_mark: |
+| halt_bug                                                              | :white_check_mark: |
+| instr_timing.gb                                                       | :white_check_mark: |
+| interrupt_time                                                        | :x:                |
+| mem_timing/01-read_timing.gb                                          | :white_check_mark: |
+| mem_timing/02-write_timing.gb                                         | :white_check_mark: |
+| mem_timing/03-modify_timing.gb                                        | :white_check_mark: |
+| mem_timing-2/01-read_timing.gb                                        | :white_check_mark: |
+| mem_timing-2/02-write_timing.gb                                       | :white_check_mark: |
+| mem_timing-2/03-modify_timing.gb                                      | :white_check_mark: |
+| oam_bug/1-lcd_sync                                                    | :x:                |
+| oam_bug/2-causes                                                      | :x:                |
+| oam_bug/3-non_causes                                                  | :white_check_mark: |
+| oam_bug/4-scanline_timing                                             | :x:                |
+| oam_bug/5-timing_bug                                                  | :x:                |
+| oam_bug/6-timing_no_bug                                               | :white_check_mark: |
+| oam_bug/7-timing_effect                                               | :x:                |
+| oam_bug/8-instr_effect                                                | :x:                |
+| dmg_sound/01-registers.gb                                             | :white_check_mark: |
+| dmg_sound/02-len ctr.gb                                               | :white_check_mark: |
+| dmg_sound/03-trigger.gb                                               | :white_check_mark: |
+| dmg_sound/04-sweep.gb                                                 | :white_check_mark: |
+| dmg_sound/05-sweep details.gb                                         | :white_check_mark: |
+| dmg_sound/06-overflow on trigger.gb                                   | :white_check_mark: |
+| dmg_sound/07-len sweep period sync.gb                                 | :white_check_mark: |
+| dmg_sound/08-len ctr during power.gb                                  | :white_check_mark: |
+| dmg_sound/09-wave read while on.gb                                    | :white_check_mark: |
+| dmg_sound/10-wave trigger while on.gb                                 | :white_check_mark: |
+| dmg_sound/11-regs after power.gb                                      | :white_check_mark: |
+| dmg_sound/12-wave write while on.gb                                   | :white_check_mark: |
+| cgb_sound/01-registers.gb                                             | :white_check_mark: |
+| cgb_sound/02-len ctr.gb                                               | :white_check_mark: |
+| cgb_sound/03-trigger.gb                                               | :white_check_mark: |
+| cgb_sound/04-sweep.gb                                                 | :white_check_mark: |
+| cgb_sound/05-sweep details.gb                                         | :white_check_mark: |
+| cgb_sound/06-overflow on trigger.gb                                   | :white_check_mark: |
+| cgb_sound/07-len sweep period sync.gb                                 | :white_check_mark: |
+| cgb_sound/08-len ctr during power.gb                                  | :white_check_mark: |
+| cgb_sound/09-wave read while on.gb                                    | :white_check_mark: |
+| cgb_sound/10-wave trigger while on.gb                                 | :white_check_mark: |
+| cgb_sound/11-regs after power.gb                                      | :white_check_mark: |
+| cgb_sound/12-wave.gb                                                  | :x:                |
+| daid/ppu_scanline_bgp.gb (DMG)                                        | :x:                |
+| daid/ppu_scanline_bgp.gb (GBC)                                        | :x:                |
+| daid/stop_instr.gb (DMG)                                              | :x:                |
+| daid/stop_instr.gb (GBC)                                              | :x:                |
+| daid/stop_instr_gbc_mode3.gb                                          | :x:                |
+| daid/speed_switch_timing_ly.gbc                                       | :x:                |
+| ax6/rtc3test-1.gb                                                     | :x:                |
+| ax6/rtc3test-2.gb                                                     | :x:                |
+| ax6/rtc3test-3.gb                                                     | :x:                |
+| mooneye/acceptance/add_sp_e_timing.gb                                 | :white_check_mark: |
+| mooneye/acceptance/bits/mem_oam.gb                                    | :white_check_mark: |
+| mooneye/acceptance/bits/reg_f.gb                                      | :white_check_mark: |
+| mooneye/acceptance/bits/unused_hwio-GS.gb                             | :x:                |
+| mooneye/acceptance/boot_div-dmgABCmgb.gb                              | :x:                |
+| mooneye/acceptance/boot_hwio-dmgABCmgb.gb                             | :x:                |
+| mooneye/acceptance/boot_regs-dmgABC.gb                                | :white_check_mark: |
+| mooneye/acceptance/boot_div-dmg0.gb                                   | :x:                |
+| mooneye/acceptance/boot_div-S.gb                                      | :x:                |
+| mooneye/acceptance/boot_div2-s.gb                                     | :x:                |
+| mooneye/acceptance/boot_hwio-dmg0.gb                                  | :x:                |
+| mooneye/acceptance/boot_hwio-S.gb                                     | :x:                |
+| mooneye/acceptance/boot_regs-dmg0.gb                                  | :white_check_mark: |
+| mooneye/acceptance/boot_regs-mgb.gb                                   | :white_check_mark: |
+| mooneye/acceptance/boot_regs-sgb.gb                                   | :white_check_mark: |
+| mooneye/acceptance/boot_regs-sgb2.gb                                  | :white_check_mark: |
+| mooneye/acceptance/call_cc_timing.gb                                  | :white_check_mark: |
+| mooneye/acceptance/call_cc_timing2.gb                                 | :white_check_mark: |
+| mooneye/acceptance/call_timing.gb                                     | :white_check_mark: |
+| mooneye/acceptance/call_timing2.gb                                    | :white_check_mark: |
+| mooneye/acceptance/div_timing.gb                                      | :white_check_mark: |
+| mooneye/acceptance/di_timing-GS.gb                                    | :white_check_mark: |
+| mooneye/acceptance/ei_sequence.gb                                     | :white_check_mark: |
+| mooneye/acceptance/ei_timing.gb                                       | :white_check_mark: |
+| mooneye/acceptance/halt_ime0_ei.gb                                    | :white_check_mark: |
+| mooneye/acceptance/halt_ime0_nointr_timing.gb                         | :white_check_mark: |
+| mooneye/acceptance/halt_ime1_timing.gb                                | :white_check_mark: |
+| mooneye/acceptance/halt_ime1_timing2-GS.gb                            | :white_check_mark: |
+| mooneye/acceptance/if_ie_registers.gb                                 | :white_check_mark: |
+| mooneye/acceptance/instr/daa.gb                                       | :white_check_mark: |
+| mooneye/acceptance/interrupts/ie_push.gb                              | :white_check_mark: |
+| mooneye/acceptance/intr_timing.gb                                     | :white_check_mark: |
+| mooneye/acceptance/jp_cc_timing.gb                                    | :white_check_mark: |
+| mooneye/acceptance/jp_timing.gb                                       | :white_check_mark: |
+| mooneye/acceptance/ld_hl_sp_e_timing.gb                               | :white_check_mark: |
+| mooneye/acceptance/oam_dma/basic.gb                                   | :white_check_mark: |
+| mooneye/acceptance/oam_dma/reg_read.gb                                | :white_check_mark: |
+| mooneye/acceptance/oam_dma/sources-GS.gb                              | :white_check_mark: |
+| mooneye/acceptance/oam_dma_restart.gb                                 | :white_check_mark: |
+| mooneye/acceptance/oma_dma_start.gb                                   | :white_check_mark: |
+| mooneye/acceptance/oam_dma_timing.gb                                  | :white_check_mark: |
+| mooneye/acceptance/pop_timing.gb                                      | :white_check_mark: |
+| mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb                     | :x:                |
+| mooneye/acceptance/ppu/intr_1_2_timing-GS.gb                          | :white_check_mark: |
+| mooneye/acceptance/ppu/intr_2_0_timing.gb                             | :white_check_mark: |
+| mooneye/acceptance/ppu/intr_2_mode0_timing.gb                         | :white_check_mark: |
+| mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb                 | :x:                |
+| mooneye/acceptance/ppu/intr_2_mode3_timing.gb                         | :white_check_mark: |
+| mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb                        | :x:                |
+| mooneye/acceptance/ppu/lcdon_timing-GS.gb                             | :x:                |
+| mooneye/acceptance/ppu/lcdon_write_timing-GS.gb                       | :x:                |
+| mooneye/acceptance/ppu/stat_irq_blocking.gb                           | :x:                |
+| mooneye/acceptance/ppu/stat_lyc_onoff.gb                              | :x:                |
+| mooneye/acceptance/ppu/vblank_stat_intr-GS.gb                         | :x:                |
+| mooneye/acceptance/push_timing.gb                                     | :white_check_mark: |
+| mooneye/acceptance/rapid_di_ei.gb                                     | :white_check_mark: |
+| mooneye/acceptance/reti_intr_timing.gb                                | :white_check_mark: |
+| mooneye/acceptance/reti_timing.gb                                     | :white_check_mark: |
+| mooneye/acceptance/ret_cc_timing.gb                                   | :white_check_mark: |
+| mooneye/acceptance/ret_timing.gb                                      | :white_check_mark: |
+| mooneye/acceptance/rst_timing.gb                                      | :white_check_mark: |
+| mooneye/acceptance/serial/boot_sclk_align-dmgABCmgb.gb                | :x:                |
+| mooneye/acceptance/timer/div_write.gb                                 | :white_check_mark: |
+| mooneye/acceptance/timer/rapid_toggle.gb                              | :white_check_mark: |
+| mooneye/acceptance/timer/tim00.gb                                     | :white_check_mark: |
+| mooneye/acceptance/timer/tim00_div_trigger.gb                         | :white_check_mark: |
+| mooneye/acceptance/timer/tim01.gb                                     | :white_check_mark: |
+| mooneye/acceptance/timer/tim01_div_trigger.gb                         | :white_check_mark: |
+| mooneye/acceptance/timer/tim10.gb                                     | :white_check_mark: |
+| mooneye/acceptance/timer/tim10_div_trigger.gb                         | :white_check_mark: |
+| mooneye/acceptance/timer/tim11.gb                                     | :white_check_mark: |
+| mooneye/acceptance/timer/tim11_div_trigger.gb                         | :white_check_mark: |
+| mooneye/acceptance/timer/tima_reload.gb                               | :white_check_mark: |
+| mooneye/acceptance/timer/tima_write_reloading.gb                      | :white_check_mark: |
+| mooneye/acceptance/timer/tma_write_reloading.gb                       | :white_check_mark: |
+| mooneye/emulator-only/mbc1/bits_bank1.gb                              | :white_check_mark: |
+| mooneye/emulator-only/mbc1/bits_bank2.gb                              | :white_check_mark: |
+| mooneye/emulator-only/mbc1/bits_mode.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc1/bits_ramg.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc1/multicart_rom_8Mb.gb                       | :white_check_mark: |
+| mooneye/emulator-only/mbc1/ram_256kb.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc1/ram_64kb.gb                                | :white_check_mark: |
+| mooneye/emulator-only/mbc1/rom_16Mb.gb                                | :white_check_mark: |
+| mooneye/emulator-only/mbc1/rom_1Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc1/rom_2Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc1/rom_4Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc1/rom_512kb.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc1/rom_8Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc2/bits_ramg.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc2/bits_romb.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc2/bits_unused.gb                             | :white_check_mark: |
+| mooneye/emulator-only/mbc2/ram.gb                                     | :white_check_mark: |
+| mooneye/emulator-only/mbc2/rom_1Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc2/rom_2Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc2/rom_512kb.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_16Mb.gb                                | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_1Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_2Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_32Mb.gb                                | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_4Mb.gb                                 | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_512kb.gb                               | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_64Mb.gb                                | :white_check_mark: |
+| mooneye/emulator-only/mbc5/rom_8Mb.gb                                 | :white_check_mark: |
+| mooneye/manual-only/sprite_priority.gb                                | :x:                |
+| mooneye/misc/boot_div-cgbABCDE.gb                                     | :x:                |
+| mooneye/misc/boot_regs-cgb.gb                                         | :white_check_mark: |
+| mooneye/misc/boot_div-A.gb                                            | :x:                |
+| mooneye/misc/boot_div-cgb0.gb                                         | :x:                |
+| mooneye/misc/boot_hwio-C.gb                                           | :x:                |
+| mooneye/misc/boot_regs-A.gb                                           | :x:                |
+| mooneye/misc/bits/unused_hwio-C.gb                                    | :x:                |
+| mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :x:                |
+| samesuite/apu/channel_1/channel_1_align.gb                            | :x:                |
+| samesuite/apu/channel_1/channel_1_align-cpu.gb                        | :x:                |
+| samesuite/apu/channel_1/channel_1_delay.gb                            | :x:                |
+| samesuite/apu/channel_1/channel_1_duty.gb                             | :x:                |
+| samesuite/apu/channel_1/channel_1_duty_delay.gb                       | :x:                |
+| samesuite/apu/channel_1/channel_1_freq_change.gb                      | :x:                |
+| samesuite/apu/channel_1/channel_1_nrx2_glitch.gb                      | :x:                |
+| samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb                | :x:                |
+| samesuite/apu/channel_1/channel_1_restart.gb                          | :x:                |
+| samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb              | :x:                |
+| samesuite/apu/channel_1/channel_1_stop_div.gb                         | :x:                |
+| samesuite/apu/channel_1/channel_1_stop_restart.gb                     | :x:                |
+| samesuite/apu/channel_1/channel_1_sweep.gb                            | :x:                |
+| samesuite/apu/channel_1/channel_1_sweep_restart.gb                    | :x:                | 
+| samesuite/apu/channel_1/channel_1_sweep_restart_2.gb                  | :x:                |
+| samesuite/apu/channel_1/channel_1_volume.gb                           | :x:                |
+| samesuite/apu/channel_1/channel_1_volume_div.gb                       | :x:                |
+| samesuite/apu/channel_2/channel_2_align.gb                            | :x:                |
+| samesuite/apu/channel_2/channel_2_align_cpu.gb                        | :x:                |
+| samesuite/apu/channel_2/channel_2_delay.gb                            | :x:                |
+| samesuite/apu/channel_2/channel_2_duty.gb                             | :x:                |
+| samesuite/apu/channel_2/channel_2_duty_delay.gb                       | :x:                |
+| samesuite/apu/channel_2/channel_2_freq_change.gb                      | :x:                |
+| samesuite/apu/channel_2/channel_2_nrx2_glitch.gb                      | :x:                |
+| samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb                | :x:                |
+| samesuite/apu/channel_2/channel_2_restart.gb                          | :x:                |
+| samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb              | :x:                |
+| samesuite/apu/channel_2/channel_2_stop_div.gb                         | :x:                |
+| samesuite/apu/channel_2/channel_2_stop_restart.gb                     | :x:                |
+| samesuite/apu/channel_2/channel_2_volume_.gb                          | :x:                |
+| samesuite/apu/channel_2/channel_2_volume_div.gb                       | :x:                |
+| samesuite/apu/channel_3/channel_3_and_glitch.gb                       | :x:                |
+| samesuite/apu/channel_3/channel_3_delay.gb                            | :x:                |
+| samesuite/apu/channel_3/channel_3_first_sample.gb                     | :x:                |
+| samesuite/apu/channel_3/channel_3_freq_change_delay.gb                | :x:                |
+| samesuite/apu/channel_3/channel_3_restart_delay.gb                    | :x:                |
+| samesuite/apu/channel_3/channel_3_restart_during_delay.gb             | :x:                |
+| samesuite/apu/channel_3/channel_3_restart_stop_delay.gb               | :x:                |
+| samesuite/apu/channel_3/channel_3_shift_delay.gb                      | :x:                |
+| samesuite/apu/channel_3/channel_3_shift_skip_delay.gb                 | :x:                |
+| samesuite/apu/channel_3/channel_3_stop_delay.gb                       | :x:                |
+| samesuite/apu/channel_3/channel_3_stop_div.gb                         | :x:                |
+| samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb            | :x:                |
+| samesuite/apu/channel_3/channel_3_wave_ram_sync.gb                    | :x:                |
+| samesuite/apu/channel_4/channel_4_align.gb                            | :x:                |
+| samesuite/apu/channel_4/channel_4_delay.gb                            | :x:                |
+| samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb           | :x:                |
+| samesuite/apu/channel_4/channel_4_frequency_alignment.gb              | :x:                |
+| samesuite/apu/channel_4/channel_4_freq_change.gb                      | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr.gb                             | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr15.gb                           | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr_15_7.gb                        | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr_7_15.gb                        | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :x:                |
+| samesuite/apu/channel_4/channel_4_volume_div.gb                       | :x:                |
+| samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
+| samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
+| samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |
+| samesuite/dma_gdma_addr_mask.gb                                       | :x:                |
+| samesuite_dma/hdma_lcd_off.gb                                         | :x:                |
+| samesuite/dma/hdma_mode0.gb                                           | :x:                |
+| samesuite/ppu/blocking_bgpi_increase.gb                               | :x:                |
+| samesuite/sgb/command_mit_req.gb                                      | :x:                |
+| samesuite/sgb/command_mit_req_1_incrementing.gb                       | :x:                |
+| hacktix/bully.gb (DMG)                                                | :x:                |
+| hacktix/bully.gb (GBC)                                                | :x:                |
+| hacktix/strikethrough.gb                                              | :x:                |
+| cpp/rtc-invalid-banks-test.gb                                         | :x:                |
+| cpp/latch-rtc-test.gb                                                 | :x:                |
+| cpp/ramg-mbc3-test.gb                                                 | :x:                |
+| mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb (DMG)                  | :x:                |
+| mealybug-tearoom-tests/ppu/m3_bgp_change.gb (DMG)                     | :x:                |
+| mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb (DMG)             | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb (DMG)              | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb (DMG)             | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb (DMG)             | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb (DMG)     | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb (DMG)           | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb (DMG)       | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_change.gb (DMG)           | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb (DMG)       | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_e_change_multiple.gb (DMG)     | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb (DMG) | :x:                |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_map_change.gb (DMG)            | :x:                |
+| mealybug-tearoom-tests/ppu/m3_obp0_change_gb (DMG)                    | :x:                |
+| mealybug-tearoom-tests/ppu/m3_scx_high_5_bits.gb (DMG)                | :x:                |
+| mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb (DMG)                 | :x:                |
+| mealybug-tearoom-tests/ppu/m3_scy_change.gb (DMG)                     | :x:                |
+| mealybug-tearoom-tests/ppu/m3_window_timing.gb (DMG)                  | :x:                |
+| mealybug-tearoom-tests/ppu/m3_window_timing_wx_0.gb (DMG)             | :x:                |
+| mealybug-tearoom-tests/ppu/m3_wx_4_change.gb (DMG)                    | :x:                |
+| mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb (DMG)            | :x:                |
+| mealybug-tearoom-tests/ppu/m3_wx_5_change.gb (DMG)                    | :x:                |
+| mealybug-tearoom-tests/ppu/m3_x_6_change.gb (DMG)                     | :x:                |
