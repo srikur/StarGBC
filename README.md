@@ -102,7 +102,7 @@ Current Performance: (131/271)
 | daid/stop_instr_gbc_mode3.gb                                          | :x:                |
 | daid/speed_switch_timing_ly.gbc                                       | :x:                |
 | ax6/rtc3test-1.gb                                                     | :x:                |
-| ax6/rtc3test-2.gb                                                     | :x:                |
+| ax6/rtc3test-2.gb                                                     | :white_check_mark: |
 | ax6/rtc3test-3.gb                                                     | :x:                |
 | mooneye/acceptance/add_sp_e_timing.gb                                 | :white_check_mark: |
 | mooneye/acceptance/bits/mem_oam.gb                                    | :white_check_mark: |
@@ -275,8 +275,9 @@ Current Performance: (131/271)
 | samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
 | samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
 | samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |
-| samesuite/dma_gdma_addr_mask.gb                                       | :x:                |
-| samesuite_dma/hdma_lcd_off.gb                                         | :x:                |
+| samesuite/dma/gbc_dma_cont.gb                                         | :white_check_mark: |
+| samesuite/dma/gdma_addr_mask.gb                                       | :x:                |
+| samesuite/dma/hdma_lcd_off.gb                                         | :x:                |
 | samesuite/dma/hdma_mode0.gb                                           | :x:                |
 | samesuite/ppu/blocking_bgpi_increase.gb                               | :x:                |
 | samesuite/sgb/command_mit_req.gb                                      | :x:                |
@@ -284,9 +285,9 @@ Current Performance: (131/271)
 | hacktix/bully.gb (DMG)                                                | :x:                |
 | hacktix/bully.gb (GBC)                                                | :x:                |
 | hacktix/strikethrough.gb                                              | :x:                |
-| cpp/rtc-invalid-banks-test.gb                                         | :x:                |
-| cpp/latch-rtc-test.gb                                                 | :x:                |
-| cpp/ramg-mbc3-test.gb                                                 | :x:                |
+| cpp/rtc-invalid-banks-test.gb                                         | :white_check_mark: |
+| cpp/latch-rtc-test.gb                                                 | :white_check_mark: |
+| cpp/ramg-mbc3-test.gb                                                 | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb (DMG)                  | :x:                |
 | mealybug-tearoom-tests/ppu/m3_bgp_change.gb (DMG)                     | :x:                |
 | mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb (DMG)             | :x:                |

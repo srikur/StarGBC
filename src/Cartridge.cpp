@@ -21,6 +21,7 @@ std::string Cartridge::RemoveExtension(const std::string &filename) {
 
 Cartridge::Cartridge(const std::string &romLocation) {
     rtc = std::make_unique<RealTimeClock>();
+    rtc->RecalculateZeroTime();
     ReadFile(romLocation);
     romBankCount = gameRom_.size() / 0x4000;
     lowRomMask = std::bit_width(romBankCount) - 1;
@@ -443,7 +444,7 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
             ramBank = value & 0x0F;
             break;
         case 0x6000 ... 0x7FFF:
-            if ((value & 0x01) != 0) rtc->Tick();
+            std::memcpy(&rtc->latchedClock, &rtc->realClock, sizeof(rtc->latchedClock));
             break;
         case 0xA000 ... 0xBFFF:
             if (ramEnabled) {
