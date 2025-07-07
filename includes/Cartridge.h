@@ -45,7 +45,6 @@ class Cartridge {
     std::string savepath_;
     std::vector<uint8_t> gameRom_;
     std::vector<uint8_t> gameRam_;
-    std::unique_ptr<RealTimeClock> rtc = nullptr;
 
     MBC mbc{MBC::None};
     uint32_t gameRamSize{0x00};
@@ -92,6 +91,8 @@ public:
     void WriteByte(uint16_t address, uint8_t value);
 
     inline void HandleRamEnableEdge(bool enable);
+
+    std::unique_ptr<RealTimeClock> rtc = nullptr;
 
     bool SaveState(std::ofstream &stateFile) const {
         try {
