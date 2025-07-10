@@ -91,24 +91,6 @@ public:
             pc = 0x100;
             InitializeSystem();
         }
-        // Initialize DIV
-        const uint16_t initialDiv = [&] {
-            using enum Mode;
-            switch (mode_) {
-                case DMG:
-                case MBG: return 0xAD;
-                case SGB:
-                case SGB2: return 0xD9;
-                case CGB_DMG:
-                case CGB_GBC:
-                case AGB_DMG:
-                case AGB_GBC:
-                case AGS_DMG:
-                case AGS_GBC: return 0x1F;
-                default: return 0x00;
-            }
-        }();
-        bus->timer_.divCounter = initialDiv << 8;
         bus->cartridge_->rtc->realRTC = realRTC;
     }
 
