@@ -165,7 +165,7 @@ Current Performance: (138/271)
 | mooneye/acceptance/ret_cc_timing.gb                                   | :white_check_mark: |
 | mooneye/acceptance/ret_timing.gb                                      | :white_check_mark: |
 | mooneye/acceptance/rst_timing.gb                                      | :white_check_mark: |
-| mooneye/acceptance/serial/boot_sclk_align-dmgABCmgb.gb                | :x:                |
+| mooneye/acceptance/serial/boot_sclk_align-dmgABCmgb.gb                | :white_check_mark: |
 | mooneye/acceptance/timer/div_write.gb                                 | :white_check_mark: |
 | mooneye/acceptance/timer/rapid_toggle.gb                              | :white_check_mark: |
 | mooneye/acceptance/timer/tim00.gb                                     | :white_check_mark: |
@@ -312,3 +312,4 @@ Current Performance: (138/271)
 | mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb (DMG)            | :x:                |
 | mealybug-tearoom-tests/ppu/m3_wx_5_change.gb (DMG)                    | :x:                |
 | mealybug-tearoom-tests/ppu/m3_x_6_change.gb (DMG)                     | :x:                |
+| mbc3-tester/mbc3-tester.gb                                            | :white_check_mark: |

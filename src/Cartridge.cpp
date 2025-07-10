@@ -437,8 +437,7 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
         }
         break;
         case 0x2000 ... 0x3FFF:
-            romBank = value ? (value & 0x7F) : 1;
-            if (romBank == 0) romBank = 1;
+            romBank = value ? value : 1;
             break;
         case 0x4000 ... 0x5FFF:
             ramBank = value & 0x0F;
