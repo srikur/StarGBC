@@ -78,8 +78,7 @@ uint32_t Gameboy::RunHDMA() const {
             return blocks * cyclesPerBlock;
         }
         case GPU::HDMAMode::HDMA: {
-            if (!bus->gpu_->hblank)
-                return 0;
+            if (!bus->gpu_->hblank) return 0;
 
             const uint16_t memSource = bus->hdmaSource;
             for (uint16_t i = 0; i < 0x10; ++i) {
@@ -89,12 +88,10 @@ uint32_t Gameboy::RunHDMA() const {
             bus->hdmaSource += 0x10;
             bus->hdmaDestination += 0x10;
             bus->hdmaRemain = (bus->hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->hdmaRemain - 1);
-            if (bus->hdmaRemain == 0x7F)
-                bus->hdmaActive = false;
+            if (bus->hdmaRemain == 0x7F) bus->hdmaActive = false;
             return cyclesPerBlock;
         }
-        default:
-            throw UnreachableCodeException("Gameboy::RunHDMA – invalid mode");
+        default: throw UnreachableCodeException("Gameboy::RunHDMA – invalid mode");
     }
 }
 
@@ -157,6 +154,32 @@ void Gameboy::SetThrottle(const bool throttle) {
     throttleSpeed = throttle;
 }
 
+// enum class CPUState {
+//     Running,
+//     Halted,
+//     Stopped
+// };
+//
+// enum class InterruptState {
+//
+// };
+
+// void AdvanceFrame() {
+//     ProcessInterrupts();
+//     // Tick cpu
+//     ExecuteMicroOp();
+//     // Tick RTC
+//     bus->cartridge_->rtc->Tick();
+//     // Tick audio
+//     bus->audio_->Tick();
+//     // Tick timers
+//     bus->UpdateTimers();
+//     // Tick serial
+//     bus->UpdateSerial();
+//     // Tick graphics
+//     bus->UpdateGraphics();
+// }
+
 void Gameboy::AdvanceFrames(const uint32_t frameBudget) {
     stepCycles = 0;
     while (stepCycles < frameBudget) {
@@ -206,7 +229,9 @@ void Gameboy::TickM(const uint32_t mCycles, const bool countDoubleSpeed) {
     if (mCycles == 0) return;
     const uint8_t speedFactor = countDoubleSpeed && bus->speed == Bus::Speed::Double ? 2 : 1;
     const uint32_t tCycles = mCycles * 4 * speedFactor;
-    bus->cartridge_->rtc->Tick();
+    for (uint32_t i = 0; i < mCycles * 4; i++) {
+        bus->UpdateRTC();
+    }
     bus->audio_->Tick(tCycles);
     bus->UpdateTimers(tCycles);
     bus->UpdateSerial(tCycles);

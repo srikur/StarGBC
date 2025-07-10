@@ -25,6 +25,9 @@ class RealTimeClock {
     };
 
 public:
+    // t-cycle ticker per second
+    static constexpr uint64_t RTC_TICKS_PER_SECOND = 4194304;
+
     explicit RealTimeClock() = default;
 
     void Tick();
@@ -38,6 +41,8 @@ public:
     Clock realClock{};
     Clock latchedClock{};
     bool halted{false};
+    bool realRTC{false};
+    uint64_t counter{0};
 
     void Load(std::ifstream &stateFile) {
         stateFile.read(reinterpret_cast<char *>(&zeroTime_), sizeof(zeroTime_));

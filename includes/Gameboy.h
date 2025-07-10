@@ -30,6 +30,7 @@ struct GameboySettings {
     Mode mode = Mode::None;
     bool runBootrom = false;
     bool debugStart = false;
+    bool realRTC = false;
 };
 
 class Gameboy {
@@ -74,7 +75,7 @@ public:
     friend class Instructions;
 
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
-                     const bool debugStart) : rom_path_(std::move(rom_path)),
+                     const bool debugStart, const bool realRTC) : rom_path_(std::move(rom_path)),
                                               bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
         if (mode_ != Mode::None) {
             bus->gpu_->hardware = mode_ == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
@@ -108,6 +109,7 @@ public:
             }
         }();
         bus->timer_.divCounter = initialDiv << 8;
+        bus->cartridge_->rtc->realRTC = realRTC;
     }
 
     Gameboy(const Gameboy &other) = delete;
@@ -121,7 +123,7 @@ public:
     ~Gameboy() = default;
 
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) {
-        return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart);
+        return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart, settings.realRTC);
     }
 
     void UpdateEmulator();
