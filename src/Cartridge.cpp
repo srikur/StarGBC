@@ -46,7 +46,7 @@ void Cartridge::LoadRam(const uint16_t size) {
 void Cartridge::DetermineMBC() {
     auto provisionRam = [&](const uint16_t sz, const bool load) {
         gameRamSize = sz;
-        if (load) { LoadRam(sz); } else { gameRam_.assign(sz, 0); }
+        if (load && gameRamSize) { LoadRam(sz); } else { gameRam_.assign(sz, 0); }
     };
 
     mbc = [&]() -> MBC {
@@ -307,7 +307,7 @@ uint8_t Cartridge::ReadByteMBC1(const uint16_t address) const {
         case 0x0000 ... 0x3FFF: return gameRom_[((HandleRomBank(address) * 0x4000) + address) % gameRom_.size()];
         case 0x4000 ... 0x7FFF: return gameRom_[(HandleRomBank(address) * 0x4000) | (address & 0x3FFF)];
         case 0xA000 ... 0xBFFF: {
-            if (!ramEnabled) return 0xFF;
+            if (!ramEnabled || gameRamSize == 0) return 0xFF;
             const size_t bank = HandleRamBank();
             const size_t offset = (address - 0xA000) + bank * 0x2000;
             if (offset >= gameRamSize) return 0xFF;
@@ -324,7 +324,7 @@ uint8_t Cartridge::ReadByteMBC2(const uint16_t address) const {
         case 0x4000 ... 0x7FFF:
             return gameRom_[(bank1 & 0xF & BankBitmask()) * 0x4000ULL | (address & 0x3FFF)];
         case 0xA000 ... 0xBFFF: {
-            if (!ramEnabled) return 0xFF;
+            if (!ramEnabled || gameRamSize == 0) return 0xFF;
             const uint8_t lower = gameRam_[(address - 0xA000) % gameRam_.size()] & 0x0F;
             return 0xF0 | lower;
         }
@@ -340,7 +340,7 @@ uint8_t Cartridge::ReadByteMBC3(const uint16_t address) const {
             return gameRom_[static_cast<uint64_t>(romBank & BankBitmask()) * 0x4000ULL + (address - 0x4000)];
         case 0xA000 ... 0xBFFF: {
             if (!ramEnabled) return 0xFF;
-            if (ramBank <= 0x03) {
+            if (ramBank <= 0x03 && gameRamSize > 0) {
                 return gameRam_[static_cast<uint64_t>(ramBank) * 0x2000ULL + (address - 0xA000)];
             }
             return rtc->ReadRTC(ramBank);
@@ -353,7 +353,7 @@ uint8_t Cartridge::ReadByteMBC5(const uint16_t address) const {
     switch (address) {
         case 0x0000 ... 0x3FFF: return gameRom_[address];
         case 0x4000 ... 0x7FFF: return gameRom_[static_cast<uint64_t>(romBank & BankBitmask()) * 0x4000ULL + (address - 0x4000)];
-        case 0xA000 ... 0xBFFF: return ramEnabled
+        case 0xA000 ... 0xBFFF: return ramEnabled && gameRamSize > 0
                                            ? gameRam_[static_cast<uint64_t>(ramBank) * 0x2000ULL + (address - 0xA000)]
                                            : 0xFF;
         default: return 0xFF;
@@ -394,7 +394,7 @@ void Cartridge::WriteByteMBC1(const uint16_t address, const uint8_t value) {
             mode = value & 0x01;
             break;
         case 0xA000 ... 0xBFFF:
-            if (ramEnabled) {
+            if (ramEnabled && gameRamSize > 0) {
                 gameRam_[(HandleRamBank() * 0x2000ULL + (address - 0xA000))] = value;
                 ramDirty_ = true;
             }
@@ -418,7 +418,7 @@ void Cartridge::WriteByteMBC2(const uint16_t address, const uint8_t value) {
             break;
         }
         case 0xA000 ... 0xBFFF: {
-            if (ramEnabled) {
+            if (ramEnabled && gameRamSize > 0) {
                 gameRam_[(address - 0xA000) % gameRam_.size()] = value & 0xF;
                 ramDirty_ = true;
             }
@@ -449,7 +449,7 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
         case 0xA000 ... 0xBFFF:
             if (ramEnabled) {
                 ramDirty_ = true;
-                if (ramBank <= 0x03) {
+                if (ramBank <= 0x03 && gameRamSize > 0) {
                     gameRam_[static_cast<uint64_t>(ramBank) * 0x2000ULL + (address - 0xA000)] = value;
                 } else {
                     rtc->WriteRTC(ramBank, value);
