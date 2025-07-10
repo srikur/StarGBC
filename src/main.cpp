@@ -40,6 +40,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
             settings.mode = Mode::DMG;
         } else if (args[i] == "--debugStart") {
             settings.debugStart = true;
+        } else if (args[i] == "--realRTC") {
+            settings.realRTC = true;
         } else if (args[i] == "--bios") {
             if (i + 1 < args.size()) {
                 settings.biosPath = args[++i];
