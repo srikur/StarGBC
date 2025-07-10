@@ -232,6 +232,15 @@ void Bus::UpdateTimers(const uint32_t cycles) {
     }
 }
 
+void Bus::UpdateRTC() const {
+    // Called every T-cycle, ticks rtc counter and ticks rtc every 1000ms
+    if (!cartridge_->rtc->halted) cartridge_->rtc->counter++;
+    if (cartridge_->rtc->counter == RealTimeClock::RTC_TICKS_PER_SECOND) {
+        cartridge_->rtc->counter = 0;
+        cartridge_->rtc->Tick();
+    }
+}
+
 void Bus::UpdateDMA(const uint32_t cycles) {
     for (uint32_t i = 0; i < cycles; ++i) {
         if (dma_.transferComplete) {
