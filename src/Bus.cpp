@@ -40,7 +40,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
         case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0x00;
         case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
-        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address, gpu_->hardware == GPU::Hardware::CGB);
+        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
         case 0xFF0F: return interruptFlag | 0xE0;
         case 0xFF10 ... 0xFF3F: return audio_->ReadByte(address);
@@ -85,7 +85,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
-        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, gpu_->hardware == GPU::Hardware::CGB);
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, gpu_->hardware == GPU::Hardware::CGB);
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
             break;
@@ -269,14 +269,10 @@ void Bus::UpdateDMA(const uint32_t cycles) {
     }
 }
 
-void Bus::UpdateSerial(uint32_t tCycles) {
+void Bus::UpdateSerial(const uint32_t tCycles) {
     if (!serial_.active_) return;
-    while (tCycles) {
-        const uint32_t step = (tCycles < serial_.ticksUntilShift_) ? tCycles : serial_.ticksUntilShift_;
-        tCycles -= step;
-        serial_.ticksUntilShift_ -= step;
-
-        if (serial_.ticksUntilShift_ == 0) {
+    for (uint32_t i = 0; i < tCycles; i++) {
+        if (--serial_.ticksUntilShift_ == 0) {
             serial_.ShiftOneBit();
             if (++serial_.bitsShifted_ == 8) {
                 serial_.active_ = false;
