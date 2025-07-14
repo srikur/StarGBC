@@ -676,16 +676,13 @@ public:
         frameSeqStep = (frameSeqStep + 1) % 8;
     }
 
-    void Tick(const uint32_t tCycles) {
+    void Tick() {
         if (!audioEnabled) return;
-
-        for (uint32_t i = 0; i < tCycles; ++i) {
-            ch3.alternateRead = false;
-            ch1.Tick();
-            ch2.Tick();
-            ch3.Tick();
-            ch4.Tick();
-        }
+        ch3.alternateRead = false;
+        ch1.Tick();
+        ch2.Tick();
+        ch3.Tick();
+        ch4.Tick();
     }
 
     void WriteAudioControl(const uint8_t value) {

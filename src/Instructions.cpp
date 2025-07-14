@@ -1,94 +1,43 @@
 #include "Instructions.h"
 
-uint16_t Instructions::ReadNextWord(Gameboy &gameboy) {
-    const uint16_t lower = ReadNextByte(gameboy);
-    const uint16_t higher = ReadNextByte(gameboy);
-    const uint16_t word = higher << 8 | lower;
-    return word;
-}
-
-uint8_t Instructions::ReadNextByte(Gameboy &gameboy) {
-    const uint16_t byte = gameboy.bus->ReadByte(gameboy.pc++);
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    return byte;
-}
-
-uint8_t Instructions::ReadByte(Gameboy &gameboy, const uint16_t address) {
-    const uint8_t byte = gameboy.bus->ReadByte(address);
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    return byte;
-}
-
-void Instructions::WriteWord(Gameboy &gameboy, const uint16_t address, const uint16_t value) {
-    WriteByte(gameboy, address, static_cast<uint8_t>(value & 0xFF));
-    WriteByte(gameboy, address + 1, static_cast<uint8_t>(value >> 8));
-}
-
-void Instructions::WriteByte(Gameboy &gameboy, const uint16_t address, const uint8_t value) {
-    gameboy.bus->WriteByte(address, value);
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-}
-
-uint8_t Instructions::RLCAddr(Gameboy &gameboy) {
-    uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());
-    const uint8_t old = (byte & 0x80) != 0 ? 1 : 0;
+template<Register source>
+bool Instructions::RLC(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
+    const uint8_t old = value & 0x80 ? 1 : 0;
     gameboy.regs->SetCarry(old != 0);
-    byte = byte << 1 | old;
-    WriteByte(gameboy, gameboy.regs->GetHL(), byte);
-    gameboy.regs->SetZero(byte == 0);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-    return 4;
-}
-
-uint8_t Instructions::RLC(const ArithmeticSource source, const Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        using enum ArithmeticSource;
-        switch (source) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::RLC -- improper ArithmeticSource");
-        }
-    }();
-
-    const uint8_t old = (value & 0x80) != 0 ? 1 : 0;
-    gameboy.regs->SetCarry(old != 0);
-    const uint8_t newValue = (value << 1) | old;
+    const uint8_t newValue = value << 1 | old;
     gameboy.regs->SetZero(newValue == 0);
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Instructions::RLC -- improper ArithmeticSource");
-    }
-
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs.get()->*sourceReg = newValue;
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-
-    return 2;
+    return true;
 }
 
-uint8_t Instructions::DAA(const Gameboy &gameboy) {
+bool Instructions::RLCAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t old = byte & 0x80 ? 1 : 0;
+        gameboy.regs->SetCarry(old != 0);
+        byte = byte << 1 | old;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::DAA(Gameboy &gameboy) {
     uint8_t adjust = 0;
     bool carry = gameboy.regs->FlagCarry();
 
@@ -111,107 +60,166 @@ uint8_t Instructions::DAA(const Gameboy &gameboy) {
     gameboy.regs->SetCarry(carry);
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetHalf(false);
-
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-
-uint8_t Instructions::RETI(Gameboy &gameboy) {
-    const uint16_t newPC = pop(gameboy);
-    gameboy.pc = newPC;
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    gameboy.bus->interruptMasterEnable = true;
-    return 4;
+bool Instructions::RETI(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.sp++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.sp++)) << 8;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.pc = word;
+        gameboy.bus->interruptMasterEnable = true;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::DI(const Gameboy &gameboy) {
+bool Instructions::DI(Gameboy &gameboy) {
     gameboy.bus->interruptDelay = false;
     gameboy.bus->interruptMasterEnable = false;
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::EI(Gameboy &gameboy) {
+bool Instructions::EI(Gameboy &gameboy) {
     if (!gameboy.bus->interruptMasterEnable) {
         gameboy.icount = 0;
         gameboy.bus->interruptDelay = true;
         gameboy.bus->interruptMasterEnable = true;
     }
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::HALT(Gameboy &gameboy) {
-    if (const bool bug = (gameboy.bus->interruptEnable & gameboy.bus->interruptFlag & 0x1F) != 0;
-        !gameboy.bus->interruptMasterEnable && bug) {
+bool Instructions::HALT(Gameboy &gameboy) {
+    if (const bool bug = (gameboy.bus->interruptEnable & gameboy.bus->interruptFlag & 0x1F) != 0; !gameboy.bus->interruptMasterEnable && bug) {
         gameboy.haltBug = true;
         gameboy.halted = false;
     } else {
         gameboy.haltBug = false;
         gameboy.halted = true;
+        std::fprintf(stderr, "Halted at address %04X\n", gameboy.pc);
     }
-
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-
-uint8_t Instructions::RST(const RSTTargets target, Gameboy &gameboy) {
-    const uint16_t location = [&]() -> uint16_t {
-        using enum RSTTargets;
-        switch (target) {
-            case H00: return 0x00;
-            case H08: return 0x08;
-            case H10: return 0x10;
-            case H18: return 0x18;
-            case H20: return 0x20;
-            case H28: return 0x28;
-            case H30: return 0x30;
-            case H38: return 0x38;
-            default: throw UnreachableCodeException("Instructions::RST -- improper RSTTarget");
-        }
-    }();
-
-    push(gameboy.pc, gameboy);
-    gameboy.pc = location;
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    return 4;
-}
-
-uint8_t Instructions::CALL(const JumpTest test, Gameboy &gameboy) {
-    const bool jumpCondition = [&]() -> bool {
-        switch (test) {
-            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
-            case JumpTest::Zero: return gameboy.regs->FlagZero();
-            case JumpTest::Carry: return gameboy.regs->FlagCarry();
-            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
-            case JumpTest::Always: return true;
-            default: throw UnreachableCodeException("Instructions::CALL -- improper JumpTest");
-        }
-    }();
-
-    const uint16_t newPC = ReadNextWord(gameboy);
-
-    if (jumpCondition) {
-        push(gameboy.pc, gameboy);
-        gameboy.pc = newPC;
-        gameboy.TickM(1, true);
-        gameboy.cyclesThisInstruction += 1;
+template<RSTTarget target>
+bool Instructions::RST(Gameboy &gameboy) {
+    constexpr auto location = GetRSTAddress<target>();
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.sp -= 1;
+        return false;
     }
-
-    return jumpCondition ? 6 : 3;
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.bus->WriteByte(gameboy.sp, (gameboy.pc & 0xFF00) >> 8);
+        gameboy.sp -= 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.bus->WriteByte(gameboy.sp, gameboy.pc & 0xFF);
+        gameboy.pc = location;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::RLCA(const Gameboy &gameboy) {
+bool Instructions::CALLUnconditional(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc++)) << 8;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.sp -= 1;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.bus->WriteByte(gameboy.sp, (gameboy.pc & 0xFF00) >> 8);
+        gameboy.sp -= 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 6) {
+        gameboy.bus->WriteByte(gameboy.sp, gameboy.pc & 0xFF);
+        gameboy.pc = word;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 7) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<JumpTest test>
+bool Instructions::CALL(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = gameboy.regs->FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !gameboy.regs->FlagCarry();
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc++)) << 8;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        if (jumpCondition) {
+            gameboy.sp -= 1;
+            return false;
+        }
+
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.bus->WriteByte(gameboy.sp, (gameboy.pc & 0xFF00) >> 8);
+        gameboy.sp -= 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 6) {
+        gameboy.bus->WriteByte(gameboy.sp, gameboy.pc & 0xFF);
+        gameboy.pc = word;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 7) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::RLCA(Gameboy &gameboy) {
     const uint8_t old = (gameboy.regs->a & 0x80) != 0 ? 1 : 0;
     gameboy.regs->SetCarry(old != 0);
     gameboy.regs->a = gameboy.regs->a << 1 | old;
     gameboy.regs->SetZero(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetSubtract(false);
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::RLA(const Gameboy &gameboy) {
+bool Instructions::RLA(Gameboy &gameboy) {
     const bool flag_c = (gameboy.regs->a & 0x80) >> 7 == 0x01;
     const uint8_t r = (gameboy.regs->a << 1) + static_cast<uint8_t>(gameboy.regs->FlagCarry());
     gameboy.regs->SetCarry(flag_c);
@@ -219,1075 +227,1375 @@ uint8_t Instructions::RLA(const Gameboy &gameboy) {
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->a = r;
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::RLAddr(Gameboy &gameboy) {
-    uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());;
-    const uint8_t flag_c = gameboy.regs->FlagCarry() ? 1 : 0;
-    gameboy.regs->SetCarry((byte & 0x80) != 0);
-    byte = (byte << 1) | flag_c;
-    WriteByte(gameboy, gameboy.regs->GetHL(), byte);
-    gameboy.regs->SetZero(byte == 0);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-    return 4;
-}
-
-uint8_t Instructions::RL(const ArithmeticSource source, const Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::RL -- improper ArithmeticSource");
-        }
-    }();
-
+template<Register source>
+bool Instructions::RL(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     const bool flag_c = (value & 0x80) >> 7 == 0x01;
     const uint8_t newValue = value << 1 | static_cast<uint8_t>(gameboy.regs->FlagCarry());
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs.get()->*sourceReg = newValue;
     gameboy.regs->SetCarry(flag_c);
     gameboy.regs->SetZero(newValue == 0);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetSubtract(false);
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Instructions::RL -- improper ArithmeticSource");
-    }
-
-    return 2;
+    return true;
 }
 
-uint8_t Instructions::CCF(const Gameboy &gameboy) {
+bool Instructions::RLAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t oldCarry = gameboy.regs->FlagCarry();
+        gameboy.regs->SetCarry((byte & 0x80) != 0);
+        byte = byte << 1 | oldCarry;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::CCF(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetCarry(!gameboy.regs->FlagCarry());
     gameboy.regs->SetHalf(false);
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::CPL(const Gameboy &gameboy) {
+bool Instructions::CPL(Gameboy &gameboy) {
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(true);
     gameboy.regs->a = ~gameboy.regs->a;
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::SCF(const Gameboy &gameboy) {
+bool Instructions::SCF(Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(true);
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::RRCA(const Gameboy &gameboy) {
+bool Instructions::RRCA(Gameboy &gameboy) {
     gameboy.regs->SetCarry((gameboy.regs->a & 0x01) != 0);
     gameboy.regs->a = gameboy.regs->a >> 1 | (gameboy.regs->a & 0x01) << 7;
     gameboy.regs->SetZero(false);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::RRC(const ArithmeticSource source, Gameboy &gameboy) {
-    uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            case ArithmeticSource::HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());;
-            default: throw UnreachableCodeException("Instructions::RRC -- improper ArithmeticSource");
-        }
-    }();
+template<Register source>
+bool Instructions::RRC(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
+    const bool carry = (value & 0x01) == 0x01;
+    gameboy.regs->SetCarry(carry);
+    const uint8_t newValue = gameboy.regs->FlagCarry() ? 0x80 | value >> 1 : value >> 1;
+    gameboy.regs->SetZero(newValue == 0);
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs.get()->*sourceReg = newValue;
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs->SetHalf(false);
+    return true;
+}
 
-    if (source == ArithmeticSource::HLAddr) {
-        const bool carry = (value & 0x01) == 0x01;
-        gameboy.regs->SetCarry(carry);
-        if (carry) {
-            value = 0x80 | value >> 1;
-        } else {
-            value = value >> 1;
-        }
-
-        WriteByte(gameboy, gameboy.regs->GetHL(), value);
-        gameboy.regs->SetZero(value == 0);
+bool Instructions::RRCAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->SetCarry(byte & 0x01);
+        byte = gameboy.regs->FlagCarry() ? 0x80 | byte >> 1 : byte >> 1;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
         gameboy.regs->SetSubtract(false);
         gameboy.regs->SetHalf(false);
-        return 4;
+        return true;
     }
-
-    const bool carry = (value & 0x01) == 0x01;
-    gameboy.regs->SetCarry(carry);
-    uint8_t newValue = 0;
-    if (gameboy.regs->FlagCarry()) {
-        newValue = 0x80 | value >> 1;
-    } else {
-        newValue = value >> 1;
-    }
-    gameboy.regs->SetZero(newValue == 0);
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Instructions::RRC -- improper ArithmeticSource");
-    }
-
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-
-    return 2;
+    return false;
 }
 
-uint8_t Instructions::RRAddr(Gameboy &gameboy) {
-    uint8_t value = ReadByte(gameboy, gameboy.regs->GetHL());;
-    const bool carry = (value & 0x01) == 0x01;
-    if (gameboy.regs->FlagCarry()) { value = 0x80 | (value >> 1); } else { value = value >> 1; }
-    WriteByte(gameboy, gameboy.regs->GetHL(), value);
-    gameboy.regs->SetCarry(carry);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-    gameboy.regs->SetZero(value == 0);
-    return 4;
+bool Instructions::RRAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word = (byte & 0x01) == 0x01; // hack for storing carry
+        byte = gameboy.regs->FlagCarry() ? 0x80 | (byte >> 1) : byte >> 1;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetCarry(word);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::RR(const ArithmeticSource source, const Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        using enum ArithmeticSource;
-        switch (source) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::OR -- improper ArithmeticSource");
-        }
-    }();
-
+template<Register source>
+bool Instructions::RR(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     const bool carry = (value & 0x01) == 0x01;
-    uint8_t newValue = 0;
-    if (gameboy.regs->FlagCarry()) {
-        newValue = 0x80 | (value >> 1);
-    } else {
-        newValue = value >> 1;
-    }
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Instructions::OR -- improper ArithmeticSource");
-    }
-
+    uint8_t newValue = gameboy.regs->FlagCarry() ? 0x80 | (value >> 1) : value >> 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs.get()->*sourceReg = newValue;
     gameboy.regs->SetCarry(carry);
     gameboy.regs->SetZero(newValue == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-
-    return 2;
+    return true;
 }
 
-uint8_t Instructions::RRA(const Gameboy &gameboy) {
+bool Instructions::RRA(Gameboy &gameboy) {
     const bool carry = (gameboy.regs->a & 0x01) == 0x01;
-    uint8_t newValue = 0;
-    if (gameboy.regs->FlagCarry()) {
-        newValue = 0x80 | (gameboy.regs->a >> 1);
-    } else {
-        newValue = gameboy.regs->a >> 1;
-    }
-
+    const uint8_t newValue = gameboy.regs->FlagCarry() ? 0x80 | gameboy.regs->a >> 1 : gameboy.regs->a >> 1;
     gameboy.regs->SetZero(false);
     gameboy.regs->a = newValue;
     gameboy.regs->SetCarry(carry);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::RET(const JumpTest test, Gameboy &gameboy) {
-    const bool jumpCondition = [&]() -> bool {
-        switch (test) {
-            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
-            case JumpTest::Zero: return gameboy.regs->FlagZero();
-            case JumpTest::Carry: return gameboy.regs->FlagCarry();
-            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
-            case JumpTest::Always: return true;
-            default: throw UnreachableCodeException("Instructions::RET -- improper JumpTest");
-        }
-    }();
-
-    if (test != JumpTest::Always) {
-        gameboy.TickM(1, true);
-        gameboy.cyclesThisInstruction += 1;
+bool Instructions::RETUnconditional(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.sp);
+        gameboy.sp += 1;
+        return false;
     }
-
-    if (!jumpCondition) {
-        return 2;
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.sp)) << 8;
+        gameboy.sp += 1;
+        return false;
     }
-
-    const uint16_t newPC = pop(gameboy);
-    gameboy.pc = newPC;
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    return test == JumpTest::Always ? 4 : 5;
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.pc = word;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::JR(const JumpTest test, Gameboy &gameboy) {
-    const bool jumpCondition = [&]() -> bool {
-        switch (test) {
-            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
-            case JumpTest::Zero: return gameboy.regs->FlagZero();
-            case JumpTest::Carry: return gameboy.regs->FlagCarry();
-            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
-            case JumpTest::Always: return true;
-            default: throw UnreachableCodeException("Instructions::JR -- improper JumpTest");
-        }
-    }();
-
-    const uint16_t next = gameboy.pc + 1;
-    if (jumpCondition) {
-        if (const auto byte = static_cast<int8_t>(ReadByte(gameboy, gameboy.pc)); byte >= 0) {
-            gameboy.pc = next + static_cast<uint16_t>(byte);
-        } else {
-            gameboy.pc = next - static_cast<uint16_t>(abs(byte));
-        }
-        return 3;
+template<JumpTest test>
+bool Instructions::RETConditional(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = gameboy.regs->FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !gameboy.regs->FlagCarry();
+        word = 0;
+        return false;
     }
-    gameboy.pc = next;
-    return 2;
+    if (gameboy.mCycleCounter == 3) {
+        if (jumpCondition) {
+            word = gameboy.bus->ReadByte(gameboy.sp);
+            gameboy.sp += 1;
+            return false;
+        }
+
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.sp)) << 8;
+        gameboy.sp += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.pc = word;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 6) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::JP(const JumpTest test, Gameboy &gameboy) {
-    const bool jumpCondition = [&]() -> bool {
-        switch (test) {
-            case JumpTest::NotZero: return !gameboy.regs->FlagZero();
-            case JumpTest::Zero: return gameboy.regs->FlagZero();
-            case JumpTest::Carry: return gameboy.regs->FlagCarry();
-            case JumpTest::NotCarry: return !gameboy.regs->FlagCarry();
-            case JumpTest::Always: return true;
-            default: throw UnreachableCodeException("Instructions::JP -- improper JumpTest");
-        }
-    }();
-
-    if (jumpCondition) {
-        const uint16_t lower_byte = ReadByte(gameboy, gameboy.pc);
-        const uint16_t higher_byte = ReadByte(gameboy, gameboy.pc + 1);
-        gameboy.pc = (higher_byte << 8) | lower_byte;
-        return 4;
+bool Instructions::JRUnconditional(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        // M2 Cycle: Read the signed 8-bit immediate value (n).
+        // The PC has already been incremented past the opcode.
+        byte = gameboy.bus->ReadByte(gameboy.pc);
+        gameboy.pc += 1; // PC is now at the address of the next instruction.
+        return false;
     }
-    gameboy.pc += 2;
-    return 3;
+    if (gameboy.mCycleCounter == 3) {
+        // M3 Cycle: Calculate the destination address.
+        // The pseudocode describes the hardware logic for adding a signed
+        // 8-bit offset to the 16-bit program counter.
+
+        // Z_sign = bit(7, Z)
+        const bool zSign = (byte & 0x80) == 0x80; // True if the offset is negative.
+
+        // Deconstruct the current PC to perform 8-bit arithmetic.
+        const uint8_t pcLsb = gameboy.pc & 0x00FF;
+        const uint8_t pcMsb = gameboy.pc >> 8;
+
+        // result, carry_per_bit = Z + lsb(PC)
+        // Add the offset to the lower byte of the PC.
+        const uint16_t resultLsb = pcLsb + byte;
+        const bool carry = resultLsb > 0xFF; // This checks for the carry from bit 7.
+
+        // adj = ...
+        // Calculate the adjustment for the upper byte of the PC to handle
+        // carries (for forward jumps) and borrows (for backward jumps).
+        int8_t adj = 0;
+        if (carry && !zSign) {
+            adj = 1;
+        } else if (!carry && zSign) {
+            adj = -1;
+        }
+
+        // W = msb(PC) + adj
+        // Combine the adjusted upper byte with the new lower byte to form the final address.
+        const uint8_t newMsb = pcMsb + adj;
+        word = (newMsb << 8) | static_cast<uint8_t>(resultLsb);
+
+        // The calculation is complete; wait for the final cycle.
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        // M4 Cycle: Jump to the new address and fetch the next opcode.
+        gameboy.pc = word;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true; // Instruction is complete.
+    }
+    return false;
 }
 
-uint8_t Instructions::JPHL(Gameboy &gameboy) {
+template<JumpTest test>
+bool Instructions::JR(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc);
+        gameboy.pc += 1;
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = gameboy.regs->FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !gameboy.regs->FlagCarry();
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        if (jumpCondition) {
+            word = gameboy.pc;
+            if (const auto signedByte = static_cast<int8_t>(byte); signedByte >= 0) {
+                word += static_cast<uint16_t>(signedByte);
+            } else {
+                word -= static_cast<uint16_t>(std::abs(signedByte));
+            }
+            return false;
+        }
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.pc = word;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::JPUnconditional(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc);
+        gameboy.pc += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc)) << 8;
+        gameboy.pc += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.pc = word;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<JumpTest test>
+bool Instructions::JP(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc);
+        gameboy.pc += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc)) << 8;
+        gameboy.pc += 1;
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = gameboy.regs->FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = gameboy.regs->FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !gameboy.regs->FlagCarry();
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        if (jumpCondition) {
+            gameboy.pc = word;
+            return false;
+        }
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::JPHL(Gameboy &gameboy) {
     gameboy.pc = gameboy.regs->GetHL();
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::NOP() {
-    return 1;
+bool Instructions::NOP(Gameboy &gameboy) {
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::STOP(Gameboy &gameboy) {
+bool Instructions::PREFIX(Gameboy &gameboy) const {
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.currentInstruction = 0xCB00 | gameboy.nextInstruction;
+    gameboy.prefixed = true;
+    return true;
+}
+
+bool Instructions::STOP(Gameboy &gameboy) {
     const uint8_t key1 = gameboy.bus->ReadByte(0xFF4D);
     const bool speedSwitchRequested = gameboy.bus->prepareSpeedShift && (key1 & 0x01);
-
     gameboy.bus->WriteByte(0xFF04, 0x00);
 
     if (speedSwitchRequested) {
-        gameboy.TickM(130996, false);
         gameboy.bus->ChangeSpeed();
-        gameboy.pc += 1;
-
-        return 1;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
     }
 
     gameboy.stopped = true;
-    gameboy.pc += 1;
-    return 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::DEC(const IncDecTarget target, Gameboy &gameboy) {
-    switch (target) {
-        case IncDecTarget::A: gameboy.regs->a = decrement(gameboy.regs->a, gameboy);
-            break;
-        case IncDecTarget::B: gameboy.regs->b = decrement(gameboy.regs->b, gameboy);
-            break;
-        case IncDecTarget::C: gameboy.regs->c = decrement(gameboy.regs->c, gameboy);
-            break;
-        case IncDecTarget::D: gameboy.regs->d = decrement(gameboy.regs->d, gameboy);
-            break;
-        case IncDecTarget::E: gameboy.regs->e = decrement(gameboy.regs->e, gameboy);
-            break;
-        case IncDecTarget::H: gameboy.regs->h = decrement(gameboy.regs->h, gameboy);
-            break;
-        case IncDecTarget::L: gameboy.regs->l = decrement(gameboy.regs->l, gameboy);
-            break;
-        case IncDecTarget::HLAddr: {
-            const uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());;
-            const uint8_t new_value = decrement(byte, gameboy);
-            WriteByte(gameboy, gameboy.regs->GetHL(), new_value);
-            break;
-        }
-        case IncDecTarget::HL:
-            gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
-            break;
-        case IncDecTarget::BC:
-            gameboy.regs->SetBC(gameboy.regs->GetBC() - 1);
-            break;
-        case IncDecTarget::DE:
-            gameboy.regs->SetDE(gameboy.regs->GetDE() - 1);
-            break;
-        case IncDecTarget::SP:
-            gameboy.sp -= 1;
-            break;
-    }
-
-    switch (target) {
-        case IncDecTarget::HLAddr:
-            return 3;
-        case IncDecTarget::HL:
-        case IncDecTarget::BC:
-        case IncDecTarget::DE:
-        case IncDecTarget::SP:
-            return 2;
-        default:
-            return 1;
-    }
+template<Register source>
+bool Instructions::DECRegister(Gameboy &gameboy) const {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+    gameboy.regs->SetHalf((sourceValue & 0xF) == 0x00);
+    const uint8_t newValue = sourceValue - 1;
+    gameboy.regs->SetZero(newValue == 0);
+    gameboy.regs->SetSubtract(true);
+    gameboy.regs.get()->*sourceReg = newValue;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::INC(const IncDecTarget target, Gameboy &gameboy) {
-    switch (target) {
-        case IncDecTarget::A: gameboy.regs->a = increment(gameboy.regs->a, gameboy);
-            break;
-        case IncDecTarget::B: gameboy.regs->b = increment(gameboy.regs->b, gameboy);
-            break;
-        case IncDecTarget::C: gameboy.regs->c = increment(gameboy.regs->c, gameboy);
-            break;
-        case IncDecTarget::D: gameboy.regs->d = increment(gameboy.regs->d, gameboy);
-            break;
-        case IncDecTarget::E: gameboy.regs->e = increment(gameboy.regs->e, gameboy);
-            break;
-        case IncDecTarget::H: gameboy.regs->h = increment(gameboy.regs->h, gameboy);
-            break;
-        case IncDecTarget::L: gameboy.regs->l = increment(gameboy.regs->l, gameboy);
-            break;
-        case IncDecTarget::HLAddr: {
-            const uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());;
-            const uint8_t new_value = increment(byte, gameboy);
-            WriteByte(gameboy, gameboy.regs->GetHL(), new_value);
-            break;
-        }
-        case IncDecTarget::HL:
-            gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
-            break;
-        case IncDecTarget::BC:
-            gameboy.regs->SetBC(gameboy.regs->GetBC() + 1);
-            break;
-        case IncDecTarget::DE:
-            gameboy.regs->SetDE(gameboy.regs->GetDE() + 1);
-            break;
-        case IncDecTarget::SP:
-            gameboy.sp += 1;
-            break;
+bool Instructions::DECIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
     }
-
-    switch (target) {
-        case IncDecTarget::HLAddr:
-            return 3;
-        case IncDecTarget::HL:
-        case IncDecTarget::BC:
-        case IncDecTarget::DE:
-        case IncDecTarget::SP:
-            return 2;
-        default:
-            return 1;
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->SetHalf((byte & 0xF) == 0x00);
+        const uint8_t newValue = byte - 1;
+        gameboy.regs->SetZero(newValue == 0);
+        gameboy.regs->SetSubtract(true);
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), newValue);
+        return false;
     }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::LDH(const LoadOtherTarget target, const LoadOtherSource source, Gameboy &gameboy) {
-    if (target == LoadOtherTarget::A8 && source == LoadOtherSource::A) {
-        // E0
-        const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
-        WriteByte(gameboy, a, gameboy.regs->a);
-        return 3;
+template<Arithmetic16Target target>
+bool Instructions::DEC16(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        if constexpr (target == Arithmetic16Target::BC) gameboy.regs->SetBC(gameboy.regs->GetBC() - 1);
+        else if constexpr (target == Arithmetic16Target::DE) gameboy.regs->SetDE(gameboy.regs->GetDE() - 1);
+        else if constexpr (target == Arithmetic16Target::HL) gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
+        else if constexpr (target == Arithmetic16Target::SP) gameboy.sp -= 1;
+        return false;
     }
-    if (target == LoadOtherTarget::CAddress && source == LoadOtherSource::A) {
-        // E2
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::INCRegister(Gameboy &gameboy) const {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+    gameboy.regs->SetHalf((sourceValue & 0xF) == 0xF);
+    const uint8_t newValue = sourceValue + 1;
+    gameboy.regs->SetZero(newValue == 0);
+    gameboy.regs->SetSubtract(false);
+    gameboy.regs.get()->*sourceReg = newValue;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
+}
+
+bool Instructions::INCIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.regs->GetHL();
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t byte = gameboy.bus->ReadByte(word);
+        gameboy.regs->SetHalf((byte & 0xF) == 0xF);
+        const uint8_t newValue = byte + 1;
+        gameboy.regs->SetZero(newValue == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.bus->WriteByte(word, newValue);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<Arithmetic16Target target>
+bool Instructions::INC16(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        if constexpr (target == Arithmetic16Target::BC) gameboy.regs->SetBC(gameboy.regs->GetBC() + 1);
+        else if constexpr (target == Arithmetic16Target::DE) gameboy.regs->SetDE(gameboy.regs->GetDE() + 1);
+        else if constexpr (target == Arithmetic16Target::HL) gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
+        else if constexpr (target == Arithmetic16Target::SP) gameboy.sp += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+// 0xE0
+bool Instructions::LoadFromAccumulatorDirectA(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.bus->WriteByte(static_cast<uint16_t>(0xFF00) | byte, gameboy.regs->a);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+// 0xE2
+bool Instructions::LoadFromAccumulatorIndirectC(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
         const uint16_t c = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
-        WriteByte(gameboy, c, gameboy.regs->a);
-        return 2;
+        gameboy.bus->WriteByte(c, gameboy.regs->a);
+        return false;
     }
-    if (target == LoadOtherTarget::A && source == LoadOtherSource::A8) {
-        // F0
-        const uint16_t a = 0xFF00 | static_cast<uint16_t>(ReadNextByte(gameboy));
-        gameboy.regs->a = ReadByte(gameboy, a);
-        return 3;
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
     }
-    if (target == LoadOtherTarget::A && source == LoadOtherSource::CAddress) {
-        // F2
-        const uint16_t a = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
-        gameboy.regs->a = ReadByte(gameboy, a);
-        return 2;
-    }
-
-    return 0;
+    return false;
 }
 
-uint8_t Instructions::LD(const LoadByteTarget target, const LoadByteSource source, Gameboy &gameboy) {
-    const uint8_t sourceValue = [&]() -> uint8_t {
-        switch (source) {
-            case LoadByteSource::A: return gameboy.regs->a;
-            case LoadByteSource::B: return gameboy.regs->b;
-            case LoadByteSource::C: return gameboy.regs->c;
-            case LoadByteSource::D: return gameboy.regs->d;
-            case LoadByteSource::E: return gameboy.regs->e;
-            case LoadByteSource::H: return gameboy.regs->h;
-            case LoadByteSource::L: return gameboy.regs->l;
-            case LoadByteSource::D8: return ReadNextByte(gameboy);
-            case LoadByteSource::HL: return ReadByte(gameboy, gameboy.regs->GetHL());
-            case LoadByteSource::BC: return ReadByte(gameboy, gameboy.regs->GetBC());
-            case LoadByteSource::DE: return ReadByte(gameboy, gameboy.regs->GetDE());
-            case LoadByteSource::HLI: {
-                const auto tmp = ReadByte(gameboy, gameboy.regs->GetHL());
-                gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
-                return tmp;
-            }
-            case LoadByteSource::HLD: {
-                const auto tmp = ReadByte(gameboy, gameboy.regs->GetHL());
-                gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
-                return tmp;
-            }
-            case LoadByteSource::A16: return ReadByte(gameboy, ReadNextWord(gameboy));
-            default: throw UnreachableCodeException("Instructions::LD -- improper LoadByteSource");
-        }
-    }();
-
-    switch (target) {
-        case LoadByteTarget::A: gameboy.regs->a = sourceValue;
-            break;
-        case LoadByteTarget::B: gameboy.regs->b = sourceValue;
-            break;
-        case LoadByteTarget::C: gameboy.regs->c = sourceValue;
-            break;
-        case LoadByteTarget::D: gameboy.regs->d = sourceValue;
-            break;
-        case LoadByteTarget::E: gameboy.regs->e = sourceValue;
-            break;
-        case LoadByteTarget::H: gameboy.regs->h = sourceValue;
-            break;
-        case LoadByteTarget::L: gameboy.regs->l = sourceValue;
-            break;
-        case LoadByteTarget::HL: WriteByte(gameboy, gameboy.regs->GetHL(), sourceValue);
-            break;
-        case LoadByteTarget::BC: WriteByte(gameboy, gameboy.regs->GetBC(), sourceValue);
-            break;
-        case LoadByteTarget::DE: WriteByte(gameboy, gameboy.regs->GetDE(), sourceValue);
-            break;
-        case LoadByteTarget::HLI: {
-            WriteByte(gameboy, gameboy.regs->GetHL(), sourceValue);
-            gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
-            break;
-        }
-        case LoadByteTarget::HLD: {
-            WriteByte(gameboy, gameboy.regs->GetHL(), sourceValue);
-            gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
-            break;
-        }
-        case LoadByteTarget::A16: {
-            WriteByte(gameboy, ReadNextWord(gameboy), sourceValue);
-            return 4;
-        }
+// 0xF0
+bool Instructions::LoadAccumulatorA(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
     }
-
-    if (source == LoadByteSource::D8) {
-        return target == LoadByteTarget::HL ? 3 : 2;
+    if (gameboy.mCycleCounter == 3) {
+        word = 0xFF00 | byte;
+        return false;
     }
-    if (target == LoadByteTarget::HL
-        || target == LoadByteTarget::HLD
-        || target == LoadByteTarget::HLI
-        || target == LoadByteTarget::BC
-        || target == LoadByteTarget::DE
-        || source == LoadByteSource::BC
-        || source == LoadByteSource::DE
-        || source == LoadByteSource::HLD
-        || source == LoadByteSource::HLI
-        || source == LoadByteSource::HL) {
-        return 2;
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = gameboy.bus->ReadByte(word);
+        return true;
     }
-    if (source == LoadByteSource::A16) {
-        return 4;
-    }
-    return 1;
+    return false;
 }
 
-uint8_t Instructions::LD16(const LoadWordTarget target, const LoadWordSource source, Gameboy &gameboy) {
-    const uint16_t sourceValue = [&]() -> uint16_t {
-        switch (source) {
-            case LoadWordSource::D16: return ReadNextWord(gameboy);
-            case LoadWordSource::SP: return gameboy.sp;
-            case LoadWordSource::HL: return gameboy.regs->GetHL();
-            case LoadWordSource::SPr8: return static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-                    ReadNextByte(gameboy))));
-            default: throw UnreachableCodeException("Instructions::LD16 -- improper LoadWordSource");
-        }
-    }();
-
-    switch (target) {
-        case LoadWordTarget::BC: gameboy.regs->SetBC(sourceValue);
-            break;
-        case LoadWordTarget::DE: gameboy.regs->SetDE(sourceValue);
-            break;
-        case LoadWordTarget::SP: gameboy.sp = sourceValue;
-            break;
-        case LoadWordTarget::HL: {
-            if (source == LoadWordSource::SPr8) {
-                gameboy.regs->SetCarry((gameboy.sp & 0xFF) + (sourceValue & 0xFF) > 0xFF);
-                gameboy.regs->SetHalf((gameboy.sp & 0xF) + (sourceValue & 0xF) > 0xF);
-                gameboy.regs->SetSubtract(false);
-                gameboy.regs->SetZero(false);
-                gameboy.regs->SetHL(gameboy.sp + sourceValue);
-            } else {
-                gameboy.regs->SetHL(sourceValue);
-            }
-            break;
-        }
-        case LoadWordTarget::A16: {
-            const uint16_t word = ReadNextWord(gameboy);
-            WriteWord(gameboy, word, sourceValue);
-            break;
-        }
+// 0xF2
+bool Instructions::LoadAccumulatorIndirectC(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(0xFF00 | static_cast<uint16_t>(gameboy.regs->c));
+        return false;
     }
-
-    if (source == LoadWordSource::HL) {
-        return 2;
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = byte;
+        return true;
     }
-    if (source == LoadWordSource::SPr8 || source == LoadWordSource::D16) {
-        return 3;
-    }
-    if (source == LoadWordSource::SP) {
-        return 5;
-    }
-
-    return 0;
+    return false;
 }
 
-uint8_t Instructions::PUSH(const StackTarget target, Gameboy &gameboy) {
-    const uint16_t value = [&]() -> uint16_t {
-        switch (target) {
-            case StackTarget::BC: return gameboy.regs->GetBC();
-            case StackTarget::DE: return gameboy.regs->GetDE();
-            case StackTarget::HL: return gameboy.regs->GetHL();
-            case StackTarget::AF: return gameboy.regs->GetAF();
-            default: throw UnreachableCodeException("Instructions::PUSH -- improper StackTarget");
-        }
-    }();
-
-    push(value, gameboy);
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    return 4;
+/* M2 -- one cycle */
+template<Register target, Register source>
+bool Instructions::LDRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    constexpr auto targetReg = GetRegisterPtr<target>();
+    const uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs.get()->*targetReg = sourceValue;
+    return true;
 }
 
-uint8_t Instructions::POP(const StackTarget target, Gameboy &gameboy) {
-    const uint16_t result = pop(gameboy);
-    switch (target) {
-        case StackTarget::BC: gameboy.regs->SetBC(result);
-            break;
-        case StackTarget::DE: gameboy.regs->SetDE(result);
-            break;
-        case StackTarget::HL: gameboy.regs->SetHL(result);
-            break;
-        case StackTarget::AF: gameboy.regs->SetAF(result & 0xFFF0);
-            break;
+template<Register source>
+bool Instructions::LDRegisterImmediate(Gameboy &gameboy) {
+    constexpr auto targetReg = GetRegisterPtr<source>();
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
     }
-
-    return 3;
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs.get()->*targetReg = byte;
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::CP(const ArithmeticSource source, Gameboy &gameboy) {
-    const auto resolveValue = [&](const ArithmeticSource src) -> uint8_t {
-        using enum ArithmeticSource;
-        switch (src) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            case HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());;
-            case U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Improper CP source");
-        }
-    };
-
-    const uint8_t value = resolveValue(source);
-    subtract(value, gameboy);
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+template<Register source>
+bool Instructions::LDRegisterIndirect(Gameboy &gameboy) {
+    constexpr auto targetReg = GetRegisterPtr<source>();
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs.get()->*targetReg = byte;
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::OR(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        using enum ArithmeticSource;
-        switch (source) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            case HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());;
-            case U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Instructions::OR -- improper ArithmeticSource");
-        }
-    }();
+template<Register source>
+bool Instructions::LDAddrRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    if (gameboy.mCycleCounter == 2) {
+        const uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), sourceValue);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
 
+bool Instructions::LDAddrImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDAccumulatorBC(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetBC());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = byte;
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDAccumulatorDE(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetDE());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = byte;
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDFromAccBC(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.bus->WriteByte(gameboy.regs->GetBC(), gameboy.regs->a);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDFromAccDE(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.bus->WriteByte(gameboy.regs->GetDE(), gameboy.regs->a);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDAccumulatorDirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc++)) << 8;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.regs->a = gameboy.bus->ReadByte(word);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDFromAccumulatorDirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc);
+        gameboy.pc += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc)) << 8;
+        gameboy.pc += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.bus->WriteByte(word, gameboy.regs->a);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc);
+        gameboy.pc += 1;
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LDAccumulatorIndirectDec(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = byte;
+        return true;
+    }
+    return false;
+}
+
+// Load to the absolute address specified by the 16-bit register HL, data from the 8-bit A register.
+// The value of HL is decremented after the memory write
+bool Instructions::LDFromAccumulatorIndirectDec(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), gameboy.regs->a);
+        gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+/* LD A, (HL+): Load accumulator (indirect HL, increment)
+Load to the 8-bit A register, data from the absolute address specified by the 16-bit register HL.
+The value of HL is incremented after the memory read. */
+bool Instructions::LDAccumulatorIndirectInc(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = byte;
+        return true;
+    }
+    return false;
+}
+
+/** LD (HL+), A: Load from accumulator (indirect HL, increment)
+Load to the absolute address specified by the 16-bit register HL, data from the 8-bit A register.
+The value of HL is decremented after the memory write. */
+bool Instructions::LDFromAccumulatorIndirectInc(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), gameboy.regs->a);
+        gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LD16FromStack(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc++)) << 8;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.bus->WriteByte(word, gameboy.sp >> 8);
+        word += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.bus->WriteByte(word, gameboy.sp & 0xFF);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 6) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<LoadWordTarget target>
+bool Instructions::LD16Register(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.pc++)) << 8;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        if constexpr (target == LoadWordTarget::HL) gameboy.regs->SetHL(word);
+        else if constexpr (target == LoadWordTarget::SP) gameboy.sp = word;
+        else if constexpr (target == LoadWordTarget::BC) gameboy.regs->SetBC(word);
+        else if constexpr (target == LoadWordTarget::DE) gameboy.regs->SetDE(word);
+        return true;
+    }
+    return false;
+}
+
+
+bool Instructions::LD16Stack(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.sp = gameboy.regs->GetHL();
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::LD16StackAdjusted(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
+            gameboy.bus->ReadByte(gameboy.pc++))));
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->SetCarry((gameboy.sp & 0xFF) + (word & 0xFF) > 0xFF);
+        gameboy.regs->SetHalf((gameboy.sp & 0xF) + (word & 0xF) > 0xF);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetZero(false);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.regs->SetHL(gameboy.sp + word);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<StackTarget target>
+bool Instructions::PUSH(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        gameboy.sp -= 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        if constexpr (target == StackTarget::BC) word = gameboy.regs->GetBC();
+        if constexpr (target == StackTarget::DE) word = gameboy.regs->GetDE();
+        if constexpr (target == StackTarget::HL) word = gameboy.regs->GetHL();
+        if constexpr (target == StackTarget::AF) word = gameboy.regs->GetAF();
+        gameboy.bus->WriteByte(gameboy.sp, (word & 0xFF00) >> 8);
+        gameboy.sp -= 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.bus->WriteByte(gameboy.sp, word & 0xFF);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<StackTarget target>
+bool Instructions::POP(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = gameboy.bus->ReadByte(gameboy.sp);
+        gameboy.sp += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word |= static_cast<uint16_t>(gameboy.bus->ReadByte(gameboy.sp)) << 8;
+        gameboy.sp += 1;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        if constexpr (target == StackTarget::BC) gameboy.regs->SetBC(word);
+        if constexpr (target == StackTarget::DE) gameboy.regs->SetDE(word);
+        if constexpr (target == StackTarget::HL) gameboy.regs->SetHL(word);
+        if constexpr (target == StackTarget::AF) gameboy.regs->SetAF(word & 0xFFF0);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::CPRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
+    const uint8_t new_value = gameboy.regs->a - value;
+    gameboy.regs->SetCarry(gameboy.regs->a < value);
+    gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (value & 0xF));
+    gameboy.regs->SetSubtract(true);
+    gameboy.regs->SetZero(new_value == 0x0);
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
+}
+
+bool Instructions::CPIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t new_value = gameboy.regs->a - byte;
+        gameboy.regs->SetCarry(gameboy.regs->a < byte);
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (byte & 0xF));
+        gameboy.regs->SetSubtract(true);
+        gameboy.regs->SetZero(new_value == 0x0);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::CPImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t new_value = gameboy.regs->a - byte;
+        gameboy.regs->SetCarry(gameboy.regs->a < byte);
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (byte & 0xF));
+        gameboy.regs->SetSubtract(true);
+        gameboy.regs->SetZero(new_value == 0x0);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return true;
+}
+
+template<Register source>
+bool Instructions::ORRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     gameboy.regs->a |= value;
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(false);
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::XOR(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        using enum ArithmeticSource;
-        switch (source) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            case HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());;
-            case U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Instructions::XOR -- improper ArithmeticSource");
-        }
-    }();
+bool Instructions::ORIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->a |= byte;
+        gameboy.regs->SetZero(gameboy.regs->a == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        gameboy.regs->SetCarry(false);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
 
+bool Instructions::ORImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->a |= byte;
+        gameboy.regs->SetZero(gameboy.regs->a == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        gameboy.regs->SetCarry(false);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return true;
+}
+
+template<Register source>
+bool Instructions::XORRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     gameboy.regs->a ^= value;
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(false);
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::AND(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        using enum ArithmeticSource;
-        switch (source) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            case HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());;
-            case U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Instructions::AND -- improper ArithmeticSource");
-        }
-    }();
+bool Instructions::XORIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->a ^= byte;
+        gameboy.regs->SetZero(gameboy.regs->a == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        gameboy.regs->SetCarry(false);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
 
+bool Instructions::XORImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->a ^= byte;
+        gameboy.regs->SetZero(gameboy.regs->a == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        gameboy.regs->SetCarry(false);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return true;
+}
+
+template<Register source>
+bool Instructions::AND(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     gameboy.regs->a &= value;
     gameboy.regs->SetZero(gameboy.regs->a == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetCarry(false);
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::SUB(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            case ArithmeticSource::HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());;
-            case ArithmeticSource::U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Instructions::SUB -- improper ArithmeticSource");
-        }
-    }();
-
-    gameboy.regs->a = subtract(value, gameboy);
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+bool Instructions::ANDImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->a &= byte;
+        gameboy.regs->SetZero(gameboy.regs->a == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(true);
+        gameboy.regs->SetCarry(false);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return true;
 }
 
-uint8_t Instructions::SLAAddr(Gameboy &gameboy) {
-    uint8_t value = ReadByte(gameboy, gameboy.regs->GetHL());
-    gameboy.regs->SetCarry((value & 0x80) != 0);
-    value <<= 1;
-    WriteByte(gameboy, gameboy.regs->GetHL(), value);
-    gameboy.regs->SetZero(value == 0);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-    return 4;
+bool Instructions::ANDIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->a &= byte;
+        gameboy.regs->SetZero(gameboy.regs->a == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(true);
+        gameboy.regs->SetCarry(false);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::SLA(const ArithmeticSource source, const Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::SLA -- improper ArithmeticSource");
-        }
-    }();
+template<Register source>
+bool Instructions::SUB(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
+    const uint8_t new_value = gameboy.regs->a - value;
+    gameboy.regs->SetCarry(gameboy.regs->a < value);
+    gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (value & 0xF));
+    gameboy.regs->SetSubtract(true);
+    gameboy.regs->SetZero(new_value == 0x0);
+    gameboy.regs->a = new_value;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
+}
 
+bool Instructions::SUBImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t new_value = gameboy.regs->a - byte;
+        gameboy.regs->SetCarry(gameboy.regs->a < byte);
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (byte & 0xF));
+        gameboy.regs->SetSubtract(true);
+        gameboy.regs->SetZero(new_value == 0x0);
+        gameboy.regs->a = new_value;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+bool Instructions::SUBIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t new_value = gameboy.regs->a - byte;
+        gameboy.regs->SetCarry(gameboy.regs->a < byte);
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (byte & 0xF));
+        gameboy.regs->SetSubtract(true);
+        gameboy.regs->SetZero(new_value == 0x0);
+        gameboy.regs->a = new_value;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::SLA(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     gameboy.regs->SetCarry(((value & 0x80) >> 7) == 0x01);
     const uint8_t newValue = value << 1;
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Instructions::SLA -- improper ArithmeticSource");
-    }
-
+    gameboy.regs.get()->*sourceReg = newValue;
     gameboy.regs->SetZero(newValue == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-
-    return 2;
+    return true;
 }
 
-uint8_t Instructions::SRAAddr(Gameboy &gameboy) {
-    uint8_t value = ReadByte(gameboy, gameboy.regs->GetHL());;
-    gameboy.regs->SetCarry((value & 0x01) != 0);
-    value = (value >> 1) | (value & 0x80);
-    WriteByte(gameboy, gameboy.regs->GetHL(), value);
-    gameboy.regs->SetZero(value == 0);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-    return 4;
+bool Instructions::SLAAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->SetCarry((byte & 0x80) != 0);
+        byte <<= 1;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::SRA(const ArithmeticSource source, const Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::SLA -- improper ArithmeticSource");
-        }
-    }();
-
-    gameboy.regs->SetCarry((value & 0x01) != 0);
+template<Register source>
+bool Instructions::SRA(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     const uint8_t newValue = (value >> 1) | (value & 0x80);
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Improper SRA source");
-    }
-
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs.get()->*sourceReg = newValue;
+    gameboy.regs->SetCarry((value & 0x01) != 0);
     gameboy.regs->SetZero(newValue == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-
-    return 2;
+    return true;
 }
 
-uint8_t Instructions::SWAPAddr(Gameboy &gameboy) {
-    uint8_t value = ReadByte(gameboy, gameboy.regs->GetHL());;
+bool Instructions::SRAAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->SetCarry((byte & 0x01) != 0);
+        byte = (byte >> 1) | (byte & 0x80);
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::SWAP(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    uint8_t value = gameboy.regs.get()->*sourceReg;
     value = (value >> 4) | (value << 4);
-    WriteByte(gameboy, gameboy.regs->GetHL(), value);
-    gameboy.regs->SetCarry(false);
+    gameboy.regs.get()->*sourceReg = value;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
     gameboy.regs->SetZero(value == 0);
+    gameboy.regs->SetCarry(false);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-    return 4;
+    return true;
 }
 
-uint8_t Instructions::SWAP(const ArithmeticSource source, const Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::SWAP -- improper ArithmeticSource");
-        }
-    }();
-
-    const uint8_t newValue = value >> 4 | value << 4;
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = newValue;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = newValue;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = newValue;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = newValue;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = newValue;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = newValue;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = newValue;
-            break;
-        default: throw UnreachableCodeException("Instructions::SWAP -- improper ArithmeticSource");
+bool Instructions::SWAPAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
     }
-
-    gameboy.regs->SetZero(value == 0);
-    gameboy.regs->SetCarry(false);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-
-    return 2;
+    if (gameboy.mCycleCounter == 3) {
+        byte = (byte >> 4) | (byte << 4);
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetCarry(false);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::SRLAddr(Gameboy &gameboy) {
-    uint8_t value = ReadByte(gameboy, gameboy.regs->GetHL());;
+template<Register source>
+bool Instructions::SRL(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    uint8_t value = gameboy.regs.get()->*sourceReg;
     gameboy.regs->SetCarry((value & 0x01) != 0);
-    value >>= 1;
-    WriteByte(gameboy, gameboy.regs->GetHL(), value);
-    gameboy.regs->SetZero(value == 0);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf(false);
-    return 4;
-}
-
-uint8_t Instructions::SRL(const ArithmeticSource source, const Gameboy &gameboy) {
-    uint8_t value = [&]() -> uint8_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            default: throw UnreachableCodeException("Instructions::SRL -- improper ArithmeticSource");
-        }
-    }();
-
-    gameboy.regs->SetCarry((value & 0x01) != 0);
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
     value = value >> 1;
-
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a = value;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b = value;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c = value;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d = value;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e = value;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h = value;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l = value;
-            break;
-        default: throw UnreachableCodeException("Instructions::SRL -- improper ArithmeticSource");
-    }
-
     gameboy.regs->SetZero(value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
-
-    return 2;
+    return true;
 }
 
-uint8_t Instructions::BIT(const uint8_t target, const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = 1 << target;
-    const bool zero = [&]() -> bool {
-        switch (source) {
-            case ArithmeticSource::A: return (gameboy.regs->a & value) == 0;
-            case ArithmeticSource::B: return (gameboy.regs->b & value) == 0;
-            case ArithmeticSource::C: return (gameboy.regs->c & value) == 0;
-            case ArithmeticSource::D: return (gameboy.regs->d & value) == 0;
-            case ArithmeticSource::E: return (gameboy.regs->e & value) == 0;
-            case ArithmeticSource::H: return (gameboy.regs->h & value) == 0;
-            case ArithmeticSource::L: return (gameboy.regs->l & value) == 0;
-            case ArithmeticSource::HLAddr: return (ReadByte(gameboy, gameboy.regs->GetHL()) & value) == 0;
-            default: throw UnreachableCodeException("Instructions::BIT -- improper ArithmeticSource");
-        }
-    }();
+bool Instructions::SRLAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        gameboy.regs->SetCarry((byte & 0x01) != 0);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        byte = byte >> 1;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->SetZero(byte == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(false);
+        return true;
+    }
+    return false;
+}
 
-    gameboy.regs->SetZero(zero);
-    gameboy.regs->SetHalf(true);
+/* M3 -- prefixed, so only one */
+template<Register source, int bit>
+bool Instructions::BIT(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    gameboy.regs->SetZero((sourceValue & (1 << bit)) == 0);
     gameboy.regs->SetSubtract(false);
-
-    return source == ArithmeticSource::HLAddr ? 3 : 2;
+    gameboy.regs->SetHalf(true);
+    return true;
 }
 
-uint8_t Instructions::RES(const uint8_t target, const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = 1 << target;
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a &= ~value;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b &= ~value;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c &= ~value;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d &= ~value;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e &= ~value;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h &= ~value;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l &= ~value;
-            break;
-        case ArithmeticSource::HLAddr: {
-            const uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());
-            WriteByte(gameboy, gameboy.regs->GetHL(), byte & ~value);
-            break;
-        }
-        default: throw UnreachableCodeException("Instructions::RES -- improper ArithmeticSource");
+/* M4 -- prefixed, M3 fetches byte */
+template<int bit>
+bool Instructions::BITAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
     }
-
-    return source == ArithmeticSource::HLAddr ? 4 : 2;
-}
-
-uint8_t Instructions::SET(const uint8_t target, const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = 1 << target;
-    switch (source) {
-        case ArithmeticSource::A: gameboy.regs->a |= value;
-            break;
-        case ArithmeticSource::B: gameboy.regs->b |= value;
-            break;
-        case ArithmeticSource::C: gameboy.regs->c |= value;
-            break;
-        case ArithmeticSource::D: gameboy.regs->d |= value;
-            break;
-        case ArithmeticSource::E: gameboy.regs->e |= value;
-            break;
-        case ArithmeticSource::H: gameboy.regs->h |= value;
-            break;
-        case ArithmeticSource::L: gameboy.regs->l |= value;
-            break;
-        case ArithmeticSource::HLAddr: {
-            const uint8_t byte = ReadByte(gameboy, gameboy.regs->GetHL());
-            WriteByte(gameboy, gameboy.regs->GetHL(), byte | value);
-            break;
-        }
-        default: throw UnreachableCodeException("Instructions::SET -- improper ArithmeticSource");
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.regs->SetZero((byte & (1 << bit)) == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf(true);
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
     }
-
-    return source == ArithmeticSource::HLAddr ? 4 : 2;
+    return false;
 }
 
-uint8_t Instructions::SBC(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint16_t value = [&]() -> uint16_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            case ArithmeticSource::HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());
-            case ArithmeticSource::U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Instructions::SBC -- improper ArithmeticSource");
-        }
-    }();
+template<Register source, int bit>
+bool Instructions::RES(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    sourceValue &= ~(1 << bit);
+    gameboy.regs.get()->*sourceReg = sourceValue;
+    return true;
+}
 
+template<int bit>
+bool Instructions::RESAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        byte &= ~(1 << bit);
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return true;
+    }
+    return false;
+}
+
+template<Register source, int bit>
+bool Instructions::SET(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    uint8_t sourceValue = gameboy.regs.get()->*sourceReg;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    sourceValue |= 1 << bit;
+    gameboy.regs.get()->*sourceReg = sourceValue;
+    return true;
+}
+
+template<int bit>
+bool Instructions::SETAddr(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        byte |= 1 << bit;
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::SBCRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
     const uint8_t r = gameboy.regs->a - value - flag_carry;
     gameboy.regs->SetCarry(gameboy.regs->a < value + static_cast<uint16_t>(flag_carry));
@@ -1295,28 +1603,52 @@ uint8_t Instructions::SBC(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(true);
     gameboy.regs->SetZero(r == 0x0);
     gameboy.regs->a = r;
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::ADC(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint16_t value = [&]() -> uint16_t {
-        switch (source) {
-            case ArithmeticSource::A: return gameboy.regs->a;
-            case ArithmeticSource::B: return gameboy.regs->b;
-            case ArithmeticSource::C: return gameboy.regs->c;
-            case ArithmeticSource::D: return gameboy.regs->d;
-            case ArithmeticSource::E: return gameboy.regs->e;
-            case ArithmeticSource::H: return gameboy.regs->h;
-            case ArithmeticSource::L: return gameboy.regs->l;
-            case ArithmeticSource::HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());
-            case ArithmeticSource::U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Improper ADC source");
-        }
-    }();
+bool Instructions::SBCIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
+        const uint8_t r = gameboy.regs->a - byte - flag_carry;
+        gameboy.regs->SetCarry(gameboy.regs->a < byte + static_cast<uint16_t>(flag_carry));
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (byte & 0xF) + flag_carry);
+        gameboy.regs->SetSubtract(true);
+        gameboy.regs->SetZero(r == 0x0);
+        gameboy.regs->a = r;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
 
+bool Instructions::SBCImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
+        const uint8_t r = gameboy.regs->a - byte - flag_carry;
+        gameboy.regs->SetCarry(gameboy.regs->a < byte + static_cast<uint16_t>(flag_carry));
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (byte & 0xF) + flag_carry);
+        gameboy.regs->SetSubtract(true);
+        gameboy.regs->SetZero(r == 0x0);
+        gameboy.regs->a = r;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::ADCRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
     const uint8_t r = gameboy.regs->a + value + flag_carry;
     gameboy.regs->SetCarry(static_cast<uint16_t>(gameboy.regs->a) + value + static_cast<uint16_t>(flag_carry) > 0xFF);
@@ -1324,118 +1656,1021 @@ uint8_t Instructions::ADC(const ArithmeticSource source, Gameboy &gameboy) {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetZero(r == 0x0);
     gameboy.regs->a = r;
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::ADD16(const Arithmetic16Target target, const Gameboy &gameboy) {
-    const uint16_t sourceValue = [&]() -> uint16_t {
-        switch (target) {
-            case Arithmetic16Target::BC: return gameboy.regs->GetBC();
-            case Arithmetic16Target::DE: return gameboy.regs->GetDE();
-            case Arithmetic16Target::HL: return gameboy.regs->GetHL();
-            case Arithmetic16Target::SP: return gameboy.sp;
-            default: throw UnreachableCodeException("Instructions::ADD16 -- improper Arithmetic16Target");
-        }
-    }();
-
-    const uint16_t reg = gameboy.regs->GetHL();
-    const uint16_t sum = reg + sourceValue;
-
-    gameboy.regs->SetCarry(reg > 0xFFFF - sourceValue);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetHalf((reg & 0x07FF) + (sourceValue & 0x07FF) > 0x07FF);
-    gameboy.regs->SetHL(sum);
-
-    return 2;
+bool Instructions::ADCIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
+        const uint8_t r = gameboy.regs->a + byte + flag_carry;
+        gameboy.regs->SetCarry(static_cast<uint16_t>(gameboy.regs->a) + byte + static_cast<uint16_t>(flag_carry) > 0xFF);
+        gameboy.regs->SetHalf(((gameboy.regs->a & 0xF) + (byte & 0xF) + (flag_carry & 0xF)) > 0xF);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetZero(r == 0x0);
+        gameboy.regs->a = r;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::ADD(const ArithmeticSource source, Gameboy &gameboy) {
-    const uint8_t value = [&]() -> uint8_t {
-        using enum ArithmeticSource;
-        switch (source) {
-            case A: return gameboy.regs->a;
-            case B: return gameboy.regs->b;
-            case C: return gameboy.regs->c;
-            case D: return gameboy.regs->d;
-            case E: return gameboy.regs->e;
-            case H: return gameboy.regs->h;
-            case L: return gameboy.regs->l;
-            case HLAddr: return ReadByte(gameboy, gameboy.regs->GetHL());
-            case U8: return ReadNextByte(gameboy);
-            default: throw UnreachableCodeException("Instructions::ADD -- improper ArithmeticSource");
-        }
-    }();
+bool Instructions::ADCImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t flag_carry = gameboy.regs->FlagCarry() ? 1 : 0;
+        const uint8_t r = gameboy.regs->a + byte + flag_carry;
+        gameboy.regs->SetCarry(static_cast<uint16_t>(gameboy.regs->a) + byte + static_cast<uint16_t>(flag_carry) > 0xFF);
+        gameboy.regs->SetHalf(((gameboy.regs->a & 0xF) + (byte & 0xF) + (flag_carry & 0xF)) > 0xF);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetZero(r == 0x0);
+        gameboy.regs->a = r;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
 
+template<Arithmetic16Target target>
+bool Instructions::ADD16(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        if constexpr (target == Arithmetic16Target::BC) word = gameboy.regs->GetBC();
+        if constexpr (target == Arithmetic16Target::DE) word = gameboy.regs->GetDE();
+        if constexpr (target == Arithmetic16Target::HL) word = gameboy.regs->GetHL();
+        if constexpr (target == Arithmetic16Target::SP) word = gameboy.sp;
+        return false;
+    }
+
+    if (gameboy.mCycleCounter == 3) {
+        const uint16_t reg = gameboy.regs->GetHL();
+        const uint16_t sum = reg + word;
+
+        gameboy.regs->SetCarry(reg > 0xFFFF - word);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf((reg & 0x07FF) + (word & 0x07FF) > 0x07FF);
+        gameboy.regs->SetHL(sum);
+
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
+}
+
+template<Register source>
+bool Instructions::ADDRegister(Gameboy &gameboy) {
+    constexpr auto sourceReg = GetRegisterPtr<source>();
+    const uint8_t value = gameboy.regs.get()->*sourceReg;
     const uint8_t a = gameboy.regs->a;
     const uint8_t new_value = a + value;
     gameboy.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(value) > 0xFF);
     gameboy.regs->SetZero(new_value == 0);
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf((gameboy.regs->a & 0xF) + (value & 0xF) > 0xF);
-
     gameboy.regs->a = new_value;
-
-    const bool isU8 = source == ArithmeticSource::U8;
-    const bool isHL = source == ArithmeticSource::HLAddr;
-    return isU8 || isHL ? 2 : 1;
+    gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+    return true;
 }
 
-uint8_t Instructions::ADDSigned(Gameboy &gameboy) {
-    const auto source_value = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-        ReadNextByte(gameboy))));
-    const uint16_t sp_value = gameboy.sp;
-    gameboy.regs->SetCarry(((sp_value & 0xFF) + (source_value & 0xFF)) > 0xFF);
-    gameboy.regs->SetHalf(((sp_value & 0xF) + (source_value & 0xF)) > 0xF);
-    gameboy.regs->SetSubtract(false);
-    gameboy.regs->SetZero(false);
-    gameboy.sp = sp_value + source_value;
-    return 4;
+bool Instructions::ADDIndirect(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t a = gameboy.regs->a;
+        const uint8_t new_value = a + byte;
+        gameboy.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(byte) > 0xFF);
+        gameboy.regs->SetZero(new_value == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) + (byte & 0xF) > 0xF);
+        gameboy.regs->a = new_value;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::increment(const uint8_t reg, const Gameboy &gameboy) {
-    gameboy.regs->SetHalf((reg & 0xF) == 0xF);
-    const uint8_t new_value = reg + 1;
-    gameboy.regs->SetZero(new_value == 0);
-    gameboy.regs->SetSubtract(false);
-    return new_value;
+bool Instructions::ADDImmediate(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        byte = gameboy.bus->ReadByte(gameboy.pc++);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        const uint8_t a = gameboy.regs->a;
+        const uint8_t new_value = a + byte;
+        gameboy.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(byte) > 0xFF);
+        gameboy.regs->SetZero(new_value == 0);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetHalf((gameboy.regs->a & 0xF) + (byte & 0xF) > 0xF);
+        gameboy.regs->a = new_value;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::decrement(const uint8_t reg, const Gameboy &gameboy) {
-    gameboy.regs->SetHalf((reg & 0xF) == 0x00);
-    const uint8_t new_value = reg - 1;
-    gameboy.regs->SetZero(new_value == 0);
-    gameboy.regs->SetSubtract(true);
-    return new_value;
+// Not exactly M-cycle accurate (GBCTR page 80)
+bool Instructions::ADDSigned(Gameboy &gameboy) {
+    if (gameboy.mCycleCounter == 2) {
+        word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
+            gameboy.bus->ReadByte(gameboy.pc++))));
+        return false;
+    }
+    if (gameboy.mCycleCounter == 3) {
+        word2 = gameboy.sp;
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
+        gameboy.regs->SetCarry(((word2 & 0xFF) + (word & 0xFF)) > 0xFF);
+        gameboy.regs->SetHalf(((word2 & 0xF) + (word & 0xF)) > 0xF);
+        gameboy.regs->SetSubtract(false);
+        gameboy.regs->SetZero(false);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 5) {
+        gameboy.sp = word2 + word;
+        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        return true;
+    }
+    return false;
 }
 
-uint8_t Instructions::subtract(const uint8_t value, const Gameboy &gameboy) {
-    const uint8_t new_value = gameboy.regs->a - value;
-    gameboy.regs->SetCarry(gameboy.regs->a < value);
-    gameboy.regs->SetHalf((gameboy.regs->a & 0xF) < (value & 0xF));
-    gameboy.regs->SetSubtract(true);
-    gameboy.regs->SetZero(new_value == 0x0);
-    return new_value;
-}
+// template function definitions to solve linker errors
+template bool Instructions::RST<RSTTarget::H00>(Gameboy &gameboy);
 
-void Instructions::push(const uint16_t value, Gameboy &gameboy) {
-    gameboy.sp -= 1;
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    gameboy.bus->WriteByte(gameboy.sp, (value & 0xFF00) >> 8);
-    gameboy.sp -= 1;
-    gameboy.TickM(1, true);
-    gameboy.cyclesThisInstruction += 1;
-    gameboy.bus->WriteByte(gameboy.sp, value & 0xFF);
-}
+template bool Instructions::RST<RSTTarget::H08>(Gameboy &gameboy);
 
-uint16_t Instructions::pop(Gameboy &gameboy) {
-    const uint16_t lsb = ReadByte(gameboy, gameboy.sp);
-    gameboy.sp += 1;
-    const uint16_t msb = ReadByte(gameboy, gameboy.sp);
-    gameboy.sp += 1;
+template bool Instructions::RST<RSTTarget::H10>(Gameboy &gameboy);
 
-    return msb << 8 | lsb;
-}
+template bool Instructions::RST<RSTTarget::H18>(Gameboy &gameboy);
+
+template bool Instructions::RST<RSTTarget::H20>(Gameboy &gameboy);
+
+template bool Instructions::RST<RSTTarget::H28>(Gameboy &gameboy);
+
+template bool Instructions::RST<RSTTarget::H30>(Gameboy &gameboy);
+
+template bool Instructions::RST<RSTTarget::H38>(Gameboy &gameboy);
+
+template bool Instructions::CALL<JumpTest::NotZero>(Gameboy &gameboy);
+
+template bool Instructions::CALL<JumpTest::Zero>(Gameboy &gameboy);
+
+template bool Instructions::CALL<JumpTest::NotCarry>(Gameboy &gameboy);
+
+template bool Instructions::CALL<JumpTest::Carry>(Gameboy &gameboy);
+
+template bool Instructions::RETConditional<JumpTest::NotZero>(Gameboy &gameboy);
+
+template bool Instructions::RETConditional<JumpTest::Zero>(Gameboy &gameboy);
+
+template bool Instructions::RETConditional<JumpTest::NotCarry>(Gameboy &gameboy);
+
+template bool Instructions::RETConditional<JumpTest::Carry>(Gameboy &gameboy);
+
+template bool Instructions::JR<JumpTest::NotZero>(Gameboy &gameboy);
+
+template bool Instructions::JR<JumpTest::Zero>(Gameboy &gameboy);
+
+template bool Instructions::JR<JumpTest::NotCarry>(Gameboy &gameboy);
+
+template bool Instructions::JR<JumpTest::Carry>(Gameboy &gameboy);
+
+template bool Instructions::JP<JumpTest::NotZero>(Gameboy &gameboy);
+
+template bool Instructions::JP<JumpTest::Zero>(Gameboy &gameboy);
+
+template bool Instructions::JP<JumpTest::NotCarry>(Gameboy &gameboy);
+
+template bool Instructions::JP<JumpTest::Carry>(Gameboy &gameboy);
+
+template bool Instructions::DECRegister<Register::A>(Gameboy &gameboy) const;
+
+template bool Instructions::DECRegister<Register::B>(Gameboy &gameboy) const;
+
+template bool Instructions::DECRegister<Register::C>(Gameboy &gameboy) const;
+
+template bool Instructions::DECRegister<Register::D>(Gameboy &gameboy) const;
+
+template bool Instructions::DECRegister<Register::E>(Gameboy &gameboy) const;
+
+template bool Instructions::DECRegister<Register::H>(Gameboy &gameboy) const;
+
+template bool Instructions::DECRegister<Register::L>(Gameboy &gameboy) const;
+
+template bool Instructions::DEC16<Arithmetic16Target::BC>(Gameboy &gameboy);
+
+template bool Instructions::DEC16<Arithmetic16Target::DE>(Gameboy &gameboy);
+
+template bool Instructions::DEC16<Arithmetic16Target::HL>(Gameboy &gameboy);
+
+template bool Instructions::DEC16<Arithmetic16Target::SP>(Gameboy &gameboy);
+
+template bool Instructions::INCRegister<Register::A>(Gameboy &gameboy) const;
+
+template bool Instructions::INCRegister<Register::B>(Gameboy &gameboy) const;
+
+template bool Instructions::INCRegister<Register::C>(Gameboy &gameboy) const;
+
+template bool Instructions::INCRegister<Register::D>(Gameboy &gameboy) const;
+
+template bool Instructions::INCRegister<Register::E>(Gameboy &gameboy) const;
+
+template bool Instructions::INCRegister<Register::H>(Gameboy &gameboy) const;
+
+template bool Instructions::INCRegister<Register::L>(Gameboy &gameboy) const;
+
+template bool Instructions::INC16<Arithmetic16Target::BC>(Gameboy &gameboy);
+
+template bool Instructions::INC16<Arithmetic16Target::DE>(Gameboy &gameboy);
+
+template bool Instructions::INC16<Arithmetic16Target::HL>(Gameboy &gameboy);
+
+template bool Instructions::INC16<Arithmetic16Target::SP>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::A, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::B, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::C, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::D, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::E, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::H, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegister<Register::L, Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterImmediate<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDRegisterIndirect<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::LDAddrRegister<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::LD16Register<LoadWordTarget::BC>(Gameboy &gameboy);
+
+template bool Instructions::LD16Register<LoadWordTarget::DE>(Gameboy &gameboy);
+
+template bool Instructions::LD16Register<LoadWordTarget::HL>(Gameboy &gameboy);
+
+template bool Instructions::LD16Register<LoadWordTarget::SP>(Gameboy &gameboy);
+
+template bool Instructions::PUSH<StackTarget::BC>(Gameboy &gameboy);
+
+template bool Instructions::PUSH<StackTarget::AF>(Gameboy &gameboy);
+
+template bool Instructions::PUSH<StackTarget::DE>(Gameboy &gameboy);
+
+template bool Instructions::PUSH<StackTarget::HL>(Gameboy &gameboy);
+
+template bool Instructions::POP<StackTarget::BC>(Gameboy &gameboy);
+
+template bool Instructions::POP<StackTarget::AF>(Gameboy &gameboy);
+
+template bool Instructions::POP<StackTarget::DE>(Gameboy &gameboy);
+
+template bool Instructions::POP<StackTarget::HL>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::CPRegister<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::ORRegister<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::XORRegister<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::AND<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::SUB<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::RRC<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::RLC<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::RR<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::RL<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::SLA<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::SRA<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::SWAP<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::SRL<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 0>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 1>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 2>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 3>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 4>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 5>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 6>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::A, 7>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::B, 7>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::C, 7>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::D, 7>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::E, 7>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::H, 7>(Gameboy &gameboy);
+
+template bool Instructions::BIT<Register::L, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 0>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 1>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 2>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 3>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 4>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 5>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 6>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::A, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::B, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::C, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::D, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::E, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::H, 7>(Gameboy &gameboy);
+
+template bool Instructions::RES<Register::L, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 0>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 1>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 2>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 3>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 4>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 5>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 6>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::A, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::B, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::C, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::D, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::E, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::H, 7>(Gameboy &gameboy);
+
+template bool Instructions::SET<Register::L, 7>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<0>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<1>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<2>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<3>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<4>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<5>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<6>(Gameboy &gameboy);
+
+template bool Instructions::BITAddr<7>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<0>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<1>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<2>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<3>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<4>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<5>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<6>(Gameboy &gameboy);
+
+template bool Instructions::RESAddr<7>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<0>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<1>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<2>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<3>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<4>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<5>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<6>(Gameboy &gameboy);
+
+template bool Instructions::SETAddr<7>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::SBCRegister<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::ADCRegister<Register::L>(Gameboy &gameboy);
+
+template bool Instructions::ADD16<Arithmetic16Target::BC>(Gameboy &gameboy);
+
+template bool Instructions::ADD16<Arithmetic16Target::DE>(Gameboy &gameboy);
+
+template bool Instructions::ADD16<Arithmetic16Target::HL>(Gameboy &gameboy);
+
+template bool Instructions::ADD16<Arithmetic16Target::SP>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::A>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::B>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::C>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::D>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::E>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::H>(Gameboy &gameboy);
+
+template bool Instructions::ADDRegister<Register::L>(Gameboy &gameboy);

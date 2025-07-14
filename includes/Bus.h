@@ -44,18 +44,18 @@ struct Memory {
 };
 
 struct DMA {
-    static constexpr int STARTUP_CYCLES = 1; // 1 M-cycle
-    static constexpr int TOTAL_BYTES = 0xA0;
+    static constexpr int STARTUP_CYCLES{4}; // 4 T-cycles
+    static constexpr int TOTAL_BYTES{0xA0};
 
-    uint8_t writtenValue = 0x00;
-    uint16_t startAddress = 0x0000;
-    uint8_t currentByte = 0x00;
-    bool transferActive = false;
-    bool restartPending = false;
-    uint16_t pendingStart = 0x0000;
-    uint16_t restartCountdown = 0x0000;
-    uint16_t ticks = 0x0000;
-    bool transferComplete = false;
+    uint8_t writtenValue{0x00};
+    uint16_t startAddress{0x0000};
+    uint8_t currentByte{0x00};
+    bool transferActive{false};
+    bool restartPending{false};
+    uint16_t pendingStart{0x0000};
+    uint16_t restartCountdown{0x0000};
+    uint16_t ticks{0x0000};
+    bool transferComplete{false};
 
     void Set(const uint8_t value) {
         writtenValue = value;
@@ -65,7 +65,7 @@ struct DMA {
             // A transfer is already past the setup window --> schedule a restart
             restartPending = true;
             pendingStart = newSource;
-            restartCountdown = STARTUP_CYCLES + 1;
+            restartCountdown = STARTUP_CYCLES + 4;
         } else {
             // No DMA (or still in 4-cycle setup) --> start immediately.
             transferActive = true;
@@ -95,13 +95,13 @@ public:
 
     void KeyUp(Keys key);
 
-    void UpdateGraphics(uint32_t tCycles);
+    void UpdateGraphics();
 
-    void UpdateTimers(uint32_t cycles);
+    void UpdateTimers();
 
-    void UpdateDMA(uint32_t cycles);
+    void UpdateDMA();
 
-    void UpdateSerial(uint32_t tCycles);
+    void UpdateSerial();
 
     void UpdateRTC() const;
 

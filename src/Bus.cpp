@@ -122,7 +122,7 @@ void Bus::KeyUp(Keys key) {
     joypad_.SetMatrix(joypad_.GetMatrix() | static_cast<uint8_t>(key));
 }
 
-void Bus::UpdateGraphics(const uint32_t tCycles) {
+void Bus::UpdateGraphics() {
     constexpr uint32_t LINE_CYCLES = 456;
     constexpr uint32_t MODE3_CYCLES = 172;
     constexpr uint32_t MODE2_CYCLES = 80;
@@ -137,98 +137,93 @@ void Bus::UpdateGraphics(const uint32_t tCycles) {
     }
     gpu_->hblank = false;
 
-    for (uint32_t i = 0; i < tCycles; i++) {
-        gpu_->scanlineCounter++;
-        switch (gpu_->stat.mode) {
-            case 0: {
-                if (gpu_->scanlineCounter < MODE0_CYCLES) break;
-                gpu_->scanlineCounter -= MODE0_CYCLES;
-                ++gpu_->currentLine;
+    gpu_->scanlineCounter++;
+    switch (gpu_->stat.mode) {
+        case 0: {
+            if (gpu_->scanlineCounter < MODE0_CYCLES) break;
+            gpu_->scanlineCounter -= MODE0_CYCLES;
+            ++gpu_->currentLine;
 
-                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
+            if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
 
-                if (gpu_->currentLine == 144) {
-                    gpu_->stat.mode = 1;
-                    gpu_->vblank = true;
-                    SetInterrupt(InterruptType::VBlank);
-                    if (gpu_->stat.enableM1Interrupt) SetInterrupt(InterruptType::LCDStat);
-                } else {
-                    gpu_->stat.mode = 2;
-                    if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
-                }
+            if (gpu_->currentLine == 144) {
+                gpu_->stat.mode = 1;
+                gpu_->vblank = true;
+                SetInterrupt(InterruptType::VBlank);
+                if (gpu_->stat.enableM1Interrupt) SetInterrupt(InterruptType::LCDStat);
+            } else {
+                gpu_->stat.mode = 2;
+                if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
             }
-            break;
-
-            case 1: {
-                if (gpu_->scanlineCounter < LINE_CYCLES) break;
-                gpu_->scanlineCounter -= LINE_CYCLES;
-                ++gpu_->currentLine;
-
-                // Ten lines in VBlank: LY 144-153
-                if (gpu_->currentLine > 153) {
-                    gpu_->currentLine = 0;
-                    gpu_->stat.mode = 2;
-                    gpu_->scanlineCounter = 0;
-                    if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
-                }
-
-                if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
-            }
-            break;
-
-            case 2: {
-                if (gpu_->scanlineCounter < MODE2_CYCLES) break;
-                gpu_->scanlineCounter -= MODE2_CYCLES;
-                gpu_->stat.mode = 3;
-            }
-            break;
-
-            case 3: {
-                if (gpu_->scanlineCounter < MODE3_CYCLES) break;
-                gpu_->scanlineCounter -= MODE3_CYCLES;
-
-                gpu_->stat.mode = 0;
-                gpu_->hblank = true;
-                gpu_->DrawScanline();
-
-                if (gpu_->stat.enableM0Interrupt) SetInterrupt(InterruptType::LCDStat);
-                break;
-            }
-            default: break;
         }
+        break;
+
+        case 1: {
+            if (gpu_->scanlineCounter < LINE_CYCLES) break;
+            gpu_->scanlineCounter -= LINE_CYCLES;
+            ++gpu_->currentLine;
+
+            // Ten lines in VBlank: LY 144-153
+            if (gpu_->currentLine > 153) {
+                gpu_->currentLine = 0;
+                gpu_->stat.mode = 2;
+                gpu_->scanlineCounter = 0;
+                if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
+            }
+
+            if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
+        }
+        break;
+
+        case 2: {
+            if (gpu_->scanlineCounter < MODE2_CYCLES) break;
+            gpu_->scanlineCounter -= MODE2_CYCLES;
+            gpu_->stat.mode = 3;
+        }
+        break;
+
+        case 3: {
+            if (gpu_->scanlineCounter < MODE3_CYCLES) break;
+            gpu_->scanlineCounter -= MODE3_CYCLES;
+
+            gpu_->stat.mode = 0;
+            gpu_->hblank = true;
+            gpu_->DrawScanline();
+
+            if (gpu_->stat.enableM0Interrupt) SetInterrupt(InterruptType::LCDStat);
+            break;
+        }
+        default: break;
     }
 }
 
-void Bus::UpdateTimers(const uint32_t cycles) {
+void Bus::UpdateTimers() {
     const int frameSeqBit = audio_->IsDMG() || speed == Speed::Regular ? 12 : 13;
 
-    for (uint32_t i = 0; i < cycles; ++i) {
-        timer_.reloadActive = false;
+    timer_.reloadActive = false;
+    if (timer_.overflowPending && --timer_.overflowDelay == 0) {
+        timer_.tima = timer_.tma;
+        SetInterrupt(InterruptType::Timer);
+        timer_.overflowPending = false;
+        timer_.reloadActive = true;
+    }
 
-        if (timer_.overflowPending && --timer_.overflowDelay == 0) {
-            timer_.tima = timer_.tma;
-            SetInterrupt(InterruptType::Timer);
-            timer_.overflowPending = false;
-            timer_.reloadActive = true;
-        }
+    const bool timerEnabled = timer_.tac & 0x04;
+    const int timerBit = Timer::TimerBit(timer_.tac);
+    const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
+    const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
 
-        const bool timerEnabled = timer_.tac & 0x04;
-        const int timerBit = Timer::TimerBit(timer_.tac);
-        const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-        const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
+    ++timer_.divCounter;
 
-        ++timer_.divCounter;
+    const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
+    if (oldSignal && !newSignal) {
+        timer_.IncrementTIMA();
+    }
 
-        const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-        if (oldSignal && !newSignal) {
-            timer_.IncrementTIMA();
-        }
-
-        // Check for a falling edge for the APU Frame Sequencer
-        const bool newFrameSeqSignal = (timer_.divCounter & (1u << frameSeqBit));
-        if (oldFrameSeqSignal && !newFrameSeqSignal) {
-            audio_->TickFrameSequencer();
-        }
+    // Check for a falling edge for the APU Frame Sequencer
+    const bool newFrameSeqSignal = (timer_.divCounter & (1u << frameSeqBit));
+    if (oldFrameSeqSignal && !newFrameSeqSignal) {
+        audio_->TickFrameSequencer();
     }
 }
 
@@ -241,47 +236,42 @@ void Bus::UpdateRTC() const {
     }
 }
 
-void Bus::UpdateDMA(const uint32_t cycles) {
-    for (uint32_t i = 0; i < cycles; ++i) {
-        if (dma_.transferComplete) {
-            dma_.transferActive = false;
-            dma_.transferComplete = false;
-            dma_.ticks = 0;
-            dma_.currentByte = 0;
-        }
-        if (!dma_.transferActive) { continue; }
-        if (dma_.restartPending && --dma_.restartCountdown == 0) {
-            dma_.restartPending = false;
-            dma_.startAddress = dma_.pendingStart;
-            dma_.currentByte = 0;
-            dma_.ticks = 1;
-        }
+void Bus::UpdateDMA() {
+    if (dma_.transferComplete) {
+        dma_.transferActive = false;
+        dma_.transferComplete = false;
+        dma_.ticks = 0;
+        dma_.currentByte = 0;
+    }
+    if (!dma_.transferActive) { return; }
+    if (dma_.restartPending && --dma_.restartCountdown == 0) {
+        dma_.restartPending = false;
+        dma_.startAddress = dma_.pendingStart;
+        dma_.currentByte = 0;
+        dma_.ticks = 4;
+    }
 
-        ++dma_.ticks;
+    ++dma_.ticks;
+    if (dma_.ticks <= DMA::STARTUP_CYCLES || dma_.ticks % 4 != 0) return; // OAM still accessible here
 
-        if (dma_.ticks <= DMA::STARTUP_CYCLES) continue; // OAM still accessible here
-
-        gpu_->oam[dma_.currentByte++] =
-                ReadDMASource(dma_.startAddress + dma_.currentByte);
-        if (dma_.currentByte == DMA::TOTAL_BYTES) {
-            dma_.transferComplete = true;
-        }
+    gpu_->oam[dma_.currentByte++] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+    if (dma_.currentByte == DMA::TOTAL_BYTES) {
+        dma_.transferComplete = true;
     }
 }
 
-void Bus::UpdateSerial(const uint32_t tCycles) {
+void Bus::UpdateSerial() {
     if (!serial_.active_) return;
-    for (uint32_t i = 0; i < tCycles; i++) {
-        if (--serial_.ticksUntilShift_ == 0) {
-            serial_.ShiftOneBit();
-            if (++serial_.bitsShifted_ == 8) {
-                serial_.active_ = false;
-                serial_.control_ &= 0x7F;
-                SetInterrupt(InterruptType::Serial);
-                break;
-            }
-            serial_.ticksUntilShift_ = serial_.ticksPerBit_;
+
+    if (--serial_.ticksUntilShift_ == 0) {
+        serial_.ShiftOneBit();
+        if (++serial_.bitsShifted_ == 8) {
+            serial_.active_ = false;
+            serial_.control_ &= 0x7F;
+            SetInterrupt(InterruptType::Serial);
+            return;
         }
+        serial_.ticksUntilShift_ = serial_.ticksPerBit_;
     }
 }
 
