@@ -24,6 +24,10 @@ enum class Mode {
     AGS_GBC = 0x0A,
 };
 
+enum class InterruptState {
+    M1, M2, M3, M4, M5
+};
+
 struct GameboySettings {
     std::string romName;
     std::string biosPath;
@@ -34,6 +38,10 @@ struct GameboySettings {
 };
 
 class Gameboy {
+    static constexpr uint32_t CYCLES_PER_SECOND = 8388608;
+    static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
+    static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
+    static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
     std::string rom_path_;
     std::string bios_path_;
     std::unique_ptr<Registers> regs = std::make_unique<Registers>();
@@ -42,6 +50,16 @@ class Gameboy {
     Mode mode_ = Mode::DMG;
     uint16_t currentInstruction = 0x00;
 
+    InterruptState interruptState{InterruptState::M1};
+    uint16_t previousPC{0x00};
+    uint16_t nextInstruction{0x0000};
+    bool runPrefixStall{false};
+    bool prefixed{false};
+    uint8_t mCycleCounter{0x01};
+    uint8_t tCycleCounter{0x00};
+    uint32_t masterCycles{0x00000000};
+    uint8_t interruptBit{0x00};
+    uint8_t interruptMask{0x00};
     uint16_t pc = 0x00;
     uint16_t sp = 0x00;
     uint8_t icount = 0;
@@ -55,9 +73,9 @@ class Gameboy {
     bool paused = false;
     bool stopped = false;
 
-    uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
+    void ExecuteMicroOp();
 
-    uint8_t ExecuteInstruction();
+    uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
 
     void InitializeBootrom() const;
 
@@ -65,11 +83,9 @@ class Gameboy {
 
     [[nodiscard]] uint32_t RunHDMA() const;
 
-    uint32_t ProcessInterrupts();
+    bool ProcessInterrupts();
 
     void PrintCurrentValues() const;
-
-    void TickM(uint32_t mCycles, bool countDoubleSpeed);
 
 public:
     friend class Instructions;
@@ -124,9 +140,7 @@ public:
 
     void SetThrottle(bool throttle);
 
-    void AdvanceFrames(uint32_t frameBudget);
-
-    void DebugNextInstruction();
+    void AdvanceFrame();
 
     void SaveState(int slot) const;
 
@@ -134,7 +148,6 @@ public:
 
     void SetPaused(const bool val) {
         paused = val;
-        PrintCurrentValues();
     }
 
     [[nodiscard]] bool IsPaused() const {
