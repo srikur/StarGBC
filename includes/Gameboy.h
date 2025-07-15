@@ -72,6 +72,7 @@ class Gameboy {
     int speedMultiplier = 1;
     bool paused = false;
     bool stopped = false;
+    bool instrComplete = false;
 
     void ExecuteMicroOp();
 

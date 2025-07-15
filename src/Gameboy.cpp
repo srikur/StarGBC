@@ -133,7 +133,6 @@ void Gameboy::SetThrottle(const bool throttle) {
 
 void Gameboy::AdvanceFrame() {
     const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
-    masterCycles++;
     if (masterCycles == CYCLES_PER_SECOND) masterCycles = 0;
     if ((masterCycles % speedDivider) == 0) ExecuteMicroOp();
     if ((masterCycles % speedDivider) == 0) bus->UpdateTimers();
@@ -142,14 +141,16 @@ void Gameboy::AdvanceFrame() {
     if ((masterCycles % speedDivider) == 0) bus->UpdateSerial();
     if ((masterCycles % speedDivider) == 0) bus->UpdateDMA();
     if ((masterCycles % GRAPHICS_CLOCK_DIVIDER) == 0) bus->UpdateGraphics();
+    masterCycles++;
     // need to add hdma tick
 }
 
 void Gameboy::ExecuteMicroOp() {
-    if (tCycleCounter % 4 == 0) {
+    if ((++tCycleCounter % 4) == 0) {
+        tCycleCounter = 0;
+        // std::fprintf(stderr, "masterCycles = %d, tCycleCounter = %d\n", masterCycles, tCycleCounter);
         if (ProcessInterrupts()) return;
         if (halted) {
-            tCycleCounter++;
             return;
         }
         if (haltBug) {
@@ -165,13 +166,12 @@ void Gameboy::ExecuteMicroOp() {
         const bool completed = DecodeInstruction(currentInstruction, prefixed);
         if (completed) {
             // PrintCurrentValues();
+            instrComplete = true;
             prefixed = (currentInstruction >> 8) == 0xCB;
             currentInstruction = nextInstruction;
             mCycleCounter = 1;
-        }
-        tCycleCounter = 0;
+        } else instrComplete = false;
     }
-    tCycleCounter++;
 }
 
 void Gameboy::UpdateEmulator() {
@@ -213,6 +213,7 @@ void Gameboy::PrintCurrentValues() const {
         bus->gpu_->lcdc, bus->gpu_->stat.value(), bus->gpu_->currentLine, bus->gpu_->scanlineCounter,
         bus->interruptEnable, bus->interruptFlag, bus->interruptMasterEnable ? 1 : 0,
         bus->timer_.divCounter, bus->timer_.tima, bus->timer_.tma, bus->timer_.tac);
+    // const std::string text = std::format("{:#04x} - {}\n", currentInstruction, instructions->GetMnemonic(prefixed ? 0xCB00 | currentInstruction : currentInstruction));
     // print to file 'debug.txt' -- append
     std::ofstream file("debug.txt", std::ios_base::app);
     file << text;

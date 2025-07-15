@@ -75,10 +75,10 @@ bool Instructions::RETI(Gameboy &gameboy) {
     }
     if (gameboy.mCycleCounter == 4) {
         gameboy.pc = word;
-        gameboy.bus->interruptMasterEnable = true;
         return false;
     }
     if (gameboy.mCycleCounter == 5) {
+        gameboy.bus->interruptMasterEnable = true;
         gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
         return true;
     }
@@ -416,7 +416,6 @@ bool Instructions::RETConditional(Gameboy &gameboy) {
         else if constexpr (test == JumpTest::Zero) jumpCondition = gameboy.regs->FlagZero();
         else if constexpr (test == JumpTest::Carry) jumpCondition = gameboy.regs->FlagCarry();
         else if constexpr (test == JumpTest::NotCarry) jumpCondition = !gameboy.regs->FlagCarry();
-        word = 0;
         return false;
     }
     if (gameboy.mCycleCounter == 3) {
@@ -447,50 +446,21 @@ bool Instructions::RETConditional(Gameboy &gameboy) {
 
 bool Instructions::JRUnconditional(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 2) {
-        // M2 Cycle: Read the signed 8-bit immediate value (n).
-        // The PC has already been incremented past the opcode.
-        byte = gameboy.bus->ReadByte(gameboy.pc);
-        gameboy.pc += 1; // PC is now at the address of the next instruction.
+        signedByte = std::bit_cast<int8_t>(gameboy.bus->ReadByte(gameboy.pc));
+        gameboy.pc += 1;
         return false;
     }
     if (gameboy.mCycleCounter == 3) {
-        // M3 Cycle: Calculate the destination address.
-        // The pseudocode describes the hardware logic for adding a signed
-        // 8-bit offset to the 16-bit program counter.
-
-        // Z_sign = bit(7, Z)
-        const bool zSign = (byte & 0x80) == 0x80; // True if the offset is negative.
-
-        // Deconstruct the current PC to perform 8-bit arithmetic.
-        const uint8_t pcLsb = gameboy.pc & 0x00FF;
-        const uint8_t pcMsb = gameboy.pc >> 8;
-
-        // result, carry_per_bit = Z + lsb(PC)
-        // Add the offset to the lower byte of the PC.
-        const uint16_t resultLsb = pcLsb + byte;
-        const bool carry = resultLsb > 0xFF; // This checks for the carry from bit 7.
-
-        // adj = ...
-        // Calculate the adjustment for the upper byte of the PC to handle
-        // carries (for forward jumps) and borrows (for backward jumps).
-        int8_t adj = 0;
-        if (carry && !zSign) {
-            adj = 1;
-        } else if (!carry && zSign) {
-            adj = -1;
-        }
-
-        // W = msb(PC) + adj
-        // Combine the adjusted upper byte with the new lower byte to form the final address.
-        const uint8_t newMsb = pcMsb + adj;
-        word = (newMsb << 8) | static_cast<uint8_t>(resultLsb);
-
-        // The calculation is complete; wait for the final cycle.
         return false;
     }
     if (gameboy.mCycleCounter == 4) {
-        // M4 Cycle: Jump to the new address and fetch the next opcode.
-        gameboy.pc = word;
+        const uint16_t next = gameboy.pc;
+        if (signedByte >= 0) {
+            gameboy.pc = next + static_cast<uint16_t>(signedByte);
+        } else {
+            gameboy.pc = next - static_cast<uint16_t>(abs(signedByte));
+        }
+        gameboy.previousPC = gameboy.pc;
         gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
         return true; // Instruction is complete.
     }
@@ -500,7 +470,7 @@ bool Instructions::JRUnconditional(Gameboy &gameboy) {
 template<JumpTest test>
 bool Instructions::JR(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 2) {
-        byte = gameboy.bus->ReadByte(gameboy.pc);
+        signedByte = std::bit_cast<int8_t>(gameboy.bus->ReadByte(gameboy.pc));
         gameboy.pc += 1;
         if constexpr (test == JumpTest::NotZero) jumpCondition = !gameboy.regs->FlagZero();
         else if constexpr (test == JumpTest::Zero) jumpCondition = gameboy.regs->FlagZero();
@@ -509,20 +479,22 @@ bool Instructions::JR(Gameboy &gameboy) {
         return false;
     }
     if (gameboy.mCycleCounter == 3) {
-        if (jumpCondition) {
-            word = gameboy.pc;
-            if (const auto signedByte = static_cast<int8_t>(byte); signedByte >= 0) {
-                word += static_cast<uint16_t>(signedByte);
-            } else {
-                word -= static_cast<uint16_t>(std::abs(signedByte));
-            }
-            return false;
-        }
-        gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
-        return true;
+        return false;
     }
     if (gameboy.mCycleCounter == 4) {
-        gameboy.pc = word;
+        // gameboy.pc = word;
+        const uint16_t next = gameboy.pc;
+        if (jumpCondition) {
+            if (signedByte >= 0) {
+                gameboy.pc = next + static_cast<uint16_t>(signedByte);
+            } else {
+                gameboy.pc = next - static_cast<uint16_t>(abs(signedByte));
+            }
+            gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+            return true;
+        }
+        gameboy.pc = next;
+        gameboy.previousPC = gameboy.pc;
         gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
         return true;
     }
@@ -680,16 +652,15 @@ bool Instructions::INCRegister(Gameboy &gameboy) const {
 
 bool Instructions::INCIndirect(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 2) {
-        word = gameboy.regs->GetHL();
+        byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
         return false;
     }
     if (gameboy.mCycleCounter == 3) {
-        const uint8_t byte = gameboy.bus->ReadByte(word);
         gameboy.regs->SetHalf((byte & 0xF) == 0xF);
         const uint8_t newValue = byte + 1;
         gameboy.regs->SetZero(newValue == 0);
         gameboy.regs->SetSubtract(false);
-        gameboy.bus->WriteByte(word, newValue);
+        gameboy.bus->WriteByte(gameboy.regs->GetHL(), newValue);
         return false;
     }
     if (gameboy.mCycleCounter == 4) {
@@ -1225,7 +1196,7 @@ bool Instructions::ORImmediate(Gameboy &gameboy) {
         gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
         return true;
     }
-    return true;
+    return false;
 }
 
 template<Register source>

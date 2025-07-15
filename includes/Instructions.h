@@ -54,6 +54,7 @@ class Instructions {
 
     // used for storing data between cycles
     bool jumpCondition{false};
+    int8_t signedByte{0};
     uint8_t byte{0};
     uint16_t word{0};
     uint16_t word2{0};
