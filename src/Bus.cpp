@@ -138,6 +138,9 @@ void Bus::UpdateGraphics() {
     gpu_->hblank = false;
 
     gpu_->scanlineCounter++;
+    // std::ofstream file("debug.txt", std::ios_base::app);
+    // file << "scanlineCounter: " << gpu_->scanlineCounter << std::endl;
+    // file.close();
     switch (gpu_->stat.mode) {
         case 0: {
             if (gpu_->scanlineCounter < MODE0_CYCLES) break;
