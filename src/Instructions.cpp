@@ -1528,6 +1528,9 @@ bool Instructions::RESAddr(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 3) {
         byte &= ~(1 << bit);
         gameboy.bus->WriteByte(gameboy.regs->GetHL(), byte);
+        return false;
+    }
+    if (gameboy.mCycleCounter == 4) {
         gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
         return true;
     }
