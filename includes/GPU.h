@@ -85,7 +85,7 @@ public:
 
     uint8_t scrollX = 0; // 0xFF43
     uint8_t scrollY = 0; // 0xFF42
-    uint32_t scanlineCounter = 0;
+    uint32_t scanlineCounter = 456;
 
     bool vblank = false;
 

@@ -95,7 +95,7 @@ public:
 
     void KeyUp(Keys key);
 
-    void UpdateGraphics();
+    void UpdateGraphics(uint32_t tCycles);
 
     void UpdateTimers();
 

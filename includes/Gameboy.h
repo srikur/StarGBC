@@ -25,7 +25,7 @@ enum class Mode {
 };
 
 enum class InterruptState {
-    M1, M2, M3, M4, M5
+    M1, M2, M3, M4, M5, M6
 };
 
 struct GameboySettings {
@@ -38,7 +38,8 @@ struct GameboySettings {
 };
 
 class Gameboy {
-    static constexpr uint32_t CYCLES_PER_SECOND = 8388608;
+    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
+    static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
     static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
     static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
     static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
@@ -72,7 +73,9 @@ class Gameboy {
     int speedMultiplier = 1;
     bool paused = false;
     bool stopped = false;
-    bool instrComplete = false;
+    bool instrComplete = true;
+    uint16_t previousInstruction = 0x0000;
+    bool previousPrefixed = false;
 
     void ExecuteMicroOp();
 
@@ -86,14 +89,14 @@ class Gameboy {
 
     bool ProcessInterrupts();
 
-    void PrintCurrentValues() const;
+    void PrintCurrentValues();
 
 public:
     friend class Instructions;
 
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
                      const bool debugStart, const bool realRTC) : rom_path_(std::move(rom_path)),
-                                              bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
+                                                                  bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
         if (mode_ != Mode::None) {
             bus->gpu_->hardware = mode_ == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
             bus->audio_->SetDMG(bus->gpu_->hardware == GPU::Hardware::DMG);
@@ -107,6 +110,7 @@ public:
         } else {
             pc = 0x100;
             InitializeSystem();
+            currentInstruction = bus->ReadByte(pc++);
         }
         bus->cartridge_->rtc->realRTC = realRTC;
     }
