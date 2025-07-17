@@ -141,7 +141,7 @@ void Gameboy::AdvanceFrame() {
     bus->UpdateSerial();
     bus->UpdateDMA();
     // if ((masterCycles % GRAPHICS_CLOCK_DIVIDER) == 0) bus->UpdateGraphics();
-    if (interruptState == InterruptState::M1 && instrComplete && tCycleCounter == 0) PrintCurrentValues();
+    // if (interruptState == InterruptState::M1 && instrComplete && tCycleCounter == 0) PrintCurrentValues();
     masterCycles++;
     // need to add hdma tick
 }
@@ -149,7 +149,7 @@ void Gameboy::AdvanceFrame() {
 void Gameboy::ExecuteMicroOp() {
     if ((++tCycleCounter % 4) == 0) {
         tCycleCounter = 0;
-        if (mCycleCounter == 1 && ProcessInterrupts()) return;
+        if (!instrRunning && ProcessInterrupts()) return;
         if (halted) {
             bus->UpdateGraphics(4);
             return;
@@ -158,6 +158,7 @@ void Gameboy::ExecuteMicroOp() {
         if (bus->bootromRunning && pc == 0x100) {
             bus->bootromRunning = false;
         }
+        instrRunning = true;
         const bool completed = DecodeInstruction(currentInstruction, prefixed);
         if (completed) {
             bus->UpdateGraphics((mCycleCounter - 1) * 4);
@@ -172,6 +173,7 @@ void Gameboy::ExecuteMicroOp() {
                 haltBug = false;
                 pc -= 1;
             }
+            instrRunning = false;
         } else instrComplete = false;
     }
 }
@@ -221,9 +223,9 @@ void Gameboy::PrintCurrentValues() {
     // print to file 'debug.txt' -- append
     // std::printf("%s", text.c_str());
     // std::fflush(stdout);
-    // std::ofstream file("debug.txt", std::ios_base::app);
-    // file << text;
-    // file.close();
+    std::ofstream file("debug.txt", std::ios_base::app);
+    file << text;
+    file.close();
 }
 
 inline uint8_t interruptAddress(const uint8_t bit) {
@@ -308,8 +310,9 @@ bool Gameboy::ProcessInterrupts() {
         }
         case M6: {
             previousPC = pc;
+            prefixed = false;
             currentInstruction = bus->ReadByte(pc++);
-            bus->UpdateGraphics(6 * 4);
+            bus->UpdateGraphics(5 * 4);
             interruptState = M1;
             mCycleCounter = 1;
             return false;

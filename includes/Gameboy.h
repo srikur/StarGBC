@@ -65,6 +65,7 @@ class Gameboy {
     uint16_t sp = 0x00;
     uint8_t icount = 0;
     bool halted = false;
+    bool instrRunning = false;
     bool haltBug = false;
     uint32_t stepCycles = 0;
     uint32_t cyclesThisInstruction = 0;
