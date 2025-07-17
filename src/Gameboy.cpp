@@ -33,7 +33,7 @@ uint32_t *Gameboy::GetScreenData() const {
 }
 
 uint8_t Gameboy::DecodeInstruction(const uint8_t opcode, const bool prefixed) {
-    // std::fprintf(stderr, "Running instruction %02X %s\n", opcode, prefixed ? "(prefixed)" : "");
+    // std::fprintf(stderr, "Running instruction %02X %s with mCycleCounter = %d, masterCycles = %d\n", opcode, prefixed ? "(prefixed)" : "", mCycleCounter, masterCycles);
     return prefixed
                ? instructions->prefixedInstr(opcode, *this)
                : instructions->nonPrefixedInstr(opcode, *this);
@@ -132,15 +132,16 @@ void Gameboy::SetThrottle(const bool throttle) {
 }
 
 void Gameboy::AdvanceFrame() {
-    const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
-    if (masterCycles == CYCLES_PER_SECOND) masterCycles = 0;
-    if ((masterCycles % speedDivider) == 0) ExecuteMicroOp();
-    if ((masterCycles % speedDivider) == 0) bus->UpdateTimers();
-    if ((masterCycles % RTC_CLOCK_DIVIDER) == 0) bus->UpdateRTC();
-    if ((masterCycles % AUDIO_CLOCK_DIVIDER) == 0) bus->audio_->Tick();
-    if ((masterCycles % speedDivider) == 0) bus->UpdateSerial();
-    if ((masterCycles % speedDivider) == 0) bus->UpdateDMA();
-    if ((masterCycles % GRAPHICS_CLOCK_DIVIDER) == 0) bus->UpdateGraphics();
+    // const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
+    if (masterCycles == DMG_CYCLES_PER_SECOND) masterCycles = 0;
+    ExecuteMicroOp();
+    bus->UpdateTimers();
+    bus->UpdateRTC();
+    bus->audio_->Tick();
+    bus->UpdateSerial();
+    bus->UpdateDMA();
+    // if ((masterCycles % GRAPHICS_CLOCK_DIVIDER) == 0) bus->UpdateGraphics();
+    if (interruptState == InterruptState::M1 && instrComplete && tCycleCounter == 0) PrintCurrentValues();
     masterCycles++;
     // need to add hdma tick
 }
@@ -148,28 +149,29 @@ void Gameboy::AdvanceFrame() {
 void Gameboy::ExecuteMicroOp() {
     if ((++tCycleCounter % 4) == 0) {
         tCycleCounter = 0;
-        // std::fprintf(stderr, "masterCycles = %d, tCycleCounter = %d\n", masterCycles, tCycleCounter);
-        if (ProcessInterrupts()) return;
+        if (mCycleCounter == 1 && ProcessInterrupts()) return;
         if (halted) {
+            bus->UpdateGraphics(4);
             return;
-        }
-        if (haltBug) {
-            haltBug = false;
-            pc -= 1;
         }
         mCycleCounter++;
         if (bus->bootromRunning && pc == 0x100) {
-            // std::fprintf(stderr, "Bootrom completed\n");
             bus->bootromRunning = false;
         }
-        previousPC = pc;
         const bool completed = DecodeInstruction(currentInstruction, prefixed);
         if (completed) {
-            // PrintCurrentValues();
+            bus->UpdateGraphics((mCycleCounter - 1) * 4);
+            previousPC = pc - 1;
             instrComplete = true;
+            previousPrefixed = prefixed;
             prefixed = (currentInstruction >> 8) == 0xCB;
+            previousInstruction = currentInstruction;
             currentInstruction = nextInstruction;
             mCycleCounter = 1;
+            if (haltBug) {
+                haltBug = false;
+                pc -= 1;
+            }
         } else instrComplete = false;
     }
 }
@@ -183,7 +185,7 @@ void Gameboy::UpdateEmulator() {
     static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
     const auto frameStart = clock::now();
 
-    for (uint32_t i = 0; i < kFrameCyclesCGB; i++) {
+    for (uint32_t i = 0; i < kFrameCyclesDMG; i++) {
         AdvanceFrame();
     }
 
@@ -192,7 +194,9 @@ void Gameboy::UpdateEmulator() {
         std::this_thread::sleep_for(effectiveFrameTime - elapsed);
 }
 
-void Gameboy::PrintCurrentValues() const {
+void Gameboy::PrintCurrentValues() {
+    if ((previousInstruction & 0xFF00) >> 8 == 0xCB) return;
+    if (previousPrefixed) previousInstruction = 0xCB00 | (previousInstruction & 0x00FF);
     const std::string text = std::format(
         "----------------------------------------------\n"
         "PC: {:#06x}  SP: {:#06x}  OP: {:#04x} — {}\n"
@@ -204,7 +208,7 @@ void Gameboy::PrintCurrentValues() const {
         "IE:{:02X} IF:{:02X} IME:{:02X}\n"
         "DIV:{:02X} TIMA:{:02X} TMA:{:02X} TAC:{:02X}"
         "\n----------------------------------------------\n",
-        previousPC, sp, currentInstruction, instructions->GetMnemonic(prefixed ? 0xCB00 | currentInstruction : currentInstruction),
+        previousPC, sp, previousInstruction, instructions->GetMnemonic(previousPrefixed ? 0xCB00 | previousInstruction : previousInstruction),
         regs->a,
         regs->FlagZero() ? 1 : 0, regs->FlagSubtract() ? 1 : 0,
         regs->FlagHalf() ? 1 : 0, regs->FlagCarry() ? 1 : 0,
@@ -215,9 +219,11 @@ void Gameboy::PrintCurrentValues() const {
         bus->timer_.divCounter, bus->timer_.tima, bus->timer_.tma, bus->timer_.tac);
     // const std::string text = std::format("{:#04x} - {}\n", currentInstruction, instructions->GetMnemonic(prefixed ? 0xCB00 | currentInstruction : currentInstruction));
     // print to file 'debug.txt' -- append
-    std::ofstream file("debug.txt", std::ios_base::app);
-    file << text;
-    file.close();
+    // std::printf("%s", text.c_str());
+    // std::fflush(stdout);
+    // std::ofstream file("debug.txt", std::ios_base::app);
+    // file << text;
+    // file.close();
 }
 
 inline uint8_t interruptAddress(const uint8_t bit) {
@@ -245,7 +251,6 @@ bool Gameboy::ProcessInterrupts() {
                 return false;
             }
             if (halted && !bus->interruptMasterEnable) {
-                std::fprintf(stderr, "Interrupts disabled while halted\n");
                 halted = false;
                 return false;
             }
@@ -254,59 +259,59 @@ bool Gameboy::ProcessInterrupts() {
                 return false;
             }
 
-            std::fprintf(stderr, "Processing interrupt %d\n", std::countr_zero(pending));
+            interruptState = M2;
             halted = false;
             bus->interruptMasterEnable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));
             interruptMask = static_cast<uint8_t>(1u << interruptBit);
 
-            std::fprintf(stderr, "Started processing interrupt %d\n", interruptBit);
-            interruptState = M2;
+            pc -= 1;
             return true;
         }
         case M2: {
-            std::fprintf(stderr, "Entered state M2\n");
             sp -= 1;
             bus->WriteByte(sp, static_cast<uint8_t>(pc >> 8));
             interruptState = M3;
             return true;
         }
         case M3: {
-            std::fprintf(stderr, "Entered state M3\n");
             if (const uint8_t newPending = bus->interruptEnable & bus->interruptFlag & 0x1F; !(newPending & interruptMask)) {
                 if (!newPending) {
                     sp--;
                     bus->WriteByte(sp, pc & 0xFF);
+                    std::fprintf(stderr, "Set PC to 0x0000 from 0x%04X\n", pc);
                     pc = 0x0000;
+                    interruptState = M4;
+                    return true;
                 } else {
                     interruptBit = std::countr_zero(newPending);
                     interruptMask = 1u << interruptBit;
-
-                    sp -= 1;
-                    bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
-                    bus->interruptFlag &= ~interruptMask;
-                    pc = interruptAddress(interruptBit);
                 }
-            } else {
-                sp -= 1;
-                bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
-                bus->interruptFlag &= ~interruptMask;
-                pc = interruptAddress(interruptBit);
             }
+
+            sp -= 1;
+            bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
+            bus->interruptFlag &= ~interruptMask;
+            pc = interruptAddress(interruptBit);
 
             interruptState = M4;
             return true;
         }
         case M4: {
-            std::fprintf(stderr, "Entered state M4\n");
             interruptState = M5;
             return true;
         }
         case M5: {
-            std::fprintf(stderr, "Entered state M5\n");
-            pc = interruptAddress(interruptBit);
+            interruptState = M6;
+            return true;
+        }
+        case M6: {
+            previousPC = pc;
+            currentInstruction = bus->ReadByte(pc++);
+            bus->UpdateGraphics(6 * 4);
             interruptState = M1;
+            mCycleCounter = 1;
             return false;
         }
     }
