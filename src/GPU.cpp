@@ -22,7 +22,7 @@ void GPU::RenderSprites() {
         if (yPos <= currentLine && (yPos + spriteSize) > currentLine)
             sprites.emplace_back(i, xPos, yPos);
     }
-    // if (hardware != Hardware::CGB) sprites.sort();
+    if (hardware != Hardware::CGB) sprites.sort();
     if (sprites.size() > 10) sprites.resize(10);
     sprites.reverse();
 
@@ -193,10 +193,11 @@ void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
 }
 
 uint8_t GPU::ReadVRAM(const uint16_t address) const {
-    return vram[vramBank * 0x2000 + address - 0x8000];
+    return stat.mode == 3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
 }
 
 void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
+    if (stat.mode == 3) return;
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
