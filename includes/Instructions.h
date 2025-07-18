@@ -52,13 +52,6 @@ class Instructions {
         if constexpr (target == RSTTarget::H38) return 0x38;
     }
 
-    // used for storing data between cycles
-    bool jumpCondition{false};
-    int8_t signedByte{0};
-    uint8_t byte{0};
-    uint16_t word{0};
-    uint16_t word2{0};
-
     bool DAA(Gameboy &gameboy);
 
     bool RETI(Gameboy &gameboy);
@@ -307,6 +300,13 @@ class Instructions {
     bool ADDSigned(Gameboy &gameboy);
 
 public:
+    // used for storing data between cycles
+    bool jumpCondition{false};
+    int8_t signedByte{0};
+    uint8_t byte{0};
+    uint16_t word{0};
+    uint16_t word2{0};
+
     using WrappedFunction = std::function<bool(Gameboy &)>;
 
     template<typename... Args>
@@ -319,7 +319,7 @@ public:
         return nonPrefixedTable[opcode](std::forward<Args>(args)...);
     }
 
-    std::string GetMnemonic(uint16_t instruction) {
+    [[nodiscard]] std::string GetMnemonic(uint16_t instruction) const {
         const bool prefixed = instruction >> 8 == 0xCB;
         instruction &= 0xFF;
         return prefixed ? prefixedInstructions[instruction] : nonPrefixedInstructions[instruction];

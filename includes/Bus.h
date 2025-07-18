@@ -44,9 +44,10 @@ struct Memory {
 };
 
 struct DMA {
-    static constexpr int STARTUP_CYCLES{4}; // 4 T-cycles
+    static constexpr int STARTUP_CYCLES{1}; // 4 T-cycles
     static constexpr int TOTAL_BYTES{0xA0};
 
+    uint8_t dmaTickCounter{0x00};
     uint8_t writtenValue{0x00};
     uint16_t startAddress{0x0000};
     uint8_t currentByte{0x00};
@@ -65,7 +66,7 @@ struct DMA {
             // A transfer is already past the setup window --> schedule a restart
             restartPending = true;
             pendingStart = newSource;
-            restartCountdown = STARTUP_CYCLES + 4;
+            restartCountdown = STARTUP_CYCLES + 1;
         } else {
             // No DMA (or still in 4-cycle setup) --> start immediately.
             transferActive = true;
@@ -95,7 +96,7 @@ public:
 
     void KeyUp(Keys key);
 
-    void UpdateGraphics(uint32_t tCycles);
+    void UpdateGraphics();
 
     void UpdateTimers();
 

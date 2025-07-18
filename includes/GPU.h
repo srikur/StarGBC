@@ -74,7 +74,7 @@ public:
         .enableM2Interrupt = false,
         .enableM1Interrupt = false,
         .enableM0Interrupt = false,
-        .mode = 0
+        .mode = 2
     }; // 0xFF41
     uint8_t currentLine = 0; // 0xFF44
     uint8_t windowX = 0; // 0xFF4B
@@ -85,7 +85,7 @@ public:
 
     uint8_t scrollX = 0; // 0xFF43
     uint8_t scrollY = 0; // 0xFF42
-    uint32_t scanlineCounter = 456;
+    uint32_t scanlineCounter = 0; // 0xFF44 -- LY
 
     bool vblank = false;
 
