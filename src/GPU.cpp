@@ -4,29 +4,30 @@
 #include "Common.h"
 
 void GPU::DrawScanline() {
-    if (lcdc & 0x01) RenderTiles();
-    if (lcdc & 0x02) RenderSprites();
+    if (Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) RenderTiles();
+    if (Bit<LCDC_OBJ_ENABLE>(lcdc) || hardware == Hardware::CGB) RenderSprites();
 }
 
-bool GPU::LCDEnabled() const {
-    return lcdc & 0x80;
+bool GPU::LCDDisabled() const {
+    return !Bit<LCDC_ENABLE_BIT>(lcdc);
+}
+
+void GPU::TickOAMScan() {
+    if (currentLineSpriteIndex >= 10) return; // max 10 sprites per scanline
+    const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
+    const uint8_t yStart = oam[currentScanByte * 4], xStart = oam[currentScanByte * 4 + 1];
+    if (currentLine >= yStart && currentLine < (yStart + spriteSize)) {
+        lineSprites[currentLineSpriteIndex++] = Sprite{.spriteNum = currentScanByte, .x = xStart, .y = yStart};
+    }
+    currentScanByte = (currentScanByte + 1) % OBJ_TOTAL_SPRITES;
+}
+
+void GPU::DrawPixel() {
 }
 
 void GPU::RenderSprites() {
-    std::list<Sprite> sprites;
-    const uint8_t spriteSize = (lcdc & 0x04) ? 16 : 8;
-
-    for (int i = 0; i < 40; ++i) {
-        uint8_t yPos = oam[i * 4] - 16;
-        uint8_t xPos = oam[i * 4 + 1] - 8;
-        if (yPos <= currentLine && (yPos + spriteSize) > currentLine)
-            sprites.emplace_back(i, xPos, yPos);
-    }
-    if (hardware != Hardware::CGB) sprites.sort();
-    if (sprites.size() > 10) sprites.resize(10);
-    sprites.reverse();
-
-    for (const Sprite &sprite: sprites) {
+    for (const Sprite &sprite: lineSprites) {
+        const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
         const uint16_t spriteAddress = sprite.spriteNum * 4;
         const uint8_t yPos = oam[spriteAddress] - 16;
         const uint8_t xPos = oam[spriteAddress + 1] - 8;
@@ -176,10 +177,9 @@ void GPU::SetColor(const uint8_t pixel, const uint32_t red, const uint32_t green
 
 GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
     return {
-        .priority = (byte & 0x80) ? true : false, .yflip = (byte & 0x40) ? true : false,
-        .xflip = (byte & 0x20) ? true : false,
-        .paletteNumberDMG = (byte & 0x10) ? true : false, .vramBank = (byte & 0x08) ? true : false,
-        .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)
+        .priority = Bit<OAM_PRIORITY_BIT>(byte), .yflip = Bit<OAM_Y_FLIP_BIT>(byte),
+        .xflip = Bit<OAM_X_FLIP_BIT>(byte), .paletteNumberDMG = Bit<OAM_PALETTE_NUMBER_DMG_BIT>(byte),
+        .vramBank = Bit<OAM_VRAM_BANK_BIT>(byte), .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)
     };
 }
 

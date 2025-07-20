@@ -10,6 +10,12 @@
 #include <string>
 #include <cstdint>
 
+template<uint8_t bit>
+static constexpr bool Bit(const uint8_t value) {
+    static_assert(bit < 8);
+    return value >> bit & 0x01;
+}
+
 class GameboyException : public std::exception {
     virtual void message() const noexcept {
         std::printf("Gameboy Exception!\n");
@@ -29,7 +35,6 @@ class UnreachableCodeException final : public GameboyException {
     UnreachableCodeException() = default;
 
 public:
-
     explicit UnreachableCodeException(std::string message) : message_(std::move(message)) {
         this->message();
     }
@@ -47,7 +52,6 @@ class FatalErrorException final : public GameboyException {
     FatalErrorException() = default;
 
 public:
-
     explicit FatalErrorException(std::string message) : message_(std::move(message)) {
         this->message();
     }
