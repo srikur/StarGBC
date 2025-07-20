@@ -15,6 +15,30 @@ public:
     static constexpr uint16_t OAM_BEGIN = 0xFE00;
     static constexpr uint16_t OAM_END = 0xFE9F;
 
+
+
+
+    static constexpr uint8_t OAM_PRIORITY_BIT = 7;
+    static constexpr uint8_t OAM_Y_FLIP_BIT = 6;
+    static constexpr uint8_t OAM_X_FLIP_BIT = 5;
+    static constexpr uint8_t OAM_PALETTE_NUMBER_DMG_BIT = 4;
+    static constexpr uint8_t OAM_VRAM_BANK_BIT = 3;
+
+    static constexpr uint16_t SCANLINE_CYCLES = 456;
+    static constexpr uint8_t MODE2_CYCLES = 80;
+
+    static constexpr uint8_t OBJ_TOTAL_SPRITES = 40;
+
+    // 0xFF40 -- LCD Control
+    static constexpr uint8_t LCDC_ENABLE_BIT = 7;
+    static constexpr uint8_t LCDC_WINDOW_TILE_MAP_AREA = 6;
+    static constexpr uint8_t LCDC_WINDOW_ENABLE = 5;
+    static constexpr uint8_t LCDC_BG_AND_WINDOW_TILE_DATA = 4;
+    static constexpr uint8_t LCDC_BG_TILE_MAP_AREA = 3;
+    static constexpr uint8_t LCDC_OBJ_SIZE = 2;
+    static constexpr uint8_t LCDC_OBJ_ENABLE = 1;
+    static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
+
     static constexpr uint32_t DMG_SHADE[4] = {
         0xFFFFFFFFu, // FF FF FF FF
         0xFFC0C0C0u, // C0 C0 C0 FF
@@ -32,17 +56,20 @@ public:
     };
 
     struct Sprite {
-        uint16_t spriteNum;
-        uint8_t x;
-        uint8_t y;
-
-        explicit Sprite(const uint16_t _num = 0, const int _x = 0, const int _y = 0) : spriteNum(_num), x(_x), y(_y) {
-        }
+        uint8_t spriteNum{0x00};
+        uint8_t x{0x00};
+        uint8_t y{0x00};
 
         bool operator<(const Sprite &s) const {
             return x < s.x || spriteNum < s.spriteNum;
         }
     };
+
+    Sprite lineSprites[10]{};
+    uint8_t currentScanByte{0x00};
+    uint8_t currentLineSpriteIndex{0x00};
+    uint8_t mode3backgroundDelay{0x00};
+    uint8_t pixelsDrawn{0x00};
 
     struct Gpi {
         uint8_t index;
@@ -85,7 +112,7 @@ public:
 
     uint8_t scrollX = 0; // 0xFF43
     uint8_t scrollY = 0; // 0xFF42
-    uint32_t scanlineCounter = 0; // 0xFF44 -- LY
+    uint32_t scanlineCounter = 0; // current dot in scanline
 
     bool vblank = false;
 
@@ -98,6 +125,10 @@ public:
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
 
     GPU() = default;
+
+    void TickOAMScan();
+
+    void DrawPixel();
 
     void DrawScanline();
 
@@ -121,7 +152,7 @@ public:
 
     void WriteRegisters(uint16_t address, uint8_t value);
 
-    bool LCDEnabled() const;
+    [[nodiscard]] bool LCDDisabled() const;
 
     enum class HDMAMode {
         GDMA, HDMA
