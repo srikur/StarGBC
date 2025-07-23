@@ -3,11 +3,6 @@
 #include "GPU.h"
 #include "Common.h"
 
-void GPU::DrawScanline() {
-    if (Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) RenderTiles();
-    if (Bit<LCDC_OBJ_ENABLE>(lcdc) || hardware == Hardware::CGB) RenderSprites();
-}
-
 bool GPU::LCDDisabled() const {
     return !Bit<LCDC_ENABLE_BIT>(lcdc);
 }
@@ -22,134 +17,7 @@ void GPU::TickOAMScan() {
     currentScanByte = (currentScanByte + 1) % OBJ_TOTAL_SPRITES;
 }
 
-void GPU::DrawPixel() {
-}
 
-void GPU::RenderSprites() {
-    for (const Sprite &sprite: lineSprites) {
-        const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
-        const uint16_t spriteAddress = sprite.spriteNum * 4;
-        const uint8_t yPos = oam[spriteAddress] - 16;
-        const uint8_t xPos = oam[spriteAddress + 1] - 8;
-
-        uint8_t tileNumber = oam[spriteAddress + 2];
-        if (lcdc & 0x04) tileNumber &= 0xFE; // 8×16 OBJ mode
-
-        const auto &[priority, yflip, xflip,
-                    paletteNumberDMG, vramBank, paletteNumberCGB] =
-                GetAttrsFrom(oam[spriteAddress + 3]);
-
-        // Y range check, including wrap‑around sprites
-        if (yPos > (0xFF - spriteSize + 1)) {
-            if (currentLine > (yPos + spriteSize - 1)) continue;
-        } else if (currentLine < yPos || currentLine > (yPos + spriteSize - 1)) {
-            continue;
-        }
-        if (xPos >= 160 && xPos <= (0xFF - 7)) continue;
-
-        const uint8_t tileY = yflip
-                                  ? spriteSize - 1 - (currentLine - yPos)
-                                  : currentLine - yPos;
-        const uint16_t tileYAddr = 0x8000 + tileNumber * 16 + tileY * 2;
-
-        const bool bank1 = (hardware == Hardware::CGB) && vramBank;
-        const uint16_t base = bank1 ? 0x6000 : 0x8000;
-        const uint8_t data1 = vram[tileYAddr - base];
-        const uint8_t data2 = vram[tileYAddr + 1 - base];
-
-        for (uint8_t pixel = 0; pixel < 8; ++pixel) {
-            if (xPos + pixel >= 160) continue;
-
-            const uint8_t tileX = xflip ? 7 - pixel : pixel;
-            const uint8_t colorLow = (data1 & (0x80 >> tileX)) ? 1 : 0;
-            const uint8_t colorHigh = (data2 & (0x80 >> tileX)) ? 2 : 0;
-            const uint8_t color = colorHigh | colorLow;
-            if (!color) continue; // colour 0 is transparent
-
-            auto [bgPrio, bgCol] = priority_[xPos + pixel];
-
-            bool skip = false;
-            if (hardware == Hardware::CGB && !(lcdc & 0x01)) {
-                skip = false; // OBJ always wins when BG disabled
-            } else if (bgPrio) {
-                skip = bgCol != 0;
-            } else {
-                skip = priority && bgCol != 0;
-            }
-            if (skip) continue;
-
-            if (hardware == Hardware::CGB) {
-                const uint8_t r = obpd[paletteNumberCGB][color][0];
-                const uint8_t g = obpd[paletteNumberCGB][color][1];
-                const uint8_t b = obpd[paletteNumberCGB][color][2];
-                SetColor(xPos + pixel, r, g, b);
-            } else {
-                const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette;
-                const uint32_t shade = DMG_SHADE[(src >> (color * 2)) & 0x03];
-                screenData[currentLine * SCREEN_WIDTH + (xPos + pixel)] = shade;
-            }
-        }
-    }
-}
-
-void GPU::RenderTiles() {
-    const bool usingWindow = (lcdc & 0x20) && (windowY <= currentLine);
-    const uint16_t tileData = (lcdc & 0x10) ? 0x8000 : 0x8800;
-    const uint8_t wndwX = windowX - 7;
-
-    const uint8_t yPos = usingWindow
-                             ? currentLine - windowY
-                             : scrollY + currentLine;
-    const uint16_t tileRow = (yPos >> 3) & 0x1F;
-
-    for (int pixel = 0; pixel < 160; ++pixel) {
-        const bool windowOnThisPixel = usingWindow && (pixel >= wndwX);
-        const uint8_t xPos = windowOnThisPixel
-                                 ? pixel - wndwX
-                                 : scrollX + pixel;
-        const uint16_t tileCol = (xPos >> 3) & 0x1F;
-
-        const uint16_t bgMapBase = windowOnThisPixel
-                                       ? ((lcdc & 0x40) ? 0x9C00 : 0x9800)
-                                       : ((lcdc & 0x08) ? 0x9C00 : 0x9800);
-
-        const uint16_t tileAddr = bgMapBase + tileRow * 32 + tileCol;
-        const uint8_t tileNum = vram[tileAddr - 0x8000];
-
-        Attributes attrs{};
-        if (hardware == Hardware::CGB)
-            attrs = GetAttrsFrom(vram[tileAddr - 0x6000]);
-
-        const auto signedIndex = static_cast<int16_t>(
-            (lcdc & 0x10) ? tileNum : static_cast<int8_t>(tileNum) + 128);
-        const uint16_t tileLocation = tileData + (signedIndex * 16);
-
-        const uint8_t tileY = attrs.yflip ? 7 - (yPos & 7) : (yPos & 7);
-        const bool bank1 = (hardware == Hardware::CGB) && attrs.vramBank;
-        const uint16_t base = bank1 ? 0x6000 : 0x8000;
-
-        const uint8_t data1 = vram[(tileLocation + tileY * 2) - base];
-        const uint8_t data2 = vram[(tileLocation + tileY * 2 + 1) - base];
-
-        const uint8_t tileX = attrs.xflip ? 7 - (xPos & 7) : (xPos & 7);
-
-        const uint8_t colorLow = (data1 & (0x80 >> tileX)) ? 1 : 0;
-        const uint8_t colorHigh = (data2 & (0x80 >> tileX)) ? 2 : 0;
-        const uint8_t color = colorHigh | colorLow;
-
-        priority_[pixel] = {attrs.priority, color};
-
-        if (hardware == Hardware::CGB) {
-            const uint8_t r = bgpd[attrs.paletteNumberCGB][color][0];
-            const uint8_t g = bgpd[attrs.paletteNumberCGB][color][1];
-            const uint8_t b = bgpd[attrs.paletteNumberCGB][color][2];
-            SetColor(pixel, r, g, b);
-        } else {
-            const uint32_t shade = DMG_SHADE[(backgroundPalette >> (color * 2)) & 0x03];
-            screenData[currentLine * SCREEN_WIDTH + pixel] = shade;
-        }
-    }
-}
 
 static constexpr uint8_t expand5(const uint8_t c) noexcept {
     return static_cast<uint8_t>((c << 3) | (c >> 2));
