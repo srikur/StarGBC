@@ -184,7 +184,7 @@ void Bus::UpdateGraphics() {
                 break;
             }
 
-            gpu_->DrawPixel();
+            // gpu_->DrawPixel();
             gpu_->pixelsDrawn++;
 
             if (gpu_->stat.enableM0Interrupt) SetInterrupt(InterruptType::LCDStat);
