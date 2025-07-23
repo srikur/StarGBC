@@ -8,13 +8,21 @@ bool GPU::LCDDisabled() const {
 }
 
 void GPU::TickOAMScan() {
-    if (currentLineSpriteIndex >= 10) return; // max 10 sprites per scanline
+    currentScanByte = (scanlineCounter - 1) / 2;
+    if (currentLineSpriteIndex >= 10) return;
+
     const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
-    const uint8_t yStart = oam[currentScanByte * 4], xStart = oam[currentScanByte * 4 + 1];
-    if (currentLine >= yStart && currentLine < (yStart + spriteSize)) {
-        lineSprites[currentLineSpriteIndex++] = Sprite{.spriteNum = currentScanByte, .x = xStart, .y = yStart};
+    const uint8_t yPos = oam[currentScanByte * 4];
+    const uint8_t yTop = yPos - 16, yBottom = yTop + spriteSize;
+
+    if (yTop <= currentLine && yBottom > currentLine) {
+        const uint8_t xPos = oam[currentScanByte * 4 + 1];
+        const uint8_t tileIndex = oam[currentScanByte * 4 + 2];
+        lineSprites[currentLineSpriteIndex++] = Sprite{
+            .spriteNum = currentScanByte, .x = xPos, .y = yPos,
+            .tileIndex = tileIndex, .processed = false
+        };
     }
-    currentScanByte = (currentScanByte + 1) % OBJ_TOTAL_SPRITES;
 }
 
 

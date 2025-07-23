@@ -59,6 +59,8 @@ public:
         uint8_t spriteNum{0x00};
         uint8_t x{0x00};
         uint8_t y{0x00};
+        uint8_t tileIndex{0x00};
+        bool processed{false};
 
         bool operator<(const Sprite &s) const {
             return x < s.x || spriteNum < s.spriteNum;
