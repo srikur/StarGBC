@@ -127,15 +127,7 @@ public:
     GPU() = default;
 
     void TickOAMScan();
-
-    void DrawPixel();
-
-    void DrawScanline();
-
-    void RenderSprites();
-
-    void RenderTiles();
-
+    
     void SetColor(uint8_t pixel, uint32_t red, uint32_t green, uint32_t blue);
 
     static Attributes GetAttrsFrom(uint8_t byte);
