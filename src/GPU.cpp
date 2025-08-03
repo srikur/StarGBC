@@ -78,6 +78,7 @@ void GPU::OutputPixel() {
             backgroundWins = spritePixel.priority && bgPixel.color != 0;
         }
     }
+    // bool backgroundWins = true;
 
     const Pixel finalPixel = !backgroundWins ? spritePixel : bgPixel;
 
@@ -88,11 +89,11 @@ void GPU::OutputPixel() {
 
     screenData[currentLine * SCREEN_WIDTH + pixelsDrawn] = finalColor;
     pixelsDrawn++;
-    CheckForWindowTrigger();
 }
 
 void GPU::TickMode3() {
     CheckForSpriteTrigger();
+    if (!spriteFetchActive_) CheckForWindowTrigger();
     if (spriteFetchActive_) {
         Fetcher_StepSpriteFetch();
     } else {
@@ -137,9 +138,7 @@ void GPU::Fetcher_StepBackgroundFetch() {
         case GetTile: {
             const auto tileMapAddress = CalculateBGTileMapAddress();
             if (hardware == Hardware::CGB) backgroundTileAttributes_ = GetAttrsFrom(vram[tileMapAddress - 0x6000]);
-            const bool bank1 = (hardware == Hardware::CGB) && backgroundTileAttributes_.vramBank;
-            const uint16_t base = bank1 ? 0x6000 : 0x8000;
-            fetcherTileNum_ = vram[tileMapAddress - base];
+            fetcherTileNum_ = vram[tileMapAddress - 0x8000];
             fetcherState_ = GetTileDataLow;
             fetcherDelay_ = 1;
             break;
@@ -264,14 +263,14 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
     uint16_t tileMapBase = 0;
     if (isFetchingWindow_) {
         tileMapBase = Bit<LCDC_WINDOW_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
-        const uint8_t yPos = windowLineCounter_ / 8;
-        const uint8_t xPos = fetcherTileX_;
-        return tileMapBase + yPos * 32 + xPos;
+        const uint8_t tileRow = ((currentLine - windowY) >> 3) & 0x1F;
+        const uint8_t tileCol = fetcherTileX_;
+        return tileMapBase + tileRow * 32 + tileCol;
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
-        const uint8_t yPos = ((scrollY + currentLine) / 8) & 0x1F;
-        const uint8_t xPos = ((fetcherTileX_ * 8 + scrollX) / 8) & 0x1F;
-        return tileMapBase + yPos * 32 + xPos;
+        const uint8_t tileRow = (((scrollY + currentLine) & 0xFF) >> 3) & 0x1F;
+        const uint8_t tileCol = (fetcherTileX_ + (scrollX / 8)) & 0x1F;
+        return tileMapBase + tileRow * 32 + tileCol;
     }
 }
 
@@ -289,7 +288,7 @@ uint16_t GPU::CalculateTileDataAddress() {
     }
 }
 
-uint16_t GPU::CalculateSpriteDataAddress(const Sprite& sprite) {
+uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
     const uint8_t spriteHeight = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
     if (Bit<LCDC_OBJ_SIZE>(lcdc)) fetcherTileNum_ &= 0xFE;
     const bool yFlip = sprite.attributes.yflip;
@@ -383,14 +382,7 @@ void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
 uint8_t GPU::ReadRegisters(const uint16_t address) const {
     switch (address) {
         case 0xFF40: return lcdc;
-        case 0xFF41: {
-            const uint8_t bit6 = stat.enableLYInterrupt ? 0x40 : 0x00;
-            const uint8_t bit5 = stat.enableM2Interrupt ? 0x20 : 0x00;
-            const uint8_t bit4 = stat.enableM1Interrupt ? 0x10 : 0x00;
-            const uint8_t bit3 = stat.enableM0Interrupt ? 0x08 : 0x00;
-            const uint8_t bit2 = (currentLine == lyc) ? 0x04 : 0x00;
-            return 0x80 | bit6 | bit5 | bit4 | bit3 | bit2 | stat.mode;
-        }
+        case 0xFF41: return stat.value();
         case 0xFF42: return scrollY;
         case 0xFF43: return scrollX;
         case 0xFF44: return currentLine;
@@ -428,7 +420,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     switch (address) {
         case 0xFF40:
             lcdc = value;
-            if (!(lcdc & 0x80)) {
+            if (!Bit<LCDC_ENABLE_BIT>(value)) {
                 scanlineCounter = 0;
                 currentLine = 0;
                 stat.mode = 0;
