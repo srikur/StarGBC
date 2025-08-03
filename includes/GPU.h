@@ -124,15 +124,17 @@ public:
     };
 
     struct Stat {
-        bool enableLYInterrupt;
-        bool enableM2Interrupt;
-        bool enableM1Interrupt;
-        bool enableM0Interrupt;
-        uint8_t mode;
+        bool enableLYInterrupt{false};
+        bool enableM2Interrupt{false};
+        bool enableM1Interrupt{false};
+        bool enableM0Interrupt{false};
+        bool coincidenceFlag{false};
+        uint8_t mode{0x00};
 
         [[nodiscard]] uint8_t value() const {
-            return (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
-                   (enableM1Interrupt << 4) | (enableM0Interrupt << 3) | mode;
+            return 0x80 | (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
+                   (enableM1Interrupt << 4) | (enableM0Interrupt << 3) |
+                   (coincidenceFlag << 2) | mode;
         }
     };
 
@@ -143,13 +145,7 @@ public:
 
     std::pair<bool, uint8_t> priority_[160];
     uint8_t lcdc = 0;
-    Stat stat{
-        .enableLYInterrupt = false,
-        .enableM2Interrupt = false,
-        .enableM1Interrupt = false,
-        .enableM0Interrupt = false,
-        .mode = 2
-    }; // 0xFF41
+    Stat stat{}; // 0xFF41
     uint8_t currentLine = 0; // 0xFF44
     uint8_t windowX = 0; // 0xFF4B
     uint8_t windowY = 0; // 0xFF4A
@@ -162,6 +158,7 @@ public:
     uint32_t scanlineCounter = 0; // current dot in scanline
 
     bool vblank = false;
+    bool statTriggered{false};
 
     // GBC
     bool hblank = false;
@@ -187,7 +184,7 @@ public:
 
     uint16_t CalculateTileDataAddress();
 
-    uint16_t CalculateSpriteDataAddress(const Sprite& sprite);
+    uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
 
     void ResetScanlineState(bool clearBuffer);
 
