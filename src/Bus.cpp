@@ -38,7 +38,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xD000 ... 0xDFFF: return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
         case 0xE000 ... 0xEFFF: return memory_.wram_[address - 0xE000];
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
-        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 && gpu_->stat.mode < 2 ? gpu_->oam[address - 0xFE00] : 0xFF;
+        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0xFF;
         case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
         case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
@@ -81,7 +81,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xF000 ... 0xFDFF: memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
             break;
-        case 0xFE00 ... 0xFE9F: if (gpu_->stat.mode < 2) gpu_->oam[address - 0xFE00] = value;
+        case 0xFE00 ... 0xFE9F: gpu_->oam[address - 0xFE00] = value;
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
@@ -126,71 +126,72 @@ void Bus::UpdateGraphics() {
     if (gpu_->LCDDisabled()) {
         gpu_->scanlineCounter = 0;
         gpu_->currentLine = 0;
-        gpu_->stat.mode = 0;
+        gpu_->stat.mode = 2;
         gpu_->hblank = false;
         return;
     }
 
-    gpu_->scanlineCounter++;
-    if (gpu_->scanlineCounter == GPU::SCANLINE_CYCLES) {
-        gpu_->scanlineCounter = 0;
-        gpu_->currentLine += 1;
+    if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) {
+        SetInterrupt(InterruptType::LCDStat);
     }
-    // std::fprintf(stderr, "GPU: line %d, mode %d, scanline %d\n", gpu_->currentLine, gpu_->stat.mode, gpu_->scanlineCounter);
+
     switch (gpu_->stat.mode) {
-        case 0: {
-            if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
-            if (gpu_->scanlineCounter != 0) break;
-
-            if (gpu_->currentLine == 144) {
-                gpu_->stat.mode = 1;
-                gpu_->vblank = true;
-                SetInterrupt(InterruptType::VBlank);
-                if (gpu_->stat.enableM1Interrupt) SetInterrupt(InterruptType::LCDStat);
-            } else {
-                gpu_->stat.mode = 2;
-                if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
-            }
-        }
-        break;
-
-        case 1: {
-            // Ten lines in VBlank: LY 144-153
-            if (gpu_->currentLine > 153) {
-                gpu_->currentLine = 0;
-                gpu_->stat.mode = 2;
-                gpu_->scanlineCounter = 0;
-                if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
-            }
-
-            if (gpu_->stat.enableLYInterrupt && gpu_->currentLine == gpu_->lyc) SetInterrupt(InterruptType::LCDStat);
-        }
-        break;
+        case 0:
+        case 1:
+            break;
 
         case 2:
-            // OAM scan
-            if (gpu_->scanlineCounter == GPU::MODE2_CYCLES) {
-                gpu_->stat.mode = 3;
-                gpu_->mode3backgroundDelay = gpu_->scrollX % 8;
-                break;
-            }
             gpu_->TickOAMScan();
+            if (gpu_->scanlineCounter >= 79) {
+                gpu_->stat.mode = 3;
+                gpu_->pixelsDrawn = 0;
+                std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
+                    return a < b;
+                });
+                gpu_->ResetScanlineState(false);
+                gpu_->TickMode3();
+            }
             break;
+
         case 3: {
-            if (--gpu_->mode3backgroundDelay > 0) break;
+            gpu_->TickMode3();
             if (gpu_->pixelsDrawn == GPU::SCREEN_WIDTH) {
                 gpu_->stat.mode = 0;
                 gpu_->hblank = true;
+                if (gpu_->stat.enableM0Interrupt) SetInterrupt(InterruptType::LCDStat);
                 break;
             }
-
-            // gpu_->DrawPixel();
-            gpu_->pixelsDrawn++;
-
-            if (gpu_->stat.enableM0Interrupt) SetInterrupt(InterruptType::LCDStat);
-            break;
         }
+        break;
         default: break;
+    }
+    gpu_->scanlineCounter++;
+    if (gpu_->scanlineCounter == 456) {
+        gpu_->scanlineCounter = 0;
+        gpu_->currentLine++;
+
+        if (gpu_->isFetchingWindow_) {
+            gpu_->windowLineCounter_++;
+        }
+
+        if (gpu_->currentLine >= 154) {
+            gpu_->currentLine = 0;
+            gpu_->windowLineCounter_ = 0;
+            gpu_->stat.mode = 2;
+            gpu_->vblank = false;
+            if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
+            gpu_->ResetScanlineState(true);
+        } else if (gpu_->currentLine == 144) {
+            gpu_->stat.mode = 1;
+            gpu_->vblank = true;
+            SetInterrupt(InterruptType::VBlank);
+            if (gpu_->stat.enableM1Interrupt) SetInterrupt(InterruptType::LCDStat);
+        } else if (gpu_->currentLine < 144) {
+            gpu_->stat.mode = 2;
+            if (gpu_->stat.enableM2Interrupt) SetInterrupt(InterruptType::LCDStat);
+            gpu_->hblank = false;
+            gpu_->ResetScanlineState(true);
+        }
     }
 }
 

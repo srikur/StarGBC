@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <deque>
 
 #include "Common.h"
 
@@ -14,8 +15,6 @@ public:
     static constexpr uint16_t GPU_REGS_END = 0xFF4B;
     static constexpr uint16_t OAM_BEGIN = 0xFE00;
     static constexpr uint16_t OAM_END = 0xFE9F;
-
-
 
 
     static constexpr uint8_t OAM_PRIORITY_BIT = 7;
@@ -57,21 +56,67 @@ public:
 
     struct Sprite {
         uint8_t spriteNum{0x00};
-        uint8_t x{0x00};
-        uint8_t y{0x00};
+        int16_t x{0x00};
+        int16_t y{0x00};
         uint8_t tileIndex{0x00};
+        Attributes attributes{};
         bool processed{false};
 
         bool operator<(const Sprite &s) const {
             return x < s.x || spriteNum < s.spriteNum;
         }
+
+        bool operator>(const Sprite &s) const {
+            return x > s.x || spriteNum > s.spriteNum;
+        }
     };
 
-    Sprite lineSprites[10]{};
-    uint8_t currentScanByte{0x00};
-    uint8_t currentLineSpriteIndex{0x00};
-    uint8_t mode3backgroundDelay{0x00};
+    struct Pixel {
+        uint8_t color{0x00};
+        uint8_t dmgPalette{0x00};
+        uint8_t cgbPalette{0x00};
+        bool priority{false};
+        bool isSprite{false};
+        bool isPlaceholder{true};
+    };
+
+    std::deque<Pixel> backgroundQueue;
+    std::deque<Sprite> spriteFetchQueue;
+    std::array<Pixel, 8> spriteArray;
+    uint8_t mode2counter{0x00};
+
+    bool spriteFetchPending_ = false;
+    Sprite spriteToFetch_{};
+    Attributes backgroundTileAttributes_{};
+
+    // State for the pixel fetcher
+    enum class FetcherState {
+        GetTile,
+        GetTileDataLow,
+        GetTileDataHigh,
+        Sleep,
+        PushToFIFO,
+    } fetcherState_ = FetcherState::GetTile;
+
+    bool firstScanlineDataHigh{false};
+    std::size_t spritesToFetchIndex_{0};
+    uint16_t lastAddress_{0x0000};
+    bool spriteFetchActive_{false};
+    bool isFetchingWindow_{false};
+    uint8_t currentSpriteIndex{0x00};
+    uint8_t fetcherDelay_{0};
+    uint8_t fetcherTileX_ = 0; // Current tile X-coordinate in the BG/Win map (0-31).
+    uint8_t fetcherTileNum_ = 0; // The tile ID read from VRAM.
+    uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
+    uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
+
+    bool window_active_ = false;
+    uint8_t windowLineCounter_{0x00};
+
+    std::vector<Sprite> spriteBuffer{};
+    uint8_t initialScrollXDiscard_{0x00};
     uint8_t pixelsDrawn{0x00};
+    uint32_t spritePenaltyBgTileMask_ = 0;
 
     struct Gpi {
         uint8_t index;
@@ -129,8 +174,30 @@ public:
     GPU() = default;
 
     void TickOAMScan();
-    
-    void SetColor(uint8_t pixel, uint32_t red, uint32_t green, uint32_t blue);
+
+    void TickMode3();
+
+    void OutputPixel();
+
+    void Fetcher_StepSpriteFetch();
+
+    void Fetcher_StepBackgroundFetch();
+
+    [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
+
+    uint16_t CalculateTileDataAddress();
+
+    uint16_t CalculateSpriteDataAddress(const Sprite& sprite);
+
+    void ResetScanlineState(bool clearBuffer);
+
+    [[nodiscard]] uint32_t GetBackgroundColor(uint8_t color, uint8_t palette = 0) const;
+
+    [[nodiscard]] uint32_t GetSpriteColor(uint8_t color, uint8_t palette) const;
+
+    void CheckForSpriteTrigger();
+
+    void CheckForWindowTrigger();
 
     static Attributes GetAttrsFrom(uint8_t byte);
 
