@@ -15,12 +15,10 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     backgroundQueue.clear();
     spriteArray.fill({.isPlaceholder = true});
     if (clearBuffer) spriteBuffer.clear();
-    isFetchingWindow_ = false;
     fetcherTileX_ = 0;
     spriteFetchActive_ = false;
     fetcherState_ = FetcherState::GetTile;
     initialScrollXDiscard_ = scrollX % 8;
-    currentSpriteIndex = 0;
     firstScanlineDataHigh = true;
     pixelsDrawn = 0;
     fetcherDelay_ = 0;
@@ -78,10 +76,8 @@ void GPU::OutputPixel() {
             backgroundWins = spritePixel.priority && bgPixel.color != 0;
         }
     }
-    // bool backgroundWins = true;
 
-    const Pixel finalPixel = !backgroundWins ? spritePixel : bgPixel;
-
+    const Pixel finalPixel = !backgroundWins ? spritePixel : Bit<LCDC_BG_WINDOW_ENABLE>(lcdc) ? bgPixel : Pixel{.color = 0};
     const uint8_t palette = hardware == Hardware::CGB ? finalPixel.cgbPalette : finalPixel.dmgPalette;
     const uint32_t finalColor = finalPixel.isSprite
                                     ? GetSpriteColor(finalPixel.color, palette)
@@ -224,6 +220,14 @@ void GPU::Fetcher_StepSpriteFetch() {
             fetcherTileDataHigh_ = vram[(lastAddress_ + 1) - base];
             fetcherDelay_ = 1;
             fetcherState_ = PushToFIFO;
+            break;
+        }
+        case Sleep: {
+            fetcherState_ = PushToFIFO;
+            fetcherDelay_ = 1;
+            break;
+        }
+        case PushToFIFO: {
             const Attributes attrs = sprite.attributes;
             const uint8_t paletteRegister = attrs.paletteNumberDMG ? obp1Palette : obp0Palette;
 
@@ -250,12 +254,6 @@ void GPU::Fetcher_StepSpriteFetch() {
             fetcherDelay_ = 0;
             break;
         }
-        case Sleep: {
-            fetcherState_ = PushToFIFO;
-            fetcherDelay_ = 1;
-            break;
-        }
-        case PushToFIFO: break;
     }
 }
 
@@ -371,7 +369,7 @@ void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
 }
 
 uint8_t GPU::ReadVRAM(const uint16_t address) const {
-    return stat.mode == 3 ? 0x00 : vram[vramBank * 0x2000 + address - 0x8000];
+    return stat.mode == 3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
 }
 
 void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {

@@ -103,14 +103,12 @@ public:
     uint16_t lastAddress_{0x0000};
     bool spriteFetchActive_{false};
     bool isFetchingWindow_{false};
-    uint8_t currentSpriteIndex{0x00};
     uint8_t fetcherDelay_{0};
     uint8_t fetcherTileX_ = 0; // Current tile X-coordinate in the BG/Win map (0-31).
     uint8_t fetcherTileNum_ = 0; // The tile ID read from VRAM.
     uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
     uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
 
-    bool window_active_ = false;
     uint8_t windowLineCounter_{0x00};
 
     std::vector<Sprite> spriteBuffer{};

@@ -13,6 +13,10 @@ uint8_t Bus::ReadDMASource(const uint16_t src) const {
     return 0xFF;
 }
 
+uint8_t Bus::ReadOAM(const uint16_t address) const {
+    return gpu_->stat.mode == 3 ? 0xFF : gpu_->oam[address - 0xFE00];
+}
+
 uint8_t Bus::ReadByte(const uint16_t address) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
     switch (address) {
@@ -38,7 +42,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xD000 ... 0xDFFF: return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
         case 0xE000 ... 0xEFFF: return memory_.wram_[address - 0xE000];
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
-        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? gpu_->oam[address - 0xFE00] : 0xFF;
+        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? ReadOAM(address) : 0xFF;
         case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
         case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
@@ -81,7 +85,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xF000 ... 0xFDFF: memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
             break;
-        case 0xFE00 ... 0xFE9F: gpu_->oam[address - 0xFE00] = value;
+        case 0xFE00 ... 0xFE9F: if (gpu_->stat.mode != 3) gpu_->oam[address - 0xFE00] = value;
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
@@ -170,6 +174,7 @@ void Bus::UpdateGraphics() {
                 gpu_->stat.mode = 0;
                 gpu_->hblank = true;
                 if (gpu_->stat.enableM0Interrupt && !gpu_->statTriggered) {
+                    // std::fprintf(stderr, "Mode 0 interrupt triggered at scanline %d, line %d\n", gpu_->scanlineCounter, gpu_->currentLine);
                     SetInterrupt(InterruptType::LCDStat);
                     gpu_->statTriggered = true;
                 }
@@ -181,6 +186,7 @@ void Bus::UpdateGraphics() {
     }
     gpu_->scanlineCounter++;
     if (gpu_->scanlineCounter == 456) {
+        // gpu_->ResetScanlineState(true);
         gpu_->scanlineCounter = 0;
         gpu_->currentLine++;
         gpu_->statTriggered = false;
@@ -191,7 +197,6 @@ void Bus::UpdateGraphics() {
 
         if (gpu_->currentLine >= 154) {
             gpu_->currentLine = 0;
-            gpu_->windowLineCounter_ = 0;
             gpu_->stat.mode = 2;
             gpu_->vblank = false;
             if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
@@ -199,9 +204,11 @@ void Bus::UpdateGraphics() {
                 gpu_->statTriggered = true;
             }
             gpu_->ResetScanlineState(true);
+            gpu_->isFetchingWindow_ = false;
         } else if (gpu_->currentLine == 144) {
             gpu_->stat.mode = 1;
             gpu_->vblank = true;
+            gpu_->windowLineCounter_ = 0;
             SetInterrupt(InterruptType::VBlank);
             if (gpu_->stat.enableM1Interrupt && !gpu_->statTriggered) {
                 SetInterrupt(InterruptType::LCDStat);
@@ -215,6 +222,7 @@ void Bus::UpdateGraphics() {
             }
             gpu_->hblank = false;
             gpu_->ResetScanlineState(true);
+            gpu_->isFetchingWindow_ = false;
         }
     }
 }

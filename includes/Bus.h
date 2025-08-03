@@ -90,6 +90,8 @@ public:
 
     [[nodiscard]] uint8_t ReadDMASource(uint16_t src) const;
 
+    [[nodiscard]] uint8_t ReadOAM(uint16_t address) const;
+
     void WriteByte(uint16_t address, uint8_t value);
 
     void KeyDown(Keys key);
