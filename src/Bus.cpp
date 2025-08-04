@@ -56,7 +56,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
                 return first | second | 0x7E;
             }
             if (address == 0xFF46) { return dma_.writtenValue; }
-            if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
+            // if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_->ReadRegisters(address);
         }
         case 0xFF50 ... 0xFF55: return ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
@@ -160,9 +160,13 @@ void Bus::UpdateGraphics() {
             if (gpu_->scanlineCounter >= 79) {
                 gpu_->stat.mode = 3;
                 gpu_->pixelsDrawn = 0;
-                std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
-                    return a < b;
-                });
+                if (gpu_->hardware != GPU::Hardware::CGB) {
+                    std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
+                        return a < b;
+                    });
+                } else {
+                    std::ranges::reverse(gpu_->spriteBuffer);
+                }
                 gpu_->ResetScanlineState(false);
                 gpu_->TickMode3();
             }
@@ -174,7 +178,6 @@ void Bus::UpdateGraphics() {
                 gpu_->stat.mode = 0;
                 gpu_->hblank = true;
                 if (gpu_->stat.enableM0Interrupt && !gpu_->statTriggered) {
-                    // std::fprintf(stderr, "Mode 0 interrupt triggered at scanline %d, line %d\n", gpu_->scanlineCounter, gpu_->currentLine);
                     SetInterrupt(InterruptType::LCDStat);
                     gpu_->statTriggered = true;
                 }
@@ -186,7 +189,6 @@ void Bus::UpdateGraphics() {
     }
     gpu_->scanlineCounter++;
     if (gpu_->scanlineCounter == 456) {
-        // gpu_->ResetScanlineState(true);
         gpu_->scanlineCounter = 0;
         gpu_->currentLine++;
         gpu_->statTriggered = false;
@@ -198,17 +200,20 @@ void Bus::UpdateGraphics() {
         if (gpu_->currentLine >= 154) {
             gpu_->currentLine = 0;
             gpu_->stat.mode = 2;
+            gpu_->windowLineCounter_ = 0;
             gpu_->vblank = false;
             if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
                 SetInterrupt(InterruptType::LCDStat);
                 gpu_->statTriggered = true;
             }
             gpu_->ResetScanlineState(true);
-            gpu_->isFetchingWindow_ = false;
+            gpu_->windowTriggeredThisFrame = false;
+            if (gpu_->currentLine >= gpu_->windowY) {
+                gpu_->windowTriggeredThisFrame = true;
+            }
         } else if (gpu_->currentLine == 144) {
             gpu_->stat.mode = 1;
             gpu_->vblank = true;
-            gpu_->windowLineCounter_ = 0;
             SetInterrupt(InterruptType::VBlank);
             if (gpu_->stat.enableM1Interrupt && !gpu_->statTriggered) {
                 SetInterrupt(InterruptType::LCDStat);
@@ -216,13 +221,15 @@ void Bus::UpdateGraphics() {
             }
         } else if (gpu_->currentLine < 144) {
             gpu_->stat.mode = 2;
+            if (gpu_->currentLine >= gpu_->windowY) {
+                gpu_->windowTriggeredThisFrame = true;
+            }
             if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
                 SetInterrupt(InterruptType::LCDStat);
                 gpu_->statTriggered = true;
             }
             gpu_->hblank = false;
             gpu_->ResetScanlineState(true);
-            gpu_->isFetchingWindow_ = false;
         }
     }
 }

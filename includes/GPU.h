@@ -45,6 +45,10 @@ public:
         0xFF000000u // 00 00 00 FF
     };
 
+    enum class Hardware {
+        DMG, CGB
+    };
+
     struct Attributes {
         bool priority;
         bool yflip;
@@ -65,10 +69,6 @@ public:
         bool operator<(const Sprite &s) const {
             return x < s.x || spriteNum < s.spriteNum;
         }
-
-        bool operator>(const Sprite &s) const {
-            return x > s.x || spriteNum > s.spriteNum;
-        }
     };
 
     struct Pixel {
@@ -85,6 +85,7 @@ public:
     std::array<Pixel, 8> spriteArray;
     uint8_t mode2counter{0x00};
 
+    bool windowTriggeredThisFrame{false};
     bool spriteFetchPending_ = false;
     Sprite spriteToFetch_{};
     Attributes backgroundTileAttributes_{};
@@ -212,10 +213,6 @@ public:
 
     enum class HDMAMode {
         GDMA, HDMA
-    };
-
-    enum class Hardware {
-        DMG, CGB
     };
 
     struct HDMA {
