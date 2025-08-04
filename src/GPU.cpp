@@ -234,7 +234,8 @@ void GPU::Fetcher_StepSpriteFetch() {
 
             const auto xPos = sprite.x;
             for (int i = xPos < 0 ? 8 + xPos : 0; i < 8; i++) {
-                if (spriteArray[i].color == 0 && !spriteArray[i].isPlaceholder) continue;
+                const bool hasHigherPriority = hardware == Hardware::CGB && sprite.spriteNum <= spriteArray[0].spriteNum;
+                if (!hasHigherPriority && spriteArray[i].color != 0 && !spriteArray[i].isPlaceholder) continue;
                 const auto pixelIndex = attrs.xflip ? i : 7 - i;
                 const uint8_t bitLow = (fetcherTileDataLow_ >> pixelIndex) & 1;
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
@@ -247,6 +248,7 @@ void GPU::Fetcher_StepSpriteFetch() {
                     .priority = attrs.priority,
                     .isSprite = true,
                     .isPlaceholder = false,
+                    .spriteNum = sprite.spriteNum,
                 };
             }
             spriteFetchQueue.pop_front();
@@ -411,6 +413,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             }
             return (obpd[r][c][1] >> 3) | (obpd[r][c][2] << 2);
         }
+        case 0xFF6C: return 0xFE | objectPriority;
         default:
             throw UnreachableCodeException("GPU::ReadRegisters unreachable code at address: " + std::to_string(address));
     }
@@ -490,6 +493,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             if (obpi.autoIncrement) obpi.index = (obpi.index + 1) & 0x3F;
             break;
         }
+        case 0xFF6C: objectPriority = value & 0x01;
+            break;
         default:
             break;
     }
