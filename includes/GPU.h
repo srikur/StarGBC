@@ -78,6 +78,7 @@ public:
         bool priority{false};
         bool isSprite{false};
         bool isPlaceholder{true};
+        uint8_t spriteNum{0x00};
     };
 
     std::deque<Pixel> backgroundQueue;
@@ -116,6 +117,7 @@ public:
     uint8_t initialScrollXDiscard_{0x00};
     uint8_t pixelsDrawn{0x00};
     uint32_t spritePenaltyBgTileMask_ = 0;
+    bool objectPriority{false};
 
     struct Gpi {
         uint8_t index;

@@ -60,7 +60,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
             return gpu_->ReadRegisters(address);
         }
         case 0xFF50 ... 0xFF55: return ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
-        case 0xFF68 ... 0xFF6B: return gpu_->ReadRegisters(address);
+        case 0xFF68 ... 0xFF6C: return gpu_->ReadRegisters(address);
         case 0xFF70: return gpu_->hardware == GPU::Hardware::CGB ? memory_.wramBank_ : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
         case 0xFFFF: return interruptEnable;
@@ -105,7 +105,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
         }
         case 0xFF51 ... 0xFF55: WriteHDMA(address, value);
             break;
-        case 0xFF68 ... 0xFF6B: gpu_->WriteRegisters(address, value);
+        case 0xFF68 ... 0xFF6C: gpu_->WriteRegisters(address, value);
             break;
         case 0xFF70: memory_.wramBank_ = (value & 0x07) ? value : 1;
             break;
@@ -160,12 +160,14 @@ void Bus::UpdateGraphics() {
             if (gpu_->scanlineCounter >= 79) {
                 gpu_->stat.mode = 3;
                 gpu_->pixelsDrawn = 0;
-                if (gpu_->hardware != GPU::Hardware::CGB) {
+                if (gpu_->hardware != GPU::Hardware::CGB || gpu_->objectPriority) {
                     std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
                         return a < b;
                     });
-                } else {
-                    std::ranges::reverse(gpu_->spriteBuffer);
+                } else if (gpu_->hardware == GPU::Hardware::CGB && !gpu_->objectPriority) {
+                    std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
+                        return a.spriteNum < b.spriteNum;
+                    });
                 }
                 gpu_->ResetScanlineState(false);
                 gpu_->TickMode3();
