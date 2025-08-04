@@ -17,6 +17,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     if (clearBuffer) spriteBuffer.clear();
     fetcherTileX_ = 0;
     spriteFetchActive_ = false;
+    isFetchingWindow_ = false;
     fetcherState_ = FetcherState::GetTile;
     initialScrollXDiscard_ = scrollX % 8;
     firstScanlineDataHigh = true;
@@ -43,7 +44,7 @@ void GPU::TickOAMScan() {
     const bool cond4 = spriteBuffer.size() < 10;
     if (cond1 && cond2 && cond3 && cond4) {
         spriteBuffer.push_back(Sprite{
-            .spriteNum = index, .x = spriteX, .y = spriteY, .tileIndex = spriteTileIndex, .attributes = attr, .processed = false
+            .spriteNum = static_cast<uint8_t>(scanlineCounter), .x = spriteX, .y = spriteY, .tileIndex = spriteTileIndex, .attributes = attr, .processed = false
         });
     }
 }
@@ -66,7 +67,7 @@ void GPU::OutputPixel() {
     }
     spriteArray[spriteArray.size() - 1] = {.isPlaceholder = true, .isSprite = true};
 
-    bool backgroundWins = spritePixel.color == 0 || spritePixel.isPlaceholder;
+    bool backgroundWins = spritePixel.color == 0 || spritePixel.isPlaceholder || Bit<LCDC_BG_WINDOW_ENABLE>(lcdc);
     if (spritePixel.color != 0) {
         if (hardware == Hardware::CGB && !Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
             backgroundWins = false;
@@ -76,6 +77,7 @@ void GPU::OutputPixel() {
             backgroundWins = spritePixel.priority && bgPixel.color != 0;
         }
     }
+    // bool backgroundWins = true;
 
     const Pixel finalPixel = !backgroundWins ? spritePixel : Bit<LCDC_BG_WINDOW_ENABLE>(lcdc) ? bgPixel : Pixel{.color = 0};
     const uint8_t palette = hardware == Hardware::CGB ? finalPixel.cgbPalette : finalPixel.dmgPalette;
@@ -112,8 +114,7 @@ void GPU::CheckForSpriteTrigger() {
 
 void GPU::CheckForWindowTrigger() {
     if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_) {
-        const uint8_t effectiveWX = std::max(static_cast<uint8_t>(7), windowX);
-        if (currentLine >= windowY && pixelsDrawn >= (effectiveWX - 7)) {
+        if (windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
             isFetchingWindow_ = true;
             backgroundQueue.clear();
             fetcherState_ = FetcherState::GetTile;
@@ -233,7 +234,7 @@ void GPU::Fetcher_StepSpriteFetch() {
 
             const auto xPos = sprite.x;
             for (int i = xPos < 0 ? 8 + xPos : 0; i < 8; i++) {
-                if (spriteArray[i].color != 0 && !spriteArray[i].isPlaceholder) continue;
+                if (spriteArray[i].color == 0 && !spriteArray[i].isPlaceholder) continue;
                 const auto pixelIndex = attrs.xflip ? i : 7 - i;
                 const uint8_t bitLow = (fetcherTileDataLow_ >> pixelIndex) & 1;
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
@@ -261,19 +262,20 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
     uint16_t tileMapBase = 0;
     if (isFetchingWindow_) {
         tileMapBase = Bit<LCDC_WINDOW_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
-        const uint8_t tileRow = ((currentLine - windowY) >> 3) & 0x1F;
+        const uint8_t tileRow = windowLineCounter_ >> 3 & 0x1F;
         const uint8_t tileCol = fetcherTileX_;
         return tileMapBase + tileRow * 32 + tileCol;
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
-        const uint8_t tileRow = (((scrollY + currentLine) & 0xFF) >> 3) & 0x1F;
+        const uint8_t tileRow = ((scrollY + currentLine & 0xFF) >> 3) & 0x1F;
         const uint8_t tileCol = (fetcherTileX_ + (scrollX / 8)) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
 }
 
 uint16_t GPU::CalculateTileDataAddress() {
-    const uint8_t lineInTile = isFetchingWindow_ ? windowLineCounter_ % 8 : ((currentLine + scrollY) % 8);
+    uint8_t lineInTile = isFetchingWindow_ ? windowLineCounter_ % 8 : ((currentLine + scrollY) % 8);
+    lineInTile = backgroundTileAttributes_.yflip ? 7 - (lineInTile & 7) : (lineInTile & 7);
     if (Bit<LCDC_BG_AND_WINDOW_TILE_DATA>(lcdc)) {
         const uint16_t address = 0x8000 + fetcherTileNum_ * 16 + lineInTile * 2;
         lastAddress_ = address;
@@ -416,16 +418,22 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
 
 void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     switch (address) {
-        case 0xFF40:
+        case 0xFF40: {
+            const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             lcdc = value;
-            if (!Bit<LCDC_ENABLE_BIT>(value)) {
+            const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+            if (!newEnable && oldEnable) {
                 scanlineCounter = 0;
                 currentLine = 0;
                 stat.mode = 0;
                 screenData.fill(0);
                 vblank = true;
+            } else if (newEnable && !oldEnable) {
+                stat.mode = 2;
+                vblank = false;
             }
             break;
+        }
         case 0xFF41:
             stat.enableLYInterrupt = value & 0x40;
             stat.enableM2Interrupt = value & 0x20;

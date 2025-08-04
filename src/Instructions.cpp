@@ -130,6 +130,9 @@ bool Instructions::RST(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 4) {
         gameboy.bus->WriteByte(gameboy.sp, gameboy.pc & 0xFF);
         constexpr auto location = GetRSTAddress<target>();
+        if constexpr (target == RSTTarget::H38) {
+            std::fprintf(stderr, "RST 38\n");
+        }
         gameboy.pc = location;
         return false;
     }
