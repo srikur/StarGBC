@@ -41,7 +41,7 @@ Current Performance: (138/271)
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
 | acid/dmg-acid2.gb                                                     | :white_check_mark: |
-| acid/cgb-acid2.gbc                                                    | :x:                |
+| acid/cgb-acid2.gbc                                                    | :white_check_mark: |
 | acid/cgb-acid-hell.gbc                                                | :x:                |
 | cpu_instrs/01-special.gb                                              | :white_check_mark: |
 | cpu_instrs/02-interrupts.gb                                           | :white_check_mark: |

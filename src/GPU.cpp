@@ -67,7 +67,7 @@ void GPU::OutputPixel() {
     }
     spriteArray[spriteArray.size() - 1] = {.isPlaceholder = true, .isSprite = true};
 
-    bool backgroundWins = spritePixel.color == 0 || spritePixel.isPlaceholder || Bit<LCDC_BG_WINDOW_ENABLE>(lcdc);
+    bool backgroundWins = spritePixel.color == 0;
     if (spritePixel.color != 0) {
         if (hardware == Hardware::CGB && !Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
             backgroundWins = false;
@@ -77,9 +77,16 @@ void GPU::OutputPixel() {
             backgroundWins = spritePixel.priority && bgPixel.color != 0;
         }
     }
-    // bool backgroundWins = true;
 
-    const Pixel finalPixel = !backgroundWins ? spritePixel : Bit<LCDC_BG_WINDOW_ENABLE>(lcdc) ? bgPixel : Pixel{.color = 0};
+    Pixel finalPixel = spritePixel;
+    if (backgroundWins) {
+        if (Bit<LCDC_BG_WINDOW_ENABLE>(lcdc) || hardware == Hardware::CGB) {
+            finalPixel = bgPixel;
+        } else if (!Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
+            finalPixel = Pixel{.color = 0};
+        }
+    }
+
     const uint8_t palette = hardware == Hardware::CGB ? finalPixel.cgbPalette : finalPixel.dmgPalette;
     const uint32_t finalColor = finalPixel.isSprite
                                     ? GetSpriteColor(finalPixel.color, palette)
