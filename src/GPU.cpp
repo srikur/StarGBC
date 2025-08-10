@@ -64,7 +64,7 @@ void GPU::OutputPixel() {
     for (int i = 0; i < spriteArray.size() - 1; i++) {
         spriteArray[i] = spriteArray[i + 1];
     }
-    spriteArray[spriteArray.size() - 1] = {.isPlaceholder = true, .isSprite = true};
+    spriteArray[spriteArray.size() - 1] = {.isSprite = true, .isPlaceholder = true};
 
     bool backgroundWins = spritePixel.color == 0;
     if (spritePixel.color != 0) {

@@ -28,13 +28,13 @@ uint64_t RealTimeClock::RecalculateZeroTime() {
 void RealTimeClock::Tick() {
     if (halted) return;
 
-    const uint32_t elapsedSeconds = [&] {
+    const uint32_t elapsedSeconds = [&]() -> uint32_t {
         if (realRTC) {
             const uint64_t target_total_seconds = NowSeconds() - zeroTime_;
             const uint64_t current_total_seconds = ComposeSeconds();
             return target_total_seconds - current_total_seconds;
         }
-        return 1ULL;
+        return 1;
     }();
 
     for (uint32_t i = 0; i < elapsedSeconds; i++) {
