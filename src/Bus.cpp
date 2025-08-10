@@ -1,5 +1,7 @@
 #include "Bus.h"
 
+#include <algorithm>
+
 Bus::Bus(const std::string &romLocation) {
     cartridge_ = std::make_unique<Cartridge>(romLocation);
 }
