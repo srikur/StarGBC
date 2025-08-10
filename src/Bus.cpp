@@ -119,7 +119,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
 
 void Bus::KeyDown(Keys key) {
     joypad_.SetMatrix(joypad_.GetMatrix() & ~static_cast<uint8_t>(key));
-    SetInterrupt(InterruptType::Joypad);
+    SetInterrupt(InterruptType::Joypad, false);
 }
 
 void Bus::KeyUp(Keys key) {
@@ -127,6 +127,19 @@ void Bus::KeyUp(Keys key) {
 }
 
 void Bus::UpdateGraphics() {
+    if (interruptSetDelay > 0) {
+        interruptSetDelay--;
+        if (interruptSetDelay == 0) {
+            interruptFlag = interruptFlagDelayed;
+            interruptFlagDelayed = 0;
+        }
+    }
+    if (gpu_->stat.modeDelay > 0) {
+        gpu_->stat.modeDelay--;
+    } else if (gpu_->stat.modeDelay == 0) {
+        gpu_->stat.mode = gpu_->stat.nextMode;
+    }
+
     if (gpu_->LCDDisabled()) {
         return;
     }
@@ -134,7 +147,7 @@ void Bus::UpdateGraphics() {
     if (gpu_->currentLine == gpu_->lyc) {
         gpu_->stat.coincidenceFlag = true;
         if (gpu_->stat.enableLYInterrupt && !gpu_->statTriggered) {
-            SetInterrupt(InterruptType::LCDStat);
+            SetInterrupt(InterruptType::LCDStat, true);
             gpu_->statTriggered = true;
         }
     } else {
@@ -144,21 +157,28 @@ void Bus::UpdateGraphics() {
     switch (gpu_->stat.mode) {
         case 0:
             if (gpu_->stat.enableM0Interrupt && !gpu_->statTriggered) {
-                SetInterrupt(InterruptType::LCDStat);
+                SetInterrupt(InterruptType::LCDStat, true);
                 gpu_->statTriggered = true;
             }
             break;
         case 1:
             if (gpu_->stat.enableM1Interrupt && !gpu_->statTriggered) {
-                SetInterrupt(InterruptType::LCDStat);
+                SetInterrupt(InterruptType::LCDStat, true);
                 gpu_->statTriggered = true;
             }
             break;
 
         case 2:
+            gpu_->hblank = false;
+            gpu_->vblank = false;
+            if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
+                SetInterrupt(InterruptType::LCDStat, true);
+                gpu_->statTriggered = true;
+            }
             gpu_->TickOAMScan();
-            if (gpu_->scanlineCounter >= 79) {
-                gpu_->stat.mode = 3;
+            if (gpu_->scanlineCounter == 79) {
+                gpu_->stat.nextMode = 3;
+                gpu_->stat.modeDelay = 0;
                 gpu_->pixelsDrawn = 0;
                 if (gpu_->hardware != GPU::Hardware::CGB || gpu_->objectPriority) {
                     std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
@@ -170,17 +190,17 @@ void Bus::UpdateGraphics() {
                     });
                 }
                 gpu_->ResetScanlineState(false);
-                gpu_->TickMode3();
             }
             break;
 
         case 3: {
             gpu_->TickMode3();
             if (gpu_->pixelsDrawn == GPU::SCREEN_WIDTH) {
-                gpu_->stat.mode = 0;
+                gpu_->stat.nextMode = 0;
+                gpu_->stat.modeDelay = 0;
                 gpu_->hblank = true;
                 if (gpu_->stat.enableM0Interrupt && !gpu_->statTriggered) {
-                    SetInterrupt(InterruptType::LCDStat);
+                    SetInterrupt(InterruptType::LCDStat, true);
                     gpu_->statTriggered = true;
                 }
                 break;
@@ -190,6 +210,7 @@ void Bus::UpdateGraphics() {
         default: break;
     }
     gpu_->scanlineCounter++;
+    // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", gpu_->currentLine, gpu_->scanlineCounter, gpu_->stat.mode);
     if (gpu_->scanlineCounter == 456) {
         gpu_->scanlineCounter = 0;
         gpu_->currentLine++;
@@ -201,37 +222,28 @@ void Bus::UpdateGraphics() {
 
         if (gpu_->currentLine >= 154) {
             gpu_->currentLine = 0;
-            gpu_->stat.mode = 2;
+            gpu_->stat.nextMode = 2;
             gpu_->windowLineCounter_ = 0;
-            gpu_->vblank = false;
-            if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
-                SetInterrupt(InterruptType::LCDStat);
-                gpu_->statTriggered = true;
-            }
             gpu_->ResetScanlineState(true);
             gpu_->windowTriggeredThisFrame = false;
             if (gpu_->currentLine >= gpu_->windowY) {
                 gpu_->windowTriggeredThisFrame = true;
             }
+            gpu_->initialSCXSet = false;
+            // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", gpu_->currentLine, gpu_->scanlineCounter);
         } else if (gpu_->currentLine == 144) {
-            gpu_->stat.mode = 1;
+            gpu_->stat.nextMode = 1;
+            gpu_->stat.modeDelay = 0;
             gpu_->vblank = true;
-            SetInterrupt(InterruptType::VBlank);
-            if (gpu_->stat.enableM1Interrupt && !gpu_->statTriggered) {
-                SetInterrupt(InterruptType::LCDStat);
-                gpu_->statTriggered = true;
-            }
+            SetInterrupt(InterruptType::VBlank, true);
         } else if (gpu_->currentLine < 144) {
-            gpu_->stat.mode = 2;
+            gpu_->stat.nextMode = 2;
             if (gpu_->currentLine >= gpu_->windowY) {
                 gpu_->windowTriggeredThisFrame = true;
             }
-            if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
-                SetInterrupt(InterruptType::LCDStat);
-                gpu_->statTriggered = true;
-            }
-            gpu_->hblank = false;
             gpu_->ResetScanlineState(true);
+            gpu_->initialSCXSet = false;
+            // std::fprintf(stderr, "Scroll X Reset 2, line %d, scanline counter %d\n", gpu_->currentLine, gpu_->scanlineCounter);
         }
     }
 }
@@ -242,7 +254,7 @@ void Bus::UpdateTimers() {
     timer_.reloadActive = false;
     if (timer_.overflowPending && --timer_.overflowDelay == 0) {
         timer_.tima = timer_.tma;
-        SetInterrupt(InterruptType::Timer);
+        SetInterrupt(InterruptType::Timer, false);
         timer_.overflowPending = false;
         timer_.reloadActive = true;
     }
@@ -310,27 +322,20 @@ void Bus::UpdateSerial() {
         if (++serial_.bitsShifted_ == 8) {
             serial_.active_ = false;
             serial_.control_ &= 0x7F;
-            SetInterrupt(InterruptType::Serial);
+            SetInterrupt(InterruptType::Serial, false);
             return;
         }
         serial_.ticksUntilShift_ = serial_.ticksPerBit_;
     }
 }
 
-void Bus::SetInterrupt(const InterruptType interrupt) {
-    using enum InterruptType;
-    const uint8_t mask = [&]() -> uint8_t {
-        switch (interrupt) {
-            case VBlank: return 0x01;
-            case LCDStat: return 0x02;
-            case Timer: return 0x04;
-            case Serial: return 0x08;
-            case Joypad: return 0x10;
-            default: throw UnreachableCodeException("Bus::SetInterrupt -- unknown interrupt type");
-        }
-    }();
-
-    interruptFlag |= mask;
+void Bus::SetInterrupt(const InterruptType interrupt, const bool delayed) {
+    const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
+    if (!delayed) interruptFlag |= mask;
+    else {
+        interruptSetDelay = 4;
+        interruptFlagDelayed = interruptFlag | mask;
+    }
 }
 
 uint8_t Bus::ReadHDMA(const uint16_t address, const bool gbc) const {

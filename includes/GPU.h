@@ -118,6 +118,7 @@ public:
     uint8_t pixelsDrawn{0x00};
     uint32_t spritePenaltyBgTileMask_ = 0;
     bool objectPriority{false};
+    bool initialSCXSet{false};
 
     struct Gpi {
         uint8_t index;
@@ -131,6 +132,8 @@ public:
         bool enableM0Interrupt{false};
         bool coincidenceFlag{false};
         uint8_t mode{0x00};
+        uint8_t nextMode{0x00};
+        uint8_t modeDelay{0x00};
 
         [[nodiscard]] uint8_t value() const {
             return 0x80 | (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |

@@ -19,7 +19,6 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     spriteFetchActive_ = false;
     isFetchingWindow_ = false;
     fetcherState_ = FetcherState::GetTile;
-    initialScrollXDiscard_ = scrollX % 8;
     firstScanlineDataHigh = true;
     pixelsDrawn = 0;
     fetcherDelay_ = 0;
@@ -140,6 +139,11 @@ void GPU::Fetcher_StepBackgroundFetch() {
     using enum FetcherState;
     switch (fetcherState_) {
         case GetTile: {
+            if (!initialSCXSet) {
+                initialScrollXDiscard_ = scrollX & 0x07;
+                // std::fprintf(stderr, "Scroll X: %d, Initial scroll X discard: %d, scanline: %d\n", scrollX, initialScrollXDiscard_, scanlineCounter);
+                initialSCXSet = true;
+            }
             const auto tileMapAddress = CalculateBGTileMapAddress();
             if (hardware == Hardware::CGB) backgroundTileAttributes_ = GetAttrsFrom(vram[tileMapAddress - 0x6000]);
             fetcherTileNum_ = vram[tileMapAddress - 0x8000];
@@ -277,6 +281,7 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
         const uint8_t tileRow = ((scrollY + currentLine & 0xFF) >> 3) & 0x1F;
+        // std::fprintf(stderr, "Reading ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
         const uint8_t tileCol = (fetcherTileX_ + (scrollX / 8)) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
@@ -452,7 +457,10 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF42: scrollY = value;
             break;
-        case 0xFF43: scrollX = value;
+        case 0xFF43: {
+            scrollX = value;
+            // std::fprintf(stderr, "Writing ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
+        }
             break;
         case 0xFF44: currentLine = 0;
             break;
