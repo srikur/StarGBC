@@ -149,12 +149,12 @@ public:
         Joypad,
     };
 
-    uint8_t interruptEnable = 0x00;
-    uint8_t interruptFlag = 0xE1;
-    bool interruptMasterEnable = false;
-    bool interruptDelay = false;
+    uint8_t interruptEnable{0x00};
+    uint8_t interruptFlag{0xE1};
+    uint8_t interruptFlagDelayed{0x00};
+    uint8_t interruptSetDelay{0x00};
+    bool interruptMasterEnable{false};
+    bool interruptDelay{false};
 
-    uint32_t stepCycles = 0;
-
-    void SetInterrupt(InterruptType interrupt);
+    void SetInterrupt(InterruptType interrupt, bool delayed);
 };
