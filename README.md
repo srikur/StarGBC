@@ -40,8 +40,8 @@ Current Performance: (138/271)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
-| acid/dmg-acid2.gb                                                     | :x:                |
-| acid/cgb-acid2.gbc                                                    | :x:                |
+| acid/dmg-acid2.gb                                                     | :white_check_mark: |
+| acid/cgb-acid2.gbc                                                    | :white_check_mark: |
 | acid/cgb-acid-hell.gbc                                                | :x:                |
 | cpu_instrs/01-special.gb                                              | :white_check_mark: |
 | cpu_instrs/02-interrupts.gb                                           | :white_check_mark: |
@@ -56,7 +56,7 @@ Current Performance: (138/271)
 | cpu_instrs/11-op a,(hl).gb                                            | :white_check_mark: |
 | halt_bug                                                              | :white_check_mark: |
 | instr_timing.gb                                                       | :white_check_mark: |
-| interrupt_time                                                        | :x:                |
+| interrupt_time                                                        | :white_check_mark: |
 | mem_timing/01-read_timing.gb                                          | :white_check_mark: |
 | mem_timing/02-write_timing.gb                                         | :white_check_mark: |
 | mem_timing/03-modify_timing.gb                                        | :white_check_mark: |
@@ -207,7 +207,7 @@ Current Performance: (138/271)
 | mooneye/emulator-only/mbc5/rom_512kb.gb                               | :white_check_mark: |
 | mooneye/emulator-only/mbc5/rom_64Mb.gb                                | :white_check_mark: |
 | mooneye/emulator-only/mbc5/rom_8Mb.gb                                 | :white_check_mark: |
-| mooneye/manual-only/sprite_priority.gb                                | :x:                |
+| mooneye/manual-only/sprite_priority.gb                                | :white_check_mark: |
 | mooneye/misc/boot_div-cgbABCDE.gb                                     | :x:                |
 | mooneye/misc/boot_regs-cgb.gb                                         | :white_check_mark: |
 | mooneye/misc/boot_div-A.gb                                            | :x:                |

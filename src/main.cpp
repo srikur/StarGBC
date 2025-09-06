@@ -127,11 +127,6 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
                     break;
                 case SDLK_R: gameboy->SetPaused(false);
                     break;
-                case SDLK_F8: {
-                    if (gameboy->IsPaused()) {
-                        gameboy->DebugNextInstruction();
-                    }
-                }
                 // Save states with Shift + 1-9, load with Ctrl + 1-9
                 case SDLK_1:
                     if (event->key.mod & SDL_KMOD_LSHIFT) gameboy->SaveState(1);

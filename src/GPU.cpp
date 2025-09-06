@@ -3,158 +3,325 @@
 #include "GPU.h"
 #include "Common.h"
 
-void GPU::DrawScanline() {
-    if (lcdc & 0x01) RenderTiles();
-    if (lcdc & 0x02) RenderSprites();
-}
-
-bool GPU::LCDEnabled() const {
-    return lcdc & 0x80;
-}
-
-void GPU::RenderSprites() {
-    std::list<Sprite> sprites;
-    const uint8_t spriteSize = (lcdc & 0x04) ? 16 : 8;
-
-    for (int i = 0; i < 40; ++i) {
-        uint8_t yPos = oam[i * 4] - 16;
-        uint8_t xPos = oam[i * 4 + 1] - 8;
-        if (yPos <= currentLine && (yPos + spriteSize) > currentLine)
-            sprites.emplace_back(i, xPos, yPos);
-    }
-    // if (hardware != Hardware::CGB) sprites.sort();
-    if (sprites.size() > 10) sprites.resize(10);
-    sprites.reverse();
-
-    for (const Sprite &sprite: sprites) {
-        const uint16_t spriteAddress = sprite.spriteNum * 4;
-        const uint8_t yPos = oam[spriteAddress] - 16;
-        const uint8_t xPos = oam[spriteAddress + 1] - 8;
-
-        uint8_t tileNumber = oam[spriteAddress + 2];
-        if (lcdc & 0x04) tileNumber &= 0xFE; // 8×16 OBJ mode
-
-        const auto &[priority, yflip, xflip,
-                    paletteNumberDMG, vramBank, paletteNumberCGB] =
-                GetAttrsFrom(oam[spriteAddress + 3]);
-
-        // Y range check, including wrap‑around sprites
-        if (yPos > (0xFF - spriteSize + 1)) {
-            if (currentLine > (yPos + spriteSize - 1)) continue;
-        } else if (currentLine < yPos || currentLine > (yPos + spriteSize - 1)) {
-            continue;
-        }
-        if (xPos >= 160 && xPos <= (0xFF - 7)) continue;
-
-        const uint8_t tileY = yflip
-                                  ? spriteSize - 1 - (currentLine - yPos)
-                                  : currentLine - yPos;
-        const uint16_t tileYAddr = 0x8000 + tileNumber * 16 + tileY * 2;
-
-        const bool bank1 = (hardware == Hardware::CGB) && vramBank;
-        const uint16_t base = bank1 ? 0x6000 : 0x8000;
-        const uint8_t data1 = vram[tileYAddr - base];
-        const uint8_t data2 = vram[tileYAddr + 1 - base];
-
-        for (uint8_t pixel = 0; pixel < 8; ++pixel) {
-            if (xPos + pixel >= 160) continue;
-
-            const uint8_t tileX = xflip ? 7 - pixel : pixel;
-            const uint8_t colorLow = (data1 & (0x80 >> tileX)) ? 1 : 0;
-            const uint8_t colorHigh = (data2 & (0x80 >> tileX)) ? 2 : 0;
-            const uint8_t color = colorHigh | colorLow;
-            if (!color) continue; // colour 0 is transparent
-
-            auto [bgPrio, bgCol] = priority_[xPos + pixel];
-
-            bool skip = false;
-            if (hardware == Hardware::CGB && !(lcdc & 0x01)) {
-                skip = false; // OBJ always wins when BG disabled
-            } else if (bgPrio) {
-                skip = bgCol != 0;
-            } else {
-                skip = priority && bgCol != 0;
-            }
-            if (skip) continue;
-
-            if (hardware == Hardware::CGB) {
-                const uint8_t r = obpd[paletteNumberCGB][color][0];
-                const uint8_t g = obpd[paletteNumberCGB][color][1];
-                const uint8_t b = obpd[paletteNumberCGB][color][2];
-                SetColor(xPos + pixel, r, g, b);
-            } else {
-                const uint8_t src = paletteNumberDMG ? obp1Palette : obp0Palette;
-                const uint32_t shade = DMG_SHADE[(src >> (color * 2)) & 0x03];
-                screenData[currentLine * SCREEN_WIDTH + (xPos + pixel)] = shade;
-            }
-        }
-    }
-}
-
-void GPU::RenderTiles() {
-    const bool usingWindow = (lcdc & 0x20) && (windowY <= currentLine);
-    const uint16_t tileData = (lcdc & 0x10) ? 0x8000 : 0x8800;
-    const uint8_t wndwX = windowX - 7;
-
-    const uint8_t yPos = usingWindow
-                             ? currentLine - windowY
-                             : scrollY + currentLine;
-    const uint16_t tileRow = (yPos >> 3) & 0x1F;
-
-    for (int pixel = 0; pixel < 160; ++pixel) {
-        const bool windowOnThisPixel = usingWindow && (pixel >= wndwX);
-        const uint8_t xPos = windowOnThisPixel
-                                 ? pixel - wndwX
-                                 : scrollX + pixel;
-        const uint16_t tileCol = (xPos >> 3) & 0x1F;
-
-        const uint16_t bgMapBase = windowOnThisPixel
-                                       ? ((lcdc & 0x40) ? 0x9C00 : 0x9800)
-                                       : ((lcdc & 0x08) ? 0x9C00 : 0x9800);
-
-        const uint16_t tileAddr = bgMapBase + tileRow * 32 + tileCol;
-        const uint8_t tileNum = vram[tileAddr - 0x8000];
-
-        Attributes attrs{};
-        if (hardware == Hardware::CGB)
-            attrs = GetAttrsFrom(vram[tileAddr - 0x6000]);
-
-        const auto signedIndex = static_cast<int16_t>(
-            (lcdc & 0x10) ? tileNum : static_cast<int8_t>(tileNum) + 128);
-        const uint16_t tileLocation = tileData + (signedIndex * 16);
-
-        const uint8_t tileY = attrs.yflip ? 7 - (yPos & 7) : (yPos & 7);
-        const bool bank1 = (hardware == Hardware::CGB) && attrs.vramBank;
-        const uint16_t base = bank1 ? 0x6000 : 0x8000;
-
-        const uint8_t data1 = vram[(tileLocation + tileY * 2) - base];
-        const uint8_t data2 = vram[(tileLocation + tileY * 2 + 1) - base];
-
-        const uint8_t tileX = attrs.xflip ? 7 - (xPos & 7) : (xPos & 7);
-
-        const uint8_t colorLow = (data1 & (0x80 >> tileX)) ? 1 : 0;
-        const uint8_t colorHigh = (data2 & (0x80 >> tileX)) ? 2 : 0;
-        const uint8_t color = colorHigh | colorLow;
-
-        priority_[pixel] = {attrs.priority, color};
-
-        if (hardware == Hardware::CGB) {
-            const uint8_t r = bgpd[attrs.paletteNumberCGB][color][0];
-            const uint8_t g = bgpd[attrs.paletteNumberCGB][color][1];
-            const uint8_t b = bgpd[attrs.paletteNumberCGB][color][2];
-            SetColor(pixel, r, g, b);
-        } else {
-            const uint32_t shade = DMG_SHADE[(backgroundPalette >> (color * 2)) & 0x03];
-            screenData[currentLine * SCREEN_WIDTH + pixel] = shade;
-        }
-    }
-}
-
 static constexpr uint8_t expand5(const uint8_t c) noexcept {
     return static_cast<uint8_t>((c << 3) | (c >> 2));
 }
 
-void GPU::SetColor(const uint8_t pixel, const uint32_t red, const uint32_t green, const uint32_t blue) {
+bool GPU::LCDDisabled() const {
+    return !Bit<LCDC_ENABLE_BIT>(lcdc);
+}
+
+void GPU::ResetScanlineState(const bool clearBuffer) {
+    backgroundQueue.clear();
+    spriteArray.fill({.isPlaceholder = true});
+    if (clearBuffer) spriteBuffer.clear();
+    fetcherTileX_ = 0;
+    spriteFetchActive_ = false;
+    isFetchingWindow_ = false;
+    fetcherState_ = FetcherState::GetTile;
+    firstScanlineDataHigh = true;
+    pixelsDrawn = 0;
+    fetcherDelay_ = 0;
+    spriteFetchQueue.clear();
+}
+
+void GPU::TickOAMScan() {
+    if (!Bit<LCDC_OBJ_ENABLE>(lcdc)) return;
+    if (!(scanlineCounter % 2)) return;
+    const uint8_t index = scanlineCounter / 2;
+
+    const uint16_t base = index * 4;
+    const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(oam[base]) - 16);
+    const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(oam[base + 1]) - 8);
+    const uint8_t spriteTileIndex = oam[base + 2];
+    const Attributes attr = GetAttrsFrom(oam[base + 3]);
+    const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
+
+    const bool cond1 = spriteX > -8;
+    const bool cond2 = currentLine >= spriteY;
+    const bool cond3 = currentLine < spriteY + spriteSize;
+    const bool cond4 = spriteBuffer.size() < 10;
+    if (cond1 && cond2 && cond3 && cond4) {
+        spriteBuffer.push_back(Sprite{
+            .spriteNum = static_cast<uint8_t>(scanlineCounter), .x = spriteX, .y = spriteY, .tileIndex = spriteTileIndex, .attributes = attr, .processed = false
+        });
+    }
+}
+
+void GPU::OutputPixel() {
+    if (backgroundQueue.empty()) return;
+
+    if (initialScrollXDiscard_ > 0) {
+        backgroundQueue.pop_front();
+        initialScrollXDiscard_--;
+        return;
+    }
+
+    const auto bgPixel = backgroundQueue.front();
+    backgroundQueue.pop_front();
+
+    const auto spritePixel = spriteArray[0];
+    for (int i = 0; i < spriteArray.size() - 1; i++) {
+        spriteArray[i] = spriteArray[i + 1];
+    }
+    spriteArray[spriteArray.size() - 1] = {.isSprite = true, .isPlaceholder = true};
+
+    bool backgroundWins = spritePixel.color == 0;
+    if (spritePixel.color != 0) {
+        if (hardware == Hardware::CGB && !Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
+            backgroundWins = false;
+        } else if (bgPixel.priority) {
+            backgroundWins = bgPixel.color != 0;
+        } else {
+            backgroundWins = spritePixel.priority && bgPixel.color != 0;
+        }
+    }
+
+    Pixel finalPixel = spritePixel;
+    if (backgroundWins) {
+        if (Bit<LCDC_BG_WINDOW_ENABLE>(lcdc) || hardware == Hardware::CGB) {
+            finalPixel = bgPixel;
+        } else if (!Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
+            finalPixel = Pixel{.color = 0};
+        }
+    }
+
+    const uint8_t palette = hardware == Hardware::CGB ? finalPixel.cgbPalette : finalPixel.dmgPalette;
+    const uint32_t finalColor = finalPixel.isSprite
+                                    ? GetSpriteColor(finalPixel.color, palette)
+                                    : GetBackgroundColor(finalPixel.color, palette);
+
+    screenData[currentLine * SCREEN_WIDTH + pixelsDrawn] = finalColor;
+    pixelsDrawn++;
+}
+
+void GPU::TickMode3() {
+    CheckForSpriteTrigger();
+    if (!spriteFetchActive_) CheckForWindowTrigger();
+    if (spriteFetchActive_) {
+        Fetcher_StepSpriteFetch();
+    } else {
+        Fetcher_StepBackgroundFetch();
+    }
+    if (!spriteFetchActive_) OutputPixel();
+}
+
+void GPU::CheckForSpriteTrigger() {
+    if (!Bit<LCDC_OBJ_ENABLE>(lcdc) || spriteFetchActive_) return;
+    for (auto &sprite: spriteBuffer) {
+        if (!sprite.processed && pixelsDrawn == sprite.x) {
+            sprite.processed = true;
+            spriteFetchActive_ = true;
+            spriteFetchQueue.push_back(sprite);
+            fetcherState_ = FetcherState::GetTile;
+        }
+    }
+}
+
+void GPU::CheckForWindowTrigger() {
+    if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_) {
+        if (windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
+            isFetchingWindow_ = true;
+            backgroundQueue.clear();
+            fetcherState_ = FetcherState::GetTile;
+            fetcherTileX_ = 0;
+        }
+    }
+}
+
+void GPU::Fetcher_StepBackgroundFetch() {
+    if (spriteFetchActive_) return;
+    if (fetcherDelay_ > 0) {
+        fetcherDelay_--;
+        return;
+    }
+
+    using enum FetcherState;
+    switch (fetcherState_) {
+        case GetTile: {
+            if (!initialSCXSet) {
+                initialScrollXDiscard_ = scrollX & 0x07;
+                // std::fprintf(stderr, "Scroll X: %d, Initial scroll X discard: %d, scanline: %d\n", scrollX, initialScrollXDiscard_, scanlineCounter);
+                initialSCXSet = true;
+            }
+            const auto tileMapAddress = CalculateBGTileMapAddress();
+            if (hardware == Hardware::CGB) backgroundTileAttributes_ = GetAttrsFrom(vram[tileMapAddress - 0x6000]);
+            fetcherTileNum_ = vram[tileMapAddress - 0x8000];
+            fetcherState_ = GetTileDataLow;
+            fetcherDelay_ = 1;
+            break;
+        }
+        case GetTileDataLow: {
+            const auto tileDataAddress = CalculateTileDataAddress();
+            const bool bank1 = (hardware == Hardware::CGB) && backgroundTileAttributes_.vramBank;
+            const uint16_t base = bank1 ? 0x6000 : 0x8000;
+            fetcherTileDataLow_ = vram[tileDataAddress - base];
+            fetcherState_ = GetTileDataHigh;
+            fetcherDelay_ = 1;
+            break;
+        }
+        case GetTileDataHigh: {
+            const bool bank1 = (hardware == Hardware::CGB) && backgroundTileAttributes_.vramBank;
+            const uint16_t base = bank1 ? 0x6000 : 0x8000;
+            fetcherTileDataHigh_ = vram[(lastAddress_ + 1) - base];
+            fetcherState_ = PushToFIFO;
+            fetcherDelay_ = 1;
+            if (firstScanlineDataHigh) {
+                fetcherState_ = GetTile;
+                firstScanlineDataHigh = false;
+            }
+            break;
+        }
+        case Sleep:
+            fetcherState_ = PushToFIFO;
+            fetcherDelay_ = 1;
+            break;
+        case PushToFIFO: {
+            if (!backgroundQueue.empty()) break;
+            for (int i = 0; i < 8; i++) {
+                const uint8_t pixelBit = backgroundTileAttributes_.xflip ? i : 7 - i;
+                const uint8_t bitLow = (fetcherTileDataLow_ >> pixelBit) & 1;
+                const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelBit) & 1;
+                const uint8_t color = (bitHigh << 1) | bitLow;
+
+                backgroundQueue.push_back(Pixel{
+                    .color = color,
+                    .dmgPalette = backgroundPalette ? obp1Palette : obp0Palette,
+                    .cgbPalette = backgroundTileAttributes_.paletteNumberCGB,
+                    .priority = backgroundTileAttributes_.priority,
+                    .isSprite = false,
+                    .isPlaceholder = false,
+                });
+            }
+            fetcherTileX_++;
+            fetcherState_ = GetTile;
+            fetcherDelay_ = 0;
+            break;
+        }
+    }
+}
+
+void GPU::Fetcher_StepSpriteFetch() {
+    if (fetcherDelay_ > 0) {
+        fetcherDelay_--;
+        return;
+    }
+
+    const Sprite &sprite = spriteFetchQueue.front();
+
+    using enum FetcherState;
+    switch (fetcherState_) {
+        case GetTile: {
+            fetcherTileNum_ = sprite.tileIndex;
+            fetcherState_ = GetTileDataLow;
+            fetcherDelay_ = 1;
+            break;
+        }
+        case GetTileDataLow: {
+            const auto tileAddress = CalculateSpriteDataAddress(sprite);
+            const bool bank1 = (hardware == Hardware::CGB) && sprite.attributes.vramBank;
+            const uint16_t base = bank1 ? 0x6000 : 0x8000;
+            fetcherTileDataLow_ = vram[tileAddress - base];
+            fetcherState_ = GetTileDataHigh;
+            fetcherDelay_ = 1;
+            break;
+        }
+        case GetTileDataHigh: {
+            const bool bank1 = (hardware == Hardware::CGB) && sprite.attributes.vramBank;
+            const uint16_t base = bank1 ? 0x6000 : 0x8000;
+            fetcherTileDataHigh_ = vram[(lastAddress_ + 1) - base];
+            fetcherDelay_ = 1;
+            fetcherState_ = PushToFIFO;
+            break;
+        }
+        case Sleep: {
+            fetcherState_ = PushToFIFO;
+            fetcherDelay_ = 1;
+            break;
+        }
+        case PushToFIFO: {
+            const Attributes attrs = sprite.attributes;
+            const uint8_t paletteRegister = attrs.paletteNumberDMG ? obp1Palette : obp0Palette;
+
+            const auto xPos = sprite.x;
+            for (int i = xPos < 0 ? 8 + xPos : 0; i < 8; i++) {
+                const bool hasHigherPriority = hardware == Hardware::CGB && sprite.spriteNum <= spriteArray[0].spriteNum;
+                if (!hasHigherPriority && spriteArray[i].color != 0 && !spriteArray[i].isPlaceholder) continue;
+                const auto pixelIndex = attrs.xflip ? i : 7 - i;
+                const uint8_t bitLow = (fetcherTileDataLow_ >> pixelIndex) & 1;
+                const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
+                const uint8_t color = (bitHigh << 1) | bitLow;
+
+                spriteArray[i] = Pixel{
+                    .color = color,
+                    .dmgPalette = paletteRegister,
+                    .cgbPalette = attrs.paletteNumberCGB,
+                    .priority = attrs.priority,
+                    .isSprite = true,
+                    .isPlaceholder = false,
+                    .spriteNum = sprite.spriteNum,
+                };
+            }
+            spriteFetchQueue.pop_front();
+            if (spriteFetchQueue.empty()) spriteFetchActive_ = false;
+            fetcherState_ = GetTile;
+            fetcherDelay_ = 0;
+            break;
+        }
+    }
+}
+
+uint16_t GPU::CalculateBGTileMapAddress() const {
+    uint16_t tileMapBase = 0;
+    if (isFetchingWindow_) {
+        tileMapBase = Bit<LCDC_WINDOW_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
+        const uint8_t tileRow = windowLineCounter_ >> 3 & 0x1F;
+        const uint8_t tileCol = fetcherTileX_;
+        return tileMapBase + tileRow * 32 + tileCol;
+    } else {
+        tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
+        const uint8_t tileRow = ((scrollY + currentLine & 0xFF) >> 3) & 0x1F;
+        // std::fprintf(stderr, "Reading ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
+        const uint8_t tileCol = (fetcherTileX_ + (scrollX / 8)) & 0x1F;
+        return tileMapBase + tileRow * 32 + tileCol;
+    }
+}
+
+uint16_t GPU::CalculateTileDataAddress() {
+    uint8_t lineInTile = isFetchingWindow_ ? windowLineCounter_ % 8 : ((currentLine + scrollY) % 8);
+    lineInTile = backgroundTileAttributes_.yflip ? 7 - (lineInTile & 7) : (lineInTile & 7);
+    if (Bit<LCDC_BG_AND_WINDOW_TILE_DATA>(lcdc)) {
+        const uint16_t address = 0x8000 + fetcherTileNum_ * 16 + lineInTile * 2;
+        lastAddress_ = address;
+        return address;
+    } else {
+        const auto signedTileNum = std::bit_cast<int8_t>(fetcherTileNum_);
+        const uint16_t address = 0x9000 + signedTileNum * 16 + lineInTile * 2;
+        lastAddress_ = address;
+        return address;
+    }
+}
+
+uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
+    const uint8_t spriteHeight = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
+    if (Bit<LCDC_OBJ_SIZE>(lcdc)) fetcherTileNum_ &= 0xFE;
+    const bool yFlip = sprite.attributes.yflip;
+    const uint8_t yPos = sprite.y;
+    const uint8_t tileY = yFlip
+                              ? spriteHeight - 1 - (currentLine - yPos)
+                              : currentLine - yPos;
+    const uint16_t address = 0x8000 + fetcherTileNum_ * 16 + tileY * 2;
+    lastAddress_ = address;
+    return address;
+}
+
+uint32_t GPU::GetSpriteColor(const uint8_t color, const uint8_t palette) const {
+    if (hardware != Hardware::CGB) return DMG_SHADE[(palette >> (color * 2)) & 0x03];
+
+    const uint8_t red = obpd[palette][color][0];
+    const uint8_t green = obpd[palette][color][1];
+    const uint8_t blue = obpd[palette][color][2];
+
     const auto r5 = static_cast<uint8_t>(red & 0x1F);
     const auto g5 = static_cast<uint8_t>(green & 0x1F);
     const auto b5 = static_cast<uint8_t>(blue & 0x1F);
@@ -171,15 +338,40 @@ void GPU::SetColor(const uint8_t pixel, const uint32_t red, const uint32_t green
                           (static_cast<uint32_t>(b) << 16) |
                           (static_cast<uint32_t>(g) << 8) |
                           r;
-    screenData[currentLine * SCREEN_WIDTH + pixel] = rgba;
+    return rgba;
+}
+
+uint32_t GPU::GetBackgroundColor(const uint8_t color, const uint8_t palette) const {
+    if (hardware != Hardware::CGB) return DMG_SHADE[(backgroundPalette >> (color * 2)) & 0x03];
+
+    const uint8_t red = bgpd[palette][color][0];
+    const uint8_t green = bgpd[palette][color][1];
+    const uint8_t blue = bgpd[palette][color][2];
+
+    const auto r5 = static_cast<uint8_t>(red & 0x1F);
+    const auto g5 = static_cast<uint8_t>(green & 0x1F);
+    const auto b5 = static_cast<uint8_t>(blue & 0x1F);
+
+    const auto corrR5 = static_cast<uint8_t>((26 * r5 + 4 * g5 + 2 * b5) >> 5);
+    const auto corrG5 = static_cast<uint8_t>((6 * r5 + 24 * g5 + 2 * b5) >> 5);
+    const auto corrB5 = static_cast<uint8_t>((2 * r5 + 4 * g5 + 26 * b5) >> 5);
+
+    const uint8_t r = expand5(corrR5);
+    const uint8_t g = expand5(corrG5);
+    const uint8_t b = expand5(corrB5);
+
+    const uint32_t rgba = 0xFF000000u |
+                          (static_cast<uint32_t>(b) << 16) |
+                          (static_cast<uint32_t>(g) << 8) |
+                          r;
+    return rgba;
 }
 
 GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
     return {
-        .priority = (byte & 0x80) ? true : false, .yflip = (byte & 0x40) ? true : false,
-        .xflip = (byte & 0x20) ? true : false,
-        .paletteNumberDMG = (byte & 0x10) ? true : false, .vramBank = (byte & 0x08) ? true : false,
-        .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)
+        .priority = Bit<OAM_PRIORITY_BIT>(byte), .yflip = Bit<OAM_Y_FLIP_BIT>(byte),
+        .xflip = Bit<OAM_X_FLIP_BIT>(byte), .paletteNumberDMG = Bit<OAM_PALETTE_NUMBER_DMG_BIT>(byte),
+        .vramBank = Bit<OAM_VRAM_BANK_BIT>(byte), .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)
     };
 }
 
@@ -193,24 +385,18 @@ void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
 }
 
 uint8_t GPU::ReadVRAM(const uint16_t address) const {
-    return vram[vramBank * 0x2000 + address - 0x8000];
+    return stat.mode == 3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
 }
 
 void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
+    if (stat.mode == 3) return;
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
 uint8_t GPU::ReadRegisters(const uint16_t address) const {
     switch (address) {
         case 0xFF40: return lcdc;
-        case 0xFF41: {
-            const uint8_t bit6 = stat.enableLYInterrupt ? 0x40 : 0x00;
-            const uint8_t bit5 = stat.enableM2Interrupt ? 0x20 : 0x00;
-            const uint8_t bit4 = stat.enableM1Interrupt ? 0x10 : 0x00;
-            const uint8_t bit3 = stat.enableM0Interrupt ? 0x08 : 0x00;
-            const uint8_t bit2 = (currentLine == lyc) ? 0x04 : 0x00;
-            return 0x80 | bit6 | bit5 | bit4 | bit3 | bit2 | stat.mode;
-        }
+        case 0xFF41: return stat.value();
         case 0xFF42: return scrollY;
         case 0xFF43: return scrollX;
         case 0xFF44: return currentLine;
@@ -239,6 +425,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             }
             return (obpd[r][c][1] >> 3) | (obpd[r][c][2] << 2);
         }
+        case 0xFF6C: return 0xFE | objectPriority;
         default:
             throw UnreachableCodeException("GPU::ReadRegisters unreachable code at address: " + std::to_string(address));
     }
@@ -246,16 +433,22 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
 
 void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     switch (address) {
-        case 0xFF40:
+        case 0xFF40: {
+            const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             lcdc = value;
-            if (!(lcdc & 0x80)) {
+            const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+            if (!newEnable && oldEnable) {
                 scanlineCounter = 0;
                 currentLine = 0;
                 stat.mode = 0;
                 screenData.fill(0);
                 vblank = true;
+            } else if (newEnable && !oldEnable) {
+                stat.mode = 2;
+                vblank = false;
             }
             break;
+        }
         case 0xFF41:
             stat.enableLYInterrupt = value & 0x40;
             stat.enableM2Interrupt = value & 0x20;
@@ -264,12 +457,15 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF42: scrollY = value;
             break;
-        case 0xFF43: scrollX = value;
+        case 0xFF43: {
+            scrollX = value;
+            // std::fprintf(stderr, "Writing ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
+        }
             break;
         case 0xFF44: currentLine = 0;
-            break; // writing resets LY
+            break;
         case 0xFF45: lyc = value;
-            break; // fixed: store provided value
+            break;
         case 0xFF47: backgroundPalette = value;
             break;
         case 0xFF48: obp0Palette = value;
@@ -312,6 +508,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             if (obpi.autoIncrement) obpi.index = (obpi.index + 1) & 0x3F;
             break;
         }
+        case 0xFF6C: objectPriority = value & 0x01;
+            break;
         default:
             break;
     }
