@@ -3,21 +3,21 @@
 struct Registers {
     uint8_t a{}, f{}, b{}, c{}, d{}, e{}, h{}, l{};
 
-    [[nodiscard]] uint16_t GetAF() const { return static_cast<uint16_t>(a) << 8 | f; }
+    [[nodiscard]] uint16_t GetAF() const noexcept { return static_cast<uint16_t>(a) << 8 | f; }
 
-    [[nodiscard]] uint16_t GetBC() const { return static_cast<uint16_t>(b) << 8 | c; }
+    [[nodiscard]] uint16_t GetBC() const noexcept { return static_cast<uint16_t>(b) << 8 | c; }
 
-    [[nodiscard]] uint16_t GetDE() const { return static_cast<uint16_t>(d) << 8 | e; }
+    [[nodiscard]] uint16_t GetDE() const noexcept { return static_cast<uint16_t>(d) << 8 | e; }
 
-    [[nodiscard]] uint16_t GetHL() const { return static_cast<uint16_t>(h) << 8 | l; }
+    [[nodiscard]] uint16_t GetHL() const noexcept { return static_cast<uint16_t>(h) << 8 | l; }
 
-    [[nodiscard]] bool FlagZero() const { return !!(f & 0x80); }
+    [[nodiscard]] bool FlagZero() const noexcept { return !!(f & 0x80); }
 
-    [[nodiscard]] bool FlagSubtract() const { return !!(f & 0x40); }
+    [[nodiscard]] bool FlagSubtract() const noexcept { return !!(f & 0x40); }
 
-    [[nodiscard]] bool FlagHalf() const { return !!(f & 0x20); }
+    [[nodiscard]] bool FlagHalf() const noexcept { return !!(f & 0x20); }
 
-    [[nodiscard]] bool FlagCarry() const { return !!(f & 0x10); }
+    [[nodiscard]] bool FlagCarry() const noexcept { return !!(f & 0x10); }
 
     void SetZero(const bool x) { f = (f & 0x7F) | (x << 7); }
 

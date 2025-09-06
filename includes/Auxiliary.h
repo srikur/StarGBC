@@ -221,7 +221,7 @@ struct Serial {
                 if ((control_ & 0x81) == 0x81) {
                     ticksPerBit_ = doubleSpeed ? 256 : 512;
                     if (gbc && control_ & 0x02) ticksPerBit_ /= 32;
-                    ticksUntilShift_ = ticksPerBit_ - 48;
+                    ticksUntilShift_ = ticksPerBit_ - 47;
                     bitsShifted_ = 0;
                     active_ = true;
                 }

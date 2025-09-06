@@ -44,18 +44,19 @@ struct Memory {
 };
 
 struct DMA {
-    static constexpr int STARTUP_CYCLES = 1; // 1 M-cycle
-    static constexpr int TOTAL_BYTES = 0xA0;
+    static constexpr int STARTUP_CYCLES{1}; // 4 T-cycles
+    static constexpr int TOTAL_BYTES{0xA0};
 
-    uint8_t writtenValue = 0x00;
-    uint16_t startAddress = 0x0000;
-    uint8_t currentByte = 0x00;
-    bool transferActive = false;
-    bool restartPending = false;
-    uint16_t pendingStart = 0x0000;
-    uint16_t restartCountdown = 0x0000;
-    uint16_t ticks = 0x0000;
-    bool transferComplete = false;
+    uint8_t dmaTickCounter{0x00};
+    uint8_t writtenValue{0x00};
+    uint16_t startAddress{0x0000};
+    uint8_t currentByte{0x00};
+    bool transferActive{false};
+    bool restartPending{false};
+    uint16_t pendingStart{0x0000};
+    uint16_t restartCountdown{0x0000};
+    uint16_t ticks{0x0000};
+    bool transferComplete{false};
 
     void Set(const uint8_t value) {
         writtenValue = value;
@@ -89,19 +90,21 @@ public:
 
     [[nodiscard]] uint8_t ReadDMASource(uint16_t src) const;
 
+    [[nodiscard]] uint8_t ReadOAM(uint16_t address) const;
+
     void WriteByte(uint16_t address, uint8_t value);
 
     void KeyDown(Keys key);
 
     void KeyUp(Keys key);
 
-    void UpdateGraphics(uint32_t tCycles);
+    void UpdateGraphics();
 
-    void UpdateTimers(uint32_t cycles);
+    void UpdateTimers();
 
-    void UpdateDMA(uint32_t cycles);
+    void UpdateDMA();
 
-    void UpdateSerial(uint32_t tCycles);
+    void UpdateSerial();
 
     void UpdateRTC() const;
 
@@ -146,12 +149,12 @@ public:
         Joypad,
     };
 
-    uint8_t interruptEnable = 0x00;
-    uint8_t interruptFlag = 0xE1;
-    bool interruptMasterEnable = false;
-    bool interruptDelay = false;
+    uint8_t interruptEnable{0x00};
+    uint8_t interruptFlag{0xE1};
+    uint8_t interruptFlagDelayed{0x00};
+    uint8_t interruptSetDelay{0x00};
+    bool interruptMasterEnable{false};
+    bool interruptDelay{false};
 
-    uint32_t stepCycles = 0;
-
-    void SetInterrupt(InterruptType interrupt);
+    void SetInterrupt(InterruptType interrupt, bool delayed);
 };

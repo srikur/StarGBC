@@ -24,6 +24,10 @@ enum class Mode {
     AGS_GBC = 0x0A,
 };
 
+enum class InterruptState {
+    M1, M2, M3, M4, M5, M6
+};
+
 struct GameboySettings {
     std::string romName;
     std::string biosPath;
@@ -34,6 +38,11 @@ struct GameboySettings {
 };
 
 class Gameboy {
+    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
+    static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
+    static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
+    static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
+    static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
     std::string rom_path_;
     std::string bios_path_;
     std::unique_ptr<Registers> regs = std::make_unique<Registers>();
@@ -42,22 +51,34 @@ class Gameboy {
     Mode mode_ = Mode::DMG;
     uint16_t currentInstruction = 0x00;
 
+    InterruptState interruptState{InterruptState::M1};
+    uint16_t previousPC{0x00};
+    uint16_t nextInstruction{0x0000};
+    bool runPrefixStall{false};
+    bool prefixed{false};
+    uint8_t mCycleCounter{0x01};
+    uint8_t tCycleCounter{0x00};
+    uint32_t masterCycles{0x00000000};
+    uint8_t interruptBit{0x00};
+    uint8_t interruptMask{0x00};
     uint16_t pc = 0x00;
     uint16_t sp = 0x00;
     uint8_t icount = 0;
     bool halted = false;
+    bool instrRunning = false;
     bool haltBug = false;
-    uint32_t stepCycles = 0;
-    uint32_t cyclesThisInstruction = 0;
 
     bool throttleSpeed = true;
     int speedMultiplier = 1;
     bool paused = false;
     bool stopped = false;
+    bool instrComplete = true;
+    uint16_t previousInstruction = 0x0000;
+    bool previousPrefixed = false;
+
+    void ExecuteMicroOp();
 
     uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
-
-    uint8_t ExecuteInstruction();
 
     void InitializeBootrom() const;
 
@@ -65,18 +86,16 @@ class Gameboy {
 
     [[nodiscard]] uint32_t RunHDMA() const;
 
-    uint32_t ProcessInterrupts();
+    bool ProcessInterrupts();
 
-    void PrintCurrentValues() const;
-
-    void TickM(uint32_t mCycles, bool countDoubleSpeed);
+    void PrintCurrentValues();
 
 public:
     friend class Instructions;
 
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
                      const bool debugStart, const bool realRTC) : rom_path_(std::move(rom_path)),
-                                              bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
+                                                                  bios_path_(std::move(bios_path)), mode_(mode), paused(debugStart) {
         if (mode_ != Mode::None) {
             bus->gpu_->hardware = mode_ == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
             bus->audio_->SetDMG(bus->gpu_->hardware == GPU::Hardware::DMG);
@@ -90,6 +109,7 @@ public:
         } else {
             pc = 0x100;
             InitializeSystem();
+            currentInstruction = bus->ReadByte(pc++);
         }
         bus->cartridge_->rtc->realRTC = realRTC;
     }
@@ -124,9 +144,7 @@ public:
 
     void SetThrottle(bool throttle);
 
-    void AdvanceFrames(uint32_t frameBudget);
-
-    void DebugNextInstruction();
+    void AdvanceFrame();
 
     void SaveState(int slot) const;
 
@@ -134,7 +152,6 @@ public:
 
     void SetPaused(const bool val) {
         paused = val;
-        PrintCurrentValues();
     }
 
     [[nodiscard]] bool IsPaused() const {

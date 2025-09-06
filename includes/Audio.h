@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstring>
 #include <set>
 #include <string>
 
@@ -116,7 +117,7 @@ struct Channel1 final : Channel {
 
     int32_t freqTimer{0};
     uint8_t dutyStep{0};
-    float_t currentOutput{0.0f};
+    float currentOutput{0.0f};
 
     void Trigger(const uint8_t freqStep) {
         if (dacEnabled) enabled = true;
@@ -267,7 +268,7 @@ struct Channel2 final : Channel {
     Frequency frequency{};
     int32_t freqTimer{0};
     uint8_t dutyStep{0};
-    float_t currentOutput{0.0f};
+    float currentOutput{0.0f};
 
     void Trigger(const uint8_t freqStep) {
         if (dacEnabled) enabled = true;
@@ -374,7 +375,7 @@ struct Channel3 final : Channel {
     int32_t period{0};
     uint8_t waveStep{0};
     uint8_t ticks{0};
-    float_t currentOutput{0.0f};
+    float currentOutput{0.0f};
 
     std::array<uint8_t, 0x10> waveRam{};
 
@@ -507,7 +508,7 @@ struct Channel4 final : Channel {
 
     int32_t freqTimer{0};
     uint16_t lfsr{0xFFFF};
-    float_t currentOutput{0.0f};
+    float currentOutput{0.0f};
     uint8_t trigger{0};
 
     void Trigger(const uint8_t freqStep) {
@@ -676,16 +677,13 @@ public:
         frameSeqStep = (frameSeqStep + 1) % 8;
     }
 
-    void Tick(const uint32_t tCycles) {
+    void Tick() {
         if (!audioEnabled) return;
-
-        for (uint32_t i = 0; i < tCycles; ++i) {
-            ch3.alternateRead = false;
-            ch1.Tick();
-            ch2.Tick();
-            ch3.Tick();
-            ch4.Tick();
-        }
+        ch3.alternateRead = false;
+        ch1.Tick();
+        ch2.Tick();
+        ch3.Tick();
+        ch4.Tick();
     }
 
     void WriteAudioControl(const uint8_t value) {
