@@ -92,7 +92,7 @@ struct BlarggCase {
 static const std::vector<BlarggCase> blarggTestcases = {
     {"roms/blargg/halt_bug.gb", "tests/expected/blargg/halt_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/instr_timing/instr_timing.gb", "tests/expected/blargg/instr_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/interrupt_time/interrupt_time.gb", "tests/expected/blargg/interrupt_time.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/interrupt_time/interrupt_time.gb", "tests/expected/blargg/interrupt_time.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/blargg/cpu_instrs/individual/01-special.gb", "tests/expected/blargg/cpu_instrs/01-special.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/cpu_instrs/individual/02-interrupts.gb", "tests/expected/blargg/cpu_instrs/02-interrupts.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/cpu_instrs/individual/03-op sp,hl.gb", "tests/expected/blargg/cpu_instrs/03-op sp,hl.gb.screen", bootroms.dmgBootrom, Mode::DMG},
@@ -110,38 +110,38 @@ static const std::vector<BlarggCase> blarggTestcases = {
     {"roms/blargg/mem_timing-2/rom_singles/01-read_timing.gb", "tests/expected/blargg/mem_timing/01-read_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/mem_timing-2/rom_singles/02-write_timing.gb", "tests/expected/blargg/mem_timing/02-write_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/mem_timing-2/rom_singles/03-modify_timing.gb", "tests/expected/blargg/mem_timing/03-modify_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/01-registers.gb", "tests/expected/blargg/dmg_sound/01-registers.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/02-len ctr.gb", "tests/expected/blargg/dmg_sound/02-len ctr.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/03-trigger.gb", "tests/expected/blargg/dmg_sound/03-trigger.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/04-sweep.gb", "tests/expected/blargg/dmg_sound/04-sweep.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/05-sweep details.gb", "tests/expected/blargg/dmg_sound/05-sweep details.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/06-overflow on trigger.gb", "tests/expected/blargg/dmg_sound/06-overflow on trigger.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/07-len sweep period sync.gb", "tests/expected/blargg/dmg_sound/07-len sweep period sync.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/08-len ctr during power.gb", "tests/expected/blargg/dmg_sound/08-len ctr during power.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/09-wave read while on.gb", "tests/expected/blargg/dmg_sound/09-overflow on trigger.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/10-wave trigger while on.gb", "tests/expected/blargg/dmg_sound/10-overflow on overflow on trigger.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/11-regs after power.gb", "tests/expected/blargg/dmg_sound/11-regs after power.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/12-wave write while on.gb", "tests/expected/blargg/dmg_sound/12-wave write while on.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/dmg_sound/cgb_sound/01-registers.gb", "tests/expected/blargg/cgb_sound/01-registers.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/02-len ctr.gb", "tests/expected/blargg/cgb_sound/02-len ctr.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/03-trigger.gb", "tests/expected/blargg/cgb_sound/03-trigger.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/04-sweep.gb", "tests/expected/blargg/cgb_sound/04-sweep.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/05-sweep details.gb", "tests/expected/blargg/cgb_sound/05-sweep details.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/06-overflow on trigger.gb", "tests/expected/blargg/cgb_sound/06-overflow on trigger.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/07-len sweep period sync.gb", "tests/expected/blargg/cgb_sound/07-len sweep period sync.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/08-len ctr during power.gb", "tests/expected/blargg/cgb_sound/08-len ctr during power.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/09-wave read while on.gb", "tests/expected/blargg/cgb_sound/09-wave read while on.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/10-wave trigger while on.gb", "tests/expected/blargg/cgb_sound/10-wave trigger while on.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/11-regs after power.gb", "tests/expected/blargg/cgb_sound/11-regs after power.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/dmg_sound/cgb_sound/12-wave.gb", "tests/expected/blargg/cgb_sound/12-wave.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
-    {"roms/blargg/oam_bug/1-lcd_sync.gb", "tests/expected/blargg/oam_bug/1-lcd_sync.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/2-causes.gb", "tests/expected/blargg/oam_bug/2-causes.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/3-non_causes.gb", "tests/expected/blargg/oam_bug/3-non_causes.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/4-scanline_timing.gb", "tests/expected/blargg/oam_bug/4-scanline_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/5-timing_bug.gb", "tests/expected/blargg/oam_bug/5-timing_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/6-timing_no_bug.gb", "tests/expected/blargg/oam_bug/6-timing_no_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/7-timing_effect.gb", "tests/expected/blargg/oam_bug/7-timing_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/8-instr_effect.gb", "tests/expected/blargg/oam_bug/8-instr_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/01-registers.gb", "tests/expected/blargg/dmg_sound/01-registers.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/02-len ctr.gb", "tests/expected/blargg/dmg_sound/02-len ctr.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/03-trigger.gb", "tests/expected/blargg/dmg_sound/03-trigger.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/04-sweep.gb", "tests/expected/blargg/dmg_sound/04-sweep.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/05-sweep details.gb", "tests/expected/blargg/dmg_sound/05-sweep details.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/06-overflow on trigger.gb", "tests/expected/blargg/dmg_sound/06-overflow on trigger.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/07-len sweep period sync.gb", "tests/expected/blargg/dmg_sound/07-len sweep period sync.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/08-len ctr during power.gb", "tests/expected/blargg/dmg_sound/08-len ctr during power.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/09-wave read while on.gb", "tests/expected/blargg/dmg_sound/09-wave read while on.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/10-wave trigger while on.gb", "tests/expected/blargg/dmg_sound/10-wave trigger while on.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/11-regs after power.gb", "tests/expected/blargg/dmg_sound/11-regs after power.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/dmg_sound/rom_singles/12-wave write while on.gb", "tests/expected/blargg/dmg_sound/12-wave write while on.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/cgb_sound/rom_singles/01-registers.gb", "tests/expected/blargg/cgb_sound/01-registers.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/02-len ctr.gb", "tests/expected/blargg/cgb_sound/02-len ctr.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/03-trigger.gb", "tests/expected/blargg/cgb_sound/03-trigger.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/04-sweep.gb", "tests/expected/blargg/cgb_sound/04-sweep.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/05-sweep details.gb", "tests/expected/blargg/cgb_sound/05-sweep details.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/06-overflow on trigger.gb", "tests/expected/blargg/cgb_sound/06-overflow on trigger.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/07-len sweep period sync.gb", "tests/expected/blargg/cgb_sound/07-len sweep period sync.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/08-len ctr during power.gb", "tests/expected/blargg/cgb_sound/08-len ctr during power.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/09-wave read while on.gb", "tests/expected/blargg/cgb_sound/09-wave read while on.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/10-wave trigger while on.gb", "tests/expected/blargg/cgb_sound/10-wave trigger while on.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/11-regs after power.gb", "tests/expected/blargg/cgb_sound/11-regs after power.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/cgb_sound/rom_singles/12-wave.gb", "tests/expected/blargg/cgb_sound/12-wave.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/blargg/oam_bug/rom_singles/1-lcd_sync.gb", "tests/expected/blargg/oam_bug/1-lcd_sync.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/2-causes.gb", "tests/expected/blargg/oam_bug/2-causes.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/3-non_causes.gb", "tests/expected/blargg/oam_bug/3-non_causes.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb", "tests/expected/blargg/oam_bug/4-scanline_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/5-timing_bug.gb", "tests/expected/blargg/oam_bug/5-timing_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb", "tests/expected/blargg/oam_bug/6-timing_no_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/7-timing_effect.gb", "tests/expected/blargg/oam_bug/7-timing_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/blargg/oam_bug/rom_singles/8-instr_effect.gb", "tests/expected/blargg/oam_bug/8-instr_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &blarggFutures() {
@@ -188,38 +188,38 @@ BLARGG_TEST(16, "roms/blargg/mem_timing/individual/03-modify_timing.gb")
 BLARGG_TEST(17, "roms/blargg/mem_timing-2/rom_singles/01-read_timing.gb")
 BLARGG_TEST(18, "roms/blargg/mem_timing-2/rom_singles/02-write_timing.gb")
 BLARGG_TEST(19, "roms/blargg/mem_timing-2/rom_singles/03-modify_timing.gb")
-BLARGG_TEST(20, "roms/blargg/dmg_sound/01-registers.gb")
-BLARGG_TEST(21, "roms/blargg/dmg_sound/02-len ctr.gb")
-BLARGG_TEST(22, "roms/blargg/dmg_sound/03-trigger.gb")
-BLARGG_TEST(23, "roms/blargg/dmg_sound/04-sweep.gb")
-BLARGG_TEST(24, "roms/blargg/dmg_sound/05-sweep details.gb")
-BLARGG_TEST(25, "roms/blargg/dmg_sound/06-overflow on trigger.gb")
-BLARGG_TEST(26, "roms/blargg/dmg_sound/07-len sweep period sync.gb")
-BLARGG_TEST(27, "roms/blargg/dmg_sound/08-len ctr during power.gb")
-BLARGG_TEST(28, "roms/blargg/dmg_sound/09-wave read while on.gb")
-BLARGG_TEST(29, "roms/blargg/dmg_sound/10-wave trigger while on.gb")
-BLARGG_TEST(30, "roms/blargg/dmg_sound/11-regs after power.gb")
-BLARGG_TEST(31, "roms/blargg/dmg_sound/12-wave write while on.gb")
-BLARGG_TEST(32, "roms/blargg/dmg_sound/cgb_sound/01-registers.gb")
-BLARGG_TEST(33, "roms/blargg/dmg_sound/cgb_sound/02-len ctr.gb")
-BLARGG_TEST(34, "roms/blargg/dmg_sound/cgb_sound/03-trigger.gb")
-BLARGG_TEST(35, "roms/blargg/dmg_sound/cgb_sound/04-sweep.gb")
-BLARGG_TEST(36, "roms/blargg/dmg_sound/cgb_sound/05-sweep details.gb")
-BLARGG_TEST(37, "roms/blargg/dmg_sound/cgb_sound/06-overflow on trigger.gb")
-BLARGG_TEST(38, "roms/blargg/dmg_sound/cgb_sound/07-len sweep period sync.gb")
-BLARGG_TEST(39, "roms/blargg/dmg_sound/cgb_sound/08-len ctr during power.gb")
-BLARGG_TEST(40, "roms/blargg/dmg_sound/cgb_sound/09-wave read while on.gb")
-BLARGG_TEST(41, "roms/blargg/dmg_sound/cgb_sound/10-wave trigger while on.gb")
-BLARGG_TEST(42, "roms/blargg/dmg_sound/cgb_sound/11-regs after power.gb")
-BLARGG_TEST(43, "roms/blargg/dmg_sound/cgb_sound/12-wave.gb")
-BLARGG_TEST(44, "roms/blargg/oam_bug/1-lcd_sync.gb")
-BLARGG_TEST(45, "roms/blargg/oam_bug/2-causes.gb")
-BLARGG_TEST(46, "roms/blargg/oam_bug/3-non_causes.gb")
-BLARGG_TEST(47, "roms/blargg/oam_bug/4-scanline_timing.gb")
-BLARGG_TEST(48, "roms/blargg/oam_bug/5-timing_bug.gb")
-BLARGG_TEST(49, "roms/blargg/oam_bug/6-timing_no_bug.gb")
-BLARGG_TEST(50, "roms/blargg/oam_bug/7-timing_effect.gb")
-BLARGG_TEST(51, "roms/blargg/oam_bug/8-instr_effect.gb")
+BLARGG_TEST(20, "roms/blargg/dmg_sound/rom_singles/01-registers.gb")
+BLARGG_TEST(21, "roms/blargg/dmg_sound/rom_singles/02-len ctr.gb")
+BLARGG_TEST(22, "roms/blargg/dmg_sound/rom_singles/03-trigger.gb")
+BLARGG_TEST(23, "roms/blargg/dmg_sound/rom_singles/04-sweep.gb")
+BLARGG_TEST(24, "roms/blargg/dmg_sound/rom_singles/05-sweep details.gb")
+BLARGG_TEST(25, "roms/blargg/dmg_sound/rom_singles/06-overflow on trigger.gb")
+BLARGG_TEST(26, "roms/blargg/dmg_sound/rom_singles/07-len sweep period sync.gb")
+BLARGG_TEST(27, "roms/blargg/dmg_sound/rom_singles/08-len ctr during power.gb")
+BLARGG_TEST(28, "roms/blargg/dmg_sound/rom_singles/09-wave read while on.gb")
+BLARGG_TEST(29, "roms/blargg/dmg_sound/rom_singles/10-wave trigger while on.gb")
+BLARGG_TEST(30, "roms/blargg/dmg_sound/rom_singles/11-regs after power.gb")
+BLARGG_TEST(31, "roms/blargg/dmg_sound/rom_singles/12-wave write while on.gb")
+BLARGG_TEST(32, "roms/blargg/cgb_sound/rom_singles/01-registers.gb")
+BLARGG_TEST(33, "roms/blargg/cgb_sound/rom_singles/02-len ctr.gb")
+BLARGG_TEST(34, "roms/blargg/cgb_sound/rom_singles/03-trigger.gb")
+BLARGG_TEST(35, "roms/blargg/cgb_sound/rom_singles/04-sweep.gb")
+BLARGG_TEST(36, "roms/blargg/cgb_sound/rom_singles/05-sweep details.gb")
+BLARGG_TEST(37, "roms/blargg/cgb_sound/rom_singles/06-overflow on trigger.gb")
+BLARGG_TEST(38, "roms/blargg/cgb_sound/rom_singles/07-len sweep period sync.gb")
+BLARGG_TEST(39, "roms/blargg/cgb_sound/rom_singles/08-len ctr during power.gb")
+BLARGG_TEST(40, "roms/blargg/cgb_sound/rom_singles/09-wave read while on.gb")
+BLARGG_TEST(41, "roms/blargg/cgb_sound/rom_singles/10-wave trigger while on.gb")
+BLARGG_TEST(42, "roms/blargg/cgb_sound/rom_singles/11-regs after power.gb")
+BLARGG_TEST(43, "roms/blargg/cgb_sound/rom_singles/12-wave.gb")
+BLARGG_TEST(44, "roms/blargg/oam_bug/rom_singles/1-lcd_sync.gb")
+BLARGG_TEST(45, "roms/blargg/oam_bug/rom_singles/2-causes.gb")
+BLARGG_TEST(46, "roms/blargg/oam_bug/rom_singles/3-non_causes.gb")
+BLARGG_TEST(47, "roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb")
+BLARGG_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
+BLARGG_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
+BLARGG_TEST(50, "roms/blargg/oam_bug/rom_singles/7-timing_effect.gb")
+BLARGG_TEST(51, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
 
 int main(const int argc, char **argv) {
     std::vector<char *> doctest_args;
