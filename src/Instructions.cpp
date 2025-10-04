@@ -37,7 +37,7 @@ bool Instructions::RLCAddr(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::DAA(Gameboy &gameboy) {
+bool Instructions::DAA(Gameboy &gameboy) const {
     uint8_t adjust = 0;
     bool carry = gameboy.regs->FlagCarry();
 
@@ -87,14 +87,14 @@ bool Instructions::RETI(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::DI(Gameboy &gameboy) {
+bool Instructions::DI(Gameboy &gameboy) const {
     gameboy.bus->interruptDelay = false;
     gameboy.bus->interruptMasterEnable = false;
     gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
     return true;
 }
 
-bool Instructions::EI(Gameboy &gameboy) {
+bool Instructions::EI(Gameboy &gameboy) const {
     if (!gameboy.bus->interruptMasterEnable) {
         gameboy.icount = 0;
         gameboy.bus->interruptDelay = true;
@@ -104,7 +104,7 @@ bool Instructions::EI(Gameboy &gameboy) {
     return true;
 }
 
-bool Instructions::HALT(Gameboy &gameboy) {
+bool Instructions::HALT(Gameboy &gameboy) const {
     if (const bool bug = (gameboy.bus->interruptEnable & gameboy.bus->interruptFlag & 0x1F) != 0; !gameboy.bus->interruptMasterEnable && bug) {
         gameboy.haltBug = true;
         gameboy.halted = false;
@@ -217,7 +217,7 @@ bool Instructions::CALL(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::RLCA(Gameboy &gameboy) {
+bool Instructions::RLCA(Gameboy &gameboy) const {
     const uint8_t old = (gameboy.regs->a & 0x80) != 0 ? 1 : 0;
     gameboy.regs->SetCarry(old != 0);
     gameboy.regs->a = gameboy.regs->a << 1 | old;
@@ -228,7 +228,7 @@ bool Instructions::RLCA(Gameboy &gameboy) {
     return true;
 }
 
-bool Instructions::RLA(Gameboy &gameboy) {
+bool Instructions::RLA(Gameboy &gameboy) const {
     const bool flag_c = (gameboy.regs->a & 0x80) >> 7 == 0x01;
     const uint8_t r = (gameboy.regs->a << 1) + static_cast<uint8_t>(gameboy.regs->FlagCarry());
     gameboy.regs->SetCarry(flag_c);
@@ -277,7 +277,7 @@ bool Instructions::RLAddr(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::CCF(Gameboy &gameboy) {
+bool Instructions::CCF(Gameboy &gameboy) const {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetCarry(!gameboy.regs->FlagCarry());
     gameboy.regs->SetHalf(false);
@@ -285,7 +285,7 @@ bool Instructions::CCF(Gameboy &gameboy) {
     return true;
 }
 
-bool Instructions::CPL(Gameboy &gameboy) {
+bool Instructions::CPL(Gameboy &gameboy) const {
     gameboy.regs->SetHalf(true);
     gameboy.regs->SetSubtract(true);
     gameboy.regs->a = ~gameboy.regs->a;
@@ -293,7 +293,7 @@ bool Instructions::CPL(Gameboy &gameboy) {
     return true;
 }
 
-bool Instructions::SCF(Gameboy &gameboy) {
+bool Instructions::SCF(Gameboy &gameboy) const {
     gameboy.regs->SetSubtract(false);
     gameboy.regs->SetHalf(false);
     gameboy.regs->SetCarry(true);
@@ -301,7 +301,7 @@ bool Instructions::SCF(Gameboy &gameboy) {
     return true;
 }
 
-bool Instructions::RRCA(Gameboy &gameboy) {
+bool Instructions::RRCA(Gameboy &gameboy) const {
     gameboy.regs->SetCarry((gameboy.regs->a & 0x01) != 0);
     gameboy.regs->a = gameboy.regs->a >> 1 | (gameboy.regs->a & 0x01) << 7;
     gameboy.regs->SetZero(false);
@@ -384,7 +384,7 @@ bool Instructions::RR(Gameboy &gameboy) {
     return true;
 }
 
-bool Instructions::RRA(Gameboy &gameboy) {
+bool Instructions::RRA(Gameboy &gameboy) const {
     const bool carry = (gameboy.regs->a & 0x01) == 0x01;
     const uint8_t newValue = gameboy.regs->FlagCarry() ? 0x80 | gameboy.regs->a >> 1 : gameboy.regs->a >> 1;
     gameboy.regs->SetZero(false);
@@ -559,13 +559,13 @@ bool Instructions::JP(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::JPHL(Gameboy &gameboy) {
+bool Instructions::JPHL(Gameboy &gameboy) const {
     gameboy.pc = gameboy.regs->GetHL();
     gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
     return true;
 }
 
-bool Instructions::NOP(Gameboy &gameboy) {
+bool Instructions::NOP(Gameboy &gameboy) const {
     gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
     return true;
 }
@@ -577,7 +577,7 @@ bool Instructions::PREFIX(Gameboy &gameboy) const {
     return true;
 }
 
-bool Instructions::STOP(Gameboy &gameboy) {
+bool Instructions::STOP(Gameboy &gameboy) const {
     const uint8_t key1 = gameboy.bus->ReadByte(0xFF4D);
     const bool speedSwitchRequested = gameboy.bus->prepareSpeedShift && (key1 & 0x01);
     gameboy.bus->WriteByte(0xFF04, 0x00);
@@ -710,7 +710,7 @@ bool Instructions::LoadFromAccumulatorDirectA(Gameboy &gameboy) {
 }
 
 // 0xE2
-bool Instructions::LoadFromAccumulatorIndirectC(Gameboy &gameboy) {
+bool Instructions::LoadFromAccumulatorIndirectC(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
         const uint16_t c = 0xFF00 | static_cast<uint16_t>(gameboy.regs->c);
         gameboy.bus->WriteByte(c, gameboy.regs->a);
@@ -853,7 +853,7 @@ bool Instructions::LDAccumulatorDE(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::LDFromAccBC(Gameboy &gameboy) {
+bool Instructions::LDFromAccBC(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
         gameboy.bus->WriteByte(gameboy.regs->GetBC(), gameboy.regs->a);
         return false;
@@ -865,7 +865,7 @@ bool Instructions::LDFromAccBC(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::LDFromAccDE(Gameboy &gameboy) {
+bool Instructions::LDFromAccDE(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
         gameboy.bus->WriteByte(gameboy.regs->GetDE(), gameboy.regs->a);
         return false;
@@ -936,7 +936,7 @@ bool Instructions::LDAccumulatorIndirectDec(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::LDFromAccumulatorIndirectDec(Gameboy &gameboy) {
+bool Instructions::LDFromAccumulatorIndirectDec(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
         gameboy.bus->WriteByte(gameboy.regs->GetHL(), gameboy.regs->a);
         gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
@@ -963,7 +963,7 @@ bool Instructions::LDAccumulatorIndirectInc(Gameboy &gameboy) {
     return false;
 }
 
-bool Instructions::LDFromAccumulatorIndirectInc(Gameboy &gameboy) {
+bool Instructions::LDFromAccumulatorIndirectInc(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
         gameboy.bus->WriteByte(gameboy.regs->GetHL(), gameboy.regs->a);
         gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
@@ -1023,7 +1023,7 @@ bool Instructions::LD16Register(Gameboy &gameboy) {
 }
 
 
-bool Instructions::LD16Stack(Gameboy &gameboy) {
+bool Instructions::LD16Stack(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
         gameboy.sp = gameboy.regs->GetHL();
         return false;

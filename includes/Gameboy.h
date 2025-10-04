@@ -102,6 +102,7 @@ public:
         } else if ((bus->cartridge_->ReadByte(0x143) & 0x80) == 0x80) {
             mode_ = Mode::CGB_GBC;
             bus->gpu_->hardware = GPU::Hardware::CGB;
+            bus->audio_->SetDMG(false);
         }
         if (!bios_path_.empty()) {
             bus->bootromRunning = true;
