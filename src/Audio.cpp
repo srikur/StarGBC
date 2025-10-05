@@ -362,7 +362,7 @@ void Channel3::WriteWaveRam(const uint16_t address, const uint8_t value, const b
 }
 
 void Channel3::Reset() {
-    lengthTimer = outputLevel = frequency.value = waveStep = period = ticks = sampleByte = 0;
+    lengthTimer = outputLevel = frequency.value = waveStep = period = sampleByte = 0;
     currentOutput = 0.0f;
     lengthEnabled = enabled = dacEnabled = playing = alternateRead = false;
 }
@@ -377,8 +377,7 @@ void Channel3::Trigger(const uint8_t freqStep, const bool dmg) {
             lengthTimer++;
         }
     }
-    period = (2048 - frequency.Value()) * 2;
-    if (dmg && playing && (ticks == 2)) {
+    if (dmg && playing && (period == 2)) {
         const uint8_t position = (waveStep + 1) & 31;
         const uint8_t sampleByte = waveRam[position >> 1];
         if ((position >> 3) == 0) {
@@ -388,7 +387,7 @@ void Channel3::Trigger(const uint8_t freqStep, const bool dmg) {
         }
     }
     waveStep = 0;
-    ticks = period + 6;
+    period = (2048 - frequency.Value()) * 2 + 6;
     playing = true;
 }
 
@@ -399,16 +398,13 @@ void Channel3::TickLength() {
 }
 
 void Channel3::Tick() {
-    // if (period && --(--period) == 0) {
-    //     period = (2048 - frequency.Value()) * 2;
-    // }
     if (!enabled) return;
     if (lengthEnabled && lengthTimer == 256) {
         enabled = false;
     }
 
-    ticks--;
-    if (ticks <= 0) {
+    period--;
+    if (period <= 0) {
         waveStep = (waveStep + 1) % 32;
         const uint8_t byte = waveRam[waveStep >> 1];
         if ((waveStep & 1) == 0) {
@@ -417,7 +413,7 @@ void Channel3::Tick() {
             sampleByte = byte & 0x0F;
         }
         alternateRead = true;
-        ticks = period;
+        period = (2048 - frequency.Value()) * 2;
         if (dacEnabled) {
             currentOutput = static_cast<float>(sampleByte >> volumeShift);
         } else {
@@ -464,7 +460,6 @@ void Channel3::WriteByte(const uint16_t address, const uint8_t value, const uint
             volumeShift = volumeShifts[outputLevel];
             break;
         case 0x0D: frequency.WriteLow(value);
-            period = (2048 - frequency.Value()) * 2;
             break;
         case 0x0E: HandleNR34Write(value, freqStep, dmg);
             break;

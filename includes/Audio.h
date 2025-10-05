@@ -171,7 +171,6 @@ struct Channel3 final : Channel {
     uint8_t sampleByte{0};
     uint32_t period{0};
     uint8_t waveStep{0};
-    uint8_t ticks{0};
     float currentOutput{0.0f};
 
     std::array<uint8_t, 0x10> waveRam{};
