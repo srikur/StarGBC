@@ -52,15 +52,15 @@ class Instructions {
         if constexpr (target == RSTTarget::H38) return 0x38;
     }
 
-    bool DAA(Gameboy &gameboy);
+    bool DAA(Gameboy &gameboy) const;
 
     bool RETI(Gameboy &gameboy);
 
-    bool DI(Gameboy &gameboy);
+    bool DI(Gameboy &gameboy) const;
 
-    bool EI(Gameboy &gameboy);
+    bool EI(Gameboy &gameboy) const;
 
-    bool HALT(Gameboy &gameboy);
+    bool HALT(Gameboy &gameboy) const;
 
     template<RSTTarget target>
     bool RST(Gameboy &gameboy);
@@ -70,19 +70,19 @@ class Instructions {
     template<JumpTest test>
     bool CALL(Gameboy &gameboy);
 
-    bool RLCA(Gameboy &gameboy);
+    bool RLCA(Gameboy &gameboy) const;
 
-    bool RLA(Gameboy &gameboy);
+    bool RLA(Gameboy &gameboy) const;
 
-    bool CCF(Gameboy &gameboy);
+    bool CCF(Gameboy &gameboy) const;
 
-    bool CPL(Gameboy &gameboy);
+    bool CPL(Gameboy &gameboy) const;
 
-    bool SCF(Gameboy &gameboy);
+    bool SCF(Gameboy &gameboy) const;
 
-    bool RRCA(Gameboy &gameboy);
+    bool RRCA(Gameboy &gameboy) const;
 
-    bool RRA(Gameboy &gameboy);
+    bool RRA(Gameboy &gameboy) const;
 
     bool RETUnconditional(Gameboy &gameboy);
 
@@ -99,13 +99,13 @@ class Instructions {
     template<JumpTest test>
     bool JP(Gameboy &gameboy);
 
-    bool JPHL(Gameboy &gameboy);
+    bool JPHL(Gameboy &gameboy) const;
 
-    bool NOP(Gameboy &gameboy);
+    bool NOP(Gameboy &gameboy) const;
 
     bool PREFIX(Gameboy &gameboy) const;
 
-    bool STOP(Gameboy &gameboy);
+    bool STOP(Gameboy &gameboy) const;
 
     template<Register source>
     bool DECRegister(Gameboy &gameboy) const;
@@ -141,9 +141,9 @@ class Instructions {
 
     bool LDAccumulatorDE(Gameboy &gameboy);
 
-    bool LDFromAccBC(Gameboy &gameboy);
+    bool LDFromAccBC(Gameboy &gameboy) const;
 
-    bool LDFromAccDE(Gameboy &gameboy);
+    bool LDFromAccDE(Gameboy &gameboy) const;
 
     bool LDAccumulatorDirect(Gameboy &gameboy);
 
@@ -151,13 +151,13 @@ class Instructions {
 
     bool LDAccumulatorIndirectDec(Gameboy &gameboy);
 
-    bool LDFromAccumulatorIndirectDec(Gameboy &gameboy);
+    bool LDFromAccumulatorIndirectDec(Gameboy &gameboy) const;
 
     bool LDAccumulatorIndirectInc(Gameboy &gameboy);
 
-    bool LDFromAccumulatorIndirectInc(Gameboy &gameboy);
+    bool LDFromAccumulatorIndirectInc(Gameboy &gameboy) const;
 
-    bool LoadFromAccumulatorIndirectC(Gameboy &gameboy);
+    bool LoadFromAccumulatorIndirectC(Gameboy &gameboy) const;
 
     bool LoadFromAccumulatorDirectA(Gameboy &gameboy);
 
@@ -172,7 +172,7 @@ class Instructions {
 
     bool LD16StackAdjusted(Gameboy &gameboy);
 
-    bool LD16Stack(Gameboy &gameboy);
+    bool LD16Stack(Gameboy &gameboy) const;
 
     template<StackTarget target>
     bool PUSH(Gameboy &gameboy);

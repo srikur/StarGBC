@@ -132,15 +132,15 @@ void Gameboy::SetThrottle(const bool throttle) {
 }
 
 void Gameboy::AdvanceFrame() {
-    // const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
-    if (masterCycles == DMG_CYCLES_PER_SECOND) masterCycles = 0;
-    ExecuteMicroOp();
-    bus->UpdateTimers();
-    bus->UpdateRTC();
-    bus->audio_->Tick();
-    bus->UpdateSerial();
-    bus->UpdateDMA();
-    bus->UpdateGraphics();
+    const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
+    if (masterCycles == cyclesPerFrame) masterCycles = 0;
+    if (masterCycles % speedDivider == 0) ExecuteMicroOp();
+    if (masterCycles % speedDivider == 0) bus->UpdateTimers();
+    if (masterCycles % RTC_CLOCK_DIVIDER == 0) bus->UpdateRTC();
+    if (masterCycles % AUDIO_CLOCK_DIVIDER == 0) bus->audio_->Tick();
+    if (masterCycles % speedDivider == 0) bus->UpdateSerial();
+    if (masterCycles % speedDivider == 0) bus->UpdateDMA();
+    if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) bus->UpdateGraphics();
     // if (interruptState == InterruptState::M1 && instrComplete && tCycleCounter == 0) PrintCurrentValues();
     masterCycles++;
     // need to add hdma tick
@@ -187,7 +187,8 @@ void Gameboy::UpdateEmulator() {
     static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
     const auto frameStart = clock::now();
 
-    for (uint32_t i = 0; i < kFrameCyclesDMG; i++) {
+    const uint32_t kFrameCycles = bus->gpu_->hardware == GPU::Hardware::DMG ? kFrameCyclesDMG : kFrameCyclesCGB;
+    for (uint32_t i = 0; i < kFrameCycles; i++) {
         AdvanceFrame();
     }
 
