@@ -360,14 +360,14 @@ void Bus::WriteHDMA(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF55: {
             if (hdmaActive && gpu_->hdmaMode == GPU::HDMAMode::HDMA) {
-                if ((value & 0x80) == 0x00) {
+                if (!Bit<7>(value)) {
                     hdmaActive = false;
                 }
                 return;
             }
             hdmaActive = true;
             hdmaRemain = value & 0x7F;
-            if ((value & 0x80) != 0x00) {
+            if (Bit<7>(value)) {
                 gpu_->hdmaMode = GPU::HDMAMode::HDMA;
             } else {
                 gpu_->hdmaMode = GPU::HDMAMode::GDMA;

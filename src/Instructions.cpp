@@ -731,11 +731,11 @@ bool Instructions::LoadAccumulatorA(Gameboy &gameboy) {
     }
     if (gameboy.mCycleCounter == 3) {
         word = 0xFF00 | static_cast<uint16_t>(byte);
-        gameboy.regs->a = gameboy.bus->ReadByte(word);
         return false;
     }
     if (gameboy.mCycleCounter == 4) {
         gameboy.nextInstruction = gameboy.bus->ReadByte(gameboy.pc++);
+        gameboy.regs->a = gameboy.bus->ReadByte(word);
         return true;
     }
     return false;
