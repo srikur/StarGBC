@@ -36,65 +36,65 @@
 
 ## Test ROM Performance
 
-Current Performance: (138/271)
+Current Performance: (145/271)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
 | acid/dmg-acid2.gb                                                     | :white_check_mark: |
 | acid/cgb-acid2.gbc                                                    | :white_check_mark: |
 | acid/cgb-acid-hell.gbc                                                | :x:                |
-| cpu_instrs/01-special.gb                                              | :white_check_mark: |
-| cpu_instrs/02-interrupts.gb                                           | :white_check_mark: |
-| cpu_instrs/03-op sp,hl.gb                                             | :white_check_mark: |
-| cpu_instrs/04-op r,imm.gb                                             | :white_check_mark: |
-| cpu_instrs/05-op rp.gb                                                | :white_check_mark: |
-| cpu_instrs/06-ld r,r.gb                                               | :white_check_mark: |
-| cpu_instrs/07-jr,jp,call,ret,rst.gb                                   | :white_check_mark: |
-| cpu_instrs/08-misc instrs.gb                                          | :white_check_mark: |
-| cpu_instrs/09-op r,r.gb                                               | :white_check_mark: |
-| cpu_instrs/10-bit ops.gb                                              | :white_check_mark: |
-| cpu_instrs/11-op a,(hl).gb                                            | :white_check_mark: |
-| halt_bug                                                              | :white_check_mark: |
-| instr_timing.gb                                                       | :white_check_mark: |
-| interrupt_time                                                        | :white_check_mark: |
-| mem_timing/01-read_timing.gb                                          | :white_check_mark: |
-| mem_timing/02-write_timing.gb                                         | :white_check_mark: |
-| mem_timing/03-modify_timing.gb                                        | :white_check_mark: |
-| mem_timing-2/01-read_timing.gb                                        | :white_check_mark: |
-| mem_timing-2/02-write_timing.gb                                       | :white_check_mark: |
-| mem_timing-2/03-modify_timing.gb                                      | :white_check_mark: |
-| oam_bug/1-lcd_sync                                                    | :x:                |
-| oam_bug/2-causes                                                      | :x:                |
-| oam_bug/3-non_causes                                                  | :white_check_mark: |
-| oam_bug/4-scanline_timing                                             | :x:                |
-| oam_bug/5-timing_bug                                                  | :x:                |
-| oam_bug/6-timing_no_bug                                               | :white_check_mark: |
-| oam_bug/7-timing_effect                                               | :x:                |
-| oam_bug/8-instr_effect                                                | :x:                |
-| dmg_sound/01-registers.gb                                             | :white_check_mark: |
-| dmg_sound/02-len ctr.gb                                               | :white_check_mark: |
-| dmg_sound/03-trigger.gb                                               | :white_check_mark: |
-| dmg_sound/04-sweep.gb                                                 | :white_check_mark: |
-| dmg_sound/05-sweep details.gb                                         | :white_check_mark: |
-| dmg_sound/06-overflow on trigger.gb                                   | :white_check_mark: |
-| dmg_sound/07-len sweep period sync.gb                                 | :white_check_mark: |
-| dmg_sound/08-len ctr during power.gb                                  | :white_check_mark: |
-| dmg_sound/09-wave read while on.gb                                    | :white_check_mark: |
-| dmg_sound/10-wave trigger while on.gb                                 | :white_check_mark: |
-| dmg_sound/11-regs after power.gb                                      | :white_check_mark: |
-| dmg_sound/12-wave write while on.gb                                   | :white_check_mark: |
-| cgb_sound/01-registers.gb                                             | :white_check_mark: |
-| cgb_sound/02-len ctr.gb                                               | :white_check_mark: |
-| cgb_sound/03-trigger.gb                                               | :white_check_mark: |
-| cgb_sound/04-sweep.gb                                                 | :white_check_mark: |
-| cgb_sound/05-sweep details.gb                                         | :white_check_mark: |
-| cgb_sound/06-overflow on trigger.gb                                   | :white_check_mark: |
-| cgb_sound/07-len sweep period sync.gb                                 | :white_check_mark: |
-| cgb_sound/08-len ctr during power.gb                                  | :white_check_mark: |
-| cgb_sound/09-wave read while on.gb                                    | :white_check_mark: |
-| cgb_sound/10-wave trigger while on.gb                                 | :white_check_mark: |
-| cgb_sound/11-regs after power.gb                                      | :white_check_mark: |
-| cgb_sound/12-wave.gb                                                  | :x:                |
+| blargg/cpu_instrs/01-special.gb                                       | :white_check_mark: |
+| blargg/cpu_instrs/02-interrupts.gb                                    | :white_check_mark: |
+| blargg/cpu_instrs/03-op sp,hl.gb                                      | :white_check_mark: |
+| blargg/cpu_instrs/04-op r,imm.gb                                      | :white_check_mark: |
+| blargg/cpu_instrs/05-op rp.gb                                         | :white_check_mark: |
+| blargg/cpu_instrs/06-ld r,r.gb                                        | :white_check_mark: |
+| blargg/cpu_instrs/07-jr,jp,call,ret,rst.gb                            | :white_check_mark: |
+| blargg/cpu_instrs/08-misc instrs.gb                                   | :white_check_mark: |
+| blargg/cpu_instrs/09-op r,r.gb                                        | :white_check_mark: |
+| blargg/cpu_instrs/10-bit ops.gb                                       | :white_check_mark: |
+| blargg/cpu_instrs/11-op a,(hl).gb                                     | :white_check_mark: |
+| blargg/halt_bug.gb                                                    | :white_check_mark: |
+| blargg/instr_timing.gb                                                | :white_check_mark: |
+| blargg/interrupt_time.gb                                              | :white_check_mark: |
+| blargg/mem_timing/01-read_timing.gb                                   | :white_check_mark: |
+| blargg/mem_timing/02-write_timing.gb                                  | :white_check_mark: |
+| blargg/mem_timing/03-modify_timing.gb                                 | :white_check_mark: |
+| blargg/mem_timing-2/01-read_timing.gb                                 | :white_check_mark: |
+| blargg/mem_timing-2/02-write_timing.gb                                | :white_check_mark: |
+| blargg/mem_timing-2/03-modify_timing.gb                               | :white_check_mark: |
+| blargg/oam_bug/1-lcd_sync.gb                                          | :x:                |
+| blargg/oam_bug/2-causes.gb                                            | :x:                |
+| blargg/oam_bug/3-non_causes.gb                                        | :white_check_mark: |
+| blargg/oam_bug/4-scanline_timing.gb                                   | :x:                |
+| blargg/oam_bug/5-timing_bug.gb                                        | :x:                |
+| blargg/oam_bug/6-timing_no_bug.gb                                     | :white_check_mark: |
+| blargg/oam_bug/7-timing_effect.gb                                     | :x:                |
+| blargg/oam_bug/8-instr_effect.gb                                      | :x:                |
+| blargg/dmg_sound/01-registers.gb                                      | :white_check_mark: |
+| blargg/dmg_sound/02-len ctr.gb                                        | :white_check_mark: |
+| blargg/dmg_sound/03-trigger.gb                                        | :white_check_mark: |
+| blargg/dmg_sound/04-sweep.gb                                          | :white_check_mark: |
+| blargg/dmg_sound/05-sweep details.gb                                  | :white_check_mark: |
+| blargg/dmg_sound/06-overflow on trigger.gb                            | :white_check_mark: |
+| blargg/dmg_sound/07-len sweep period sync.gb                          | :white_check_mark: |
+| blargg/dmg_sound/08-len ctr during power.gb                           | :white_check_mark: |
+| blargg/dmg_sound/09-wave read while on.gb                             | :white_check_mark: |
+| blargg/dmg_sound/10-wave trigger while on.gb                          | :white_check_mark: |
+| blargg/dmg_sound/11-regs after power.gb                               | :white_check_mark: |
+| blargg/dmg_sound/12-wave write while on.gb                            | :white_check_mark: |
+| blargg/cgb_sound/01-registers.gb                                      | :white_check_mark: |
+| blargg/cgb_sound/02-len ctr.gb                                        | :white_check_mark: |
+| blargg/cgb_sound/03-trigger.gb                                        | :white_check_mark: |
+| blargg/cgb_sound/04-sweep.gb                                          | :white_check_mark: |
+| blargg/cgb_sound/05-sweep details.gb                                  | :white_check_mark: |
+| blargg/cgb_sound/06-overflow on trigger.gb                            | :white_check_mark: |
+| blargg/cgb_sound/07-len sweep period sync.gb                          | :white_check_mark: |
+| blargg/cgb_sound/08-len ctr during power.gb                           | :white_check_mark: |
+| blargg/cgb_sound/09-wave read while on.gb                             | :white_check_mark: |
+| blargg/cgb_sound/10-wave trigger while on.gb                          | :white_check_mark: |
+| blargg/cgb_sound/11-regs after power.gb                               | :white_check_mark: |
+| blargg/cgb_sound/12-wave.gb                                           | :white_check_mark: |
 | daid/ppu_scanline_bgp.gb (DMG)                                        | :x:                |
 | daid/ppu_scanline_bgp.gb (GBC)                                        | :x:                |
 | daid/stop_instr.gb (DMG)                                              | :x:                |
