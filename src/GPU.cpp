@@ -438,15 +438,15 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             lcdc = value;
             const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             if (!newEnable && oldEnable) {
-                scanlineCounter = 0;
-                currentLine = 0;
-                stat.mode = 0;
+                stat.mode = stat.nextMode = 0;
                 screenData.fill(0);
                 vblank = true;
             } else if (newEnable && !oldEnable) {
-                stat.mode = 2;
+                stat.mode = stat.nextMode = 2;
                 vblank = false;
             }
+            scanlineCounter = 0;
+            currentLine = 0;
             break;
         }
         case 0xFF41:
