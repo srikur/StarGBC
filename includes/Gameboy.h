@@ -59,6 +59,7 @@ class Gameboy {
     uint8_t mCycleCounter{0x01};
     uint8_t tCycleCounter{0x00};
     uint32_t masterCycles{0x00000000};
+    uint32_t cyclesPerFrame{0x00000000};
     uint8_t interruptBit{0x00};
     uint8_t interruptMask{0x00};
     uint16_t pc = 0x00;
@@ -104,6 +105,7 @@ public:
             bus->gpu_->hardware = GPU::Hardware::CGB;
             bus->audio_->SetDMG(false);
         }
+        cyclesPerFrame = bus->gpu_->hardware == GPU::Hardware::DMG ? DMG_CYCLES_PER_SECOND : CGB_CYCLES_PER_SECOND;
         if (!bios_path_.empty()) {
             bus->bootromRunning = true;
             InitializeBootrom();
