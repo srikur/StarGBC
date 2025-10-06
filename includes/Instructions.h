@@ -52,6 +52,14 @@ class Instructions {
         if constexpr (target == RSTTarget::H38) return 0x38;
     }
 
+    enum class CorruptionType {
+        Write,
+        Read,
+        ReadWrite,
+    };
+
+    void HandleOAMCorruption(const Gameboy &gameboy, uint16_t word, CorruptionType type) const;
+
     bool DAA(Gameboy &gameboy) const;
 
     bool RETI(Gameboy &gameboy);
@@ -151,11 +159,11 @@ class Instructions {
 
     bool LDAccumulatorIndirectDec(Gameboy &gameboy);
 
-    bool LDFromAccumulatorIndirectDec(Gameboy &gameboy) const;
+    bool LDFromAccumulatorIndirectDec(Gameboy &gameboy);
 
     bool LDAccumulatorIndirectInc(Gameboy &gameboy);
 
-    bool LDFromAccumulatorIndirectInc(Gameboy &gameboy) const;
+    bool LDFromAccumulatorIndirectInc(Gameboy &gameboy);
 
     bool LoadFromAccumulatorIndirectC(Gameboy &gameboy) const;
 

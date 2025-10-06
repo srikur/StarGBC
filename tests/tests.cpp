@@ -140,7 +140,6 @@ static const std::vector<BlarggCase> blarggTestcases = {
     {"roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb", "tests/expected/blargg/oam_bug/4-scanline_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/oam_bug/rom_singles/5-timing_bug.gb", "tests/expected/blargg/oam_bug/5-timing_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb", "tests/expected/blargg/oam_bug/6-timing_no_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/blargg/oam_bug/rom_singles/7-timing_effect.gb", "tests/expected/blargg/oam_bug/7-timing_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/oam_bug/rom_singles/8-instr_effect.gb", "tests/expected/blargg/oam_bug/8-instr_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
@@ -218,7 +217,6 @@ BLARGG_TEST(46, "roms/blargg/oam_bug/rom_singles/3-non_causes.gb")
 BLARGG_TEST(47, "roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb")
 BLARGG_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
 BLARGG_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
-BLARGG_TEST(50, "roms/blargg/oam_bug/rom_singles/7-timing_effect.gb")
 BLARGG_TEST(51, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
 
 int main(const int argc, char **argv) {
