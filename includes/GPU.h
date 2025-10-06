@@ -200,6 +200,8 @@ public:
 
     void CheckForWindowTrigger();
 
+    uint8_t GetOAMScanRow() const;
+
     static Attributes GetAttrsFrom(uint8_t byte);
 
     static uint8_t ReadGpi(const Gpi &gpi);

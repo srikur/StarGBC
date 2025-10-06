@@ -125,6 +125,10 @@ public:
 
     ~Gameboy() = default;
 
+    bool IsDMG() const {
+        return bus->gpu_->hardware == GPU::Hardware::DMG;
+    }
+
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) {
         return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart, settings.realRTC);
     }

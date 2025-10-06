@@ -25,6 +25,10 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     spriteFetchQueue.clear();
 }
 
+uint8_t GPU::GetOAMScanRow() const {
+    return scanlineCounter / 4;
+}
+
 void GPU::TickOAMScan() {
     if (!Bit<LCDC_OBJ_ENABLE>(lcdc)) return;
     if (!(scanlineCounter % 2)) return;
