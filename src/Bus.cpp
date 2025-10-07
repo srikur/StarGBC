@@ -16,7 +16,11 @@ uint8_t Bus::ReadDMASource(const uint16_t src) const {
 }
 
 uint8_t Bus::ReadOAM(const uint16_t address) const {
-    return gpu_->stat.mode == 3 ? 0xFF : gpu_->oam[address - 0xFE00];
+    return gpu_->stat.mode == GPU::Mode::MODE_3 ? 0xFF : gpu_->oam[address - 0xFE00];
+}
+
+void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
+    if (gpu_->stat.mode != GPU::Mode::MODE_3) gpu_->oam[address - 0xFE00] = value;
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
@@ -87,7 +91,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xF000 ... 0xFDFF: memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
             break;
-        case 0xFE00 ... 0xFE9F: if (gpu_->stat.mode != 3) gpu_->oam[address - 0xFE00] = value;
+        case 0xFE00 ... 0xFE9F: WriteOAM(address, value);
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
@@ -136,11 +140,6 @@ void Bus::UpdateGraphics() {
             interruptFlagDelayed = 0;
         }
     }
-    if (gpu_->stat.modeDelay > 0) {
-        gpu_->stat.modeDelay--;
-    } else if (gpu_->stat.modeDelay == 0) {
-        gpu_->stat.mode = gpu_->stat.nextMode;
-    }
 
     if (gpu_->LCDDisabled()) {
         return;
@@ -157,20 +156,20 @@ void Bus::UpdateGraphics() {
     }
 
     switch (gpu_->stat.mode) {
-        case 0:
+        case GPU::Mode::MODE_0:
             if (gpu_->stat.enableM0Interrupt && !gpu_->statTriggered) {
                 SetInterrupt(InterruptType::LCDStat, true);
                 gpu_->statTriggered = true;
             }
             break;
-        case 1:
+        case GPU::Mode::MODE_1:
             if (gpu_->stat.enableM1Interrupt && !gpu_->statTriggered) {
                 SetInterrupt(InterruptType::LCDStat, true);
                 gpu_->statTriggered = true;
             }
             break;
 
-        case 2:
+        case GPU::Mode::MODE_2:
             gpu_->hblank = false;
             gpu_->vblank = false;
             if (gpu_->stat.enableM2Interrupt && !gpu_->statTriggered) {
@@ -179,8 +178,7 @@ void Bus::UpdateGraphics() {
             }
             gpu_->TickOAMScan();
             if (gpu_->scanlineCounter == 79) {
-                gpu_->stat.nextMode = 3;
-                gpu_->stat.modeDelay = 0;
+                gpu_->stat.mode = GPU::Mode::MODE_3;
                 gpu_->pixelsDrawn = 0;
                 if (gpu_->hardware != GPU::Hardware::CGB || gpu_->objectPriority) {
                     std::ranges::sort(gpu_->spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
@@ -195,11 +193,10 @@ void Bus::UpdateGraphics() {
             }
             break;
 
-        case 3: {
+        case GPU::Mode::MODE_3: {
             gpu_->TickMode3();
             if (gpu_->pixelsDrawn == GPU::SCREEN_WIDTH) {
-                gpu_->stat.nextMode = 0;
-                gpu_->stat.modeDelay = 0;
+                gpu_->stat.mode = GPU::Mode::MODE_0;
                 gpu_->hblank = true;
                 if (gpu_->stat.enableM0Interrupt && !gpu_->statTriggered) {
                     SetInterrupt(InterruptType::LCDStat, true);
@@ -224,7 +221,7 @@ void Bus::UpdateGraphics() {
 
         if (gpu_->currentLine >= 154) {
             gpu_->currentLine = 0;
-            gpu_->stat.nextMode = 2;
+            gpu_->stat.mode = GPU::Mode::MODE_2;
             gpu_->windowLineCounter_ = 0;
             gpu_->ResetScanlineState(true);
             gpu_->windowTriggeredThisFrame = false;
@@ -234,12 +231,11 @@ void Bus::UpdateGraphics() {
             gpu_->initialSCXSet = false;
             // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", gpu_->currentLine, gpu_->scanlineCounter);
         } else if (gpu_->currentLine == 144) {
-            gpu_->stat.nextMode = 1;
-            gpu_->stat.modeDelay = 0;
+            gpu_->stat.mode = GPU::Mode::MODE_1;
             gpu_->vblank = true;
             SetInterrupt(InterruptType::VBlank, true);
         } else if (gpu_->currentLine < 144) {
-            gpu_->stat.nextMode = 2;
+            gpu_->stat.mode = GPU::Mode::MODE_2;
             if (gpu_->currentLine >= gpu_->windowY) {
                 gpu_->windowTriggeredThisFrame = true;
             }

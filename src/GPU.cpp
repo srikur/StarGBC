@@ -389,11 +389,11 @@ void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
 }
 
 uint8_t GPU::ReadVRAM(const uint16_t address) const {
-    return stat.mode == 3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
+    return stat.mode == Mode::MODE_3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
 }
 
 void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
-    if (stat.mode == 3) return;
+    if (stat.mode == Mode::MODE_3) return;
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
@@ -442,11 +442,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             lcdc = value;
             const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             if (!newEnable && oldEnable) {
-                stat.mode = stat.nextMode = 0;
+                stat.mode = Mode::MODE_0;
                 screenData.fill(0);
                 vblank = true;
             } else if (newEnable && !oldEnable) {
-                stat.mode = stat.nextMode = 2;
+                stat.mode = Mode::MODE_2;
                 vblank = false;
             }
             scanlineCounter = 0;

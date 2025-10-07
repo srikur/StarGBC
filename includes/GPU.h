@@ -125,20 +125,25 @@ public:
         bool autoIncrement;
     };
 
+    enum class Mode {
+        MODE_0,
+        MODE_1,
+        MODE_2,
+        MODE_3
+    };
+
     struct Stat {
         bool enableLYInterrupt{false};
         bool enableM2Interrupt{false};
         bool enableM1Interrupt{false};
         bool enableM0Interrupt{false};
         bool coincidenceFlag{false};
-        uint8_t mode{0x00};
-        uint8_t nextMode{0x00};
-        uint8_t modeDelay{0x00};
+        Mode mode{Mode::MODE_2};
 
         [[nodiscard]] uint8_t value() const {
             return 0x80 | (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
                    (enableM1Interrupt << 4) | (enableM0Interrupt << 3) |
-                   (coincidenceFlag << 2) | mode;
+                   (coincidenceFlag << 2) | static_cast<uint8_t>(mode);
         }
     };
 

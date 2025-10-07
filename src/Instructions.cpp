@@ -2,15 +2,16 @@
 #include <cstring>
 
 void Instructions::HandleOAMCorruption(const Gameboy &gameboy, const uint16_t word, const CorruptionType type) const {
-    if (!gameboy.IsDMG() || (word < 0xFE00 || word > 0xFEFF) || gameboy.bus->gpu_->stat.mode != 2) return;
+    if (!gameboy.IsDMG() || (word < 0xFE00 || word > 0xFEFF) || gameboy.bus->gpu_->stat.mode != GPU::Mode::MODE_2) return;
+    if (gameboy.bus->gpu_->scanlineCounter >= 76) return;
     const int currentRowIndex = gameboy.bus->gpu_->GetOAMScanRow();
-    if (currentRowIndex == 0) return;
+
     auto ReadWord = [&](const int index) -> uint16_t {
-        return gameboy.bus->gpu_->oam[index] | (static_cast<uint16_t>(gameboy.bus->gpu_->oam[index + 1]) << 8);
+        return static_cast<uint16_t>(gameboy.bus->gpu_->oam[index]) << 8 | gameboy.bus->gpu_->oam[index + 1];
     };
     auto WriteWord = [&](const int index, const uint16_t value) {
-        gameboy.bus->gpu_->oam[index] = static_cast<uint8_t>(value & 0xFF);
-        gameboy.bus->gpu_->oam[index + 1] = static_cast<uint8_t>(value >> 8);
+        gameboy.bus->gpu_->oam[index] = static_cast<uint8_t>(value >> 8);
+        gameboy.bus->gpu_->oam[index + 1] = static_cast<uint8_t>(value & 0xFF);
     };
 
     if (type == CorruptionType::ReadWrite) {
@@ -24,7 +25,7 @@ void Instructions::HandleOAMCorruption(const Gameboy &gameboy, const uint16_t wo
             const uint16_t c_rw = ReadWord(row_n_addr);
             const uint16_t d_rw = ReadWord(row_n_minus_1_addr + 4);
 
-            const uint16_t corrupted_b = (b_rw & (a_rw | c_rw | d_rw)) | (a_rw & c_rw | d_rw);
+            const uint16_t corrupted_b = (b_rw & (a_rw | c_rw | d_rw)) | (a_rw & c_rw & d_rw);
             WriteWord(row_n_minus_1_addr, corrupted_b);
 
             uint8_t temp_row[8];
@@ -33,18 +34,22 @@ void Instructions::HandleOAMCorruption(const Gameboy &gameboy, const uint16_t wo
             std::memcpy(&gameboy.bus->gpu_->oam[row_n_minus_2_addr], temp_row, 8);
         }
 
-        const int currentRowAddr = currentRowIndex * 8;
-        const int prevRowAddr = (currentRowIndex - 1) * 8;
+        if (currentRowIndex > 0) {
+            const int currentRowAddr = currentRowIndex * 8;
+            const int prevRowAddr = (currentRowIndex - 1) * 8;
 
-        const uint16_t a_read = ReadWord(currentRowAddr);
-        const uint16_t b_read = ReadWord(prevRowAddr);
-        const uint16_t c_read = ReadWord(prevRowAddr + 4);
+            const uint16_t a_read = ReadWord(currentRowAddr);
+            const uint16_t b_read = ReadWord(prevRowAddr);
+            const uint16_t c_read = ReadWord(prevRowAddr + 4);
 
-        const uint16_t corruptedWord = b_read | (a_read & c_read);
-        WriteWord(currentRowAddr, corruptedWord);
+            const uint16_t corruptedWord = b_read | (a_read & c_read);
+            WriteWord(currentRowAddr, corruptedWord);
 
-        std::memcpy(&gameboy.bus->gpu_->oam[currentRowAddr + 2], &gameboy.bus->gpu_->oam[prevRowAddr + 2], 6);
+            std::memcpy(&gameboy.bus->gpu_->oam[currentRowAddr + 2], &gameboy.bus->gpu_->oam[prevRowAddr + 2], 6);
+        }
     } else {
+        if (currentRowIndex == 0) return;
+
         const int currentRowAddr = currentRowIndex * 8;
         const int prevRowAddr = (currentRowIndex - 1) * 8;
 
@@ -757,6 +762,9 @@ bool Instructions::INC16(Gameboy &gameboy) {
             gameboy.regs->SetBC(word + 1);
         } else if constexpr (target == Arithmetic16Target::DE) {
             word = gameboy.regs->GetDE();
+            if (word == 0xFE00) {
+                std::fprintf(stderr, "INC DE on FE00. scanlineCounter: %d\n", gameboy.bus->gpu_->scanlineCounter);
+            }
             HandleOAMCorruption(gameboy, word, CorruptionType::Write);
             gameboy.regs->SetDE(word + 1);
         } else if constexpr (target == Arithmetic16Target::HL) {
