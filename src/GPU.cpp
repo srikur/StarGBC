@@ -26,7 +26,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
 }
 
 uint8_t GPU::GetOAMScanRow() const {
-    return scanlineCounter / 4;
+    return (scanlineCounter + 4) / 4;
 }
 
 void GPU::TickOAMScan() {
