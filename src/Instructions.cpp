@@ -60,7 +60,6 @@ void Instructions::HandleOAMCorruption(const Gameboy &gameboy, const uint16_t wo
         const uint16_t corruptedWord = (type == CorruptionType::Write)
                                            ? ((a ^ c) & (b ^ c)) ^ c
                                            : (b | (a & c));
-
         WriteWord(currentRowAddr, corruptedWord);
         std::memcpy(&gameboy.bus->gpu_->oam[currentRowAddr + 2], &gameboy.bus->gpu_->oam[prevRowAddr + 2], 6);
     }
@@ -762,9 +761,6 @@ bool Instructions::INC16(Gameboy &gameboy) {
             gameboy.regs->SetBC(word + 1);
         } else if constexpr (target == Arithmetic16Target::DE) {
             word = gameboy.regs->GetDE();
-            if (word == 0xFE00) {
-                std::fprintf(stderr, "INC DE on FE00. scanlineCounter: %d\n", gameboy.bus->gpu_->scanlineCounter);
-            }
             HandleOAMCorruption(gameboy, word, CorruptionType::Write);
             gameboy.regs->SetDE(word + 1);
         } else if constexpr (target == Arithmetic16Target::HL) {
@@ -1017,9 +1013,8 @@ bool Instructions::LDFromAccumulatorDirect(Gameboy &gameboy) {
 
 bool Instructions::LDAccumulatorIndirectDec(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 2) {
-        HandleOAMCorruption(gameboy, gameboy.regs->GetHL(), CorruptionType::Read);
         byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        HandleOAMCorruption(gameboy, gameboy.regs->GetHL(), CorruptionType::Write);
+        HandleOAMCorruption(gameboy, gameboy.regs->GetHL(), CorruptionType::ReadWrite);
         gameboy.regs->SetHL(gameboy.regs->GetHL() - 1);
         return false;
     }
@@ -1049,9 +1044,8 @@ bool Instructions::LDFromAccumulatorIndirectDec(Gameboy &gameboy) {
 
 bool Instructions::LDAccumulatorIndirectInc(Gameboy &gameboy) {
     if (gameboy.mCycleCounter == 2) {
-        HandleOAMCorruption(gameboy, gameboy.regs->GetHL(), CorruptionType::Read);
         byte = gameboy.bus->ReadByte(gameboy.regs->GetHL());
-        HandleOAMCorruption(gameboy, gameboy.regs->GetHL(), CorruptionType::Write);
+        HandleOAMCorruption(gameboy, gameboy.regs->GetHL(), CorruptionType::ReadWrite);
         gameboy.regs->SetHL(gameboy.regs->GetHL() + 1);
         return false;
     }
@@ -1124,7 +1118,6 @@ bool Instructions::LD16Register(Gameboy &gameboy) {
     }
     return false;
 }
-
 
 bool Instructions::LD16Stack(Gameboy &gameboy) const {
     if (gameboy.mCycleCounter == 2) {
