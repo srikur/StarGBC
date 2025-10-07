@@ -66,8 +66,8 @@ Current Performance: (147/270)
 | blargg/oam_bug/1-lcd_sync.gb                                          | :white_check_mark: |
 | blargg/oam_bug/2-causes.gb                                            | :white_check_mark: |
 | blargg/oam_bug/3-non_causes.gb                                        | :white_check_mark: |
-| blargg/oam_bug/4-scanline_timing.gb                                   | :x:                |
-| blargg/oam_bug/5-timing_bug.gb                                        | :x:                |
+| blargg/oam_bug/4-scanline_timing.gb                                   | :white_check_mark: |
+| blargg/oam_bug/5-timing_bug.gb                                        | :white_check_mark: |
 | blargg/oam_bug/6-timing_no_bug.gb                                     | :white_check_mark: |
 | blargg/oam_bug/8-instr_effect.gb                                      | :x:                |
 | blargg/dmg_sound/01-registers.gb                                      | :white_check_mark: |
