@@ -92,6 +92,8 @@ public:
 
     [[nodiscard]] uint8_t ReadOAM(uint16_t address) const;
 
+    void WriteOAM(uint16_t address, uint8_t value) const;
+
     void WriteByte(uint16_t address, uint8_t value);
 
     void KeyDown(Keys key);
