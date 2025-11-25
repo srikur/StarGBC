@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (147/270)
+Current Performance: (149/270)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -63,13 +63,13 @@ Current Performance: (147/270)
 | blargg/mem_timing-2/01-read_timing.gb                                 | :white_check_mark: |
 | blargg/mem_timing-2/02-write_timing.gb                                | :white_check_mark: |
 | blargg/mem_timing-2/03-modify_timing.gb                               | :white_check_mark: |
-| blargg/oam_bug/1-lcd_sync.gb                                          | :white_check_mark: |
+| blargg/oam_bug/1-lcd_sync.gb                                          | :x:                |
 | blargg/oam_bug/2-causes.gb                                            | :white_check_mark: |
 | blargg/oam_bug/3-non_causes.gb                                        | :white_check_mark: |
 | blargg/oam_bug/4-scanline_timing.gb                                   | :white_check_mark: |
 | blargg/oam_bug/5-timing_bug.gb                                        | :white_check_mark: |
 | blargg/oam_bug/6-timing_no_bug.gb                                     | :white_check_mark: |
-| blargg/oam_bug/8-instr_effect.gb                                      | :x:                |
+| blargg/oam_bug/8-instr_effect.gb                                      | :white_check_mark: |
 | blargg/dmg_sound/01-registers.gb                                      | :white_check_mark: |
 | blargg/dmg_sound/02-len ctr.gb                                        | :white_check_mark: |
 | blargg/dmg_sound/03-trigger.gb                                        | :white_check_mark: |
