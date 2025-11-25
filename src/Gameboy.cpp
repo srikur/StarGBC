@@ -133,7 +133,7 @@ void Gameboy::SetThrottle(const bool throttle) {
 
 void Gameboy::AdvanceFrame() {
     const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
-    if (masterCycles == cyclesPerFrame) masterCycles = 0;
+    if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
     if (masterCycles % speedDivider == 0) ExecuteMicroOp();
     if (masterCycles % speedDivider == 0) bus->UpdateTimers();
     if (masterCycles % RTC_CLOCK_DIVIDER == 0) bus->UpdateRTC();
@@ -158,8 +158,7 @@ void Gameboy::ExecuteMicroOp() {
             bus->bootromRunning = false;
         }
         instrRunning = true;
-        const bool completed = DecodeInstruction(currentInstruction, prefixed);
-        if (completed) {
+        if (DecodeInstruction(currentInstruction, prefixed)) {
             previousPC = pc - 1;
             instrComplete = true;
             previousPrefixed = prefixed;
@@ -187,8 +186,7 @@ void Gameboy::UpdateEmulator() {
     static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
     const auto frameStart = clock::now();
 
-    const uint32_t kFrameCycles = bus->gpu_->hardware == GPU::Hardware::DMG ? kFrameCyclesDMG : kFrameCyclesCGB;
-    for (uint32_t i = 0; i < kFrameCycles; i++) {
+    for (uint32_t i = 0; i < kFrameCyclesCGB; i++) {
         AdvanceFrame();
     }
 
