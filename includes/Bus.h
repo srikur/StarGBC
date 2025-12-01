@@ -1,7 +1,10 @@
 #pragma once
 #include <string>
 
-#include "Auxiliary.h"
+#include "Joypad.h"
+#include "Audio.h"
+#include "Timer.h"
+#include "Serial.h"
 #include "Cartridge.h"
 #include "GPU.h"
 
