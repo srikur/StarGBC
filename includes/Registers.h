@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <fstream>
+
 struct Registers {
     uint8_t a{}, f{}, b{}, c{}, d{}, e{}, h{}, l{};
 
@@ -56,8 +59,7 @@ struct Registers {
             if (!stateFile.is_open()) return false;
             stateFile.write(reinterpret_cast<const char *>(this), sizeof(Registers));
             return true;
-        } catch (const std::exception &e) {
-            std::cerr << "Error saving Registers state: " << e.what() << std::endl;
+        } catch ([[maybe_unused]] const std::exception &e) {
             return false;
         }
     }
@@ -67,8 +69,7 @@ struct Registers {
             if (!stateFile.is_open()) return false;
             stateFile.read(reinterpret_cast<char *>(this), sizeof(Registers));
             return true;
-        } catch (const std::exception &e) {
-            std::cerr << "Error loading Registers state: " << e.what() << std::endl;
+        } catch ([[maybe_unused]] const std::exception &e) {
             return false;
         }
     }

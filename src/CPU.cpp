@@ -1,5 +1,11 @@
 #include "CPU.h"
 
+static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
+static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
+static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
+static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
+static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
+
 void CPU::Save() const {
     bus->cartridge_->Save();
 }
@@ -106,14 +112,14 @@ void CPU::InitializeSystem(const Mode mode) {
 
 void CPU::AdvanceFrame() {
     const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
-    if (masterCycles == Gameboy::CGB_CYCLES_PER_SECOND) masterCycles = 0;
+    if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
     if (masterCycles % speedDivider == 0) ExecuteMicroOp();
     if (masterCycles % speedDivider == 0) bus->UpdateTimers();
-    if (masterCycles % Gameboy::RTC_CLOCK_DIVIDER == 0) bus->UpdateRTC();
-    if (masterCycles % Gameboy::AUDIO_CLOCK_DIVIDER == 0) bus->audio_->Tick();
+    if (masterCycles % RTC_CLOCK_DIVIDER == 0) bus->UpdateRTC();
+    if (masterCycles % AUDIO_CLOCK_DIVIDER == 0) bus->audio_->Tick();
     if (masterCycles % speedDivider == 0) bus->UpdateSerial();
     if (masterCycles % speedDivider == 0) bus->UpdateDMA();
-    if (masterCycles % Gameboy::GRAPHICS_CLOCK_DIVIDER == 0) bus->UpdateGraphics();
+    if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) bus->UpdateGraphics();
     masterCycles++;
     // need to add hdma tick
 }

@@ -58,17 +58,6 @@ void Timer::WriteTMA(const uint8_t value) {
     tma = value;
 }
 
-constexpr int Timer::TimerBit(const uint8_t tacMode) {
-    switch (tacMode & 0x03) {
-        case 0x00: return 9; // 4096 Hz
-        case 0x01: return 3; // 262144 Hz
-        case 0x02: return 5; // 65536 Hz
-        case 0x03: return 7; // 16384 Hz
-        default: ;
-    }
-    return 9;
-}
-
 void Timer::IncrementTIMA() {
     if (++tima == 0) {
         overflowPending = true;

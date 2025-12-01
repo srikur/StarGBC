@@ -24,7 +24,16 @@ struct Timer {
 
     void WriteTMA(uint8_t);
 
-    static constexpr int TimerBit(uint8_t);
+    constexpr int TimerBit(uint8_t tacMode) const {
+        switch (tacMode & 0x03) {
+            case 0x00: return 9; // 4096 Hz
+            case 0x01: return 3; // 262144 Hz
+            case 0x02: return 5; // 65536 Hz
+            case 0x03: return 7; // 16384 Hz
+            default: ;
+        }
+        return 9;
+    }
 
     void IncrementTIMA();
 

@@ -1,11 +1,10 @@
 #ifndef STARGBC_CPU_H
 #define STARGBC_CPU_H
 
-#include <memory>
 #include <map>
+#include <memory>
 
 #include "Bus.h"
-#include "Gameboy.h"
 #include "Instructions.h"
 #include "Registers.h"
 
