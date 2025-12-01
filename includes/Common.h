@@ -16,6 +16,17 @@ static constexpr bool Bit(const uint8_t value) {
     return value >> bit & 0x01;
 }
 
+enum class Keys {
+    Right = 0x01,
+    Left = 0x02,
+    Up = 0x04,
+    Down = 0x08,
+    A = 0x10,
+    B = 0x20,
+    Select = 0x40,
+    Start = 0x80,
+};
+
 class GameboyException : public std::exception {
     virtual void message() const noexcept {
         std::printf("Gameboy Exception!\n");
