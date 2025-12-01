@@ -1,9 +1,12 @@
 #pragma once
 #include <string>
 
-#include "Auxiliary.h"
+#include "Audio.h"
 #include "Cartridge.h"
 #include "GPU.h"
+#include "Joypad.h"
+#include "Serial.h"
+#include "Timer.h"
 
 /* Memory */
 struct Memory {

@@ -1,8 +1,11 @@
 #pragma once
 
-#include "Gameboy.h"
+#include <functional>
 
-class Gameboy;
+#include "Registers.h"
+#include "CPU.h"
+
+class CPU;
 
 enum class JumpTest {
     NotZero, Zero, NotCarry, Carry, Always
@@ -58,254 +61,254 @@ class Instructions {
         ReadWrite,
     };
 
-    void HandleOAMCorruption(const Gameboy &gameboy, uint16_t word, CorruptionType type) const;
+    void HandleOAMCorruption(const CPU &, uint16_t location, CorruptionType type) const;
 
-    bool DAA(Gameboy &gameboy) const;
+    bool DAA(CPU &) const;
 
-    bool RETI(Gameboy &gameboy);
+    bool RETI(CPU &);
 
-    bool DI(Gameboy &gameboy) const;
+    bool DI(CPU &) const;
 
-    bool EI(Gameboy &gameboy) const;
+    bool EI(CPU &) const;
 
-    bool HALT(Gameboy &gameboy) const;
+    bool HALT(CPU &) const;
 
     template<RSTTarget target>
-    bool RST(Gameboy &gameboy);
+    bool RST(CPU &);
 
-    bool CALLUnconditional(Gameboy &gameboy);
-
-    template<JumpTest test>
-    bool CALL(Gameboy &gameboy);
-
-    bool RLCA(Gameboy &gameboy) const;
-
-    bool RLA(Gameboy &gameboy) const;
-
-    bool CCF(Gameboy &gameboy) const;
-
-    bool CPL(Gameboy &gameboy) const;
-
-    bool SCF(Gameboy &gameboy) const;
-
-    bool RRCA(Gameboy &gameboy) const;
-
-    bool RRA(Gameboy &gameboy) const;
-
-    bool RETUnconditional(Gameboy &gameboy);
+    bool CALLUnconditional(CPU &);
 
     template<JumpTest test>
-    bool RETConditional(Gameboy &gameboy);
+    bool CALL(CPU &);
 
-    bool JRUnconditional(Gameboy &gameboy);
+    bool RLCA(CPU &) const;
+
+    bool RLA(CPU &) const;
+
+    bool CCF(CPU &) const;
+
+    bool CPL(CPU &) const;
+
+    bool SCF(CPU &) const;
+
+    bool RRCA(CPU &) const;
+
+    bool RRA(CPU &) const;
+
+    bool RETUnconditional(CPU &);
 
     template<JumpTest test>
-    bool JR(Gameboy &gameboy);
+    bool RETConditional(CPU &);
 
-    bool JPUnconditional(Gameboy &gameboy);
+    bool JRUnconditional(CPU &);
 
     template<JumpTest test>
-    bool JP(Gameboy &gameboy);
+    bool JR(CPU &);
 
-    bool JPHL(Gameboy &gameboy) const;
+    bool JPUnconditional(CPU &);
 
-    bool NOP(Gameboy &gameboy) const;
+    template<JumpTest test>
+    bool JP(CPU &);
 
-    bool PREFIX(Gameboy &gameboy) const;
+    bool JPHL(CPU &) const;
 
-    bool STOP(Gameboy &gameboy) const;
+    bool NOP(CPU &) const;
+
+    bool PREFIX(CPU &) const;
+
+    bool STOP(CPU &) const;
 
     template<Register source>
-    bool DECRegister(Gameboy &gameboy) const;
+    bool DECRegister(CPU &) const;
 
-    bool DECIndirect(Gameboy &gameboy);
+    bool DECIndirect(CPU &);
 
     template<Arithmetic16Target target>
-    bool DEC16(Gameboy &gameboy);
+    bool DEC16(CPU &);
 
     template<Register source>
-    bool INCRegister(Gameboy &gameboy) const;
+    bool INCRegister(CPU &) const;
 
-    bool INCIndirect(Gameboy &gameboy);
+    bool INCIndirect(CPU &);
 
     template<Arithmetic16Target target>
-    bool INC16(Gameboy &gameboy);
+    bool INC16(CPU &);
 
     template<Register target, Register source>
-    bool LDRegister(Gameboy &gameboy);
+    bool LDRegister(CPU &);
 
     template<Register source>
-    bool LDRegisterImmediate(Gameboy &gameboy);
+    bool LDRegisterImmediate(CPU &);
 
     template<Register source>
-    bool LDRegisterIndirect(Gameboy &gameboy);
+    bool LDRegisterIndirect(CPU &);
 
     template<Register source>
-    bool LDAddrRegister(Gameboy &gameboy);
+    bool LDAddrRegister(CPU &);
 
-    bool LDAddrImmediate(Gameboy &gameboy);
+    bool LDAddrImmediate(CPU &);
 
-    bool LDAccumulatorBC(Gameboy &gameboy);
+    bool LDAccumulatorBC(CPU &);
 
-    bool LDAccumulatorDE(Gameboy &gameboy);
+    bool LDAccumulatorDE(CPU &);
 
-    bool LDFromAccBC(Gameboy &gameboy) const;
+    bool LDFromAccBC(CPU &) const;
 
-    bool LDFromAccDE(Gameboy &gameboy) const;
+    bool LDFromAccDE(CPU &) const;
 
-    bool LDAccumulatorDirect(Gameboy &gameboy);
+    bool LDAccumulatorDirect(CPU &);
 
-    bool LDFromAccumulatorDirect(Gameboy &gameboy);
+    bool LDFromAccumulatorDirect(CPU &);
 
-    bool LDAccumulatorIndirectDec(Gameboy &gameboy);
+    bool LDAccumulatorIndirectDec(CPU &);
 
-    bool LDFromAccumulatorIndirectDec(Gameboy &gameboy);
+    bool LDFromAccumulatorIndirectDec(CPU &);
 
-    bool LDAccumulatorIndirectInc(Gameboy &gameboy);
+    bool LDAccumulatorIndirectInc(CPU &);
 
-    bool LDFromAccumulatorIndirectInc(Gameboy &gameboy);
+    bool LDFromAccumulatorIndirectInc(CPU &);
 
-    bool LoadFromAccumulatorIndirectC(Gameboy &gameboy) const;
+    bool LoadFromAccumulatorIndirectC(CPU &) const;
 
-    bool LoadFromAccumulatorDirectA(Gameboy &gameboy);
+    bool LoadFromAccumulatorDirectA(CPU &);
 
-    bool LoadAccumulatorA(Gameboy &gameboy);
+    bool LoadAccumulatorA(CPU &);
 
-    bool LoadAccumulatorIndirectC(Gameboy &gameboy);
+    bool LoadAccumulatorIndirectC(CPU &);
 
     template<LoadWordTarget target>
-    bool LD16Register(Gameboy &gameboy);
+    bool LD16Register(CPU &);
 
-    bool LD16FromStack(Gameboy &gameboy);
+    bool LD16FromStack(CPU &);
 
-    bool LD16StackAdjusted(Gameboy &gameboy);
+    bool LD16StackAdjusted(CPU &);
 
-    bool LD16Stack(Gameboy &gameboy) const;
-
-    template<StackTarget target>
-    bool PUSH(Gameboy &gameboy);
+    bool LD16Stack(CPU &) const;
 
     template<StackTarget target>
-    bool POP(Gameboy &gameboy);
+    bool PUSH(CPU &);
+
+    template<StackTarget target>
+    bool POP(CPU &);
 
     template<Register source>
-    bool CPRegister(Gameboy &gameboy);
+    bool CPRegister(CPU &);
 
-    bool CPIndirect(Gameboy &gameboy);
+    bool CPIndirect(CPU &);
 
-    bool CPImmediate(Gameboy &gameboy);
-
-    template<Register source>
-    bool ORRegister(Gameboy &gameboy);
-
-    bool ORIndirect(Gameboy &gameboy);
-
-    bool ORImmediate(Gameboy &gameboy);
+    bool CPImmediate(CPU &);
 
     template<Register source>
-    bool XORRegister(Gameboy &gameboy);
+    bool ORRegister(CPU &);
 
-    bool XORIndirect(Gameboy &gameboy);
+    bool ORIndirect(CPU &);
 
-    bool XORImmediate(Gameboy &gameboy);
-
-    template<Register source>
-    bool AND(Gameboy &gameboy);
-
-    bool ANDIndirect(Gameboy &gameboy);
-
-    bool ANDImmediate(Gameboy &gameboy);
+    bool ORImmediate(CPU &);
 
     template<Register source>
-    bool SUB(Gameboy &gameboy);
+    bool XORRegister(CPU &);
 
-    bool SUBIndirect(Gameboy &gameboy);
+    bool XORIndirect(CPU &);
 
-    bool SUBImmediate(Gameboy &gameboy);
-
-    template<Register source>
-    bool RRC(Gameboy &gameboy);
-
-    bool RRCAddr(Gameboy &gameboy);
+    bool XORImmediate(CPU &);
 
     template<Register source>
-    bool RLC(Gameboy &gameboy);
+    bool AND(CPU &);
 
-    bool RLCAddr(Gameboy &gameboy);
+    bool ANDIndirect(CPU &);
 
-    template<Register source>
-    bool RR(Gameboy &gameboy);
-
-    bool RRAddr(Gameboy &gameboy);
+    bool ANDImmediate(CPU &);
 
     template<Register source>
-    bool RL(Gameboy &gameboy);
+    bool SUB(CPU &);
 
-    bool RLAddr(Gameboy &gameboy);
+    bool SUBIndirect(CPU &);
 
-    template<Register source>
-    bool SLA(Gameboy &gameboy);
-
-    bool SLAAddr(Gameboy &gameboy);
+    bool SUBImmediate(CPU &);
 
     template<Register source>
-    bool SRA(Gameboy &gameboy);
+    bool RRC(CPU &);
 
-    bool SRAAddr(Gameboy &gameboy);
-
-    template<Register source>
-    bool SWAP(Gameboy &gameboy);
-
-    bool SWAPAddr(Gameboy &gameboy);
+    bool RRCAddr(CPU &);
 
     template<Register source>
-    bool SRL(Gameboy &gameboy);
+    bool RLC(CPU &);
 
-    bool SRLAddr(Gameboy &gameboy);
+    bool RLCAddr(CPU &);
+
+    template<Register source>
+    bool RR(CPU &);
+
+    bool RRAddr(CPU &);
+
+    template<Register source>
+    bool RL(CPU &);
+
+    bool RLAddr(CPU &);
+
+    template<Register source>
+    bool SLA(CPU &);
+
+    bool SLAAddr(CPU &);
+
+    template<Register source>
+    bool SRA(CPU &);
+
+    bool SRAAddr(CPU &);
+
+    template<Register source>
+    bool SWAP(CPU &);
+
+    bool SWAPAddr(CPU &);
+
+    template<Register source>
+    bool SRL(CPU &);
+
+    bool SRLAddr(CPU &);
 
     template<Register source, int bit>
-    bool BIT(Gameboy &gameboy);
+    bool BIT(CPU &);
 
     template<int bit>
-    bool BITAddr(Gameboy &gameboy);
+    bool BITAddr(CPU &);
 
     template<Register source, int bit>
-    bool RES(Gameboy &gameboy);
+    bool RES(CPU &);
 
     template<int bit>
-    bool RESAddr(Gameboy &gameboy);
+    bool RESAddr(CPU &);
 
     template<Register source, int bit>
-    bool SET(Gameboy &gameboy);
+    bool SET(CPU &);
 
     template<int bit>
-    bool SETAddr(Gameboy &gameboy);
+    bool SETAddr(CPU &);
 
     template<Register source>
-    bool SBCRegister(Gameboy &gameboy);
+    bool SBCRegister(CPU &);
 
-    bool SBCIndirect(Gameboy &gameboy);
+    bool SBCIndirect(CPU &);
 
-    bool SBCImmediate(Gameboy &gameboy);
+    bool SBCImmediate(CPU &);
 
     template<Register source>
-    bool ADCRegister(Gameboy &gameboy);
+    bool ADCRegister(CPU &);
 
-    bool ADCIndirect(Gameboy &gameboy);
+    bool ADCIndirect(CPU &);
 
-    bool ADCImmediate(Gameboy &gameboy);
+    bool ADCImmediate(CPU &);
 
     template<Arithmetic16Target target>
-    bool ADD16(Gameboy &gameboy);
+    bool ADD16(CPU &);
 
     template<Register source>
-    bool ADDRegister(Gameboy &gameboy);
+    bool ADDRegister(CPU &);
 
-    bool ADDIndirect(Gameboy &gameboy);
+    bool ADDIndirect(CPU &);
 
-    bool ADDImmediate(Gameboy &gameboy);
+    bool ADDImmediate(CPU &);
 
-    bool ADDSigned(Gameboy &gameboy);
+    bool ADDSigned(CPU &);
 
 public:
     // used for storing data between cycles
@@ -315,7 +318,7 @@ public:
     uint16_t word{0};
     uint16_t word2{0};
 
-    using WrappedFunction = std::function<bool(Gameboy &)>;
+    using WrappedFunction = std::function<bool(CPU &)>;
 
     template<typename... Args>
     bool prefixedInstr(const uint8_t opcode, Args &&... args) {
@@ -335,512 +338,512 @@ public:
 
     const std::array<WrappedFunction, 256> prefixedTable = [this] {
         std::array<WrappedFunction, 256> table{};
-        table[0x00] = [this](Gameboy &gb) -> bool { return this->RLC<Register::B>(gb); };
-        table[0x01] = [this](Gameboy &gb) -> bool { return this->RLC<Register::C>(gb); };
-        table[0x02] = [this](Gameboy &gb) -> bool { return this->RLC<Register::D>(gb); };
-        table[0x03] = [this](Gameboy &gb) -> bool { return this->RLC<Register::E>(gb); };
-        table[0x04] = [this](Gameboy &gb) -> bool { return this->RLC<Register::H>(gb); };
-        table[0x05] = [this](Gameboy &gb) -> bool { return this->RLC<Register::L>(gb); };
-        table[0x06] = [this](Gameboy &gb) -> bool { return this->RLCAddr(gb); };
-        table[0x07] = [this](Gameboy &gb) -> bool { return this->RLC<Register::A>(gb); };
-        table[0x08] = [this](Gameboy &gb) -> bool { return this->RRC<Register::B>(gb); };
-        table[0x09] = [this](Gameboy &gb) -> bool { return this->RRC<Register::C>(gb); };
-        table[0x0A] = [this](Gameboy &gb) -> bool { return this->RRC<Register::D>(gb); };
-        table[0x0B] = [this](Gameboy &gb) -> bool { return this->RRC<Register::E>(gb); };
-        table[0x0C] = [this](Gameboy &gb) -> bool { return this->RRC<Register::H>(gb); };
-        table[0x0D] = [this](Gameboy &gb) -> bool { return this->RRC<Register::L>(gb); };
-        table[0x0E] = [this](Gameboy &gb) -> bool { return this->RRCAddr(gb); };
-        table[0x0F] = [this](Gameboy &gb) -> bool { return this->RRC<Register::A>(gb); };
-        table[0x10] = [this](Gameboy &gb) -> bool { return this->RL<Register::B>(gb); };
-        table[0x11] = [this](Gameboy &gb) -> bool { return this->RL<Register::C>(gb); };
-        table[0x12] = [this](Gameboy &gb) -> bool { return this->RL<Register::D>(gb); };
-        table[0x13] = [this](Gameboy &gb) -> bool { return this->RL<Register::E>(gb); };
-        table[0x14] = [this](Gameboy &gb) -> bool { return this->RL<Register::H>(gb); };
-        table[0x15] = [this](Gameboy &gb) -> bool { return this->RL<Register::L>(gb); };
-        table[0x16] = [this](Gameboy &gb) -> bool { return this->RLAddr(gb); };
-        table[0x17] = [this](Gameboy &gb) -> bool { return this->RL<Register::A>(gb); };
-        table[0x18] = [this](Gameboy &gb) -> bool { return this->RR<Register::B>(gb); };
-        table[0x19] = [this](Gameboy &gb) -> bool { return this->RR<Register::C>(gb); };
-        table[0x1A] = [this](Gameboy &gb) -> bool { return this->RR<Register::D>(gb); };
-        table[0x1B] = [this](Gameboy &gb) -> bool { return this->RR<Register::E>(gb); };
-        table[0x1C] = [this](Gameboy &gb) -> bool { return this->RR<Register::H>(gb); };
-        table[0x1D] = [this](Gameboy &gb) -> bool { return this->RR<Register::L>(gb); };
-        table[0x1E] = [this](Gameboy &gb) -> bool { return this->RRAddr(gb); };
-        table[0x1F] = [this](Gameboy &gb) -> bool { return this->RR<Register::A>(gb); };
-        table[0x20] = [this](Gameboy &gb) -> bool { return this->SLA<Register::B>(gb); };
-        table[0x21] = [this](Gameboy &gb) -> bool { return this->SLA<Register::C>(gb); };
-        table[0x22] = [this](Gameboy &gb) -> bool { return this->SLA<Register::D>(gb); };
-        table[0x23] = [this](Gameboy &gb) -> bool { return this->SLA<Register::E>(gb); };
-        table[0x24] = [this](Gameboy &gb) -> bool { return this->SLA<Register::H>(gb); };
-        table[0x25] = [this](Gameboy &gb) -> bool { return this->SLA<Register::L>(gb); };
-        table[0x26] = [this](Gameboy &gb) -> bool { return this->SLAAddr(gb); };
-        table[0x27] = [this](Gameboy &gb) -> bool { return this->SLA<Register::A>(gb); };
-        table[0x28] = [this](Gameboy &gb) -> bool { return this->SRA<Register::B>(gb); };
-        table[0x29] = [this](Gameboy &gb) -> bool { return this->SRA<Register::C>(gb); };
-        table[0x2A] = [this](Gameboy &gb) -> bool { return this->SRA<Register::D>(gb); };
-        table[0x2B] = [this](Gameboy &gb) -> bool { return this->SRA<Register::E>(gb); };
-        table[0x2C] = [this](Gameboy &gb) -> bool { return this->SRA<Register::H>(gb); };
-        table[0x2D] = [this](Gameboy &gb) -> bool { return this->SRA<Register::L>(gb); };
-        table[0x2E] = [this](Gameboy &gb) -> bool { return this->SRAAddr(gb); };
-        table[0x2F] = [this](Gameboy &gb) -> bool { return this->SRA<Register::A>(gb); };
-        table[0x30] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::B>(gb); };
-        table[0x31] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::C>(gb); };
-        table[0x32] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::D>(gb); };
-        table[0x33] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::E>(gb); };
-        table[0x34] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::H>(gb); };
-        table[0x35] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::L>(gb); };
-        table[0x36] = [this](Gameboy &gb) -> bool { return this->SWAPAddr(gb); };
-        table[0x37] = [this](Gameboy &gb) -> bool { return this->SWAP<Register::A>(gb); };
-        table[0x38] = [this](Gameboy &gb) -> bool { return this->SRL<Register::B>(gb); };
-        table[0x39] = [this](Gameboy &gb) -> bool { return this->SRL<Register::C>(gb); };
-        table[0x3A] = [this](Gameboy &gb) -> bool { return this->SRL<Register::D>(gb); };
-        table[0x3B] = [this](Gameboy &gb) -> bool { return this->SRL<Register::E>(gb); };
-        table[0x3C] = [this](Gameboy &gb) -> bool { return this->SRL<Register::H>(gb); };
-        table[0x3D] = [this](Gameboy &gb) -> bool { return this->SRL<Register::L>(gb); };
-        table[0x3E] = [this](Gameboy &gb) -> bool { return this->SRLAddr(gb); };
-        table[0x3F] = [this](Gameboy &gb) -> bool { return this->SRL<Register::A>(gb); };
-        table[0x40] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 0>(gb); };
-        table[0x41] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 0>(gb); };
-        table[0x42] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 0>(gb); };
-        table[0x43] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 0>(gb); };
-        table[0x44] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 0>(gb); };
-        table[0x45] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 0>(gb); };
-        table[0x46] = [this](Gameboy &gb) -> bool { return this->BITAddr<0>(gb); };
-        table[0x47] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 0>(gb); };
-        table[0x48] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 1>(gb); };
-        table[0x49] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 1>(gb); };
-        table[0x4A] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 1>(gb); };
-        table[0x4B] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 1>(gb); };
-        table[0x4C] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 1>(gb); };
-        table[0x4D] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 1>(gb); };
-        table[0x4E] = [this](Gameboy &gb) -> bool { return this->BITAddr<1>(gb); };
-        table[0x4F] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 1>(gb); };
-        table[0x50] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 2>(gb); };
-        table[0x51] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 2>(gb); };
-        table[0x52] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 2>(gb); };
-        table[0x53] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 2>(gb); };
-        table[0x54] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 2>(gb); };
-        table[0x55] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 2>(gb); };
-        table[0x56] = [this](Gameboy &gb) -> bool { return this->BITAddr<2>(gb); };
-        table[0x57] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 2>(gb); };
-        table[0x58] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 3>(gb); };
-        table[0x59] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 3>(gb); };
-        table[0x5A] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 3>(gb); };
-        table[0x5B] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 3>(gb); };
-        table[0x5C] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 3>(gb); };
-        table[0x5D] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 3>(gb); };
-        table[0x5E] = [this](Gameboy &gb) -> bool { return this->BITAddr<3>(gb); };
-        table[0x5F] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 3>(gb); };
-        table[0x60] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 4>(gb); };
-        table[0x61] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 4>(gb); };
-        table[0x62] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 4>(gb); };
-        table[0x63] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 4>(gb); };
-        table[0x64] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 4>(gb); };
-        table[0x65] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 4>(gb); };
-        table[0x66] = [this](Gameboy &gb) -> bool { return this->BITAddr<4>(gb); };
-        table[0x67] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 4>(gb); };
-        table[0x68] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 5>(gb); };
-        table[0x69] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 5>(gb); };
-        table[0x6A] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 5>(gb); };
-        table[0x6B] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 5>(gb); };
-        table[0x6C] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 5>(gb); };
-        table[0x6D] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 5>(gb); };
-        table[0x6E] = [this](Gameboy &gb) -> bool { return this->BITAddr<5>(gb); };
-        table[0x6F] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 5>(gb); };
-        table[0x70] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 6>(gb); };
-        table[0x71] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 6>(gb); };
-        table[0x72] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 6>(gb); };
-        table[0x73] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 6>(gb); };
-        table[0x74] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 6>(gb); };
-        table[0x75] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 6>(gb); };
-        table[0x76] = [this](Gameboy &gb) -> bool { return this->BITAddr<6>(gb); };
-        table[0x77] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 6>(gb); };
-        table[0x78] = [this](Gameboy &gb) -> bool { return this->BIT<Register::B, 7>(gb); };
-        table[0x79] = [this](Gameboy &gb) -> bool { return this->BIT<Register::C, 7>(gb); };
-        table[0x7A] = [this](Gameboy &gb) -> bool { return this->BIT<Register::D, 7>(gb); };
-        table[0x7B] = [this](Gameboy &gb) -> bool { return this->BIT<Register::E, 7>(gb); };
-        table[0x7C] = [this](Gameboy &gb) -> bool { return this->BIT<Register::H, 7>(gb); };
-        table[0x7D] = [this](Gameboy &gb) -> bool { return this->BIT<Register::L, 7>(gb); };
-        table[0x7E] = [this](Gameboy &gb) -> bool { return this->BITAddr<7>(gb); };
-        table[0x7F] = [this](Gameboy &gb) -> bool { return this->BIT<Register::A, 7>(gb); };
-        table[0x80] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 0>(gb); };
-        table[0x81] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 0>(gb); };
-        table[0x82] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 0>(gb); };
-        table[0x83] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 0>(gb); };
-        table[0x84] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 0>(gb); };
-        table[0x85] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 0>(gb); };
-        table[0x86] = [this](Gameboy &gb) -> bool { return this->RESAddr<0>(gb); };
-        table[0x87] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 0>(gb); };
-        table[0x88] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 1>(gb); };
-        table[0x89] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 1>(gb); };
-        table[0x8A] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 1>(gb); };
-        table[0x8B] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 1>(gb); };
-        table[0x8C] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 1>(gb); };
-        table[0x8D] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 1>(gb); };
-        table[0x8E] = [this](Gameboy &gb) -> bool { return this->RESAddr<1>(gb); };
-        table[0x8F] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 1>(gb); };
-        table[0x90] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 2>(gb); };
-        table[0x91] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 2>(gb); };
-        table[0x92] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 2>(gb); };
-        table[0x93] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 2>(gb); };
-        table[0x94] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 2>(gb); };
-        table[0x95] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 2>(gb); };
-        table[0x96] = [this](Gameboy &gb) -> bool { return this->RESAddr<2>(gb); };
-        table[0x97] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 2>(gb); };
-        table[0x98] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 3>(gb); };
-        table[0x99] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 3>(gb); };
-        table[0x9A] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 3>(gb); };
-        table[0x9B] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 3>(gb); };
-        table[0x9C] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 3>(gb); };
-        table[0x9D] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 3>(gb); };
-        table[0x9E] = [this](Gameboy &gb) -> bool { return this->RESAddr<3>(gb); };
-        table[0x9F] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 3>(gb); };
-        table[0xA0] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 4>(gb); };
-        table[0xA1] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 4>(gb); };
-        table[0xA2] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 4>(gb); };
-        table[0xA3] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 4>(gb); };
-        table[0xA4] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 4>(gb); };
-        table[0xA5] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 4>(gb); };
-        table[0xA6] = [this](Gameboy &gb) -> bool { return this->RESAddr<4>(gb); };
-        table[0xA7] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 4>(gb); };
-        table[0xA8] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 5>(gb); };
-        table[0xA9] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 5>(gb); };
-        table[0xAA] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 5>(gb); };
-        table[0xAB] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 5>(gb); };
-        table[0xAC] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 5>(gb); };
-        table[0xAD] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 5>(gb); };
-        table[0xAE] = [this](Gameboy &gb) -> bool { return this->RESAddr<5>(gb); };
-        table[0xAF] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 5>(gb); };
-        table[0xB0] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 6>(gb); };
-        table[0xB1] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 6>(gb); };
-        table[0xB2] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 6>(gb); };
-        table[0xB3] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 6>(gb); };
-        table[0xB4] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 6>(gb); };
-        table[0xB5] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 6>(gb); };
-        table[0xB6] = [this](Gameboy &gb) -> bool { return this->RESAddr<6>(gb); };
-        table[0xB7] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 6>(gb); };
-        table[0xB8] = [this](Gameboy &gb) -> bool { return this->RES<Register::B, 7>(gb); };
-        table[0xB9] = [this](Gameboy &gb) -> bool { return this->RES<Register::C, 7>(gb); };
-        table[0xBA] = [this](Gameboy &gb) -> bool { return this->RES<Register::D, 7>(gb); };
-        table[0xBB] = [this](Gameboy &gb) -> bool { return this->RES<Register::E, 7>(gb); };
-        table[0xBC] = [this](Gameboy &gb) -> bool { return this->RES<Register::H, 7>(gb); };
-        table[0xBD] = [this](Gameboy &gb) -> bool { return this->RES<Register::L, 7>(gb); };
-        table[0xBE] = [this](Gameboy &gb) -> bool { return this->RESAddr<7>(gb); };
-        table[0xBF] = [this](Gameboy &gb) -> bool { return this->RES<Register::A, 7>(gb); };
-        table[0xC0] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 0>(gb); };
-        table[0xC1] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 0>(gb); };
-        table[0xC2] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 0>(gb); };
-        table[0xC3] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 0>(gb); };
-        table[0xC4] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 0>(gb); };
-        table[0xC5] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 0>(gb); };
-        table[0xC6] = [this](Gameboy &gb) -> bool { return this->SETAddr<0>(gb); };
-        table[0xC7] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 0>(gb); };
-        table[0xC8] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 1>(gb); };
-        table[0xC9] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 1>(gb); };
-        table[0xCA] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 1>(gb); };
-        table[0xCB] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 1>(gb); };
-        table[0xCC] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 1>(gb); };
-        table[0xCD] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 1>(gb); };
-        table[0xCE] = [this](Gameboy &gb) -> bool { return this->SETAddr<1>(gb); };
-        table[0xCF] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 1>(gb); };
-        table[0xD0] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 2>(gb); };
-        table[0xD1] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 2>(gb); };
-        table[0xD2] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 2>(gb); };
-        table[0xD3] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 2>(gb); };
-        table[0xD4] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 2>(gb); };
-        table[0xD5] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 2>(gb); };
-        table[0xD6] = [this](Gameboy &gb) -> bool { return this->SETAddr<2>(gb); };
-        table[0xD7] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 2>(gb); };
-        table[0xD8] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 3>(gb); };
-        table[0xD9] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 3>(gb); };
-        table[0xDA] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 3>(gb); };
-        table[0xDB] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 3>(gb); };
-        table[0xDC] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 3>(gb); };
-        table[0xDD] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 3>(gb); };
-        table[0xDE] = [this](Gameboy &gb) -> bool { return this->SETAddr<3>(gb); };
-        table[0xDF] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 3>(gb); };
-        table[0xE0] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 4>(gb); };
-        table[0xE1] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 4>(gb); };
-        table[0xE2] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 4>(gb); };
-        table[0xE3] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 4>(gb); };
-        table[0xE4] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 4>(gb); };
-        table[0xE5] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 4>(gb); };
-        table[0xE6] = [this](Gameboy &gb) -> bool { return this->SETAddr<4>(gb); };
-        table[0xE7] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 4>(gb); };
-        table[0xE8] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 5>(gb); };
-        table[0xE9] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 5>(gb); };
-        table[0xEA] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 5>(gb); };
-        table[0xEB] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 5>(gb); };
-        table[0xEC] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 5>(gb); };
-        table[0xED] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 5>(gb); };
-        table[0xEE] = [this](Gameboy &gb) -> bool { return this->SETAddr<5>(gb); };
-        table[0xEF] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 5>(gb); };
-        table[0xF0] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 6>(gb); };
-        table[0xF1] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 6>(gb); };
-        table[0xF2] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 6>(gb); };
-        table[0xF3] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 6>(gb); };
-        table[0xF4] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 6>(gb); };
-        table[0xF5] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 6>(gb); };
-        table[0xF6] = [this](Gameboy &gb) -> bool { return this->SETAddr<6>(gb); };
-        table[0xF7] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 6>(gb); };
-        table[0xF8] = [this](Gameboy &gb) -> bool { return this->SET<Register::B, 7>(gb); };
-        table[0xF9] = [this](Gameboy &gb) -> bool { return this->SET<Register::C, 7>(gb); };
-        table[0xFA] = [this](Gameboy &gb) -> bool { return this->SET<Register::D, 7>(gb); };
-        table[0xFB] = [this](Gameboy &gb) -> bool { return this->SET<Register::E, 7>(gb); };
-        table[0xFC] = [this](Gameboy &gb) -> bool { return this->SET<Register::H, 7>(gb); };
-        table[0xFD] = [this](Gameboy &gb) -> bool { return this->SET<Register::L, 7>(gb); };
-        table[0xFE] = [this](Gameboy &gb) -> bool { return this->SETAddr<7>(gb); };
-        table[0xFF] = [this](Gameboy &gb) -> bool { return this->SET<Register::A, 7>(gb); };
+        table[0x00] = [this](CPU &cpu) -> bool { return this->RLC<Register::B>(cpu); };
+        table[0x01] = [this](CPU &cpu) -> bool { return this->RLC<Register::C>(cpu); };
+        table[0x02] = [this](CPU &cpu) -> bool { return this->RLC<Register::D>(cpu); };
+        table[0x03] = [this](CPU &cpu) -> bool { return this->RLC<Register::E>(cpu); };
+        table[0x04] = [this](CPU &cpu) -> bool { return this->RLC<Register::H>(cpu); };
+        table[0x05] = [this](CPU &cpu) -> bool { return this->RLC<Register::L>(cpu); };
+        table[0x06] = [this](CPU &cpu) -> bool { return this->RLCAddr(cpu); };
+        table[0x07] = [this](CPU &cpu) -> bool { return this->RLC<Register::A>(cpu); };
+        table[0x08] = [this](CPU &cpu) -> bool { return this->RRC<Register::B>(cpu); };
+        table[0x09] = [this](CPU &cpu) -> bool { return this->RRC<Register::C>(cpu); };
+        table[0x0A] = [this](CPU &cpu) -> bool { return this->RRC<Register::D>(cpu); };
+        table[0x0B] = [this](CPU &cpu) -> bool { return this->RRC<Register::E>(cpu); };
+        table[0x0C] = [this](CPU &cpu) -> bool { return this->RRC<Register::H>(cpu); };
+        table[0x0D] = [this](CPU &cpu) -> bool { return this->RRC<Register::L>(cpu); };
+        table[0x0E] = [this](CPU &cpu) -> bool { return this->RRCAddr(cpu); };
+        table[0x0F] = [this](CPU &cpu) -> bool { return this->RRC<Register::A>(cpu); };
+        table[0x10] = [this](CPU &cpu) -> bool { return this->RL<Register::B>(cpu); };
+        table[0x11] = [this](CPU &cpu) -> bool { return this->RL<Register::C>(cpu); };
+        table[0x12] = [this](CPU &cpu) -> bool { return this->RL<Register::D>(cpu); };
+        table[0x13] = [this](CPU &cpu) -> bool { return this->RL<Register::E>(cpu); };
+        table[0x14] = [this](CPU &cpu) -> bool { return this->RL<Register::H>(cpu); };
+        table[0x15] = [this](CPU &cpu) -> bool { return this->RL<Register::L>(cpu); };
+        table[0x16] = [this](CPU &cpu) -> bool { return this->RLAddr(cpu); };
+        table[0x17] = [this](CPU &cpu) -> bool { return this->RL<Register::A>(cpu); };
+        table[0x18] = [this](CPU &cpu) -> bool { return this->RR<Register::B>(cpu); };
+        table[0x19] = [this](CPU &cpu) -> bool { return this->RR<Register::C>(cpu); };
+        table[0x1A] = [this](CPU &cpu) -> bool { return this->RR<Register::D>(cpu); };
+        table[0x1B] = [this](CPU &cpu) -> bool { return this->RR<Register::E>(cpu); };
+        table[0x1C] = [this](CPU &cpu) -> bool { return this->RR<Register::H>(cpu); };
+        table[0x1D] = [this](CPU &cpu) -> bool { return this->RR<Register::L>(cpu); };
+        table[0x1E] = [this](CPU &cpu) -> bool { return this->RRAddr(cpu); };
+        table[0x1F] = [this](CPU &cpu) -> bool { return this->RR<Register::A>(cpu); };
+        table[0x20] = [this](CPU &cpu) -> bool { return this->SLA<Register::B>(cpu); };
+        table[0x21] = [this](CPU &cpu) -> bool { return this->SLA<Register::C>(cpu); };
+        table[0x22] = [this](CPU &cpu) -> bool { return this->SLA<Register::D>(cpu); };
+        table[0x23] = [this](CPU &cpu) -> bool { return this->SLA<Register::E>(cpu); };
+        table[0x24] = [this](CPU &cpu) -> bool { return this->SLA<Register::H>(cpu); };
+        table[0x25] = [this](CPU &cpu) -> bool { return this->SLA<Register::L>(cpu); };
+        table[0x26] = [this](CPU &cpu) -> bool { return this->SLAAddr(cpu); };
+        table[0x27] = [this](CPU &cpu) -> bool { return this->SLA<Register::A>(cpu); };
+        table[0x28] = [this](CPU &cpu) -> bool { return this->SRA<Register::B>(cpu); };
+        table[0x29] = [this](CPU &cpu) -> bool { return this->SRA<Register::C>(cpu); };
+        table[0x2A] = [this](CPU &cpu) -> bool { return this->SRA<Register::D>(cpu); };
+        table[0x2B] = [this](CPU &cpu) -> bool { return this->SRA<Register::E>(cpu); };
+        table[0x2C] = [this](CPU &cpu) -> bool { return this->SRA<Register::H>(cpu); };
+        table[0x2D] = [this](CPU &cpu) -> bool { return this->SRA<Register::L>(cpu); };
+        table[0x2E] = [this](CPU &cpu) -> bool { return this->SRAAddr(cpu); };
+        table[0x2F] = [this](CPU &cpu) -> bool { return this->SRA<Register::A>(cpu); };
+        table[0x30] = [this](CPU &cpu) -> bool { return this->SWAP<Register::B>(cpu); };
+        table[0x31] = [this](CPU &cpu) -> bool { return this->SWAP<Register::C>(cpu); };
+        table[0x32] = [this](CPU &cpu) -> bool { return this->SWAP<Register::D>(cpu); };
+        table[0x33] = [this](CPU &cpu) -> bool { return this->SWAP<Register::E>(cpu); };
+        table[0x34] = [this](CPU &cpu) -> bool { return this->SWAP<Register::H>(cpu); };
+        table[0x35] = [this](CPU &cpu) -> bool { return this->SWAP<Register::L>(cpu); };
+        table[0x36] = [this](CPU &cpu) -> bool { return this->SWAPAddr(cpu); };
+        table[0x37] = [this](CPU &cpu) -> bool { return this->SWAP<Register::A>(cpu); };
+        table[0x38] = [this](CPU &cpu) -> bool { return this->SRL<Register::B>(cpu); };
+        table[0x39] = [this](CPU &cpu) -> bool { return this->SRL<Register::C>(cpu); };
+        table[0x3A] = [this](CPU &cpu) -> bool { return this->SRL<Register::D>(cpu); };
+        table[0x3B] = [this](CPU &cpu) -> bool { return this->SRL<Register::E>(cpu); };
+        table[0x3C] = [this](CPU &cpu) -> bool { return this->SRL<Register::H>(cpu); };
+        table[0x3D] = [this](CPU &cpu) -> bool { return this->SRL<Register::L>(cpu); };
+        table[0x3E] = [this](CPU &cpu) -> bool { return this->SRLAddr(cpu); };
+        table[0x3F] = [this](CPU &cpu) -> bool { return this->SRL<Register::A>(cpu); };
+        table[0x40] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 0>(cpu); };
+        table[0x41] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 0>(cpu); };
+        table[0x42] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 0>(cpu); };
+        table[0x43] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 0>(cpu); };
+        table[0x44] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 0>(cpu); };
+        table[0x45] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 0>(cpu); };
+        table[0x46] = [this](CPU &cpu) -> bool { return this->BITAddr<0>(cpu); };
+        table[0x47] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 0>(cpu); };
+        table[0x48] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 1>(cpu); };
+        table[0x49] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 1>(cpu); };
+        table[0x4A] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 1>(cpu); };
+        table[0x4B] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 1>(cpu); };
+        table[0x4C] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 1>(cpu); };
+        table[0x4D] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 1>(cpu); };
+        table[0x4E] = [this](CPU &cpu) -> bool { return this->BITAddr<1>(cpu); };
+        table[0x4F] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 1>(cpu); };
+        table[0x50] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 2>(cpu); };
+        table[0x51] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 2>(cpu); };
+        table[0x52] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 2>(cpu); };
+        table[0x53] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 2>(cpu); };
+        table[0x54] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 2>(cpu); };
+        table[0x55] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 2>(cpu); };
+        table[0x56] = [this](CPU &cpu) -> bool { return this->BITAddr<2>(cpu); };
+        table[0x57] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 2>(cpu); };
+        table[0x58] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 3>(cpu); };
+        table[0x59] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 3>(cpu); };
+        table[0x5A] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 3>(cpu); };
+        table[0x5B] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 3>(cpu); };
+        table[0x5C] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 3>(cpu); };
+        table[0x5D] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 3>(cpu); };
+        table[0x5E] = [this](CPU &cpu) -> bool { return this->BITAddr<3>(cpu); };
+        table[0x5F] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 3>(cpu); };
+        table[0x60] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 4>(cpu); };
+        table[0x61] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 4>(cpu); };
+        table[0x62] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 4>(cpu); };
+        table[0x63] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 4>(cpu); };
+        table[0x64] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 4>(cpu); };
+        table[0x65] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 4>(cpu); };
+        table[0x66] = [this](CPU &cpu) -> bool { return this->BITAddr<4>(cpu); };
+        table[0x67] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 4>(cpu); };
+        table[0x68] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 5>(cpu); };
+        table[0x69] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 5>(cpu); };
+        table[0x6A] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 5>(cpu); };
+        table[0x6B] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 5>(cpu); };
+        table[0x6C] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 5>(cpu); };
+        table[0x6D] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 5>(cpu); };
+        table[0x6E] = [this](CPU &cpu) -> bool { return this->BITAddr<5>(cpu); };
+        table[0x6F] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 5>(cpu); };
+        table[0x70] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 6>(cpu); };
+        table[0x71] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 6>(cpu); };
+        table[0x72] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 6>(cpu); };
+        table[0x73] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 6>(cpu); };
+        table[0x74] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 6>(cpu); };
+        table[0x75] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 6>(cpu); };
+        table[0x76] = [this](CPU &cpu) -> bool { return this->BITAddr<6>(cpu); };
+        table[0x77] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 6>(cpu); };
+        table[0x78] = [this](CPU &cpu) -> bool { return this->BIT<Register::B, 7>(cpu); };
+        table[0x79] = [this](CPU &cpu) -> bool { return this->BIT<Register::C, 7>(cpu); };
+        table[0x7A] = [this](CPU &cpu) -> bool { return this->BIT<Register::D, 7>(cpu); };
+        table[0x7B] = [this](CPU &cpu) -> bool { return this->BIT<Register::E, 7>(cpu); };
+        table[0x7C] = [this](CPU &cpu) -> bool { return this->BIT<Register::H, 7>(cpu); };
+        table[0x7D] = [this](CPU &cpu) -> bool { return this->BIT<Register::L, 7>(cpu); };
+        table[0x7E] = [this](CPU &cpu) -> bool { return this->BITAddr<7>(cpu); };
+        table[0x7F] = [this](CPU &cpu) -> bool { return this->BIT<Register::A, 7>(cpu); };
+        table[0x80] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 0>(cpu); };
+        table[0x81] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 0>(cpu); };
+        table[0x82] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 0>(cpu); };
+        table[0x83] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 0>(cpu); };
+        table[0x84] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 0>(cpu); };
+        table[0x85] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 0>(cpu); };
+        table[0x86] = [this](CPU &cpu) -> bool { return this->RESAddr<0>(cpu); };
+        table[0x87] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 0>(cpu); };
+        table[0x88] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 1>(cpu); };
+        table[0x89] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 1>(cpu); };
+        table[0x8A] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 1>(cpu); };
+        table[0x8B] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 1>(cpu); };
+        table[0x8C] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 1>(cpu); };
+        table[0x8D] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 1>(cpu); };
+        table[0x8E] = [this](CPU &cpu) -> bool { return this->RESAddr<1>(cpu); };
+        table[0x8F] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 1>(cpu); };
+        table[0x90] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 2>(cpu); };
+        table[0x91] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 2>(cpu); };
+        table[0x92] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 2>(cpu); };
+        table[0x93] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 2>(cpu); };
+        table[0x94] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 2>(cpu); };
+        table[0x95] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 2>(cpu); };
+        table[0x96] = [this](CPU &cpu) -> bool { return this->RESAddr<2>(cpu); };
+        table[0x97] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 2>(cpu); };
+        table[0x98] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 3>(cpu); };
+        table[0x99] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 3>(cpu); };
+        table[0x9A] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 3>(cpu); };
+        table[0x9B] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 3>(cpu); };
+        table[0x9C] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 3>(cpu); };
+        table[0x9D] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 3>(cpu); };
+        table[0x9E] = [this](CPU &cpu) -> bool { return this->RESAddr<3>(cpu); };
+        table[0x9F] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 3>(cpu); };
+        table[0xA0] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 4>(cpu); };
+        table[0xA1] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 4>(cpu); };
+        table[0xA2] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 4>(cpu); };
+        table[0xA3] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 4>(cpu); };
+        table[0xA4] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 4>(cpu); };
+        table[0xA5] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 4>(cpu); };
+        table[0xA6] = [this](CPU &cpu) -> bool { return this->RESAddr<4>(cpu); };
+        table[0xA7] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 4>(cpu); };
+        table[0xA8] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 5>(cpu); };
+        table[0xA9] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 5>(cpu); };
+        table[0xAA] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 5>(cpu); };
+        table[0xAB] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 5>(cpu); };
+        table[0xAC] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 5>(cpu); };
+        table[0xAD] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 5>(cpu); };
+        table[0xAE] = [this](CPU &cpu) -> bool { return this->RESAddr<5>(cpu); };
+        table[0xAF] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 5>(cpu); };
+        table[0xB0] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 6>(cpu); };
+        table[0xB1] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 6>(cpu); };
+        table[0xB2] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 6>(cpu); };
+        table[0xB3] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 6>(cpu); };
+        table[0xB4] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 6>(cpu); };
+        table[0xB5] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 6>(cpu); };
+        table[0xB6] = [this](CPU &cpu) -> bool { return this->RESAddr<6>(cpu); };
+        table[0xB7] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 6>(cpu); };
+        table[0xB8] = [this](CPU &cpu) -> bool { return this->RES<Register::B, 7>(cpu); };
+        table[0xB9] = [this](CPU &cpu) -> bool { return this->RES<Register::C, 7>(cpu); };
+        table[0xBA] = [this](CPU &cpu) -> bool { return this->RES<Register::D, 7>(cpu); };
+        table[0xBB] = [this](CPU &cpu) -> bool { return this->RES<Register::E, 7>(cpu); };
+        table[0xBC] = [this](CPU &cpu) -> bool { return this->RES<Register::H, 7>(cpu); };
+        table[0xBD] = [this](CPU &cpu) -> bool { return this->RES<Register::L, 7>(cpu); };
+        table[0xBE] = [this](CPU &cpu) -> bool { return this->RESAddr<7>(cpu); };
+        table[0xBF] = [this](CPU &cpu) -> bool { return this->RES<Register::A, 7>(cpu); };
+        table[0xC0] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 0>(cpu); };
+        table[0xC1] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 0>(cpu); };
+        table[0xC2] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 0>(cpu); };
+        table[0xC3] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 0>(cpu); };
+        table[0xC4] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 0>(cpu); };
+        table[0xC5] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 0>(cpu); };
+        table[0xC6] = [this](CPU &cpu) -> bool { return this->SETAddr<0>(cpu); };
+        table[0xC7] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 0>(cpu); };
+        table[0xC8] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 1>(cpu); };
+        table[0xC9] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 1>(cpu); };
+        table[0xCA] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 1>(cpu); };
+        table[0xCB] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 1>(cpu); };
+        table[0xCC] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 1>(cpu); };
+        table[0xCD] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 1>(cpu); };
+        table[0xCE] = [this](CPU &cpu) -> bool { return this->SETAddr<1>(cpu); };
+        table[0xCF] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 1>(cpu); };
+        table[0xD0] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 2>(cpu); };
+        table[0xD1] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 2>(cpu); };
+        table[0xD2] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 2>(cpu); };
+        table[0xD3] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 2>(cpu); };
+        table[0xD4] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 2>(cpu); };
+        table[0xD5] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 2>(cpu); };
+        table[0xD6] = [this](CPU &cpu) -> bool { return this->SETAddr<2>(cpu); };
+        table[0xD7] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 2>(cpu); };
+        table[0xD8] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 3>(cpu); };
+        table[0xD9] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 3>(cpu); };
+        table[0xDA] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 3>(cpu); };
+        table[0xDB] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 3>(cpu); };
+        table[0xDC] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 3>(cpu); };
+        table[0xDD] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 3>(cpu); };
+        table[0xDE] = [this](CPU &cpu) -> bool { return this->SETAddr<3>(cpu); };
+        table[0xDF] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 3>(cpu); };
+        table[0xE0] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 4>(cpu); };
+        table[0xE1] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 4>(cpu); };
+        table[0xE2] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 4>(cpu); };
+        table[0xE3] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 4>(cpu); };
+        table[0xE4] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 4>(cpu); };
+        table[0xE5] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 4>(cpu); };
+        table[0xE6] = [this](CPU &cpu) -> bool { return this->SETAddr<4>(cpu); };
+        table[0xE7] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 4>(cpu); };
+        table[0xE8] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 5>(cpu); };
+        table[0xE9] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 5>(cpu); };
+        table[0xEA] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 5>(cpu); };
+        table[0xEB] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 5>(cpu); };
+        table[0xEC] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 5>(cpu); };
+        table[0xED] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 5>(cpu); };
+        table[0xEE] = [this](CPU &cpu) -> bool { return this->SETAddr<5>(cpu); };
+        table[0xEF] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 5>(cpu); };
+        table[0xF0] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 6>(cpu); };
+        table[0xF1] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 6>(cpu); };
+        table[0xF2] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 6>(cpu); };
+        table[0xF3] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 6>(cpu); };
+        table[0xF4] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 6>(cpu); };
+        table[0xF5] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 6>(cpu); };
+        table[0xF6] = [this](CPU &cpu) -> bool { return this->SETAddr<6>(cpu); };
+        table[0xF7] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 6>(cpu); };
+        table[0xF8] = [this](CPU &cpu) -> bool { return this->SET<Register::B, 7>(cpu); };
+        table[0xF9] = [this](CPU &cpu) -> bool { return this->SET<Register::C, 7>(cpu); };
+        table[0xFA] = [this](CPU &cpu) -> bool { return this->SET<Register::D, 7>(cpu); };
+        table[0xFB] = [this](CPU &cpu) -> bool { return this->SET<Register::E, 7>(cpu); };
+        table[0xFC] = [this](CPU &cpu) -> bool { return this->SET<Register::H, 7>(cpu); };
+        table[0xFD] = [this](CPU &cpu) -> bool { return this->SET<Register::L, 7>(cpu); };
+        table[0xFE] = [this](CPU &cpu) -> bool { return this->SETAddr<7>(cpu); };
+        table[0xFF] = [this](CPU &cpu) -> bool { return this->SET<Register::A, 7>(cpu); };
         return table;
     }();
 
     const std::array<WrappedFunction, 256> nonPrefixedTable = [this] {
         std::array<WrappedFunction, 256> table{};
-        table[0x00] = [this](Gameboy &gb) -> bool { return this->NOP(gb); };
-        table[0x01] = [this](Gameboy &gb) -> bool { return this->LD16Register<LoadWordTarget::BC>(gb); };
-        table[0x02] = [this](Gameboy &gb) -> bool { return this->LDFromAccBC(gb); };
-        table[0x03] = [this](Gameboy &gb) -> bool { return this->INC16<Arithmetic16Target::BC>(gb); };
-        table[0x04] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::B>(gb); };
-        table[0x05] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::B>(gb); };
-        table[0x06] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::B>(gb); };
-        table[0x07] = [this](Gameboy &gb) -> bool { return this->RLCA(gb); };
-        table[0x08] = [this](Gameboy &gb) -> bool { return this->LD16FromStack(gb); };
-        table[0x09] = [this](Gameboy &gb) -> bool { return this->ADD16<Arithmetic16Target::BC>(gb); };
-        table[0x10] = [this](Gameboy &gb) -> bool { return this->STOP(gb); };
-        table[0x0A] = [this](Gameboy &gb) -> bool { return this->LDAccumulatorBC(gb); };
-        table[0x0B] = [this](Gameboy &gb) -> bool { return this->DEC16<Arithmetic16Target::BC>(gb); };
-        table[0x0C] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::C>(gb); };
-        table[0x0D] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::C>(gb); };
-        table[0x0E] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::C>(gb); };
-        table[0x0F] = [this](Gameboy &gb) -> bool { return this->RRCA(gb); };
-        table[0x11] = [this](Gameboy &gb) -> bool { return this->LD16Register<LoadWordTarget::DE>(gb); };
-        table[0x12] = [this](Gameboy &gb) -> bool { return this->LDFromAccDE(gb); };
-        table[0x13] = [this](Gameboy &gb) -> bool { return this->INC16<Arithmetic16Target::DE>(gb); };
-        table[0x14] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::D>(gb); };
-        table[0x15] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::D>(gb); };
-        table[0x16] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::D>(gb); };
-        table[0x17] = [this](Gameboy &gb) -> bool { return this->RLA(gb); };
-        table[0x18] = [this](Gameboy &gb) -> bool { return this->JRUnconditional(gb); };
-        table[0x19] = [this](Gameboy &gb) -> bool { return this->ADD16<Arithmetic16Target::DE>(gb); };
-        table[0x1A] = [this](Gameboy &gb) -> bool { return this->LDAccumulatorDE(gb); };
-        table[0x1B] = [this](Gameboy &gb) -> bool { return this->DEC16<Arithmetic16Target::DE>(gb); };
-        table[0x1C] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::E>(gb); };
-        table[0x1D] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::E>(gb); };
-        table[0x1E] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::E>(gb); };
-        table[0x1F] = [this](Gameboy &gb) -> bool { return this->RRA(gb); };
-        table[0x20] = [this](Gameboy &gb) -> bool { return this->JR<JumpTest::NotZero>(gb); };
-        table[0x21] = [this](Gameboy &gb) -> bool { return this->LD16Register<LoadWordTarget::HL>(gb); };
-        table[0x22] = [this](Gameboy &gb) -> bool { return this->LDFromAccumulatorIndirectInc(gb); };
-        table[0x23] = [this](Gameboy &gb) -> bool { return this->INC16<Arithmetic16Target::HL>(gb); };
-        table[0x24] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::H>(gb); };
-        table[0x25] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::H>(gb); };
-        table[0x26] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::H>(gb); };
-        table[0x27] = [this](Gameboy &gb) -> bool { return this->DAA(gb); };
-        table[0x28] = [this](Gameboy &gb) -> bool { return this->JR<JumpTest::Zero>(gb); };
-        table[0x29] = [this](Gameboy &gb) -> bool { return this->ADD16<Arithmetic16Target::HL>(gb); };
-        table[0x2A] = [this](Gameboy &gb) -> bool { return this->LDAccumulatorIndirectInc(gb); };
-        table[0x2B] = [this](Gameboy &gb) -> bool { return this->DEC16<Arithmetic16Target::HL>(gb); };
-        table[0x2C] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::L>(gb); };
-        table[0x2D] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::L>(gb); };
-        table[0x2E] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::L>(gb); };
-        table[0x2F] = [this](Gameboy &gb) -> bool { return this->CPL(gb); };
-        table[0x30] = [this](Gameboy &gb) -> bool { return this->JR<JumpTest::NotCarry>(gb); };
-        table[0x31] = [this](Gameboy &gb) -> bool { return this->LD16Register<LoadWordTarget::SP>(gb); };
-        table[0x32] = [this](Gameboy &gb) -> bool { return this->LDFromAccumulatorIndirectDec(gb); };
-        table[0x33] = [this](Gameboy &gb) -> bool { return this->INC16<Arithmetic16Target::SP>(gb); };
-        table[0x34] = [this](Gameboy &gb) -> bool { return this->INCIndirect(gb); };
-        table[0x35] = [this](Gameboy &gb) -> bool { return this->DECIndirect(gb); };
-        table[0x36] = [this](Gameboy &gb) -> bool { return this->LDAddrImmediate(gb); };
-        table[0x37] = [this](Gameboy &gb) -> bool { return this->SCF(gb); };
-        table[0x38] = [this](Gameboy &gb) -> bool { return this->JR<JumpTest::Carry>(gb); };
-        table[0x39] = [this](Gameboy &gb) -> bool { return this->ADD16<Arithmetic16Target::SP>(gb); };
-        table[0x3A] = [this](Gameboy &gb) -> bool { return this->LDAccumulatorIndirectDec(gb); };
-        table[0x3B] = [this](Gameboy &gb) -> bool { return this->DEC16<Arithmetic16Target::SP>(gb); };
-        table[0x3C] = [this](Gameboy &gb) -> bool { return this->INCRegister<Register::A>(gb); };
-        table[0x3D] = [this](Gameboy &gb) -> bool { return this->DECRegister<Register::A>(gb); };
-        table[0x3E] = [this](Gameboy &gb) -> bool { return this->LDRegisterImmediate<Register::A>(gb); };
-        table[0x3F] = [this](Gameboy &gb) -> bool { return this->CCF(gb); };
-        table[0x40] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::B>(gb); };
-        table[0x41] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::C>(gb); };
-        table[0x42] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::D>(gb); };
-        table[0x43] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::E>(gb); };
-        table[0x44] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::H>(gb); };
-        table[0x45] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::L>(gb); };
-        table[0x46] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::B>(gb); };
-        table[0x47] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::B, Register::A>(gb); };
-        table[0x48] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::B>(gb); };
-        table[0x49] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::C>(gb); };
-        table[0x4A] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::D>(gb); };
-        table[0x4B] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::E>(gb); };
-        table[0x4C] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::H>(gb); };
-        table[0x4D] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::L>(gb); };
-        table[0x4E] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::C>(gb); };
-        table[0x4F] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::C, Register::A>(gb); };
-        table[0x50] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::B>(gb); };
-        table[0x51] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::C>(gb); };
-        table[0x52] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::D>(gb); };
-        table[0x53] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::E>(gb); };
-        table[0x54] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::H>(gb); };
-        table[0x55] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::L>(gb); };
-        table[0x56] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::D>(gb); };
-        table[0x57] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::D, Register::A>(gb); };
-        table[0x58] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::B>(gb); };
-        table[0x59] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::C>(gb); };
-        table[0x5A] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::D>(gb); };
-        table[0x5B] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::E>(gb); };
-        table[0x5C] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::H>(gb); };
-        table[0x5D] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::L>(gb); };
-        table[0x5E] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::E>(gb); };
-        table[0x5F] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::E, Register::A>(gb); };
-        table[0x60] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::B>(gb); };
-        table[0x61] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::C>(gb); };
-        table[0x62] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::D>(gb); };
-        table[0x63] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::E>(gb); };
-        table[0x64] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::H>(gb); };
-        table[0x65] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::L>(gb); };
-        table[0x66] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::H>(gb); };
-        table[0x67] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::H, Register::A>(gb); };
-        table[0x68] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::B>(gb); };
-        table[0x69] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::C>(gb); };
-        table[0x6A] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::D>(gb); };
-        table[0x6B] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::E>(gb); };
-        table[0x6C] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::H>(gb); };
-        table[0x6D] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::L>(gb); };
-        table[0x6E] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::L>(gb); };
-        table[0x6F] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::L, Register::A>(gb); };
-        table[0x70] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::B>(gb); };
-        table[0x71] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::C>(gb); };
-        table[0x72] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::D>(gb); };
-        table[0x73] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::E>(gb); };
-        table[0x74] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::H>(gb); };
-        table[0x75] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::L>(gb); };
-        table[0x76] = [this](Gameboy &gb) -> bool { return this->HALT(gb); };
-        table[0x77] = [this](Gameboy &gb) -> bool { return this->LDAddrRegister<Register::A>(gb); };
-        table[0x78] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::B>(gb); };
-        table[0x79] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::C>(gb); };
-        table[0x7A] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::D>(gb); };
-        table[0x7B] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::E>(gb); };
-        table[0x7C] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::H>(gb); };
-        table[0x7D] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::L>(gb); };
-        table[0x7E] = [this](Gameboy &gb) -> bool { return this->LDRegisterIndirect<Register::A>(gb); };
-        table[0x7F] = [this](Gameboy &gb) -> bool { return this->LDRegister<Register::A, Register::A>(gb); };
-        table[0x80] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::B>(gb); };
-        table[0x81] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::C>(gb); };
-        table[0x82] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::D>(gb); };
-        table[0x83] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::E>(gb); };
-        table[0x84] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::H>(gb); };
-        table[0x85] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::L>(gb); };
-        table[0x86] = [this](Gameboy &gb) -> bool { return this->ADDIndirect(gb); };
-        table[0x87] = [this](Gameboy &gb) -> bool { return this->ADDRegister<Register::A>(gb); };
-        table[0x88] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::B>(gb); };
-        table[0x89] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::C>(gb); };
-        table[0x8A] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::D>(gb); };
-        table[0x8B] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::E>(gb); };
-        table[0x8C] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::H>(gb); };
-        table[0x8D] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::L>(gb); };
-        table[0x8E] = [this](Gameboy &gb) -> bool { return this->ADCIndirect(gb); };
-        table[0x8F] = [this](Gameboy &gb) -> bool { return this->ADCRegister<Register::A>(gb); };
-        table[0x90] = [this](Gameboy &gb) -> bool { return this->SUB<Register::B>(gb); };
-        table[0x91] = [this](Gameboy &gb) -> bool { return this->SUB<Register::C>(gb); };
-        table[0x92] = [this](Gameboy &gb) -> bool { return this->SUB<Register::D>(gb); };
-        table[0x93] = [this](Gameboy &gb) -> bool { return this->SUB<Register::E>(gb); };
-        table[0x94] = [this](Gameboy &gb) -> bool { return this->SUB<Register::H>(gb); };
-        table[0x95] = [this](Gameboy &gb) -> bool { return this->SUB<Register::L>(gb); };
-        table[0x96] = [this](Gameboy &gb) -> bool { return this->SUBIndirect(gb); };
-        table[0x97] = [this](Gameboy &gb) -> bool { return this->SUB<Register::A>(gb); };
-        table[0x98] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::B>(gb); };
-        table[0x99] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::C>(gb); };
-        table[0x9A] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::D>(gb); };
-        table[0x9B] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::E>(gb); };
-        table[0x9C] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::H>(gb); };
-        table[0x9D] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::L>(gb); };
-        table[0x9E] = [this](Gameboy &gb) -> bool { return this->SBCIndirect(gb); };
-        table[0x9F] = [this](Gameboy &gb) -> bool { return this->SBCRegister<Register::A>(gb); };
-        table[0xA0] = [this](Gameboy &gb) -> bool { return this->AND<Register::B>(gb); };
-        table[0xA1] = [this](Gameboy &gb) -> bool { return this->AND<Register::C>(gb); };
-        table[0xA2] = [this](Gameboy &gb) -> bool { return this->AND<Register::D>(gb); };
-        table[0xA3] = [this](Gameboy &gb) -> bool { return this->AND<Register::E>(gb); };
-        table[0xA4] = [this](Gameboy &gb) -> bool { return this->AND<Register::H>(gb); };
-        table[0xA5] = [this](Gameboy &gb) -> bool { return this->AND<Register::L>(gb); };
-        table[0xA6] = [this](Gameboy &gb) -> bool { return this->ANDIndirect(gb); };
-        table[0xA7] = [this](Gameboy &gb) -> bool { return this->AND<Register::A>(gb); };
-        table[0xA8] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::B>(gb); };
-        table[0xA9] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::C>(gb); };
-        table[0xAA] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::D>(gb); };
-        table[0xAB] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::E>(gb); };
-        table[0xAC] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::H>(gb); };
-        table[0xAD] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::L>(gb); };
-        table[0xAE] = [this](Gameboy &gb) -> bool { return this->XORIndirect(gb); };
-        table[0xAF] = [this](Gameboy &gb) -> bool { return this->XORRegister<Register::A>(gb); };
-        table[0xB0] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::B>(gb); };
-        table[0xB1] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::C>(gb); };
-        table[0xB2] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::D>(gb); };
-        table[0xB3] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::E>(gb); };
-        table[0xB4] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::H>(gb); };
-        table[0xB5] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::L>(gb); };
-        table[0xB6] = [this](Gameboy &gb) -> bool { return this->ORIndirect(gb); };
-        table[0xB7] = [this](Gameboy &gb) -> bool { return this->ORRegister<Register::A>(gb); };
-        table[0xB8] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::B>(gb); };
-        table[0xB9] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::C>(gb); };
-        table[0xBA] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::D>(gb); };
-        table[0xBB] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::E>(gb); };
-        table[0xBC] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::H>(gb); };
-        table[0xBD] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::L>(gb); };
-        table[0xBE] = [this](Gameboy &gb) -> bool { return this->CPIndirect(gb); };
-        table[0xBF] = [this](Gameboy &gb) -> bool { return this->CPRegister<Register::A>(gb); };
-        table[0xC0] = [this](Gameboy &gb) -> bool { return this->RETConditional<JumpTest::NotZero>(gb); };
-        table[0xC1] = [this](Gameboy &gb) -> bool { return this->POP<StackTarget::BC>(gb); };
-        table[0xC2] = [this](Gameboy &gb) -> bool { return this->JP<JumpTest::NotZero>(gb); };
-        table[0xC3] = [this](Gameboy &gb) -> bool { return this->JPUnconditional(gb); };
-        table[0xC4] = [this](Gameboy &gb) -> bool { return this->CALL<JumpTest::NotZero>(gb); };
-        table[0xC5] = [this](Gameboy &gb) -> bool { return this->PUSH<StackTarget::BC>(gb); };
-        table[0xC6] = [this](Gameboy &gb) -> bool { return this->ADDImmediate(gb); };
-        table[0xC7] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H00>(gb); };
-        table[0xC8] = [this](Gameboy &gb) -> bool { return this->RETConditional<JumpTest::Zero>(gb); };
-        table[0xC9] = [this](Gameboy &gb) -> bool { return this->RETUnconditional(gb); };
-        table[0xCA] = [this](Gameboy &gb) -> bool { return this->JP<JumpTest::Zero>(gb); };
-        table[0xCB] = [this](Gameboy &gb) -> bool { return this->PREFIX(gb); };
-        table[0xCC] = [this](Gameboy &gb) -> bool { return this->CALL<JumpTest::Zero>(gb); };
-        table[0xCD] = [this](Gameboy &gb) -> bool { return this->CALLUnconditional(gb); };
-        table[0xCE] = [this](Gameboy &gb) -> bool { return this->ADCImmediate(gb); };
-        table[0xCF] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H08>(gb); };
-        table[0xD0] = [this](Gameboy &gb) -> bool { return this->RETConditional<JumpTest::NotCarry>(gb); };
-        table[0xD1] = [this](Gameboy &gb) -> bool { return this->POP<StackTarget::DE>(gb); };
-        table[0xD2] = [this](Gameboy &gb) -> bool { return this->JP<JumpTest::NotCarry>(gb); };
-        table[0xD4] = [this](Gameboy &gb) -> bool { return this->CALL<JumpTest::NotCarry>(gb); };
-        table[0xD5] = [this](Gameboy &gb) -> bool { return this->PUSH<StackTarget::DE>(gb); };
-        table[0xD6] = [this](Gameboy &gb) -> bool { return this->SUBImmediate(gb); };
-        table[0xD7] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H10>(gb); };
-        table[0xD8] = [this](Gameboy &gb) -> bool { return this->RETConditional<JumpTest::Carry>(gb); };
-        table[0xD9] = [this](Gameboy &gb) -> bool { return this->RETI(gb); };
-        table[0xDA] = [this](Gameboy &gb) -> bool { return this->JP<JumpTest::Carry>(gb); };
-        table[0xDC] = [this](Gameboy &gb) -> bool { return this->CALL<JumpTest::Carry>(gb); };
-        table[0xDE] = [this](Gameboy &gb) -> bool { return this->SBCImmediate(gb); };
-        table[0xDF] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H18>(gb); };
-        table[0xE0] = [this](Gameboy &gb) -> bool { return this->LoadFromAccumulatorDirectA(gb); };
-        table[0xE1] = [this](Gameboy &gb) -> bool { return this->POP<StackTarget::HL>(gb); };
-        table[0xE2] = [this](Gameboy &gb) -> bool { return this->LoadFromAccumulatorIndirectC(gb); };
-        table[0xE5] = [this](Gameboy &gb) -> bool { return this->PUSH<StackTarget::HL>(gb); };
-        table[0xE6] = [this](Gameboy &gb) -> bool { return this->ANDImmediate(gb); };
-        table[0xE7] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H20>(gb); };
-        table[0xE8] = [this](Gameboy &gb) -> bool { return this->ADDSigned(gb); };
-        table[0xE9] = [this](Gameboy &gb) -> bool { return this->JPHL(gb); };
-        table[0xEA] = [this](Gameboy &gb) -> bool { return this->LDFromAccumulatorDirect(gb); };
-        table[0xEE] = [this](Gameboy &gb) -> bool { return this->XORImmediate(gb); };
-        table[0xEF] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H28>(gb); };
-        table[0xF0] = [this](Gameboy &gb) -> bool { return this->LoadAccumulatorA(gb); };
-        table[0xF1] = [this](Gameboy &gb) -> bool { return this->POP<StackTarget::AF>(gb); };
-        table[0xF2] = [this](Gameboy &gb) -> bool { return this->LoadAccumulatorIndirectC(gb); };
-        table[0xF3] = [this](Gameboy &gb) -> bool { return this->DI(gb); };
-        table[0xF5] = [this](Gameboy &gb) -> bool { return this->PUSH<StackTarget::AF>(gb); };
-        table[0xF6] = [this](Gameboy &gb) -> bool { return this->ORImmediate(gb); };
-        table[0xF7] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H30>(gb); };
-        table[0xF8] = [this](Gameboy &gb) -> bool { return this->LD16StackAdjusted(gb); };
-        table[0xF9] = [this](Gameboy &gb) -> bool { return this->LD16Stack(gb); };
-        table[0xFA] = [this](Gameboy &gb) -> bool { return this->LDAccumulatorDirect(gb); };
-        table[0xFB] = [this](Gameboy &gb) -> bool { return this->EI(gb); };
-        table[0xFE] = [this](Gameboy &gb) -> bool { return this->CPImmediate(gb); };
-        table[0xFF] = [this](Gameboy &gb) -> bool { return this->RST<RSTTarget::H38>(gb); };
+        table[0x00] = [this](CPU &cpu) -> bool { return this->NOP(cpu); };
+        table[0x01] = [this](CPU &cpu) -> bool { return this->LD16Register<LoadWordTarget::BC>(cpu); };
+        table[0x02] = [this](CPU &cpu) -> bool { return this->LDFromAccBC(cpu); };
+        table[0x03] = [this](CPU &cpu) -> bool { return this->INC16<Arithmetic16Target::BC>(cpu); };
+        table[0x04] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::B>(cpu); };
+        table[0x05] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::B>(cpu); };
+        table[0x06] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::B>(cpu); };
+        table[0x07] = [this](CPU &cpu) -> bool { return this->RLCA(cpu); };
+        table[0x08] = [this](CPU &cpu) -> bool { return this->LD16FromStack(cpu); };
+        table[0x09] = [this](CPU &cpu) -> bool { return this->ADD16<Arithmetic16Target::BC>(cpu); };
+        table[0x10] = [this](CPU &cpu) -> bool { return this->STOP(cpu); };
+        table[0x0A] = [this](CPU &cpu) -> bool { return this->LDAccumulatorBC(cpu); };
+        table[0x0B] = [this](CPU &cpu) -> bool { return this->DEC16<Arithmetic16Target::BC>(cpu); };
+        table[0x0C] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::C>(cpu); };
+        table[0x0D] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::C>(cpu); };
+        table[0x0E] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::C>(cpu); };
+        table[0x0F] = [this](CPU &cpu) -> bool { return this->RRCA(cpu); };
+        table[0x11] = [this](CPU &cpu) -> bool { return this->LD16Register<LoadWordTarget::DE>(cpu); };
+        table[0x12] = [this](CPU &cpu) -> bool { return this->LDFromAccDE(cpu); };
+        table[0x13] = [this](CPU &cpu) -> bool { return this->INC16<Arithmetic16Target::DE>(cpu); };
+        table[0x14] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::D>(cpu); };
+        table[0x15] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::D>(cpu); };
+        table[0x16] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::D>(cpu); };
+        table[0x17] = [this](CPU &cpu) -> bool { return this->RLA(cpu); };
+        table[0x18] = [this](CPU &cpu) -> bool { return this->JRUnconditional(cpu); };
+        table[0x19] = [this](CPU &cpu) -> bool { return this->ADD16<Arithmetic16Target::DE>(cpu); };
+        table[0x1A] = [this](CPU &cpu) -> bool { return this->LDAccumulatorDE(cpu); };
+        table[0x1B] = [this](CPU &cpu) -> bool { return this->DEC16<Arithmetic16Target::DE>(cpu); };
+        table[0x1C] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::E>(cpu); };
+        table[0x1D] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::E>(cpu); };
+        table[0x1E] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::E>(cpu); };
+        table[0x1F] = [this](CPU &cpu) -> bool { return this->RRA(cpu); };
+        table[0x20] = [this](CPU &cpu) -> bool { return this->JR<JumpTest::NotZero>(cpu); };
+        table[0x21] = [this](CPU &cpu) -> bool { return this->LD16Register<LoadWordTarget::HL>(cpu); };
+        table[0x22] = [this](CPU &cpu) -> bool { return this->LDFromAccumulatorIndirectInc(cpu); };
+        table[0x23] = [this](CPU &cpu) -> bool { return this->INC16<Arithmetic16Target::HL>(cpu); };
+        table[0x24] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::H>(cpu); };
+        table[0x25] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::H>(cpu); };
+        table[0x26] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::H>(cpu); };
+        table[0x27] = [this](CPU &cpu) -> bool { return this->DAA(cpu); };
+        table[0x28] = [this](CPU &cpu) -> bool { return this->JR<JumpTest::Zero>(cpu); };
+        table[0x29] = [this](CPU &cpu) -> bool { return this->ADD16<Arithmetic16Target::HL>(cpu); };
+        table[0x2A] = [this](CPU &cpu) -> bool { return this->LDAccumulatorIndirectInc(cpu); };
+        table[0x2B] = [this](CPU &cpu) -> bool { return this->DEC16<Arithmetic16Target::HL>(cpu); };
+        table[0x2C] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::L>(cpu); };
+        table[0x2D] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::L>(cpu); };
+        table[0x2E] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::L>(cpu); };
+        table[0x2F] = [this](CPU &cpu) -> bool { return this->CPL(cpu); };
+        table[0x30] = [this](CPU &cpu) -> bool { return this->JR<JumpTest::NotCarry>(cpu); };
+        table[0x31] = [this](CPU &cpu) -> bool { return this->LD16Register<LoadWordTarget::SP>(cpu); };
+        table[0x32] = [this](CPU &cpu) -> bool { return this->LDFromAccumulatorIndirectDec(cpu); };
+        table[0x33] = [this](CPU &cpu) -> bool { return this->INC16<Arithmetic16Target::SP>(cpu); };
+        table[0x34] = [this](CPU &cpu) -> bool { return this->INCIndirect(cpu); };
+        table[0x35] = [this](CPU &cpu) -> bool { return this->DECIndirect(cpu); };
+        table[0x36] = [this](CPU &cpu) -> bool { return this->LDAddrImmediate(cpu); };
+        table[0x37] = [this](CPU &cpu) -> bool { return this->SCF(cpu); };
+        table[0x38] = [this](CPU &cpu) -> bool { return this->JR<JumpTest::Carry>(cpu); };
+        table[0x39] = [this](CPU &cpu) -> bool { return this->ADD16<Arithmetic16Target::SP>(cpu); };
+        table[0x3A] = [this](CPU &cpu) -> bool { return this->LDAccumulatorIndirectDec(cpu); };
+        table[0x3B] = [this](CPU &cpu) -> bool { return this->DEC16<Arithmetic16Target::SP>(cpu); };
+        table[0x3C] = [this](CPU &cpu) -> bool { return this->INCRegister<Register::A>(cpu); };
+        table[0x3D] = [this](CPU &cpu) -> bool { return this->DECRegister<Register::A>(cpu); };
+        table[0x3E] = [this](CPU &cpu) -> bool { return this->LDRegisterImmediate<Register::A>(cpu); };
+        table[0x3F] = [this](CPU &cpu) -> bool { return this->CCF(cpu); };
+        table[0x40] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::B>(cpu); };
+        table[0x41] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::C>(cpu); };
+        table[0x42] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::D>(cpu); };
+        table[0x43] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::E>(cpu); };
+        table[0x44] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::H>(cpu); };
+        table[0x45] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::L>(cpu); };
+        table[0x46] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::B>(cpu); };
+        table[0x47] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::B, Register::A>(cpu); };
+        table[0x48] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::B>(cpu); };
+        table[0x49] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::C>(cpu); };
+        table[0x4A] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::D>(cpu); };
+        table[0x4B] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::E>(cpu); };
+        table[0x4C] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::H>(cpu); };
+        table[0x4D] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::L>(cpu); };
+        table[0x4E] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::C>(cpu); };
+        table[0x4F] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::C, Register::A>(cpu); };
+        table[0x50] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::B>(cpu); };
+        table[0x51] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::C>(cpu); };
+        table[0x52] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::D>(cpu); };
+        table[0x53] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::E>(cpu); };
+        table[0x54] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::H>(cpu); };
+        table[0x55] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::L>(cpu); };
+        table[0x56] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::D>(cpu); };
+        table[0x57] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::D, Register::A>(cpu); };
+        table[0x58] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::B>(cpu); };
+        table[0x59] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::C>(cpu); };
+        table[0x5A] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::D>(cpu); };
+        table[0x5B] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::E>(cpu); };
+        table[0x5C] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::H>(cpu); };
+        table[0x5D] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::L>(cpu); };
+        table[0x5E] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::E>(cpu); };
+        table[0x5F] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::E, Register::A>(cpu); };
+        table[0x60] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::B>(cpu); };
+        table[0x61] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::C>(cpu); };
+        table[0x62] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::D>(cpu); };
+        table[0x63] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::E>(cpu); };
+        table[0x64] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::H>(cpu); };
+        table[0x65] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::L>(cpu); };
+        table[0x66] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::H>(cpu); };
+        table[0x67] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::H, Register::A>(cpu); };
+        table[0x68] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::B>(cpu); };
+        table[0x69] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::C>(cpu); };
+        table[0x6A] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::D>(cpu); };
+        table[0x6B] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::E>(cpu); };
+        table[0x6C] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::H>(cpu); };
+        table[0x6D] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::L>(cpu); };
+        table[0x6E] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::L>(cpu); };
+        table[0x6F] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::L, Register::A>(cpu); };
+        table[0x70] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::B>(cpu); };
+        table[0x71] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::C>(cpu); };
+        table[0x72] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::D>(cpu); };
+        table[0x73] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::E>(cpu); };
+        table[0x74] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::H>(cpu); };
+        table[0x75] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::L>(cpu); };
+        table[0x76] = [this](CPU &cpu) -> bool { return this->HALT(cpu); };
+        table[0x77] = [this](CPU &cpu) -> bool { return this->LDAddrRegister<Register::A>(cpu); };
+        table[0x78] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::B>(cpu); };
+        table[0x79] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::C>(cpu); };
+        table[0x7A] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::D>(cpu); };
+        table[0x7B] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::E>(cpu); };
+        table[0x7C] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::H>(cpu); };
+        table[0x7D] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::L>(cpu); };
+        table[0x7E] = [this](CPU &cpu) -> bool { return this->LDRegisterIndirect<Register::A>(cpu); };
+        table[0x7F] = [this](CPU &cpu) -> bool { return this->LDRegister<Register::A, Register::A>(cpu); };
+        table[0x80] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::B>(cpu); };
+        table[0x81] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::C>(cpu); };
+        table[0x82] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::D>(cpu); };
+        table[0x83] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::E>(cpu); };
+        table[0x84] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::H>(cpu); };
+        table[0x85] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::L>(cpu); };
+        table[0x86] = [this](CPU &cpu) -> bool { return this->ADDIndirect(cpu); };
+        table[0x87] = [this](CPU &cpu) -> bool { return this->ADDRegister<Register::A>(cpu); };
+        table[0x88] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::B>(cpu); };
+        table[0x89] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::C>(cpu); };
+        table[0x8A] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::D>(cpu); };
+        table[0x8B] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::E>(cpu); };
+        table[0x8C] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::H>(cpu); };
+        table[0x8D] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::L>(cpu); };
+        table[0x8E] = [this](CPU &cpu) -> bool { return this->ADCIndirect(cpu); };
+        table[0x8F] = [this](CPU &cpu) -> bool { return this->ADCRegister<Register::A>(cpu); };
+        table[0x90] = [this](CPU &cpu) -> bool { return this->SUB<Register::B>(cpu); };
+        table[0x91] = [this](CPU &cpu) -> bool { return this->SUB<Register::C>(cpu); };
+        table[0x92] = [this](CPU &cpu) -> bool { return this->SUB<Register::D>(cpu); };
+        table[0x93] = [this](CPU &cpu) -> bool { return this->SUB<Register::E>(cpu); };
+        table[0x94] = [this](CPU &cpu) -> bool { return this->SUB<Register::H>(cpu); };
+        table[0x95] = [this](CPU &cpu) -> bool { return this->SUB<Register::L>(cpu); };
+        table[0x96] = [this](CPU &cpu) -> bool { return this->SUBIndirect(cpu); };
+        table[0x97] = [this](CPU &cpu) -> bool { return this->SUB<Register::A>(cpu); };
+        table[0x98] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::B>(cpu); };
+        table[0x99] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::C>(cpu); };
+        table[0x9A] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::D>(cpu); };
+        table[0x9B] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::E>(cpu); };
+        table[0x9C] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::H>(cpu); };
+        table[0x9D] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::L>(cpu); };
+        table[0x9E] = [this](CPU &cpu) -> bool { return this->SBCIndirect(cpu); };
+        table[0x9F] = [this](CPU &cpu) -> bool { return this->SBCRegister<Register::A>(cpu); };
+        table[0xA0] = [this](CPU &cpu) -> bool { return this->AND<Register::B>(cpu); };
+        table[0xA1] = [this](CPU &cpu) -> bool { return this->AND<Register::C>(cpu); };
+        table[0xA2] = [this](CPU &cpu) -> bool { return this->AND<Register::D>(cpu); };
+        table[0xA3] = [this](CPU &cpu) -> bool { return this->AND<Register::E>(cpu); };
+        table[0xA4] = [this](CPU &cpu) -> bool { return this->AND<Register::H>(cpu); };
+        table[0xA5] = [this](CPU &cpu) -> bool { return this->AND<Register::L>(cpu); };
+        table[0xA6] = [this](CPU &cpu) -> bool { return this->ANDIndirect(cpu); };
+        table[0xA7] = [this](CPU &cpu) -> bool { return this->AND<Register::A>(cpu); };
+        table[0xA8] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::B>(cpu); };
+        table[0xA9] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::C>(cpu); };
+        table[0xAA] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::D>(cpu); };
+        table[0xAB] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::E>(cpu); };
+        table[0xAC] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::H>(cpu); };
+        table[0xAD] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::L>(cpu); };
+        table[0xAE] = [this](CPU &cpu) -> bool { return this->XORIndirect(cpu); };
+        table[0xAF] = [this](CPU &cpu) -> bool { return this->XORRegister<Register::A>(cpu); };
+        table[0xB0] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::B>(cpu); };
+        table[0xB1] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::C>(cpu); };
+        table[0xB2] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::D>(cpu); };
+        table[0xB3] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::E>(cpu); };
+        table[0xB4] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::H>(cpu); };
+        table[0xB5] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::L>(cpu); };
+        table[0xB6] = [this](CPU &cpu) -> bool { return this->ORIndirect(cpu); };
+        table[0xB7] = [this](CPU &cpu) -> bool { return this->ORRegister<Register::A>(cpu); };
+        table[0xB8] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::B>(cpu); };
+        table[0xB9] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::C>(cpu); };
+        table[0xBA] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::D>(cpu); };
+        table[0xBB] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::E>(cpu); };
+        table[0xBC] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::H>(cpu); };
+        table[0xBD] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::L>(cpu); };
+        table[0xBE] = [this](CPU &cpu) -> bool { return this->CPIndirect(cpu); };
+        table[0xBF] = [this](CPU &cpu) -> bool { return this->CPRegister<Register::A>(cpu); };
+        table[0xC0] = [this](CPU &cpu) -> bool { return this->RETConditional<JumpTest::NotZero>(cpu); };
+        table[0xC1] = [this](CPU &cpu) -> bool { return this->POP<StackTarget::BC>(cpu); };
+        table[0xC2] = [this](CPU &cpu) -> bool { return this->JP<JumpTest::NotZero>(cpu); };
+        table[0xC3] = [this](CPU &cpu) -> bool { return this->JPUnconditional(cpu); };
+        table[0xC4] = [this](CPU &cpu) -> bool { return this->CALL<JumpTest::NotZero>(cpu); };
+        table[0xC5] = [this](CPU &cpu) -> bool { return this->PUSH<StackTarget::BC>(cpu); };
+        table[0xC6] = [this](CPU &cpu) -> bool { return this->ADDImmediate(cpu); };
+        table[0xC7] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H00>(cpu); };
+        table[0xC8] = [this](CPU &cpu) -> bool { return this->RETConditional<JumpTest::Zero>(cpu); };
+        table[0xC9] = [this](CPU &cpu) -> bool { return this->RETUnconditional(cpu); };
+        table[0xCA] = [this](CPU &cpu) -> bool { return this->JP<JumpTest::Zero>(cpu); };
+        table[0xCB] = [this](CPU &cpu) -> bool { return this->PREFIX(cpu); };
+        table[0xCC] = [this](CPU &cpu) -> bool { return this->CALL<JumpTest::Zero>(cpu); };
+        table[0xCD] = [this](CPU &cpu) -> bool { return this->CALLUnconditional(cpu); };
+        table[0xCE] = [this](CPU &cpu) -> bool { return this->ADCImmediate(cpu); };
+        table[0xCF] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H08>(cpu); };
+        table[0xD0] = [this](CPU &cpu) -> bool { return this->RETConditional<JumpTest::NotCarry>(cpu); };
+        table[0xD1] = [this](CPU &cpu) -> bool { return this->POP<StackTarget::DE>(cpu); };
+        table[0xD2] = [this](CPU &cpu) -> bool { return this->JP<JumpTest::NotCarry>(cpu); };
+        table[0xD4] = [this](CPU &cpu) -> bool { return this->CALL<JumpTest::NotCarry>(cpu); };
+        table[0xD5] = [this](CPU &cpu) -> bool { return this->PUSH<StackTarget::DE>(cpu); };
+        table[0xD6] = [this](CPU &cpu) -> bool { return this->SUBImmediate(cpu); };
+        table[0xD7] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H10>(cpu); };
+        table[0xD8] = [this](CPU &cpu) -> bool { return this->RETConditional<JumpTest::Carry>(cpu); };
+        table[0xD9] = [this](CPU &cpu) -> bool { return this->RETI(cpu); };
+        table[0xDA] = [this](CPU &cpu) -> bool { return this->JP<JumpTest::Carry>(cpu); };
+        table[0xDC] = [this](CPU &cpu) -> bool { return this->CALL<JumpTest::Carry>(cpu); };
+        table[0xDE] = [this](CPU &cpu) -> bool { return this->SBCImmediate(cpu); };
+        table[0xDF] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H18>(cpu); };
+        table[0xE0] = [this](CPU &cpu) -> bool { return this->LoadFromAccumulatorDirectA(cpu); };
+        table[0xE1] = [this](CPU &cpu) -> bool { return this->POP<StackTarget::HL>(cpu); };
+        table[0xE2] = [this](CPU &cpu) -> bool { return this->LoadFromAccumulatorIndirectC(cpu); };
+        table[0xE5] = [this](CPU &cpu) -> bool { return this->PUSH<StackTarget::HL>(cpu); };
+        table[0xE6] = [this](CPU &cpu) -> bool { return this->ANDImmediate(cpu); };
+        table[0xE7] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H20>(cpu); };
+        table[0xE8] = [this](CPU &cpu) -> bool { return this->ADDSigned(cpu); };
+        table[0xE9] = [this](CPU &cpu) -> bool { return this->JPHL(cpu); };
+        table[0xEA] = [this](CPU &cpu) -> bool { return this->LDFromAccumulatorDirect(cpu); };
+        table[0xEE] = [this](CPU &cpu) -> bool { return this->XORImmediate(cpu); };
+        table[0xEF] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H28>(cpu); };
+        table[0xF0] = [this](CPU &cpu) -> bool { return this->LoadAccumulatorA(cpu); };
+        table[0xF1] = [this](CPU &cpu) -> bool { return this->POP<StackTarget::AF>(cpu); };
+        table[0xF2] = [this](CPU &cpu) -> bool { return this->LoadAccumulatorIndirectC(cpu); };
+        table[0xF3] = [this](CPU &cpu) -> bool { return this->DI(cpu); };
+        table[0xF5] = [this](CPU &cpu) -> bool { return this->PUSH<StackTarget::AF>(cpu); };
+        table[0xF6] = [this](CPU &cpu) -> bool { return this->ORImmediate(cpu); };
+        table[0xF7] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H30>(cpu); };
+        table[0xF8] = [this](CPU &cpu) -> bool { return this->LD16StackAdjusted(cpu); };
+        table[0xF9] = [this](CPU &cpu) -> bool { return this->LD16Stack(cpu); };
+        table[0xFA] = [this](CPU &cpu) -> bool { return this->LDAccumulatorDirect(cpu); };
+        table[0xFB] = [this](CPU &cpu) -> bool { return this->EI(cpu); };
+        table[0xFE] = [this](CPU &cpu) -> bool { return this->CPImmediate(cpu); };
+        table[0xFF] = [this](CPU &cpu) -> bool { return this->RST<RSTTarget::H38>(cpu); };
         return table;
     }();
 
