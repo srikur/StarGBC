@@ -8,8 +8,6 @@
 #include "Registers.h"
 #include "Instructions.h"
 
-class Instructions;
-
 enum class Mode {
     None = 0x00,
     DMG = 0x01,
@@ -45,40 +43,26 @@ class Gameboy {
     static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
     std::string rom_path_;
     std::string bios_path_;
-    std::unique_ptr<Registers> regs = std::make_unique<Registers>();
-    std::unique_ptr<Bus> bus = std::make_unique<Bus>(rom_path_);
-    std::unique_ptr<Instructions> instructions = std::make_unique<Instructions>();
+    std::unique_ptr<CPU> cpu = nullptr;
+
     Mode mode_ = Mode::DMG;
-    uint16_t currentInstruction = 0x00;
 
     InterruptState interruptState{InterruptState::M1};
     uint16_t previousPC{0x00};
-    uint16_t nextInstruction{0x0000};
-    bool runPrefixStall{false};
-    bool prefixed{false};
-    uint8_t mCycleCounter{0x01};
     uint8_t tCycleCounter{0x00};
     uint32_t masterCycles{0x00000000};
     uint8_t interruptBit{0x00};
     uint8_t interruptMask{0x00};
-    uint16_t pc = 0x00;
-    uint16_t sp = 0x00;
-    uint8_t icount = 0;
-    bool halted = false;
     bool instrRunning = false;
-    bool haltBug = false;
 
     bool throttleSpeed = true;
     int speedMultiplier = 1;
     bool paused = false;
-    bool stopped = false;
     bool instrComplete = true;
     uint16_t previousInstruction = 0x0000;
     bool previousPrefixed = false;
 
     void ExecuteMicroOp();
-
-    uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
 
     void InitializeBootrom() const;
 
@@ -91,7 +75,6 @@ class Gameboy {
     void PrintCurrentValues();
 
 public:
-    friend class Instructions;
 
     explicit Gameboy(std::string rom_path, std::string bios_path, const Mode mode,
                      const bool debugStart, const bool realRTC) : rom_path_(std::move(rom_path)),
@@ -124,10 +107,6 @@ public:
     Gameboy &operator=(Gameboy &&other) = delete;
 
     ~Gameboy() = default;
-
-    bool IsDMG() const {
-        return bus->gpu_->hardware == GPU::Hardware::DMG;
-    }
 
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) {
         return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart, settings.realRTC);
