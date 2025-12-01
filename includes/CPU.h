@@ -14,7 +14,8 @@ class CPU {
 public:
     CPU() = delete;
 
-    explicit CPU(const Mode mode, const std::string &biosPath, const bool useRealRTC) : mode_(mode) {
+    explicit CPU(const Mode mode, const std::string &biosPath,
+                 const std::string &romPath, const bool useRealRTC) : bus(std::make_unique<Bus>(romPath)), mode_(mode) {
         if (mode_ != Mode::None) {
             bus->gpu_->hardware = mode == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
             bus->audio_->SetDMG(bus->gpu_->hardware == GPU::Hardware::DMG);

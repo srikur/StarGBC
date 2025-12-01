@@ -30,7 +30,7 @@ public:
                      const bool debugStart, const bool realRTC) : romPath_(std::move(romPath)),
                                                                   biosPath_(std::move(biosPath)),
                                                                   paused(debugStart) {
-        cpu = std::make_unique<CPU>(mode, biosPath_, realRTC);
+        cpu = std::make_unique<CPU>(mode, biosPath_, romPath_, realRTC);
     }
 
     Gameboy(const Gameboy &other) = delete;
