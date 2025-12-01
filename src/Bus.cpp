@@ -258,7 +258,7 @@ void Bus::UpdateTimers() {
     }
 
     const bool timerEnabled = timer_.tac & 0x04;
-    const int timerBit = Timer::TimerBit(timer_.tac);
+    const int timerBit = timer_.TimerBit(timer_.tac);
     const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
     const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
 
