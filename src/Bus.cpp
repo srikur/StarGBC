@@ -28,16 +28,12 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
-                if (gpu_->hardware == GPU::Hardware::CGB) {
-                    if ((address < 0x100) || (address > 0x1FF)) {
-                        return bootrom[address];
-                    }
+                if (gpu_->hardware == GPU::Hardware::CGB && (address < 0x100 || address > 0x1FF)) {
+                    return bootrom[address];
                 }
 
-                if (gpu_->hardware == GPU::Hardware::DMG) {
-                    if (address < 0x100) {
-                        return bootrom[address];
-                    }
+                if (gpu_->hardware == GPU::Hardware::DMG && address < 0x100) {
+                    return bootrom[address];
                 }
             }
             return cartridge_->ReadByte(address);
@@ -57,12 +53,12 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
                 if (gpu_->hardware == GPU::Hardware::DMG) return 0xFF;
-                const uint8_t first = (speed == Speed::Double) ? 0x80 : 0x00;
+                const uint8_t first = speed == Speed::Double ? 0x80 : 0x00;
                 const uint8_t second = prepareSpeedShift ? 0x01 : 0x00;
                 return first | second | 0x7E;
             }
             if (address == 0xFF46) { return dma_.writtenValue; }
-            // if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
+            if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_->ReadRegisters(address);
         }
         case 0xFF50 ... 0xFF55: return gpu_->hdma.ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
@@ -333,9 +329,7 @@ uint32_t Bus::RunHDMA() const {
         return 0;
     }
 
-    const bool doubleSpeed = (speed == Speed::Double);
-    const uint32_t cyclesPerBlock = doubleSpeed ? 16 : 8;
-
+    const uint32_t cyclesPerBlock = speed == Speed::Double ? 16 : 8;
     switch (gpu_->hdma.hdmaMode) {
         case HDMAMode::GDMA: {
             const uint32_t blocks = static_cast<uint32_t>(gpu_->hdma.hdmaRemain) + 1;
