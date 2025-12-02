@@ -65,7 +65,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
             // if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_->ReadRegisters(address);
         }
-        case 0xFF50 ... 0xFF55: return ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
+        case 0xFF50 ... 0xFF55: return gpu_->hdma.ReadHDMA(address, gpu_->hardware == GPU::Hardware::CGB);
         case 0xFF68 ... 0xFF6C: return gpu_->ReadRegisters(address);
         case 0xFF70: return gpu_->hardware == GPU::Hardware::CGB ? memory_.wramBank_ : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
@@ -109,7 +109,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             } else { gpu_->WriteRegisters(address, value); }
             break;
         }
-        case 0xFF51 ... 0xFF55: WriteHDMA(address, value);
+        case 0xFF51 ... 0xFF55: gpu_->hdma.WriteHDMA(address, value);
             break;
         case 0xFF68 ... 0xFF6C: gpu_->WriteRegisters(address, value);
             break;
@@ -336,44 +336,6 @@ void Bus::SetInterrupt(const InterruptType interrupt, const bool delayed) {
     }
 }
 
-uint8_t Bus::ReadHDMA(const uint16_t address, const bool gbc) const {
-    switch (address) {
-        case 0xFF50 ... 0xFF54: return 0xFF;
-        case 0xFF55: return gbc ? (hdmaRemain | (hdmaActive ? 0x00 : 0x80)) : 0xFF;
-        default: throw UnreachableCodeException("Bus::ReadHDMA unreachable code at address: " + std::to_string(address));
-    }
-}
-
-void Bus::WriteHDMA(const uint16_t address, const uint8_t value) {
-    switch (address) {
-        case 0xFF51: hdmaSource = (static_cast<uint16_t>(value) << 8) | (hdmaSource & 0xFF);
-            break;
-        case 0xFF52: hdmaSource = (hdmaSource & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
-            break;
-        case 0xFF53: hdmaDestination = 0x8000 | (static_cast<uint16_t>(value & 0x1F) << 8) | (hdmaDestination & 0xFF);
-            break;
-        case 0xFF54: hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
-            break;
-        case 0xFF55: {
-            if (hdmaActive && gpu_->hdmaMode == GPU::HDMAMode::HDMA) {
-                if (!Bit<7>(value)) {
-                    hdmaActive = false;
-                }
-                return;
-            }
-            hdmaActive = true;
-            hdmaRemain = value & 0x7F;
-            if (Bit<7>(value)) {
-                gpu_->hdmaMode = GPU::HDMAMode::HDMA;
-            } else {
-                gpu_->hdmaMode = GPU::HDMAMode::GDMA;
-            }
-            break;
-        }
-        default: throw UnreachableCodeException("Bus::WriteHDMA unreachable code");
-    }
-}
-
 void Bus::ChangeSpeed() {
     if (prepareSpeedShift) {
         speed = speed == Speed::Regular ? Speed::Double : Speed::Regular;
@@ -390,10 +352,6 @@ bool Bus::SaveState(std::ofstream &stateFile) const {
         stateFile.write(reinterpret_cast<const char *>(&interruptEnable), sizeof(interruptEnable));
         stateFile.write(reinterpret_cast<const char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
         stateFile.write(reinterpret_cast<const char *>(&interruptDelay), sizeof(interruptDelay));
-        stateFile.write(reinterpret_cast<const char *>(&hdmaSource), sizeof(hdmaSource));
-        stateFile.write(reinterpret_cast<const char *>(&hdmaDestination), sizeof(hdmaDestination));
-        stateFile.write(reinterpret_cast<const char *>(&hdmaActive), sizeof(hdmaActive));
-        stateFile.write(reinterpret_cast<const char *>(&hdmaRemain), sizeof(hdmaRemain));
         return cartridge_->SaveState(stateFile) && gpu_->SaveState(stateFile) &&
                joypad_.SaveState(stateFile) && memory_.SaveState(stateFile) &&
                timer_.SaveState(stateFile) && serial_.SaveState(stateFile);
@@ -412,10 +370,6 @@ void Bus::LoadState(std::ifstream &stateFile) {
         stateFile.read(reinterpret_cast<char *>(&interruptEnable), sizeof(interruptEnable));
         stateFile.read(reinterpret_cast<char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
         stateFile.read(reinterpret_cast<char *>(&interruptDelay), sizeof(interruptDelay));
-        stateFile.read(reinterpret_cast<char *>(&hdmaSource), sizeof(hdmaSource));
-        stateFile.read(reinterpret_cast<char *>(&hdmaDestination), sizeof(hdmaDestination));
-        stateFile.read(reinterpret_cast<char *>(&hdmaActive), sizeof(hdmaActive));
-        stateFile.read(reinterpret_cast<char *>(&hdmaRemain), sizeof(hdmaRemain));
 
         cartridge_->LoadState(stateFile);
         gpu_->LoadState(stateFile);

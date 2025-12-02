@@ -3,6 +3,7 @@
 #include <deque>
 
 #include "Common.h"
+#include "HDMA.h"
 
 class GPU {
 public:
@@ -223,19 +224,7 @@ public:
 
     [[nodiscard]] bool LCDDisabled() const;
 
-    enum class HDMAMode {
-        GDMA, HDMA
-    };
-
-    struct HDMA {
-        uint16_t source;
-        uint16_t destination;
-        bool active;
-        HDMAMode mode;
-        uint8_t remain;
-    };
-
-    HDMAMode hdmaMode = HDMAMode::GDMA;
+    HDMA hdma{};
     Hardware hardware = Hardware::DMG;
 
     bool SaveState(std::ofstream &stateFile) const {
@@ -264,6 +253,7 @@ public:
             stateFile.write(reinterpret_cast<const char *>(&vramBank), sizeof(vramBank));
             stateFile.write(reinterpret_cast<const char *>(&bgpd), sizeof(bgpd));
             stateFile.write(reinterpret_cast<const char *>(&obpd), sizeof(obpd));
+            stateFile.write(reinterpret_cast<const char *>(&hdma), sizeof(hdma));
         } catch (const std::exception &e) {
             std::cerr << "Error saving GPU state: " << e.what() << '\n';
             return false;
@@ -296,6 +286,7 @@ public:
             stateFile.read(reinterpret_cast<char *>(&vramBank), sizeof(vramBank));
             stateFile.read(reinterpret_cast<char *>(&bgpd), sizeof(bgpd));
             stateFile.read(reinterpret_cast<char *>(&obpd), sizeof(obpd));
+            stateFile.read(reinterpret_cast<char *>(&hdma), sizeof(hdma));
         } catch (const std::exception &e) {
             std::cerr << "Error loading GPU state: " << e.what() << '\n';
             return false;
