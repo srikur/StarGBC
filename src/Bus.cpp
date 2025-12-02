@@ -327,6 +327,50 @@ void Bus::UpdateSerial() {
     }
 }
 
+/* Lots of pointer indirection going on here :( */
+uint32_t Bus::RunHDMA() const {
+    if (!gpu_->hdma.hdmaActive || gpu_->hardware == GPU::Hardware::DMG) {
+        return 0;
+    }
+
+    const bool doubleSpeed = (speed == Speed::Double);
+    const uint32_t cyclesPerBlock = doubleSpeed ? 16 : 8;
+
+    switch (gpu_->hdma.hdmaMode) {
+        case HDMAMode::GDMA: {
+            const uint32_t blocks = static_cast<uint32_t>(gpu_->hdma.hdmaRemain) + 1;
+            for (uint32_t unused = 0; unused < blocks; ++unused) {
+                const uint16_t memSource = gpu_->hdma.hdmaSource;
+                for (uint16_t i = 0; i < 0x10; ++i) {
+                    const uint8_t byte = ReadByte(memSource + i);
+                    gpu_->WriteVRAM(gpu_->hdma.hdmaDestination + i, byte);
+                }
+                gpu_->hdma.hdmaSource += 0x10;
+                gpu_->hdma.hdmaDestination += 0x10;
+                gpu_->hdma.hdmaRemain = (gpu_->hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_->hdma.hdmaRemain - 1);
+            }
+            gpu_->hdma.hdmaActive = false;
+            return blocks * cyclesPerBlock;
+        }
+        case HDMAMode::HDMA: {
+            if (!gpu_->hblank) return 0;
+
+            const uint16_t memSource = gpu_->hdma.hdmaSource;
+            for (uint16_t i = 0; i < 0x10; ++i) {
+                const uint8_t byte = ReadByte(memSource + i);
+                gpu_->WriteVRAM(gpu_->hdma.hdmaDestination + i, byte);
+            }
+            gpu_->hdma.hdmaSource += 0x10;
+            gpu_->hdma.hdmaDestination += 0x10;
+            gpu_->hdma.hdmaRemain = (gpu_->hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_->hdma.hdmaRemain - 1);
+            if (gpu_->hdma.hdmaRemain == 0x7F) gpu_->hdma.hdmaActive = false;
+            return cyclesPerBlock;
+        }
+        default: return 0;
+    }
+}
+
+
 void Bus::SetInterrupt(const InterruptType interrupt, const bool delayed) {
     const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
     if (!delayed) interruptFlag |= mask;

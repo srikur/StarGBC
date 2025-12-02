@@ -111,6 +111,8 @@ public:
 
     void UpdateSerial();
 
+    uint32_t RunHDMA() const;
+
     void UpdateRTC() const;
 
     void ChangeSpeed();
