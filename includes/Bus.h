@@ -113,10 +113,6 @@ public:
 
     void UpdateRTC() const;
 
-    [[nodiscard]] uint8_t ReadHDMA(uint16_t address, bool gbc) const;
-
-    void WriteHDMA(uint16_t address, uint8_t value);
-
     void ChangeSpeed();
 
     bool SaveState(std::ofstream &stateFile) const;
@@ -140,10 +136,6 @@ public:
     // GBC
     Speed speed = Speed::Regular;
     bool prepareSpeedShift{false};
-    uint16_t hdmaSource{0x0000};
-    uint16_t hdmaDestination{0x8000};
-    bool hdmaActive{false};
-    uint8_t hdmaRemain{0x00};
 
     //Interrupts
     enum class InterruptType {
