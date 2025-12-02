@@ -33,8 +33,10 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
 
 uint8_t HDMA::ReadHDMA(const uint16_t address, const bool gbc) const {
     switch (address) {
+        /* GBCTR pg. 47 -- "Always returns FFh when read" */
         case 0xFF50 ... 0xFF54: return 0xFF;
-        case 0xFF55: return gbc ? (hdmaRemain | (hdmaActive ? 0x00 : 0x80)) : 0xFF;
-        default: throw UnreachableCodeException("Bus::ReadHDMA unreachable code at address: " + std::to_string(address));
+        /* GBCTR pg. 47 -- "Returns FFh in DMG and GBC in DMG mode */
+        case 0xFF55: return gbc ? hdmaRemain | (hdmaActive ? 0x00 : 0x80) : 0xFF;
+        default: throw UnreachableCodeException("HDMA::ReadHDMA unreachable code at address: " + std::to_string(address));
     }
 }

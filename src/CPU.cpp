@@ -41,49 +41,6 @@ bool CPU::IsDMG() const {
     return bus->gpu_->hardware == GPU::Hardware::DMG;
 }
 
-/* Lots of pointer indirection going on here :( */
-uint32_t CPU::RunHDMA() const {
-    if (!bus->gpu_->hdma.hdmaActive || bus->gpu_->hardware == GPU::Hardware::DMG) {
-        return 0;
-    }
-
-    const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
-    const uint32_t cyclesPerBlock = doubleSpeed ? 16 : 8;
-
-    switch (bus->gpu_->hdma.hdmaMode) {
-        case HDMAMode::GDMA: {
-            const uint32_t blocks = static_cast<uint32_t>(bus->gpu_->hdma.hdmaRemain) + 1;
-            for (uint32_t unused = 0; unused < blocks; ++unused) {
-                const uint16_t memSource = bus->gpu_->hdma.hdmaSource;
-                for (uint16_t i = 0; i < 0x10; ++i) {
-                    const uint8_t byte = bus->ReadByte(memSource + i);
-                    bus->gpu_->WriteVRAM(bus->gpu_->hdma.hdmaDestination + i, byte);
-                }
-                bus->gpu_->hdma.hdmaSource += 0x10;
-                bus->gpu_->hdma.hdmaDestination += 0x10;
-                bus->gpu_->hdma.hdmaRemain = (bus->gpu_->hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->gpu_->hdma.hdmaRemain - 1);
-            }
-            bus->gpu_->hdma.hdmaActive = false;
-            return blocks * cyclesPerBlock;
-        }
-        case HDMAMode::HDMA: {
-            if (!bus->gpu_->hblank) return 0;
-
-            const uint16_t memSource = bus->gpu_->hdma.hdmaSource;
-            for (uint16_t i = 0; i < 0x10; ++i) {
-                const uint8_t byte = bus->ReadByte(memSource + i);
-                bus->gpu_->WriteVRAM(bus->gpu_->hdma.hdmaDestination + i, byte);
-            }
-            bus->gpu_->hdma.hdmaSource += 0x10;
-            bus->gpu_->hdma.hdmaDestination += 0x10;
-            bus->gpu_->hdma.hdmaRemain = (bus->gpu_->hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->gpu_->hdma.hdmaRemain - 1);
-            if (bus->gpu_->hdma.hdmaRemain == 0x7F) bus->gpu_->hdma.hdmaActive = false;
-            return cyclesPerBlock;
-        }
-        default: throw UnreachableCodeException("Gameboy::RunHDMA – invalid mode");
-    }
-}
-
 void CPU::InitializeSystem(const Mode mode) {
     regs->SetStartupValues(static_cast<Registers::Model>(mode));
     sp = 0xFFFE;
@@ -121,8 +78,8 @@ void CPU::AdvanceFrame() {
     if (masterCycles % speedDivider == 0) bus->UpdateSerial();
     if (masterCycles % speedDivider == 0) bus->UpdateDMA();
     if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) bus->UpdateGraphics();
+    if (masterCycles % speedDivider == 0) bus->RunHDMA();
     masterCycles++;
-    // need to add hdma tick
 }
 
 void CPU::ExecuteMicroOp() {
