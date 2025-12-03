@@ -41,8 +41,21 @@ enum class Mode {
     AGS_GBC = 0x0A,
 };
 
+enum class Speed {
+    Regular = 0x01,
+    Double = 0x02
+};
+
 enum class InterruptState {
     M1, M2, M3, M4, M5, M6
+};
+
+enum class InterruptType {
+    VBlank,
+    LCDStat,
+    Timer,
+    Serial,
+    Joypad,
 };
 
 class GameboyException : public std::exception {

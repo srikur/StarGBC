@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "Registers.h"
 #include "CPU.h"
+#include "Registers.h"
 
 class CPU;
 
@@ -311,12 +311,17 @@ class Instructions {
     bool ADDSigned(CPU &);
 
 public:
+    explicit Instructions(Registers &regs, Bus &bus) : regs_{regs}, bus_{bus} {
+    }
+
     // used for storing data between cycles
-    bool jumpCondition{false};
+    Registers &regs_;
+    Bus &bus_;
     int8_t signedByte{0};
     uint8_t byte{0};
     uint16_t word{0};
     uint16_t word2{0};
+    bool jumpCondition{false};
 
     using WrappedFunction = std::function<bool(CPU &)>;
 

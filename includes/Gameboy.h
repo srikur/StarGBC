@@ -6,31 +6,27 @@
 
 #include "Common.h"
 #include "CPU.h"
+#include "Memory.h"
 
 struct GameboySettings {
     std::string romName;
     std::string biosPath;
-    Mode mode = Mode::None;
-    bool runBootrom = false;
-    bool debugStart = false;
-    bool realRTC = false;
+    Mode mode{Mode::None};
+    bool runBootrom{false};
+    bool debugStart{false};
+    bool realRTC{false};
 };
 
 class Gameboy {
-    std::string romPath_;
-    std::string biosPath_;
-    std::unique_ptr<CPU> cpu = nullptr;
-
-    bool throttleSpeed = true;
-    int speedMultiplier = 1;
-    bool paused = false;
-
 public:
     explicit Gameboy(std::string romPath, std::string biosPath, const Mode mode,
                      const bool debugStart, const bool realRTC) : romPath_(std::move(romPath)),
                                                                   biosPath_(std::move(biosPath)),
-                                                                  paused(debugStart) {
-        cpu = std::make_unique<CPU>(mode, biosPath_, romPath_, realRTC);
+                                                                  rtc_(realRTC),
+                                                                  cartridge_(romPath_, rtc_),
+                                                                  bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, gpu_),
+                                                                  cpu_(mode, biosPath_, bus_),
+                                                                  paused_(debugStart) {
     }
 
     Gameboy(const Gameboy &other) = delete;
@@ -47,7 +43,7 @@ public:
         return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart, settings.realRTC);
     }
 
-    void UpdateEmulator() const;
+    void UpdateEmulator();
 
     [[nodiscard]] bool ShouldRender() const;
 
@@ -55,30 +51,50 @@ public:
 
     void KeyUp(Keys key) const;
 
-    void KeyDown(Keys key) const;
+    void KeyDown(Keys key);
 
-    [[nodiscard]] uint32_t *GetScreenData() const;
+    [[nodiscard]] const uint32_t *GetScreenData() const;
 
     void ToggleSpeed();
 
     void SetThrottle(bool throttle);
 
-    void SaveScreen() const {
-        try {
-            std::ofstream file(romPath_ + ".screen", std::ios::binary | std::ios::trunc);
-            if (!file.is_open()) throw std::runtime_error("Could not open " + romPath_ + ".screen");
-            file.write(reinterpret_cast<const char *>(GetScreenData()), 160 * 144 * 4);
-            std::fprintf(stderr, "Saved screen to %s.screen\n", romPath_.c_str());
-        } catch (const std::exception &e) {
-            std::fprintf(stderr, "Failed to save screen: %s\n", e.what());
-        }
-    }
+    void SaveScreen() const;
 
     void SetPaused(const bool val) {
-        paused = val;
+        paused_ = val;
     }
 
     [[nodiscard]] bool IsPaused() const {
-        return paused;
+        return paused_;
     }
+
+private:
+    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
+    static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
+    static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
+    static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
+    static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
+
+    std::string romPath_;
+    std::string biosPath_;
+
+    RealTimeClock rtc_; // init in constructor
+    Cartridge cartridge_; // init in constructor
+    DMA dma_{};
+    Joypad joypad_{};
+    Audio audio_{};
+    Memory memory_{};
+    Timer timer_{};
+    Serial serial_{};
+    GPU gpu_{};
+    Bus bus_;
+    CPU cpu_;
+
+    uint32_t masterCycles{0x00000000};
+    int speedMultiplier_{1};
+    bool throttleSpeed_{true};
+    bool paused_{false};
+
+    void AdvanceFrame();
 };
