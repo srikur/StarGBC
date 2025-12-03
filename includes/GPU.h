@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include <deque>
 
 #include "Common.h"
@@ -16,7 +15,6 @@ public:
     static constexpr uint16_t GPU_REGS_END = 0xFF4B;
     static constexpr uint16_t OAM_BEGIN = 0xFE00;
     static constexpr uint16_t OAM_END = 0xFE9F;
-
 
     static constexpr uint8_t OAM_PRIORITY_BIT = 7;
     static constexpr uint8_t OAM_Y_FLIP_BIT = 6;
@@ -178,8 +176,6 @@ public:
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> bgpd = {}; // 0xFF69
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
 
-    GPU() = default;
-
     void TickOAMScan();
 
     void TickMode3();
@@ -227,70 +223,9 @@ public:
     HDMA hdma{};
     Hardware hardware = Hardware::DMG;
 
-    bool SaveState(std::ofstream &stateFile) const {
-        try {
-            stateFile.write(reinterpret_cast<const char *>(&lcdc), sizeof(lcdc));
-            stateFile.write(reinterpret_cast<const char *>(&stat), sizeof(stat));
+    const uint32_t *GetScreenData() const;
 
-            stateFile.write(reinterpret_cast<const char *>(vram.data()), vram.size());
-            stateFile.write(reinterpret_cast<const char *>(oam.data()), oam.size());
-            stateFile.write(reinterpret_cast<const char *>(screenData.data()), screenData.size());
-            stateFile.write(reinterpret_cast<const char *>(priority_), sizeof(priority_));
-            stateFile.write(reinterpret_cast<const char *>(&lyc), sizeof(lyc));
-            stateFile.write(reinterpret_cast<const char *>(&currentLine), sizeof(currentLine));
-            stateFile.write(reinterpret_cast<const char *>(&windowX), sizeof(windowX));
-            stateFile.write(reinterpret_cast<const char *>(&windowY), sizeof(windowY));
-            stateFile.write(reinterpret_cast<const char *>(&backgroundPalette), sizeof(backgroundPalette));
-            stateFile.write(reinterpret_cast<const char *>(&obp0Palette), sizeof(obp0Palette));
-            stateFile.write(reinterpret_cast<const char *>(&obp1Palette), sizeof(obp1Palette));
-            stateFile.write(reinterpret_cast<const char *>(&scrollX), sizeof(scrollX));
-            stateFile.write(reinterpret_cast<const char *>(&scrollY), sizeof(scrollY));
-            stateFile.write(reinterpret_cast<const char *>(&scanlineCounter), sizeof(scanlineCounter));
-            stateFile.write(reinterpret_cast<const char *>(&vblank), sizeof(vblank));
-            stateFile.write(reinterpret_cast<const char *>(&hblank), sizeof(hblank));
-            stateFile.write(reinterpret_cast<const char *>(&bgpi), sizeof(bgpi));
-            stateFile.write(reinterpret_cast<const char *>(&obpi), sizeof(obpi));
-            stateFile.write(reinterpret_cast<const char *>(&vramBank), sizeof(vramBank));
-            stateFile.write(reinterpret_cast<const char *>(&bgpd), sizeof(bgpd));
-            stateFile.write(reinterpret_cast<const char *>(&obpd), sizeof(obpd));
-            stateFile.write(reinterpret_cast<const char *>(&hdma), sizeof(hdma));
-        } catch (const std::exception &e) {
-            std::cerr << "Error saving GPU state: " << e.what() << '\n';
-            return false;
-        }
-        return true;
-    }
+    bool SaveState(std::ofstream &stateFile) const;
 
-    bool LoadState(std::ifstream &stateFile) {
-        try {
-            stateFile.read(reinterpret_cast<char *>(&lcdc), sizeof(lcdc));
-            stateFile.read(reinterpret_cast<char *>(&stat), sizeof(stat));
-            stateFile.read(reinterpret_cast<char *>(vram.data()), vram.size());
-            stateFile.read(reinterpret_cast<char *>(oam.data()), oam.size());
-            stateFile.read(reinterpret_cast<char *>(screenData.data()), screenData.size());
-            stateFile.read(reinterpret_cast<char *>(priority_), sizeof(priority_));
-            stateFile.read(reinterpret_cast<char *>(&lyc), sizeof(lyc));
-            stateFile.read(reinterpret_cast<char *>(&currentLine), sizeof(currentLine));
-            stateFile.read(reinterpret_cast<char *>(&windowX), sizeof(windowX));
-            stateFile.read(reinterpret_cast<char *>(&windowY), sizeof(windowY));
-            stateFile.read(reinterpret_cast<char *>(&backgroundPalette), sizeof(backgroundPalette));
-            stateFile.read(reinterpret_cast<char *>(&obp0Palette), sizeof(obp0Palette));
-            stateFile.read(reinterpret_cast<char *>(&obp1Palette), sizeof(obp1Palette));
-            stateFile.read(reinterpret_cast<char *>(&scrollX), sizeof(scrollX));
-            stateFile.read(reinterpret_cast<char *>(&scrollY), sizeof(scrollY));
-            stateFile.read(reinterpret_cast<char *>(&scanlineCounter), sizeof(scanlineCounter));
-            stateFile.read(reinterpret_cast<char *>(&vblank), sizeof(vblank));
-            stateFile.read(reinterpret_cast<char *>(&hblank), sizeof(hblank));
-            stateFile.read(reinterpret_cast<char *>(&bgpi), sizeof(bgpi));
-            stateFile.read(reinterpret_cast<char *>(&obpi), sizeof(obpi));
-            stateFile.read(reinterpret_cast<char *>(&vramBank), sizeof(vramBank));
-            stateFile.read(reinterpret_cast<char *>(&bgpd), sizeof(bgpd));
-            stateFile.read(reinterpret_cast<char *>(&obpd), sizeof(obpd));
-            stateFile.read(reinterpret_cast<char *>(&hdma), sizeof(hdma));
-        } catch (const std::exception &e) {
-            std::cerr << "Error loading GPU state: " << e.what() << '\n';
-            return false;
-        }
-        return true;
-    }
+    bool LoadState(std::ifstream &stateFile);
 };

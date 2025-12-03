@@ -3,6 +3,8 @@
 
 #include <fstream>
 
+#include "Common.h"
+
 struct Joypad {
     [[nodiscard]] uint8_t GetJoypadState() const;
 
