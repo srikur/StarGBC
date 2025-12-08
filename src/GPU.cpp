@@ -4,7 +4,7 @@
 #include "Common.h"
 
 static constexpr uint8_t expand5(const uint8_t c) noexcept {
-    return static_cast<uint8_t>((c << 3) | (c >> 2));
+    return static_cast<uint8_t>(c << 3 | c >> 2);
 }
 
 bool GPU::LCDDisabled() const {
@@ -134,7 +134,6 @@ void GPU::CheckForWindowTrigger() {
 }
 
 void GPU::Fetcher_StepBackgroundFetch() {
-    if (spriteFetchActive_) return;
     if (fetcherDelay_ > 0) {
         fetcherDelay_--;
         return;
