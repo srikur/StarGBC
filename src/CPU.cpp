@@ -61,11 +61,7 @@ void CPU::ExecuteMicroOp() {
         }
         instrRunning = true;
         if (DecodeInstruction(currentInstruction, prefixed)) {
-            previousPC = pc - 1;
-            instrComplete = true;
-            previousPrefixed = prefixed;
             prefixed = (currentInstruction >> 8) == 0xCB;
-            previousInstruction = currentInstruction;
             currentInstruction = nextInstruction;
             mCycleCounter = 1;
             if (haltBug) {
@@ -75,7 +71,7 @@ void CPU::ExecuteMicroOp() {
             instructions_->word2 = instructions_->word = instructions_->byte = 0;
             instructions_->jumpCondition = false;
             instrRunning = false;
-        } else instrComplete = false;
+        }
     }
 }
 
@@ -165,9 +161,9 @@ bool CPU::ProcessInterrupts() {
             return true;
         }
         case M6: {
-            previousPC = pc;
             prefixed = false;
             currentInstruction = bus_.ReadByte(pc++);
+            // std::printf("Set currentInstruction to be %X. pc = %d\n", currentInstruction, pc);
             interruptState = M1;
             mCycleCounter = 1;
             return false;

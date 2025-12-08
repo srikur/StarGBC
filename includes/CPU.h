@@ -67,13 +67,9 @@ private:
     bool prefixed{false};
 
     InterruptState interruptState{InterruptState::M1};
-    uint16_t previousPC{0x00};
     uint8_t tCycleCounter{0x00};
     uint8_t interruptBit{0x00};
     uint8_t interruptMask{0x00};
-    bool instrComplete{true};
-    uint16_t previousInstruction{0x0000};
-    bool previousPrefixed{false};
     bool instrRunning{false};
 };
 
