@@ -160,31 +160,15 @@ void Bus::UpdateGraphics() {
                 gpu_.statTriggered = true;
             }
             break;
-
         case GPUMode::MODE_2:
-            gpu_.hblank = false;
-            gpu_.vblank = false;
+            // gpu_.hblank = false;
+            // gpu_.vblank = false;
             if (gpu_.stat.enableM2Interrupt && !gpu_.statTriggered) {
                 SetInterrupt(InterruptType::LCDStat, true);
                 gpu_.statTriggered = true;
             }
             gpu_.TickOAMScan();
-            if (gpu_.scanlineCounter == 79) {
-                gpu_.stat.mode = GPUMode::MODE_3;
-                gpu_.pixelsDrawn = 0;
-                if (gpu_.hardware != Hardware::CGB || gpu_.objectPriority) {
-                    std::ranges::sort(gpu_.spriteBuffer, [](const Sprite &a, const Sprite &b) {
-                        return a < b;
-                    });
-                } else if (gpu_.hardware == Hardware::CGB && !gpu_.objectPriority) {
-                    std::ranges::sort(gpu_.spriteBuffer, [](const Sprite &a, const Sprite &b) {
-                        return a.spriteNum < b.spriteNum;
-                    });
-                }
-                gpu_.ResetScanlineState(false);
-            }
             break;
-
         case GPUMode::MODE_3: {
             gpu_.TickMode3();
             if (gpu_.pixelsDrawn == SCREEN_WIDTH) {
@@ -202,7 +186,19 @@ void Bus::UpdateGraphics() {
     }
     gpu_.scanlineCounter++;
     // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", gpu_.currentLine, gpu_.scanlineCounter, gpu_.stat.mode);
-    if (gpu_.scanlineCounter == 456) {
+
+    if (gpu_.scanlineCounter == 80 && gpu_.stat.mode == GPUMode::MODE_2) {
+        gpu_.stat.mode = GPUMode::MODE_3;
+        gpu_.pixelsDrawn = 0;
+        if (gpu_.hardware != Hardware::CGB || gpu_.objectPriority) {
+            std::ranges::sort(gpu_.spriteBuffer, std::less{});
+        } else if (gpu_.hardware == Hardware::CGB && !gpu_.objectPriority) {
+            std::ranges::sort(gpu_.spriteBuffer, [](const Sprite &a, const Sprite &b) {
+                return a.spriteNum < b.spriteNum;
+            });
+        }
+        gpu_.ResetScanlineState(false);
+    } else if (gpu_.scanlineCounter == 456) {
         gpu_.scanlineCounter = 0;
         gpu_.currentLine++;
         gpu_.statTriggered = false;

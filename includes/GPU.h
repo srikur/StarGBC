@@ -84,17 +84,14 @@ public:
     std::deque<Pixel> backgroundQueue;
     std::deque<Sprite> spriteFetchQueue;
     std::array<Pixel, 8> spriteArray;
-    uint8_t mode2counter{0x00};
 
     bool windowTriggeredThisFrame{false};
-    bool spriteFetchPending_{false};
     Sprite spriteToFetch_{};
     Attributes backgroundTileAttributes_{};
 
     FetcherState fetcherState_{FetcherState::GetTile};
 
     bool firstScanlineDataHigh{false};
-    std::size_t spritesToFetchIndex_{0};
     uint16_t lastAddress_{0x0000};
     bool spriteFetchActive_{false};
     bool isFetchingWindow_{false};
@@ -106,10 +103,9 @@ public:
 
     uint8_t windowLineCounter_{0x00};
 
-    std::vector<Sprite> spriteBuffer{};
+    std::vector<Sprite> spriteBuffer{10};
     uint8_t initialScrollXDiscard_{0x00};
     uint8_t pixelsDrawn{0x00};
-    uint32_t spritePenaltyBgTileMask_ = 0;
     bool objectPriority{false};
     bool initialSCXSet{false};
 
