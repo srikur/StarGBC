@@ -13,11 +13,11 @@ public:
                                                                            instructions_(std::make_unique<Instructions>(regs_, bus_)),
                                                                            mode_(mode) {
         if (mode_ != Mode::None) {
-            bus.gpu_.hardware = mode == Mode::DMG ? GPU::Hardware::DMG : GPU::Hardware::CGB;
-            bus.audio_.SetDMG(bus.gpu_.hardware == GPU::Hardware::DMG);
+            bus.gpu_.hardware = mode == Mode::DMG ? Hardware::DMG : Hardware::CGB;
+            bus.audio_.SetDMG(bus.gpu_.hardware == Hardware::DMG);
         } else if ((bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80) {
             mode_ = Mode::CGB_GBC;
-            bus.gpu_.hardware = GPU::Hardware::CGB;
+            bus.gpu_.hardware = Hardware::CGB;
             bus.audio_.SetDMG(false);
         }
         if (!biosPath.empty()) {

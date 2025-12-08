@@ -371,7 +371,7 @@ uint32_t GPU::GetBackgroundColor(const uint8_t color, const uint8_t palette) con
     return rgba;
 }
 
-GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
+Attributes GPU::GetAttrsFrom(const uint8_t byte) {
     return {
         .priority = Bit<OAM_PRIORITY_BIT>(byte), .yflip = Bit<OAM_Y_FLIP_BIT>(byte),
         .xflip = Bit<OAM_X_FLIP_BIT>(byte), .paletteNumberDMG = Bit<OAM_PALETTE_NUMBER_DMG_BIT>(byte),
@@ -389,11 +389,11 @@ void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
 }
 
 uint8_t GPU::ReadVRAM(const uint16_t address) const {
-    return stat.mode == Mode::MODE_3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
+    return stat.mode == GPUMode::MODE_3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
 }
 
 void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
-    if (stat.mode == Mode::MODE_3) return;
+    if (stat.mode == GPUMode::MODE_3) return;
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
@@ -442,11 +442,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             lcdc = value;
             const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             if (!newEnable && oldEnable) {
-                stat.mode = Mode::MODE_0;
+                stat.mode = GPUMode::MODE_0;
                 screenData.fill(0);
                 vblank = true;
             } else if (newEnable && !oldEnable) {
-                stat.mode = Mode::MODE_2;
+                stat.mode = GPUMode::MODE_2;
                 vblank = false;
             }
             scanlineCounter = 0;

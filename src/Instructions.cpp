@@ -2,7 +2,7 @@
 #include <cstring>
 
 void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, const CorruptionType type) const {
-    if (!cpu.IsDMG() || (location < 0xFE00 || location > 0xFEFF) || bus_.gpu_.stat.mode != GPU::Mode::MODE_2) return;
+    if (!cpu.IsDMG() || (location < 0xFE00 || location > 0xFEFF) || bus_.gpu_.stat.mode != GPUMode::MODE_2) return;
     if (bus_.gpu_.scanlineCounter >= 76) return;
     const int currentRowIndex = bus_.gpu_.GetOAMScanRow();
 

@@ -12,11 +12,11 @@ uint8_t Bus::ReadDMASource(const uint16_t src) const {
 }
 
 uint8_t Bus::ReadOAM(const uint16_t address) const {
-    return gpu_.stat.mode == GPU::Mode::MODE_3 ? 0xFF : gpu_.oam[address - 0xFE00];
+    return gpu_.stat.mode == GPUMode::MODE_3 ? 0xFF : gpu_.oam[address - 0xFE00];
 }
 
 void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
-    if (gpu_.stat.mode != GPU::Mode::MODE_3) gpu_.oam[address - 0xFE00] = value;
+    if (gpu_.stat.mode != GPUMode::MODE_3) gpu_.oam[address - 0xFE00] = value;
 }
 
 uint8_t Bus::ReadByte(const uint16_t address) const {
@@ -24,11 +24,11 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
-                if (gpu_.hardware == GPU::Hardware::CGB && (address < 0x100 || address > 0x1FF)) {
+                if (gpu_.hardware == Hardware::CGB && (address < 0x100 || address > 0x1FF)) {
                     return bootrom[address];
                 }
 
-                if (gpu_.hardware == GPU::Hardware::DMG && address < 0x100) {
+                if (gpu_.hardware == Hardware::DMG && address < 0x100) {
                     return bootrom[address];
                 }
             }
@@ -48,7 +48,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xFF10 ... 0xFF3F: return audio_.ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
-                if (gpu_.hardware == GPU::Hardware::DMG) return 0xFF;
+                if (gpu_.hardware == Hardware::DMG) return 0xFF;
                 const uint8_t first = speed == Speed::Double ? 0x80 : 0x00;
                 const uint8_t second = prepareSpeedShift ? 0x01 : 0x00;
                 return first | second | 0x7E;
@@ -57,9 +57,9 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
             if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_.ReadRegisters(address);
         }
-        case 0xFF50 ... 0xFF55: return gpu_.hdma.ReadHDMA(address, gpu_.hardware == GPU::Hardware::CGB);
+        case 0xFF50 ... 0xFF55: return gpu_.hdma.ReadHDMA(address, gpu_.hardware == Hardware::CGB);
         case 0xFF68 ... 0xFF6C: return gpu_.ReadRegisters(address);
-        case 0xFF70: return gpu_.hardware == GPU::Hardware::CGB ? memory_.wramBank_ : 0xFF;
+        case 0xFF70: return gpu_.hardware == Hardware::CGB ? memory_.wramBank_ : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
         case 0xFFFF: return interruptEnable;
         default: return 0xFF;
@@ -87,7 +87,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
-        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, gpu_.hardware == GPU::Hardware::CGB);
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, gpu_.hardware == Hardware::CGB);
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
             break;
@@ -148,20 +148,20 @@ void Bus::UpdateGraphics() {
     }
 
     switch (gpu_.stat.mode) {
-        case GPU::Mode::MODE_0:
+        case GPUMode::MODE_0:
             if (gpu_.stat.enableM0Interrupt && !gpu_.statTriggered) {
                 SetInterrupt(InterruptType::LCDStat, true);
                 gpu_.statTriggered = true;
             }
             break;
-        case GPU::Mode::MODE_1:
+        case GPUMode::MODE_1:
             if (gpu_.stat.enableM1Interrupt && !gpu_.statTriggered) {
                 SetInterrupt(InterruptType::LCDStat, true);
                 gpu_.statTriggered = true;
             }
             break;
 
-        case GPU::Mode::MODE_2:
+        case GPUMode::MODE_2:
             gpu_.hblank = false;
             gpu_.vblank = false;
             if (gpu_.stat.enableM2Interrupt && !gpu_.statTriggered) {
@@ -170,14 +170,14 @@ void Bus::UpdateGraphics() {
             }
             gpu_.TickOAMScan();
             if (gpu_.scanlineCounter == 79) {
-                gpu_.stat.mode = GPU::Mode::MODE_3;
+                gpu_.stat.mode = GPUMode::MODE_3;
                 gpu_.pixelsDrawn = 0;
-                if (gpu_.hardware != GPU::Hardware::CGB || gpu_.objectPriority) {
-                    std::ranges::sort(gpu_.spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
+                if (gpu_.hardware != Hardware::CGB || gpu_.objectPriority) {
+                    std::ranges::sort(gpu_.spriteBuffer, [](const Sprite &a, const Sprite &b) {
                         return a < b;
                     });
-                } else if (gpu_.hardware == GPU::Hardware::CGB && !gpu_.objectPriority) {
-                    std::ranges::sort(gpu_.spriteBuffer, [](const GPU::Sprite &a, const GPU::Sprite &b) {
+                } else if (gpu_.hardware == Hardware::CGB && !gpu_.objectPriority) {
+                    std::ranges::sort(gpu_.spriteBuffer, [](const Sprite &a, const Sprite &b) {
                         return a.spriteNum < b.spriteNum;
                     });
                 }
@@ -185,10 +185,10 @@ void Bus::UpdateGraphics() {
             }
             break;
 
-        case GPU::Mode::MODE_3: {
+        case GPUMode::MODE_3: {
             gpu_.TickMode3();
-            if (gpu_.pixelsDrawn == GPU::SCREEN_WIDTH) {
-                gpu_.stat.mode = GPU::Mode::MODE_0;
+            if (gpu_.pixelsDrawn == SCREEN_WIDTH) {
+                gpu_.stat.mode = GPUMode::MODE_0;
                 gpu_.hblank = true;
                 if (gpu_.stat.enableM0Interrupt && !gpu_.statTriggered) {
                     SetInterrupt(InterruptType::LCDStat, true);
@@ -213,7 +213,7 @@ void Bus::UpdateGraphics() {
 
         if (gpu_.currentLine >= 154) {
             gpu_.currentLine = 0;
-            gpu_.stat.mode = GPU::Mode::MODE_2;
+            gpu_.stat.mode = GPUMode::MODE_2;
             gpu_.windowLineCounter_ = 0;
             gpu_.ResetScanlineState(true);
             gpu_.windowTriggeredThisFrame = false;
@@ -223,11 +223,11 @@ void Bus::UpdateGraphics() {
             gpu_.initialSCXSet = false;
             // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", gpu_.currentLine, gpu_.scanlineCounter);
         } else if (gpu_.currentLine == 144) {
-            gpu_.stat.mode = GPU::Mode::MODE_1;
+            gpu_.stat.mode = GPUMode::MODE_1;
             gpu_.vblank = true;
             SetInterrupt(InterruptType::VBlank, true);
         } else if (gpu_.currentLine < 144) {
-            gpu_.stat.mode = GPU::Mode::MODE_2;
+            gpu_.stat.mode = GPUMode::MODE_2;
             if (gpu_.currentLine >= gpu_.windowY) {
                 gpu_.windowTriggeredThisFrame = true;
             }
@@ -312,7 +312,7 @@ void Bus::UpdateSerial() {
 
 /* Lots of pointer indirection going on here :( */
 uint32_t Bus::RunHDMA() const {
-    if (!gpu_.hdma.hdmaActive || gpu_.hardware == GPU::Hardware::DMG) {
+    if (!gpu_.hdma.hdmaActive || gpu_.hardware == Hardware::DMG) {
         return 0;
     }
 

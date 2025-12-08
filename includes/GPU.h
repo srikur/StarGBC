@@ -4,80 +4,81 @@
 #include "Common.h"
 #include "HDMA.h"
 
+struct Pixel {
+    uint8_t color{0x00};
+    uint8_t dmgPalette{0x00};
+    uint8_t cgbPalette{0x00};
+    bool priority{false};
+    bool isSprite{false};
+    bool isPlaceholder{true};
+    uint8_t spriteNum{0x00};
+};
+
+struct Attributes {
+    bool priority{false};
+    bool yflip{false};
+    bool xflip{false};
+    bool paletteNumberDMG{false};
+    bool vramBank{false};
+    uint8_t paletteNumberCGB{0x00};
+};
+
+struct Sprite {
+    uint8_t spriteNum{0x00};
+    int16_t x{0x00};
+    int16_t y{0x00};
+    uint8_t tileIndex{0x00};
+    Attributes attributes{};
+    bool processed{false};
+
+    bool operator<(const Sprite &s) const {
+        return x < s.x || spriteNum < s.spriteNum;
+    }
+};
+
+// State for the pixel fetcher
+enum class FetcherState {
+    GetTile,
+    GetTileDataLow,
+    GetTileDataHigh,
+    Sleep,
+    PushToFIFO,
+};
+
+struct Gpi {
+    uint8_t index;
+    bool autoIncrement;
+};
+
+enum class GPUMode {
+    MODE_0,
+    MODE_1,
+    MODE_2,
+    MODE_3
+};
+
+struct Stat {
+    bool enableLYInterrupt{false};
+    bool enableM2Interrupt{false};
+    bool enableM1Interrupt{false};
+    bool enableM0Interrupt{false};
+    bool coincidenceFlag{false};
+    GPUMode mode{GPUMode::MODE_2};
+
+    [[nodiscard]] uint8_t value() const {
+        return 0x80 | enableLYInterrupt << 6 | enableM2Interrupt << 5 |
+               enableM1Interrupt << 4 | enableM0Interrupt << 3 |
+               coincidenceFlag << 2 | static_cast<uint8_t>(mode);
+    }
+};
+
 class GPU {
 public:
-    static constexpr uint8_t SCREEN_WIDTH = 160;
-    static constexpr uint8_t SCREEN_HEIGHT = 144;
-    static constexpr uint16_t VRAM_BEGIN = 0x8000;
-    static constexpr uint16_t VRAM_END = 0x9FFF;
-    static constexpr uint16_t VRAM_SIZE = 0x4000;
-    static constexpr uint16_t GPU_REGS_BEGIN = 0xFF40;
-    static constexpr uint16_t GPU_REGS_END = 0xFF4B;
-    static constexpr uint16_t OAM_BEGIN = 0xFE00;
-    static constexpr uint16_t OAM_END = 0xFE9F;
-
-    static constexpr uint8_t OAM_PRIORITY_BIT = 7;
-    static constexpr uint8_t OAM_Y_FLIP_BIT = 6;
-    static constexpr uint8_t OAM_X_FLIP_BIT = 5;
-    static constexpr uint8_t OAM_PALETTE_NUMBER_DMG_BIT = 4;
-    static constexpr uint8_t OAM_VRAM_BANK_BIT = 3;
-
-    static constexpr uint16_t SCANLINE_CYCLES = 456;
-    static constexpr uint8_t MODE2_CYCLES = 80;
-
-    static constexpr uint8_t OBJ_TOTAL_SPRITES = 40;
-
-    // 0xFF40 -- LCD Control
-    static constexpr uint8_t LCDC_ENABLE_BIT = 7;
-    static constexpr uint8_t LCDC_WINDOW_TILE_MAP_AREA = 6;
-    static constexpr uint8_t LCDC_WINDOW_ENABLE = 5;
-    static constexpr uint8_t LCDC_BG_AND_WINDOW_TILE_DATA = 4;
-    static constexpr uint8_t LCDC_BG_TILE_MAP_AREA = 3;
-    static constexpr uint8_t LCDC_OBJ_SIZE = 2;
-    static constexpr uint8_t LCDC_OBJ_ENABLE = 1;
-    static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
-
     static constexpr uint32_t DMG_SHADE[4] = {
         0xFFFFFFFFu, // FF FF FF FF
         0xFFC0C0C0u, // C0 C0 C0 FF
         0xFF606060u, // 60 60 60 FF
         0xFF000000u // 00 00 00 FF
-    };
-
-    enum class Hardware {
-        DMG, CGB
-    };
-
-    struct Attributes {
-        bool priority;
-        bool yflip;
-        bool xflip;
-        bool paletteNumberDMG;
-        bool vramBank;
-        uint8_t paletteNumberCGB;
-    };
-
-    struct Sprite {
-        uint8_t spriteNum{0x00};
-        int16_t x{0x00};
-        int16_t y{0x00};
-        uint8_t tileIndex{0x00};
-        Attributes attributes{};
-        bool processed{false};
-
-        bool operator<(const Sprite &s) const {
-            return x < s.x || spriteNum < s.spriteNum;
-        }
-    };
-
-    struct Pixel {
-        uint8_t color{0x00};
-        uint8_t dmgPalette{0x00};
-        uint8_t cgbPalette{0x00};
-        bool priority{false};
-        bool isSprite{false};
-        bool isPlaceholder{true};
-        uint8_t spriteNum{0x00};
     };
 
     std::deque<Pixel> backgroundQueue;
@@ -86,18 +87,11 @@ public:
     uint8_t mode2counter{0x00};
 
     bool windowTriggeredThisFrame{false};
-    bool spriteFetchPending_ = false;
+    bool spriteFetchPending_{false};
     Sprite spriteToFetch_{};
     Attributes backgroundTileAttributes_{};
 
-    // State for the pixel fetcher
-    enum class FetcherState {
-        GetTile,
-        GetTileDataLow,
-        GetTileDataHigh,
-        Sleep,
-        PushToFIFO,
-    } fetcherState_ = FetcherState::GetTile;
+    FetcherState fetcherState_{FetcherState::GetTile};
 
     bool firstScanlineDataHigh{false};
     std::size_t spritesToFetchIndex_{0};
@@ -118,33 +112,6 @@ public:
     uint32_t spritePenaltyBgTileMask_ = 0;
     bool objectPriority{false};
     bool initialSCXSet{false};
-
-    struct Gpi {
-        uint8_t index;
-        bool autoIncrement;
-    };
-
-    enum class Mode {
-        MODE_0,
-        MODE_1,
-        MODE_2,
-        MODE_3
-    };
-
-    struct Stat {
-        bool enableLYInterrupt{false};
-        bool enableM2Interrupt{false};
-        bool enableM1Interrupt{false};
-        bool enableM0Interrupt{false};
-        bool coincidenceFlag{false};
-        Mode mode{Mode::MODE_2};
-
-        [[nodiscard]] uint8_t value() const {
-            return 0x80 | (enableLYInterrupt << 6) | (enableM2Interrupt << 5) |
-                   (enableM1Interrupt << 4) | (enableM0Interrupt << 3) |
-                   (coincidenceFlag << 2) | static_cast<uint8_t>(mode);
-        }
-    };
 
     std::vector<uint8_t> vram = std::vector<uint8_t>(VRAM_SIZE);
     std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
@@ -176,11 +143,36 @@ public:
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> bgpd = {}; // 0xFF69
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
 
+    HDMA hdma{};
+    Hardware hardware = Hardware::DMG;
+
     void TickOAMScan();
 
     void TickMode3();
 
     void OutputPixel();
+
+    void ResetScanlineState(bool clearBuffer);
+
+    uint8_t GetOAMScanRow() const;
+
+    [[nodiscard]] uint8_t ReadVRAM(uint16_t address) const;
+
+    void WriteVRAM(uint16_t address, uint8_t value);
+
+    [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
+
+    void WriteRegisters(uint16_t address, uint8_t value);
+
+    const uint32_t *GetScreenData() const;
+
+    bool SaveState(std::ofstream &stateFile) const;
+
+    bool LoadState(std::ifstream &stateFile);
+
+    [[nodiscard]] bool LCDDisabled() const;
+
+private:
 
     void Fetcher_StepSpriteFetch();
 
@@ -192,8 +184,6 @@ public:
 
     uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
 
-    void ResetScanlineState(bool clearBuffer);
-
     [[nodiscard]] uint32_t GetBackgroundColor(uint8_t color, uint8_t palette = 0) const;
 
     [[nodiscard]] uint32_t GetSpriteColor(uint8_t color, uint8_t palette) const;
@@ -202,30 +192,9 @@ public:
 
     void CheckForWindowTrigger();
 
-    uint8_t GetOAMScanRow() const;
-
     static Attributes GetAttrsFrom(uint8_t byte);
 
     static uint8_t ReadGpi(const Gpi &gpi);
 
     static void WriteGpi(Gpi &gpi, uint8_t value);
-
-    [[nodiscard]] uint8_t ReadVRAM(uint16_t address) const;
-
-    void WriteVRAM(uint16_t address, uint8_t value);
-
-    [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
-
-    void WriteRegisters(uint16_t address, uint8_t value);
-
-    [[nodiscard]] bool LCDDisabled() const;
-
-    HDMA hdma{};
-    Hardware hardware = Hardware::DMG;
-
-    const uint32_t *GetScreenData() const;
-
-    bool SaveState(std::ofstream &stateFile) const;
-
-    bool LoadState(std::ifstream &stateFile);
 };
