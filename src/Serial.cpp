@@ -32,6 +32,21 @@ void Serial::ShiftOneBit() {
     data_ = static_cast<uint8_t>(data_ << 1 | 0x01);
 }
 
+void Serial::Update() {
+    if (!active_) return;
+
+    if (--ticksUntilShift_ == 0) {
+        ShiftOneBit();
+        if (++bitsShifted_ == 8) {
+            active_ = false;
+            control_ &= 0x7F;
+            interrupts_.Set(InterruptType::Serial, false);
+            return;
+        }
+        ticksUntilShift_ = ticksPerBit_;
+    }
+}
+
 bool Serial::SaveState(std::ofstream &stateFile) const {
     try {
         if (!stateFile.is_open()) return false;

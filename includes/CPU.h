@@ -9,9 +9,10 @@ class Instructions;
 
 class CPU {
 public:
-    explicit CPU(const Mode mode, const std::string &biosPath, Bus &bus) : bus_(bus),
-                                                                           instructions_(std::make_unique<Instructions>(regs_, bus_)),
-                                                                           mode_(mode) {
+    explicit CPU(const Mode mode, const std::string &biosPath, Bus &bus, Interrupts &interrupts) : bus_(bus),
+                                                                                                   interrupts_(interrupts),
+                                                                                                   instructions_(std::make_unique<Instructions>(regs_, bus_, interrupts_)),
+                                                                                                   mode_(mode) {
         if (mode_ != Mode::None) {
             bus.gpu_.hardware = mode == Mode::DMG ? Hardware::DMG : Hardware::CGB;
             bus.audio_.SetDMG(bus.gpu_.hardware == Hardware::DMG);
@@ -48,6 +49,7 @@ private:
     bool ProcessInterrupts();
 
     Bus &bus_;
+    Interrupts &interrupts_;
     Registers regs_{};
     std::unique_ptr<Instructions> instructions_{nullptr};
 

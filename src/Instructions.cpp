@@ -142,7 +142,7 @@ bool Instructions::RETI(CPU &cpu) {
     }
     if (cpu.mCycleCounter == 4) {
         cpu.pc = word;
-        bus_.interruptMasterEnable = true;
+        interrupts_.interruptMasterEnable = true;
         return false;
     }
     if (cpu.mCycleCounter == 5) {
@@ -153,24 +153,24 @@ bool Instructions::RETI(CPU &cpu) {
 }
 
 bool Instructions::DI(CPU &cpu) const {
-    bus_.interruptDelay = false;
-    bus_.interruptMasterEnable = false;
+    interrupts_.interruptDelay = false;
+    interrupts_.interruptMasterEnable = false;
     cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::EI(CPU &cpu) const {
-    if (!bus_.interruptMasterEnable) {
+    if (!interrupts_.interruptMasterEnable) {
         cpu.icount = 0;
-        bus_.interruptDelay = true;
-        bus_.interruptMasterEnable = true;
+        interrupts_.interruptDelay = true;
+        interrupts_.interruptMasterEnable = true;
     }
     cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::HALT(CPU &cpu) const {
-    if (const bool bug = (bus_.interruptEnable & bus_.interruptFlag & 0x1F) != 0; !bus_.interruptMasterEnable && bug) {
+    if (const bool bug = (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0; !interrupts_.interruptMasterEnable && bug) {
         cpu.haltBug = true;
         cpu.halted = false;
     } else {

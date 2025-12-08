@@ -100,27 +100,27 @@ bool CPU::ProcessInterrupts() {
     using enum InterruptState;
     switch (interruptState) {
         case M1: {
-            if (bus_.interruptDelay && ++icount == 2) {
-                bus_.interruptDelay = false;
-                bus_.interruptMasterEnable = true;
+            if (interrupts_.interruptDelay && ++icount == 2) {
+                interrupts_.interruptDelay = false;
+                interrupts_.interruptMasterEnable = true;
                 icount = 0;
             }
-            const uint8_t pending = bus_.interruptEnable & bus_.interruptFlag & 0x1F;
+            const uint8_t pending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
             if (pending == 0) {
                 return false;
             }
-            if (halted && !bus_.interruptMasterEnable) {
+            if (halted && !interrupts_.interruptMasterEnable) {
                 halted = false;
                 return false;
             }
 
-            if (bus_.interruptDelay || !bus_.interruptMasterEnable) {
+            if (interrupts_.interruptDelay || !interrupts_.interruptMasterEnable) {
                 return false;
             }
 
             interruptState = M2;
             halted = false;
-            bus_.interruptMasterEnable = false;
+            interrupts_.interruptMasterEnable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));
             interruptMask = static_cast<uint8_t>(1u << interruptBit);
@@ -135,7 +135,7 @@ bool CPU::ProcessInterrupts() {
             return true;
         }
         case M3: {
-            if (const uint8_t newPending = bus_.interruptEnable & bus_.interruptFlag & 0x1F; !(newPending & interruptMask)) {
+            if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(newPending & interruptMask)) {
                 if (!newPending) {
                     sp--;
                     bus_.WriteByte(sp, pc & 0xFF);
@@ -150,7 +150,7 @@ bool CPU::ProcessInterrupts() {
 
             sp -= 1;
             bus_.WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
-            bus_.interruptFlag &= ~interruptMask;
+            interrupts_.interruptFlag &= ~interruptMask;
             pc = InterruptAddress(interruptBit);
 
             interruptState = M4;

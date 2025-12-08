@@ -24,6 +24,15 @@ uint8_t Joypad::GetMatrix() const { return matrix_; }
 
 uint8_t Joypad::GetSelect() const { return select_; }
 
+void Joypad::KeyDown(Keys key) {
+    SetMatrix(GetMatrix() & ~static_cast<uint8_t>(key));
+    interrupts_.Set(InterruptType::Joypad, false);
+}
+
+void Joypad::KeyUp(Keys key) {
+    SetMatrix(GetMatrix() | static_cast<uint8_t>(key));
+}
+
 void Joypad::SetSelect(const uint8_t value) {
     select_ = value;
     UpdateKeyFlag();
