@@ -18,7 +18,7 @@ void CPU::InitializeBootrom(const std::string &bios_path) const {
 }
 
 bool CPU::IsDMG() const {
-    return bus_.gpu_.hardware == GPU::Hardware::DMG;
+    return bus_.gpu_.hardware == Hardware::DMG;
 }
 
 void CPU::InitializeSystem(const Mode mode) {
