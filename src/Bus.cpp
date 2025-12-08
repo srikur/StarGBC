@@ -44,7 +44,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
         case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
-        case 0xFF0F: return interruptFlag | 0xE0;
+        case 0xFF0F: return interrupts_.interruptFlag | 0xE0;
         case 0xFF10 ... 0xFF3F: return audio_.ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
@@ -61,7 +61,7 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
         case 0xFF68 ... 0xFF6C: return gpu_.ReadRegisters(address);
         case 0xFF70: return gpu_.hardware == Hardware::CGB ? memory_.wramBank_ : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
-        case 0xFFFF: return interruptEnable;
+        case 0xFFFF: return interrupts_.interruptEnable;
         default: return 0xFF;
     }
 }
@@ -91,7 +91,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
             break;
-        case 0xFF0F: interruptFlag = value;
+        case 0xFF0F: interrupts_.interruptFlag = value;
             break;
         case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value);
             break;
@@ -109,138 +109,19 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF80 ... 0xFFFE: memory_.hram_[address - 0xFF80] = value;
             break;
-        case 0xFFFF: interruptEnable = value;
+        case 0xFFFF: interrupts_.interruptEnable = value;
             break;
         default: break;
     }
 }
 
-void Bus::KeyDown(Keys key) {
-    joypad_.SetMatrix(joypad_.GetMatrix() & ~static_cast<uint8_t>(key));
-    SetInterrupt(InterruptType::Joypad, false);
-}
-
-void Bus::KeyUp(Keys key) const {
-    joypad_.SetMatrix(joypad_.GetMatrix() | static_cast<uint8_t>(key));
-}
-
-void Bus::UpdateGraphics() {
-    if (interruptSetDelay > 0) {
-        interruptSetDelay--;
-        if (interruptSetDelay == 0) {
-            interruptFlag = interruptFlagDelayed;
-            interruptFlagDelayed = 0;
-        }
-    }
-
-    if (gpu_.LCDDisabled()) {
-        return;
-    }
-
-    if (gpu_.currentLine == gpu_.lyc) {
-        gpu_.stat.coincidenceFlag = true;
-        if (gpu_.stat.enableLYInterrupt && !gpu_.statTriggered) {
-            SetInterrupt(InterruptType::LCDStat, true);
-            gpu_.statTriggered = true;
-        }
-    } else {
-        gpu_.stat.coincidenceFlag = false;
-    }
-
-    switch (gpu_.stat.mode) {
-        case GPUMode::MODE_0:
-            if (gpu_.stat.enableM0Interrupt && !gpu_.statTriggered) {
-                SetInterrupt(InterruptType::LCDStat, true);
-                gpu_.statTriggered = true;
-            }
-            break;
-        case GPUMode::MODE_1:
-            if (gpu_.stat.enableM1Interrupt && !gpu_.statTriggered) {
-                SetInterrupt(InterruptType::LCDStat, true);
-                gpu_.statTriggered = true;
-            }
-            break;
-        case GPUMode::MODE_2:
-            // gpu_.hblank = false;
-            // gpu_.vblank = false;
-            if (gpu_.stat.enableM2Interrupt && !gpu_.statTriggered) {
-                SetInterrupt(InterruptType::LCDStat, true);
-                gpu_.statTriggered = true;
-            }
-            gpu_.TickOAMScan();
-            break;
-        case GPUMode::MODE_3: {
-            gpu_.TickMode3();
-            if (gpu_.pixelsDrawn == SCREEN_WIDTH) {
-                gpu_.stat.mode = GPUMode::MODE_0;
-                gpu_.hblank = true;
-                if (gpu_.stat.enableM0Interrupt && !gpu_.statTriggered) {
-                    SetInterrupt(InterruptType::LCDStat, true);
-                    gpu_.statTriggered = true;
-                }
-                break;
-            }
-        }
-        break;
-        default: break;
-    }
-    gpu_.scanlineCounter++;
-    // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", gpu_.currentLine, gpu_.scanlineCounter, gpu_.stat.mode);
-
-    if (gpu_.scanlineCounter == 80 && gpu_.stat.mode == GPUMode::MODE_2) {
-        gpu_.stat.mode = GPUMode::MODE_3;
-        gpu_.pixelsDrawn = 0;
-        if (gpu_.hardware != Hardware::CGB || gpu_.objectPriority) {
-            std::ranges::sort(gpu_.spriteBuffer, std::less{});
-        } else if (gpu_.hardware == Hardware::CGB && !gpu_.objectPriority) {
-            std::ranges::sort(gpu_.spriteBuffer, [](const Sprite &a, const Sprite &b) {
-                return a.spriteNum < b.spriteNum;
-            });
-        }
-        gpu_.ResetScanlineState(false);
-    } else if (gpu_.scanlineCounter == 456) {
-        gpu_.scanlineCounter = 0;
-        gpu_.currentLine++;
-        gpu_.statTriggered = false;
-
-        if (gpu_.isFetchingWindow_) {
-            gpu_.windowLineCounter_++;
-        }
-
-        if (gpu_.currentLine >= 154) {
-            gpu_.currentLine = 0;
-            gpu_.stat.mode = GPUMode::MODE_2;
-            gpu_.windowLineCounter_ = 0;
-            gpu_.ResetScanlineState(true);
-            gpu_.windowTriggeredThisFrame = false;
-            if (gpu_.currentLine >= gpu_.windowY) {
-                gpu_.windowTriggeredThisFrame = true;
-            }
-            gpu_.initialSCXSet = false;
-            // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", gpu_.currentLine, gpu_.scanlineCounter);
-        } else if (gpu_.currentLine == 144) {
-            gpu_.stat.mode = GPUMode::MODE_1;
-            gpu_.vblank = true;
-            SetInterrupt(InterruptType::VBlank, true);
-        } else if (gpu_.currentLine < 144) {
-            gpu_.stat.mode = GPUMode::MODE_2;
-            if (gpu_.currentLine >= gpu_.windowY) {
-                gpu_.windowTriggeredThisFrame = true;
-            }
-            gpu_.ResetScanlineState(true);
-            gpu_.initialSCXSet = false;
-            // std::fprintf(stderr, "Scroll X Reset 2, line %d, scanline counter %d\n", gpu_.currentLine, gpu_.scanlineCounter);
-        }
-    }
-}
-
-void Bus::UpdateTimers() {
+void Bus::UpdateTimers() const {
     const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
 
     timer_.reloadActive = false;
     if (timer_.overflowPending && --timer_.overflowDelay == 0) {
         timer_.tima = timer_.tma;
-        SetInterrupt(InterruptType::Timer, false);
+        interrupts_.Set(InterruptType::Timer, false);
         timer_.overflowPending = false;
         timer_.reloadActive = true;
     }
@@ -291,21 +172,6 @@ void Bus::UpdateDMA() const {
     }
 }
 
-void Bus::UpdateSerial() {
-    if (!serial_.active_) return;
-
-    if (--serial_.ticksUntilShift_ == 0) {
-        serial_.ShiftOneBit();
-        if (++serial_.bitsShifted_ == 8) {
-            serial_.active_ = false;
-            serial_.control_ &= 0x7F;
-            SetInterrupt(InterruptType::Serial, false);
-            return;
-        }
-        serial_.ticksUntilShift_ = serial_.ticksPerBit_;
-    }
-}
-
 /* Lots of pointer indirection going on here :( */
 uint32_t Bus::RunHDMA() const {
     if (!gpu_.hdma.hdmaActive || gpu_.hardware == Hardware::DMG) {
@@ -347,16 +213,6 @@ uint32_t Bus::RunHDMA() const {
     }
 }
 
-
-void Bus::SetInterrupt(const InterruptType interrupt, const bool delayed) {
-    const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
-    if (!delayed) interruptFlag |= mask;
-    else {
-        interruptSetDelay = 4;
-        interruptFlagDelayed = interruptFlag | mask;
-    }
-}
-
 void Bus::ChangeSpeed() {
     if (prepareSpeedShift) {
         speed = speed == Speed::Regular ? Speed::Double : Speed::Regular;
@@ -369,10 +225,6 @@ bool Bus::SaveState(std::ofstream &stateFile) const {
         stateFile.write(reinterpret_cast<const char *>(&speed), sizeof(speed));
         stateFile.write(reinterpret_cast<const char *>(&prepareSpeedShift), sizeof(prepareSpeedShift));
         stateFile.write(reinterpret_cast<const char *>(&bootromRunning), sizeof(bootromRunning));
-        stateFile.write(reinterpret_cast<const char *>(&interruptFlag), sizeof(interruptFlag));
-        stateFile.write(reinterpret_cast<const char *>(&interruptEnable), sizeof(interruptEnable));
-        stateFile.write(reinterpret_cast<const char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
-        stateFile.write(reinterpret_cast<const char *>(&interruptDelay), sizeof(interruptDelay));
         return cartridge_.SaveState(stateFile) && gpu_.SaveState(stateFile) &&
                joypad_.SaveState(stateFile) && memory_.SaveState(stateFile) &&
                timer_.SaveState(stateFile) && serial_.SaveState(stateFile);
@@ -386,10 +238,6 @@ void Bus::LoadState(std::ifstream &stateFile) {
         stateFile.read(reinterpret_cast<char *>(&speed), sizeof(speed));
         stateFile.read(reinterpret_cast<char *>(&prepareSpeedShift), sizeof(prepareSpeedShift));
         stateFile.read(reinterpret_cast<char *>(&bootromRunning), sizeof(bootromRunning));
-        stateFile.read(reinterpret_cast<char *>(&interruptFlag), sizeof(interruptFlag));
-        stateFile.read(reinterpret_cast<char *>(&interruptEnable), sizeof(interruptEnable));
-        stateFile.read(reinterpret_cast<char *>(&interruptMasterEnable), sizeof(interruptMasterEnable));
-        stateFile.read(reinterpret_cast<char *>(&interruptDelay), sizeof(interruptDelay));
 
         cartridge_.LoadState(stateFile);
         gpu_.LoadState(stateFile);

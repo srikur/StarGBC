@@ -23,9 +23,9 @@ public:
                      const bool debugStart, const bool realRTC) : romPath_(std::move(romPath)),
                                                                   biosPath_(std::move(biosPath)),
                                                                   rtc_(realRTC),
-                                                                  cartridge_(romPath_, rtc_),
-                                                                  bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, gpu_),
-                                                                  cpu_(mode, biosPath_, bus_),
+                                                                  cartridge_(romPath_, rtc_), joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
+                                                                  bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
+                                                                  cpu_(mode, biosPath_, bus_, interrupts_),
                                                                   paused_(debugStart) {
     }
 
@@ -49,7 +49,7 @@ public:
 
     void Save() const;
 
-    void KeyUp(Keys key) const;
+    void KeyUp(Keys key);
 
     void KeyDown(Keys key);
 
@@ -81,13 +81,14 @@ private:
 
     RealTimeClock rtc_; // init in constructor
     Cartridge cartridge_; // init in constructor
+    Interrupts interrupts_{};
     DMA dma_{};
-    Joypad joypad_{};
+    Joypad joypad_;
     Audio audio_{};
     Memory memory_{};
     Timer timer_{};
-    Serial serial_{};
-    GPU gpu_{};
+    Serial serial_;
+    GPU gpu_;
     Bus bus_;
     CPU cpu_;
 

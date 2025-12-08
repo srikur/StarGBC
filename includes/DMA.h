@@ -19,6 +19,7 @@ struct DMA {
     bool transferComplete{false};
 
     void Set(uint8_t);
+
 };
 
 #endif //STARGBC_DMA_H

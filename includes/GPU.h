@@ -3,6 +3,7 @@
 
 #include "Common.h"
 #include "HDMA.h"
+#include "Interrupts.h"
 
 struct Pixel {
     uint8_t color{0x00};
@@ -74,6 +75,9 @@ struct Stat {
 
 class GPU {
 public:
+    explicit GPU(Interrupts &interrupts) : interrupts_(interrupts) {
+    }
+
     static constexpr uint32_t DMG_SHADE[4] = {
         0xFFFFFFFFu, // FF FF FF FF
         0xFFC0C0C0u, // C0 C0 C0 FF
@@ -142,6 +146,8 @@ public:
     HDMA hdma{};
     Hardware hardware = Hardware::DMG;
 
+    void Update();
+
     void TickOAMScan();
 
     void TickMode3();
@@ -169,6 +175,7 @@ public:
     [[nodiscard]] bool LCDDisabled() const;
 
 private:
+    Interrupts &interrupts_;
 
     void Fetcher_StepSpriteFetch();
 

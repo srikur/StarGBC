@@ -17,12 +17,12 @@ void Gameboy::Save() const {
     cartridge_.Save();
 }
 
-void Gameboy::KeyUp(const Keys key) const {
-    bus_.KeyUp(key);
+void Gameboy::KeyUp(const Keys key) {
+    joypad_.KeyUp(key);
 }
 
 void Gameboy::KeyDown(const Keys key) {
-    bus_.KeyDown(key);
+    joypad_.KeyDown(key);
 }
 
 const uint32_t *Gameboy::GetScreenData() const {
@@ -55,9 +55,9 @@ void Gameboy::AdvanceFrame() {
     if (masterCycles % speedDivider == 0) bus_.UpdateTimers();
     if (masterCycles % RTC_CLOCK_DIVIDER == 0) rtc_.Update();
     if (masterCycles % AUDIO_CLOCK_DIVIDER == 0) audio_.Tick();
-    if (masterCycles % speedDivider == 0) bus_.UpdateSerial();
+    if (masterCycles % speedDivider == 0) serial_.Update();
     if (masterCycles % speedDivider == 0) bus_.UpdateDMA();
-    if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) bus_.UpdateGraphics();
+    if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) gpu_.Update();
     if (masterCycles % speedDivider == 0) bus_.RunHDMA();
     masterCycles++;
 }

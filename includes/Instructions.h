@@ -311,12 +311,12 @@ class Instructions {
     bool ADDSigned(CPU &);
 
 public:
-    explicit Instructions(Registers &regs, Bus &bus) : regs_{regs}, bus_{bus} {
+    explicit Instructions(Registers &regs, Bus &bus, Interrupts &interrupts) : regs_(regs), bus_(bus), interrupts_(interrupts) {
     }
 
-    // used for storing data between cycles
     Registers &regs_;
     Bus &bus_;
+    Interrupts &interrupts_;
     int8_t signedByte{0};
     uint8_t byte{0};
     uint16_t word{0};

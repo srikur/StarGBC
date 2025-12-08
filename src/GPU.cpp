@@ -29,6 +29,116 @@ uint8_t GPU::GetOAMScanRow() const {
     return (scanlineCounter + 4) / 4;
 }
 
+void GPU::Update() {
+    if (interrupts_.interruptSetDelay > 0) {
+        interrupts_.interruptSetDelay--;
+        if (interrupts_.interruptSetDelay == 0) {
+            interrupts_.interruptFlag = interrupts_.interruptFlagDelayed;
+            interrupts_.interruptFlagDelayed = 0;
+        }
+    }
+
+    if (LCDDisabled()) {
+        return;
+    }
+
+    if (currentLine == lyc) {
+        stat.coincidenceFlag = true;
+        if (stat.enableLYInterrupt && !statTriggered) {
+            interrupts_.Set(InterruptType::LCDStat, true);
+            statTriggered = true;
+        }
+    } else {
+        stat.coincidenceFlag = false;
+    }
+
+    switch (stat.mode) {
+        case GPUMode::MODE_0:
+            if (stat.enableM0Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            break;
+        case GPUMode::MODE_1:
+            if (stat.enableM1Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            break;
+        case GPUMode::MODE_2:
+            // hblank = false;
+            // vblank = false;
+            if (stat.enableM2Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            TickOAMScan();
+            break;
+        case GPUMode::MODE_3: {
+            TickMode3();
+            if (pixelsDrawn == SCREEN_WIDTH) {
+                stat.mode = GPUMode::MODE_0;
+                hblank = true;
+                if (stat.enableM0Interrupt && !statTriggered) {
+                    interrupts_.Set(InterruptType::LCDStat, true);
+                    statTriggered = true;
+                }
+                break;
+            }
+        }
+        break;
+        default: break;
+    }
+    scanlineCounter++;
+    // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", currentLine, scanlineCounter, stat.mode);
+
+    if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
+        stat.mode = GPUMode::MODE_3;
+        pixelsDrawn = 0;
+        if (hardware != Hardware::CGB || objectPriority) {
+            std::ranges::sort(spriteBuffer, std::less{});
+        } else if (hardware == Hardware::CGB && !objectPriority) {
+            std::ranges::sort(spriteBuffer, [](const Sprite &a, const Sprite &b) {
+                return a.spriteNum < b.spriteNum;
+            });
+        }
+        ResetScanlineState(false);
+    } else if (scanlineCounter == 456) {
+        scanlineCounter = 0;
+        currentLine++;
+        statTriggered = false;
+
+        if (isFetchingWindow_) {
+            windowLineCounter_++;
+        }
+
+        if (currentLine >= 154) {
+            currentLine = 0;
+            stat.mode = GPUMode::MODE_2;
+            windowLineCounter_ = 0;
+            ResetScanlineState(true);
+            windowTriggeredThisFrame = false;
+            if (currentLine >= windowY) {
+                windowTriggeredThisFrame = true;
+            }
+            initialSCXSet = false;
+            // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", currentLine, scanlineCounter);
+        } else if (currentLine == 144) {
+            stat.mode = GPUMode::MODE_1;
+            vblank = true;
+            interrupts_.Set(InterruptType::VBlank, true);
+        } else if (currentLine < 144) {
+            stat.mode = GPUMode::MODE_2;
+            if (currentLine >= windowY) {
+                windowTriggeredThisFrame = true;
+            }
+            ResetScanlineState(true);
+            initialSCXSet = false;
+            // std::fprintf(stderr, "Scroll X Reset 2, line %d, scanline counter %d\n", currentLine, scanlineCounter);
+        }
+    }
+}
+
 void GPU::TickOAMScan() {
     if (!Bit<LCDC_OBJ_ENABLE>(lcdc)) return;
     if (!(scanlineCounter % 2)) return;
