@@ -96,27 +96,21 @@ uint32_t Gameboy::RunHDMA() const {
 }
 
 uint8_t Gameboy::ExecuteInstruction() {
-    uint8_t instruction = bus->ReadByte(pc);
-    pc += 1;
-    TickM(1, true); // Corresponds to M2 in GBCTR docs
-    cyclesThisInstruction += 1;
-
     if (haltBug) {
         haltBug = false;
-        pc = pc - 1;
+        pc -= 1;
     }
-
-    const bool prefixed = instruction == 0xCB;
-    if (prefixed) {
-        instruction = bus->ReadByte(pc++);
-        TickM(1, true);
-        cyclesThisInstruction += 1;
-        currentInstruction = 0xCB00 | instruction;
-    } else {
-        currentInstruction = instruction;
+    mCycleCounter++;
+    while (!DecodeInstruction(currentInstruction, prefixed)) {
+        std::printf("current instruction: %02x\n", currentInstruction);
+        mCycleCounter++;
     }
-
-    return DecodeInstruction(instruction, prefixed);
+    // PrintCurrentValues();
+    prefixed = (currentInstruction >> 8) == 0xCB;
+    currentInstruction = nextInstruction;
+    int tmp = mCycleCounter;
+    mCycleCounter = 1;
+    return tmp;
 }
 
 void Gameboy::InitializeSystem() {
@@ -257,7 +251,7 @@ void Gameboy::PrintCurrentValues() const {
         "IE:{:02X} IF:{:02X} IME:{:02X}\n"
         "DIV:{:02X} TIMA:{:02X} TMA:{:02X} TAC:{:02X}"
         "\n----------------------------------------------\n",
-        pc, sp, currentInstruction, Instructions::GetMnemonic(currentInstruction),
+        pc, sp, currentInstruction, instructions->GetMnemonic(currentInstruction),
         regs->a,
         regs->FlagZero() ? 1 : 0, regs->FlagSubtract() ? 1 : 0,
         regs->FlagHalf() ? 1 : 0, regs->FlagCarry() ? 1 : 0,

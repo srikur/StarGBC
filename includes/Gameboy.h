@@ -54,6 +54,9 @@ class Gameboy {
     int speedMultiplier = 1;
     bool paused = false;
     bool stopped = false;
+    int mCycleCounter = 1;
+    bool prefixed = false;
+    uint16_t nextInstruction;
 
     uint8_t DecodeInstruction(uint8_t opcode, bool prefixed);
 
