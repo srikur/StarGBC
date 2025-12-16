@@ -19,11 +19,6 @@ void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
 }
 
 template<BusLike BusT>
-bool CPU<BusT>::IsDMG() const {
-    return bus_.gpu_.hardware == Hardware::DMG;
-}
-
-template<BusLike BusT>
 void CPU<BusT>::InitializeSystem(const Mode mode) {
     regs_.SetStartupValues(static_cast<Registers::Model>(mode));
     sp = 0xFFFE;
