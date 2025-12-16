@@ -15,18 +15,19 @@ struct GameboySettings {
     bool runBootrom{false};
     bool debugStart{false};
     bool realRTC{false};
+    bool unthrottled{false};
 };
 
 class Gameboy {
 public:
-    explicit Gameboy(std::string romPath, std::string biosPath, const Mode mode,
-                     const bool debugStart, const bool realRTC) : romPath_(std::move(romPath)),
-                                                                  biosPath_(std::move(biosPath)),
-                                                                  rtc_(realRTC),
-                                                                  cartridge_(romPath_, rtc_), joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
-                                                                  bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
-                                                                  cpu_(mode, biosPath_, bus_, interrupts_),
-                                                                  paused_(debugStart) {
+    explicit Gameboy(const GameboySettings &settings) : romPath_(std::move(settings.romName)),
+                                                        biosPath_(std::move(settings.biosPath)),
+                                                        rtc_(settings.realRTC),
+                                                        cartridge_(romPath_, rtc_), joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
+                                                        bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
+                                                        cpu_(settings.mode, biosPath_, bus_, interrupts_),
+                                                        throttleSpeed_(!settings.unthrottled),
+                                                        paused_(settings.debugStart) {
     }
 
     Gameboy(const Gameboy &other) = delete;
@@ -40,7 +41,7 @@ public:
     ~Gameboy() = default;
 
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) {
-        return std::make_unique<Gameboy>(settings.romName, settings.biosPath, settings.mode, settings.debugStart, settings.realRTC);
+        return std::make_unique<Gameboy>(settings);
     }
 
     void UpdateEmulator();
