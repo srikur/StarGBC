@@ -91,7 +91,7 @@ private:
     Serial serial_;
     GPU gpu_;
     Bus bus_;
-    CPU cpu_;
+    CPU<Bus> cpu_;
 
     uint32_t masterCycles{0x00000000};
     int speedMultiplier_{1};

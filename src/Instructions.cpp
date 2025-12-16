@@ -1,7 +1,8 @@
 #include "Instructions.h"
 #include <cstring>
 
-void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, const CorruptionType type) const {
+template<BusLike BusT>
+void Instructions<BusT>::HandleOAMCorruption(const CPU<BusT> &cpu, const uint16_t location, const CorruptionType type) const {
     if (!cpu.IsDMG() || (location < 0xFE00 || location > 0xFEFF) || bus_.gpu_.stat.mode != GPUMode::MODE_2) return;
     if (bus_.gpu_.scanlineCounter >= 76) return;
     const int currentRowIndex = bus_.gpu_.GetOAMScanRow();
@@ -65,8 +66,9 @@ void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, 
     }
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::RLC(CPU &cpu) {
+bool Instructions<BusT>::RLC(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t old = value & 0x80 ? 1 : 0;
@@ -80,7 +82,8 @@ bool Instructions::RLC(CPU &cpu) {
     return true;
 }
 
-bool Instructions::RLCAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::RLCAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -102,7 +105,8 @@ bool Instructions::RLCAddr(CPU &cpu) {
     return false;
 }
 
-bool Instructions::DAA(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::DAA(CPU<BusT> &cpu) const {
     uint8_t adjust = 0;
     bool carry = regs_.FlagCarry();
 
@@ -129,7 +133,8 @@ bool Instructions::DAA(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::RETI(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::RETI(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.sp);
         cpu.sp += 1;
@@ -152,14 +157,16 @@ bool Instructions::RETI(CPU &cpu) {
     return false;
 }
 
-bool Instructions::DI(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::DI(CPU<BusT> &cpu) const {
     interrupts_.interruptDelay = false;
     interrupts_.interruptMasterEnable = false;
     cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
-bool Instructions::EI(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::EI(CPU<BusT> &cpu) const {
     if (!interrupts_.interruptMasterEnable) {
         cpu.icount = 0;
         interrupts_.interruptDelay = true;
@@ -169,7 +176,8 @@ bool Instructions::EI(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::HALT(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::HALT(CPU<BusT> &cpu) const {
     if (const bool bug = (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0; !interrupts_.interruptMasterEnable && bug) {
         cpu.haltBug = true;
         cpu.halted = false;
@@ -181,8 +189,9 @@ bool Instructions::HALT(CPU &cpu) const {
     return true;
 }
 
+template<BusLike BusT>
 template<RSTTarget target>
-bool Instructions::RST(CPU &cpu) {
+bool Instructions<BusT>::RST(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         cpu.sp -= 1;
         return false;
@@ -208,7 +217,8 @@ bool Instructions::RST(CPU &cpu) {
     return false;
 }
 
-bool Instructions::CALLUnconditional(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::CALLUnconditional(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
@@ -240,8 +250,9 @@ bool Instructions::CALLUnconditional(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<JumpTest test>
-bool Instructions::CALL(CPU &cpu) {
+bool Instructions<BusT>::CALL(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
@@ -282,7 +293,8 @@ bool Instructions::CALL(CPU &cpu) {
     return false;
 }
 
-bool Instructions::RLCA(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::RLCA(CPU<BusT> &cpu) const {
     const uint8_t old = (regs_.a & 0x80) != 0 ? 1 : 0;
     regs_.SetCarry(old != 0);
     regs_.a = regs_.a << 1 | old;
@@ -293,7 +305,8 @@ bool Instructions::RLCA(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::RLA(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::RLA(CPU<BusT> &cpu) const {
     const bool flag_c = (regs_.a & 0x80) >> 7 == 0x01;
     const uint8_t r = (regs_.a << 1) + static_cast<uint8_t>(regs_.FlagCarry());
     regs_.SetCarry(flag_c);
@@ -305,8 +318,9 @@ bool Instructions::RLA(CPU &cpu) const {
     return true;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::RL(CPU &cpu) {
+bool Instructions<BusT>::RL(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const bool flag_c = (value & 0x80) >> 7 == 0x01;
@@ -320,7 +334,8 @@ bool Instructions::RL(CPU &cpu) {
     return true;
 }
 
-bool Instructions::RLAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::RLAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -342,7 +357,8 @@ bool Instructions::RLAddr(CPU &cpu) {
     return false;
 }
 
-bool Instructions::CCF(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::CCF(CPU<BusT> &cpu) const {
     regs_.SetSubtract(false);
     regs_.SetCarry(!regs_.FlagCarry());
     regs_.SetHalf(false);
@@ -350,7 +366,8 @@ bool Instructions::CCF(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::CPL(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::CPL(CPU<BusT> &cpu) const {
     regs_.SetHalf(true);
     regs_.SetSubtract(true);
     regs_.a = ~regs_.a;
@@ -358,7 +375,8 @@ bool Instructions::CPL(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::SCF(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::SCF(CPU<BusT> &cpu) const {
     regs_.SetSubtract(false);
     regs_.SetHalf(false);
     regs_.SetCarry(true);
@@ -366,7 +384,8 @@ bool Instructions::SCF(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::RRCA(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::RRCA(CPU<BusT> &cpu) const {
     regs_.SetCarry((regs_.a & 0x01) != 0);
     regs_.a = regs_.a >> 1 | (regs_.a & 0x01) << 7;
     regs_.SetZero(false);
@@ -376,8 +395,9 @@ bool Instructions::RRCA(CPU &cpu) const {
     return true;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::RRC(CPU &cpu) {
+bool Instructions<BusT>::RRC(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const bool carry = (value & 0x01) == 0x01;
@@ -391,7 +411,8 @@ bool Instructions::RRC(CPU &cpu) {
     return true;
 }
 
-bool Instructions::RRCAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::RRCAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -412,7 +433,8 @@ bool Instructions::RRCAddr(CPU &cpu) {
     return false;
 }
 
-bool Instructions::RRAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::RRAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -434,8 +456,9 @@ bool Instructions::RRAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::RR(CPU &cpu) {
+bool Instructions<BusT>::RR(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const bool carry = (value & 0x01) == 0x01;
@@ -449,7 +472,8 @@ bool Instructions::RR(CPU &cpu) {
     return true;
 }
 
-bool Instructions::RRA(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::RRA(CPU<BusT> &cpu) const {
     const bool carry = (regs_.a & 0x01) == 0x01;
     const uint8_t newValue = regs_.FlagCarry() ? 0x80 | regs_.a >> 1 : regs_.a >> 1;
     regs_.SetZero(false);
@@ -461,7 +485,8 @@ bool Instructions::RRA(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::RETUnconditional(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::RETUnconditional(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.sp);
         cpu.sp += 1;
@@ -483,8 +508,9 @@ bool Instructions::RETUnconditional(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<JumpTest test>
-bool Instructions::RETConditional(CPU &cpu) {
+bool Instructions<BusT>::RETConditional(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
         else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
@@ -518,7 +544,8 @@ bool Instructions::RETConditional(CPU &cpu) {
     return false;
 }
 
-bool Instructions::JRUnconditional(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::JRUnconditional(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         signedByte = std::bit_cast<int8_t>(bus_.ReadByte(cpu.pc));
         cpu.pc += 1;
@@ -540,8 +567,9 @@ bool Instructions::JRUnconditional(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<JumpTest test>
-bool Instructions::JR(CPU &cpu) {
+bool Instructions<BusT>::JR(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         signedByte = std::bit_cast<int8_t>(bus_.ReadByte(cpu.pc));
         cpu.pc += 1;
@@ -571,7 +599,8 @@ bool Instructions::JR(CPU &cpu) {
     return false;
 }
 
-bool Instructions::JPUnconditional(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::JPUnconditional(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
@@ -593,8 +622,9 @@ bool Instructions::JPUnconditional(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<JumpTest test>
-bool Instructions::JP(CPU &cpu) {
+bool Instructions<BusT>::JP(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
@@ -624,25 +654,29 @@ bool Instructions::JP(CPU &cpu) {
     return false;
 }
 
-bool Instructions::JPHL(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::JPHL(CPU<BusT> &cpu) const {
     cpu.pc = regs_.GetHL();
     cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
-bool Instructions::NOP(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::NOP(CPU<BusT> &cpu) const {
     cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
-bool Instructions::PREFIX(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::PREFIX(CPU<BusT> &cpu) const {
     cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     cpu.currentInstruction = 0xCB00 | cpu.nextInstruction;
     cpu.prefixed = true;
     return true;
 }
 
-bool Instructions::STOP(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::STOP(CPU<BusT> &cpu) const {
     const uint8_t key1 = bus_.ReadByte(0xFF4D);
     const bool speedSwitchRequested = bus_.prepareSpeedShift && (key1 & 0x01);
     bus_.WriteByte(0xFF04, 0x00);
@@ -658,8 +692,9 @@ bool Instructions::STOP(CPU &cpu) const {
     return true;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::DECRegister(CPU &cpu) const {
+bool Instructions<BusT>::DECRegister(CPU<BusT> &cpu) const {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t sourceValue = regs_.*sourceReg;
     regs_.SetHalf((sourceValue & 0xF) == 0x00);
@@ -671,7 +706,8 @@ bool Instructions::DECRegister(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::DECIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::DECIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -691,8 +727,9 @@ bool Instructions::DECIndirect(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Arithmetic16Target target>
-bool Instructions::DEC16(CPU &cpu) {
+bool Instructions<BusT>::DEC16(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         if constexpr (target == Arithmetic16Target::BC) {
             word = regs_.GetBC();
@@ -719,8 +756,9 @@ bool Instructions::DEC16(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::INCRegister(CPU &cpu) const {
+bool Instructions<BusT>::INCRegister(CPU<BusT> &cpu) const {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t sourceValue = regs_.*sourceReg;
     regs_.SetHalf((sourceValue & 0xF) == 0xF);
@@ -732,7 +770,8 @@ bool Instructions::INCRegister(CPU &cpu) const {
     return true;
 }
 
-bool Instructions::INCIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::INCIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -752,8 +791,9 @@ bool Instructions::INCIndirect(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Arithmetic16Target target>
-bool Instructions::INC16(CPU &cpu) {
+bool Instructions<BusT>::INC16(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         if constexpr (target == Arithmetic16Target::BC) {
             word = regs_.GetBC();
@@ -781,7 +821,8 @@ bool Instructions::INC16(CPU &cpu) {
 }
 
 // 0xE0
-bool Instructions::LoadFromAccumulatorDirectA(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LoadFromAccumulatorDirectA(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = static_cast<uint16_t>(bus_.ReadByte(cpu.pc));
         cpu.pc += 1;
@@ -799,7 +840,8 @@ bool Instructions::LoadFromAccumulatorDirectA(CPU &cpu) {
 }
 
 // 0xE2
-bool Instructions::LoadFromAccumulatorIndirectC(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::LoadFromAccumulatorIndirectC(CPU<BusT> &cpu) const {
     if (cpu.mCycleCounter == 2) {
         const uint16_t c = 0xFF00 | static_cast<uint16_t>(regs_.c);
         bus_.WriteByte(c, regs_.a);
@@ -813,7 +855,8 @@ bool Instructions::LoadFromAccumulatorIndirectC(CPU &cpu) const {
 }
 
 // 0xF0
-bool Instructions::LoadAccumulatorA(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LoadAccumulatorA(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -832,7 +875,8 @@ bool Instructions::LoadAccumulatorA(CPU &cpu) {
 }
 
 // 0xF2
-bool Instructions::LoadAccumulatorIndirectC(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LoadAccumulatorIndirectC(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(0xFF00 | static_cast<uint16_t>(regs_.c));
         return false;
@@ -846,8 +890,9 @@ bool Instructions::LoadAccumulatorIndirectC(CPU &cpu) {
 }
 
 /* M2 -- one cycle */
+template<BusLike BusT>
 template<Register target, Register source>
-bool Instructions::LDRegister(CPU &cpu) {
+bool Instructions<BusT>::LDRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     constexpr auto targetReg = GetRegisterPtr<target>();
     const uint8_t sourceValue = regs_.*sourceReg;
@@ -856,8 +901,9 @@ bool Instructions::LDRegister(CPU &cpu) {
     return true;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::LDRegisterImmediate(CPU &cpu) {
+bool Instructions<BusT>::LDRegisterImmediate(CPU<BusT> &cpu) {
     constexpr auto targetReg = GetRegisterPtr<source>();
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
@@ -871,8 +917,9 @@ bool Instructions::LDRegisterImmediate(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::LDRegisterIndirect(CPU &cpu) {
+bool Instructions<BusT>::LDRegisterIndirect(CPU<BusT> &cpu) {
     constexpr auto targetReg = GetRegisterPtr<source>();
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
@@ -886,8 +933,9 @@ bool Instructions::LDRegisterIndirect(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::LDAddrRegister(CPU &cpu) {
+bool Instructions<BusT>::LDAddrRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     if (cpu.mCycleCounter == 2) {
         const uint8_t sourceValue = regs_.*sourceReg;
@@ -901,7 +949,8 @@ bool Instructions::LDAddrRegister(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDAddrImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDAddrImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -917,7 +966,8 @@ bool Instructions::LDAddrImmediate(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDAccumulatorBC(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDAccumulatorBC(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetBC());
         return false;
@@ -930,7 +980,8 @@ bool Instructions::LDAccumulatorBC(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDAccumulatorDE(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDAccumulatorDE(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetDE());
         return false;
@@ -943,7 +994,8 @@ bool Instructions::LDAccumulatorDE(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDFromAccBC(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::LDFromAccBC(CPU<BusT> &cpu) const {
     if (cpu.mCycleCounter == 2) {
         bus_.WriteByte(regs_.GetBC(), regs_.a);
         return false;
@@ -955,7 +1007,8 @@ bool Instructions::LDFromAccBC(CPU &cpu) const {
     return false;
 }
 
-bool Instructions::LDFromAccDE(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::LDFromAccDE(CPU<BusT> &cpu) const {
     if (cpu.mCycleCounter == 2) {
         bus_.WriteByte(regs_.GetDE(), regs_.a);
         return false;
@@ -967,7 +1020,8 @@ bool Instructions::LDFromAccDE(CPU &cpu) const {
     return false;
 }
 
-bool Instructions::LDAccumulatorDirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDAccumulatorDirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
@@ -989,7 +1043,8 @@ bool Instructions::LDAccumulatorDirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDFromAccumulatorDirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDFromAccumulatorDirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
@@ -1012,7 +1067,8 @@ bool Instructions::LDFromAccumulatorDirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDAccumulatorIndirectDec(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDAccumulatorIndirectDec(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         HandleOAMCorruption(cpu, regs_.GetHL(), CorruptionType::ReadWrite);
@@ -1027,7 +1083,8 @@ bool Instructions::LDAccumulatorIndirectDec(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDFromAccumulatorIndirectDec(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDFromAccumulatorIndirectDec(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = regs_.GetHL();
         HandleOAMCorruption(cpu, word, CorruptionType::Write);
@@ -1043,7 +1100,8 @@ bool Instructions::LDFromAccumulatorIndirectDec(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDAccumulatorIndirectInc(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDAccumulatorIndirectInc(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         HandleOAMCorruption(cpu, regs_.GetHL(), CorruptionType::ReadWrite);
@@ -1058,7 +1116,8 @@ bool Instructions::LDAccumulatorIndirectInc(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LDFromAccumulatorIndirectInc(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LDFromAccumulatorIndirectInc(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = regs_.GetHL();
         HandleOAMCorruption(cpu, word, CorruptionType::Write);
@@ -1074,7 +1133,8 @@ bool Instructions::LDFromAccumulatorIndirectInc(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LD16FromStack(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LD16FromStack(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1099,8 +1159,9 @@ bool Instructions::LD16FromStack(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<LoadWordTarget target>
-bool Instructions::LD16Register(CPU &cpu) {
+bool Instructions<BusT>::LD16Register(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1120,7 +1181,8 @@ bool Instructions::LD16Register(CPU &cpu) {
     return false;
 }
 
-bool Instructions::LD16Stack(CPU &cpu) const {
+template<BusLike BusT>
+bool Instructions<BusT>::LD16Stack(CPU<BusT> &cpu) const {
     if (cpu.mCycleCounter == 2) {
         cpu.sp = regs_.GetHL();
         return false;
@@ -1132,7 +1194,8 @@ bool Instructions::LD16Stack(CPU &cpu) const {
     return false;
 }
 
-bool Instructions::LD16StackAdjusted(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::LD16StackAdjusted(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
             bus_.ReadByte(cpu.pc++))));
@@ -1153,8 +1216,9 @@ bool Instructions::LD16StackAdjusted(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<StackTarget target>
-bool Instructions::PUSH(CPU &cpu) {
+bool Instructions<BusT>::PUSH(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
         cpu.sp -= 1;
@@ -1182,8 +1246,9 @@ bool Instructions::PUSH(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<StackTarget target>
-bool Instructions::POP(CPU &cpu) {
+bool Instructions<BusT>::POP(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         HandleOAMCorruption(cpu, cpu.sp, CorruptionType::ReadWrite);
         word = bus_.ReadByte(cpu.sp);
@@ -1207,8 +1272,9 @@ bool Instructions::POP(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::CPRegister(CPU &cpu) {
+bool Instructions<BusT>::CPRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t new_value = regs_.a - value;
@@ -1220,7 +1286,8 @@ bool Instructions::CPRegister(CPU &cpu) {
     return true;
 }
 
-bool Instructions::CPIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::CPIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1237,7 +1304,8 @@ bool Instructions::CPIndirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::CPImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::CPImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1254,8 +1322,9 @@ bool Instructions::CPImmediate(CPU &cpu) {
     return true;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::ORRegister(CPU &cpu) {
+bool Instructions<BusT>::ORRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     regs_.a |= value;
@@ -1267,7 +1336,8 @@ bool Instructions::ORRegister(CPU &cpu) {
     return true;
 }
 
-bool Instructions::ORIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ORIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1284,7 +1354,8 @@ bool Instructions::ORIndirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::ORImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ORImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1301,8 +1372,9 @@ bool Instructions::ORImmediate(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::XORRegister(CPU &cpu) {
+bool Instructions<BusT>::XORRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     regs_.a ^= value;
@@ -1314,7 +1386,8 @@ bool Instructions::XORRegister(CPU &cpu) {
     return true;
 }
 
-bool Instructions::XORIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::XORIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1331,7 +1404,8 @@ bool Instructions::XORIndirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::XORImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::XORImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1348,8 +1422,9 @@ bool Instructions::XORImmediate(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::AND(CPU &cpu) {
+bool Instructions<BusT>::AND(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     regs_.a &= value;
@@ -1361,7 +1436,8 @@ bool Instructions::AND(CPU &cpu) {
     return true;
 }
 
-bool Instructions::ANDImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ANDImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1378,7 +1454,8 @@ bool Instructions::ANDImmediate(CPU &cpu) {
     return false;
 }
 
-bool Instructions::ANDIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ANDIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1395,8 +1472,9 @@ bool Instructions::ANDIndirect(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::SUB(CPU &cpu) {
+bool Instructions<BusT>::SUB(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t new_value = regs_.a - value;
@@ -1409,7 +1487,8 @@ bool Instructions::SUB(CPU &cpu) {
     return true;
 }
 
-bool Instructions::SUBImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SUBImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1427,7 +1506,8 @@ bool Instructions::SUBImmediate(CPU &cpu) {
     return false;
 }
 
-bool Instructions::SUBIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SUBIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1445,8 +1525,9 @@ bool Instructions::SUBIndirect(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::SLA(CPU &cpu) {
+bool Instructions<BusT>::SLA(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     regs_.SetCarry(((value & 0x80) >> 7) == 0x01);
@@ -1459,7 +1540,8 @@ bool Instructions::SLA(CPU &cpu) {
     return true;
 }
 
-bool Instructions::SLAAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SLAAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1480,8 +1562,9 @@ bool Instructions::SLAAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::SRA(CPU &cpu) {
+bool Instructions<BusT>::SRA(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t newValue = (value >> 1) | (value & 0x80);
@@ -1494,7 +1577,8 @@ bool Instructions::SRA(CPU &cpu) {
     return true;
 }
 
-bool Instructions::SRAAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SRAAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1515,8 +1599,9 @@ bool Instructions::SRAAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::SWAP(CPU &cpu) {
+bool Instructions<BusT>::SWAP(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     uint8_t value = regs_.*sourceReg;
     value = (value >> 4) | (value << 4);
@@ -1529,7 +1614,8 @@ bool Instructions::SWAP(CPU &cpu) {
     return true;
 }
 
-bool Instructions::SWAPAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SWAPAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1550,8 +1636,9 @@ bool Instructions::SWAPAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::SRL(CPU &cpu) {
+bool Instructions<BusT>::SRL(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     uint8_t value = regs_.*sourceReg;
     regs_.SetCarry((value & 0x01) != 0);
@@ -1564,7 +1651,8 @@ bool Instructions::SRL(CPU &cpu) {
     return true;
 }
 
-bool Instructions::SRLAddr(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SRLAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         regs_.SetCarry((byte & 0x01) != 0);
@@ -1586,8 +1674,9 @@ bool Instructions::SRLAddr(CPU &cpu) {
 }
 
 /* M3 -- prefixed, so only one */
+template<BusLike BusT>
 template<Register source, int bit>
-bool Instructions::BIT(CPU &cpu) {
+bool Instructions<BusT>::BIT(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t sourceValue = regs_.*sourceReg;
     regs_.SetZero((sourceValue & (1 << bit)) == 0);
@@ -1598,8 +1687,9 @@ bool Instructions::BIT(CPU &cpu) {
 }
 
 /* M4 -- prefixed, M3 fetches byte */
+template<BusLike BusT>
 template<int bit>
-bool Instructions::BITAddr(CPU &cpu) {
+bool Instructions<BusT>::BITAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1614,8 +1704,9 @@ bool Instructions::BITAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source, int bit>
-bool Instructions::RES(CPU &cpu) {
+bool Instructions<BusT>::RES(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     uint8_t sourceValue = regs_.*sourceReg;
     sourceValue &= ~(1 << bit);
@@ -1624,8 +1715,9 @@ bool Instructions::RES(CPU &cpu) {
     return true;
 }
 
+template<BusLike BusT>
 template<int bit>
-bool Instructions::RESAddr(CPU &cpu) {
+bool Instructions<BusT>::RESAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1642,8 +1734,9 @@ bool Instructions::RESAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source, int bit>
-bool Instructions::SET(CPU &cpu) {
+bool Instructions<BusT>::SET(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     uint8_t sourceValue = regs_.*sourceReg;
     sourceValue |= 1 << bit;
@@ -1652,8 +1745,9 @@ bool Instructions::SET(CPU &cpu) {
     return true;
 }
 
+template<BusLike BusT>
 template<int bit>
-bool Instructions::SETAddr(CPU &cpu) {
+bool Instructions<BusT>::SETAddr(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1670,8 +1764,9 @@ bool Instructions::SETAddr(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::SBCRegister(CPU &cpu) {
+bool Instructions<BusT>::SBCRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
@@ -1685,7 +1780,8 @@ bool Instructions::SBCRegister(CPU &cpu) {
     return true;
 }
 
-bool Instructions::SBCIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SBCIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1704,7 +1800,8 @@ bool Instructions::SBCIndirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::SBCImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::SBCImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1723,8 +1820,9 @@ bool Instructions::SBCImmediate(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::ADCRegister(CPU &cpu) {
+bool Instructions<BusT>::ADCRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
@@ -1738,7 +1836,8 @@ bool Instructions::ADCRegister(CPU &cpu) {
     return true;
 }
 
-bool Instructions::ADCIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ADCIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1757,7 +1856,8 @@ bool Instructions::ADCIndirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::ADCImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ADCImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1776,8 +1876,9 @@ bool Instructions::ADCImmediate(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Arithmetic16Target target>
-bool Instructions::ADD16(CPU &cpu) {
+bool Instructions<BusT>::ADD16(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         if constexpr (target == Arithmetic16Target::BC) word = regs_.GetBC();
         if constexpr (target == Arithmetic16Target::DE) word = regs_.GetDE();
@@ -1801,8 +1902,9 @@ bool Instructions::ADD16(CPU &cpu) {
     return false;
 }
 
+template<BusLike BusT>
 template<Register source>
-bool Instructions::ADDRegister(CPU &cpu) {
+bool Instructions<BusT>::ADDRegister(CPU<BusT> &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     const uint8_t value = regs_.*sourceReg;
     const uint8_t a = regs_.a;
@@ -1816,7 +1918,8 @@ bool Instructions::ADDRegister(CPU &cpu) {
     return true;
 }
 
-bool Instructions::ADDIndirect(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ADDIndirect(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(regs_.GetHL());
         return false;
@@ -1835,7 +1938,8 @@ bool Instructions::ADDIndirect(CPU &cpu) {
     return false;
 }
 
-bool Instructions::ADDImmediate(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ADDImmediate(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         byte = bus_.ReadByte(cpu.pc++);
         return false;
@@ -1855,7 +1959,8 @@ bool Instructions::ADDImmediate(CPU &cpu) {
 }
 
 // Not exactly M-cycle accurate (GBCTR page 80)
-bool Instructions::ADDSigned(CPU &cpu) {
+template<BusLike BusT>
+bool Instructions<BusT>::ADDSigned(CPU<BusT> &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
             bus_.ReadByte(cpu.pc++))));
@@ -1880,875 +1985,877 @@ bool Instructions::ADDSigned(CPU &cpu) {
     return false;
 }
 
+template class Instructions<Bus>;
+
 // template function definitions to solve linker errors
-template bool Instructions::RST<RSTTarget::H00>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H00>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H08>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H08>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H10>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H10>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H18>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H18>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H20>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H20>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H28>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H28>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H30>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H30>(CPU<Bus> &cpu);
 
-template bool Instructions::RST<RSTTarget::H38>(CPU &cpu);
+template bool Instructions<Bus>::RST<RSTTarget::H38>(CPU<Bus> &cpu);
 
-template bool Instructions::CALL<JumpTest::NotZero>(CPU &cpu);
+template bool Instructions<Bus>::CALL<JumpTest::NotZero>(CPU<Bus> &cpu);
 
-template bool Instructions::CALL<JumpTest::Zero>(CPU &cpu);
+template bool Instructions<Bus>::CALL<JumpTest::Zero>(CPU<Bus> &cpu);
 
-template bool Instructions::CALL<JumpTest::NotCarry>(CPU &cpu);
+template bool Instructions<Bus>::CALL<JumpTest::NotCarry>(CPU<Bus> &cpu);
 
-template bool Instructions::CALL<JumpTest::Carry>(CPU &cpu);
+template bool Instructions<Bus>::CALL<JumpTest::Carry>(CPU<Bus> &cpu);
 
-template bool Instructions::RETConditional<JumpTest::NotZero>(CPU &cpu);
+template bool Instructions<Bus>::RETConditional<JumpTest::NotZero>(CPU<Bus> &cpu);
 
-template bool Instructions::RETConditional<JumpTest::Zero>(CPU &cpu);
+template bool Instructions<Bus>::RETConditional<JumpTest::Zero>(CPU<Bus> &cpu);
 
-template bool Instructions::RETConditional<JumpTest::NotCarry>(CPU &cpu);
+template bool Instructions<Bus>::RETConditional<JumpTest::NotCarry>(CPU<Bus> &cpu);
 
-template bool Instructions::RETConditional<JumpTest::Carry>(CPU &cpu);
+template bool Instructions<Bus>::RETConditional<JumpTest::Carry>(CPU<Bus> &cpu);
 
-template bool Instructions::JR<JumpTest::NotZero>(CPU &cpu);
+template bool Instructions<Bus>::JR<JumpTest::NotZero>(CPU<Bus> &cpu);
 
-template bool Instructions::JR<JumpTest::Zero>(CPU &cpu);
+template bool Instructions<Bus>::JR<JumpTest::Zero>(CPU<Bus> &cpu);
 
-template bool Instructions::JR<JumpTest::NotCarry>(CPU &cpu);
+template bool Instructions<Bus>::JR<JumpTest::NotCarry>(CPU<Bus> &cpu);
 
-template bool Instructions::JR<JumpTest::Carry>(CPU &cpu);
+template bool Instructions<Bus>::JR<JumpTest::Carry>(CPU<Bus> &cpu);
 
-template bool Instructions::JP<JumpTest::NotZero>(CPU &cpu);
+template bool Instructions<Bus>::JP<JumpTest::NotZero>(CPU<Bus> &cpu);
 
-template bool Instructions::JP<JumpTest::Zero>(CPU &cpu);
+template bool Instructions<Bus>::JP<JumpTest::Zero>(CPU<Bus> &cpu);
 
-template bool Instructions::JP<JumpTest::NotCarry>(CPU &cpu);
+template bool Instructions<Bus>::JP<JumpTest::NotCarry>(CPU<Bus> &cpu);
 
-template bool Instructions::JP<JumpTest::Carry>(CPU &cpu);
+template bool Instructions<Bus>::JP<JumpTest::Carry>(CPU<Bus> &cpu);
 
-template bool Instructions::DECRegister<Register::A>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::A>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DECRegister<Register::B>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::B>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DECRegister<Register::C>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::C>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DECRegister<Register::D>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::D>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DECRegister<Register::E>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::E>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DECRegister<Register::H>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::H>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DECRegister<Register::L>(CPU &cpu) const;
+template bool Instructions<Bus>::DECRegister<Register::L>(CPU<Bus> &cpu) const;
 
-template bool Instructions::DEC16<Arithmetic16Target::BC>(CPU &cpu);
+template bool Instructions<Bus>::DEC16<Arithmetic16Target::BC>(CPU<Bus> &cpu);
 
-template bool Instructions::DEC16<Arithmetic16Target::DE>(CPU &cpu);
+template bool Instructions<Bus>::DEC16<Arithmetic16Target::DE>(CPU<Bus> &cpu);
 
-template bool Instructions::DEC16<Arithmetic16Target::HL>(CPU &cpu);
+template bool Instructions<Bus>::DEC16<Arithmetic16Target::HL>(CPU<Bus> &cpu);
 
-template bool Instructions::DEC16<Arithmetic16Target::SP>(CPU &cpu);
+template bool Instructions<Bus>::DEC16<Arithmetic16Target::SP>(CPU<Bus> &cpu);
 
-template bool Instructions::INCRegister<Register::A>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::A>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INCRegister<Register::B>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::B>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INCRegister<Register::C>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::C>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INCRegister<Register::D>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::D>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INCRegister<Register::E>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::E>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INCRegister<Register::H>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::H>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INCRegister<Register::L>(CPU &cpu) const;
+template bool Instructions<Bus>::INCRegister<Register::L>(CPU<Bus> &cpu) const;
 
-template bool Instructions::INC16<Arithmetic16Target::BC>(CPU &cpu);
+template bool Instructions<Bus>::INC16<Arithmetic16Target::BC>(CPU<Bus> &cpu);
 
-template bool Instructions::INC16<Arithmetic16Target::DE>(CPU &cpu);
+template bool Instructions<Bus>::INC16<Arithmetic16Target::DE>(CPU<Bus> &cpu);
 
-template bool Instructions::INC16<Arithmetic16Target::HL>(CPU &cpu);
+template bool Instructions<Bus>::INC16<Arithmetic16Target::HL>(CPU<Bus> &cpu);
 
-template bool Instructions::INC16<Arithmetic16Target::SP>(CPU &cpu);
+template bool Instructions<Bus>::INC16<Arithmetic16Target::SP>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::A, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::A, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::B, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::B, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::C, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::C, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::D, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::D, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::E, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::E, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::H, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::H, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegister<Register::L, Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegister<Register::L, Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterImmediate<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterImmediate<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDRegisterIndirect<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDRegisterIndirect<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::LDAddrRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::LDAddrRegister<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::LD16Register<LoadWordTarget::BC>(CPU &cpu);
+template bool Instructions<Bus>::LD16Register<LoadWordTarget::BC>(CPU<Bus> &cpu);
 
-template bool Instructions::LD16Register<LoadWordTarget::DE>(CPU &cpu);
+template bool Instructions<Bus>::LD16Register<LoadWordTarget::DE>(CPU<Bus> &cpu);
 
-template bool Instructions::LD16Register<LoadWordTarget::HL>(CPU &cpu);
+template bool Instructions<Bus>::LD16Register<LoadWordTarget::HL>(CPU<Bus> &cpu);
 
-template bool Instructions::LD16Register<LoadWordTarget::SP>(CPU &cpu);
+template bool Instructions<Bus>::LD16Register<LoadWordTarget::SP>(CPU<Bus> &cpu);
 
-template bool Instructions::PUSH<StackTarget::BC>(CPU &cpu);
+template bool Instructions<Bus>::PUSH<StackTarget::BC>(CPU<Bus> &cpu);
 
-template bool Instructions::PUSH<StackTarget::AF>(CPU &cpu);
+template bool Instructions<Bus>::PUSH<StackTarget::AF>(CPU<Bus> &cpu);
 
-template bool Instructions::PUSH<StackTarget::DE>(CPU &cpu);
+template bool Instructions<Bus>::PUSH<StackTarget::DE>(CPU<Bus> &cpu);
 
-template bool Instructions::PUSH<StackTarget::HL>(CPU &cpu);
+template bool Instructions<Bus>::PUSH<StackTarget::HL>(CPU<Bus> &cpu);
 
-template bool Instructions::POP<StackTarget::BC>(CPU &cpu);
+template bool Instructions<Bus>::POP<StackTarget::BC>(CPU<Bus> &cpu);
 
-template bool Instructions::POP<StackTarget::AF>(CPU &cpu);
+template bool Instructions<Bus>::POP<StackTarget::AF>(CPU<Bus> &cpu);
 
-template bool Instructions::POP<StackTarget::DE>(CPU &cpu);
+template bool Instructions<Bus>::POP<StackTarget::DE>(CPU<Bus> &cpu);
 
-template bool Instructions::POP<StackTarget::HL>(CPU &cpu);
+template bool Instructions<Bus>::POP<StackTarget::HL>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::CPRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::CPRegister<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::ORRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::ORRegister<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::XORRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::XORRegister<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::AND<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::AND<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::SUB<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::SUB<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::RRC<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::RRC<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::RLC<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::RLC<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::RR<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::RR<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::RL<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::RL<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::SLA<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::SLA<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::SRA<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::SRA<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::SWAP<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::SWAP<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::SRL<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::SRL<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 0>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 1>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 2>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 3>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 4>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 5>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 6>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::A, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::A, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::B, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::B, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::C, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::C, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::D, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::D, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::E, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::E, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::H, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::H, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BIT<Register::L, 7>(CPU &cpu);
+template bool Instructions<Bus>::BIT<Register::L, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 0>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 1>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 2>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 3>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 4>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 5>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 6>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::A, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::A, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::B, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::B, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::C, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::C, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::D, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::D, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::E, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::E, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::H, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::H, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::RES<Register::L, 7>(CPU &cpu);
+template bool Instructions<Bus>::RES<Register::L, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 0>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 0>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 1>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 1>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 2>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 2>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 3>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 3>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 4>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 4>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 5>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 5>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 6>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 6>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::A, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::A, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::B, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::B, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::C, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::C, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::D, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::D, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::E, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::E, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::H, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::H, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::SET<Register::L, 7>(CPU &cpu);
+template bool Instructions<Bus>::SET<Register::L, 7>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<0>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<0>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<1>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<1>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<2>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<2>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<3>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<3>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<4>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<4>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<5>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<5>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<6>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<6>(CPU<Bus> &cpu);
 
-template bool Instructions::BITAddr<7>(CPU &cpu);
+template bool Instructions<Bus>::BITAddr<7>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<0>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<0>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<1>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<1>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<2>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<2>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<3>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<3>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<4>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<4>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<5>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<5>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<6>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<6>(CPU<Bus> &cpu);
 
-template bool Instructions::RESAddr<7>(CPU &cpu);
+template bool Instructions<Bus>::RESAddr<7>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<0>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<0>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<1>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<1>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<2>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<2>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<3>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<3>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<4>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<4>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<5>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<5>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<6>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<6>(CPU<Bus> &cpu);
 
-template bool Instructions::SETAddr<7>(CPU &cpu);
+template bool Instructions<Bus>::SETAddr<7>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::SBCRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::SBCRegister<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::ADCRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::ADCRegister<Register::L>(CPU<Bus> &cpu);
 
-template bool Instructions::ADD16<Arithmetic16Target::BC>(CPU &cpu);
+template bool Instructions<Bus>::ADD16<Arithmetic16Target::BC>(CPU<Bus> &cpu);
 
-template bool Instructions::ADD16<Arithmetic16Target::DE>(CPU &cpu);
+template bool Instructions<Bus>::ADD16<Arithmetic16Target::DE>(CPU<Bus> &cpu);
 
-template bool Instructions::ADD16<Arithmetic16Target::HL>(CPU &cpu);
+template bool Instructions<Bus>::ADD16<Arithmetic16Target::HL>(CPU<Bus> &cpu);
 
-template bool Instructions::ADD16<Arithmetic16Target::SP>(CPU &cpu);
+template bool Instructions<Bus>::ADD16<Arithmetic16Target::SP>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::A>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::A>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::B>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::B>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::C>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::C>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::D>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::D>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::E>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::E>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::H>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::H>(CPU<Bus> &cpu);
 
-template bool Instructions::ADDRegister<Register::L>(CPU &cpu);
+template bool Instructions<Bus>::ADDRegister<Register::L>(CPU<Bus> &cpu);

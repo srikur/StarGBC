@@ -5,14 +5,16 @@
 #include "Instructions.h"
 #include "Registers.h"
 
+template<BusLike BusT>
 class Instructions;
 
+template<BusLike BusT>
 class CPU {
 public:
-    explicit CPU(const Mode mode, const std::string &biosPath, Bus &bus, Interrupts &interrupts) : bus_(bus),
-                                                                                                   interrupts_(interrupts),
-                                                                                                   instructions_(std::make_unique<Instructions>(regs_, bus_, interrupts_)),
-                                                                                                   mode_(mode) {
+    explicit CPU(const Mode mode, const std::string &biosPath, BusT &bus, Interrupts &interrupts) : bus_(bus),
+                                                                                                    interrupts_(interrupts),
+                                                                                                    instructions_(std::make_unique<Instructions<BusT> >(regs_, bus_, interrupts_)),
+                                                                                                    mode_(mode) {
         if (mode_ != Mode::None) {
             bus.gpu_.hardware = mode == Mode::DMG ? Hardware::DMG : Hardware::CGB;
             bus.audio_.SetDMG(bus.gpu_.hardware == Hardware::DMG);
@@ -40,7 +42,7 @@ public:
     void ExecuteMicroOp();
 
 private:
-    friend class Instructions;
+    friend class Instructions<BusT>;
 
     uint8_t RunInstructionCycle(uint8_t, bool);
 
@@ -57,7 +59,7 @@ private:
     Bus &bus_;
     Interrupts &interrupts_;
     Registers regs_{};
-    std::unique_ptr<Instructions> instructions_{nullptr};
+    std::unique_ptr<Instructions<BusT> > instructions_{nullptr};
 
     Mode mode_{Mode::DMG};
 
