@@ -317,7 +317,7 @@ public:
     }
 
     Registers &regs_;
-    Bus &bus_;
+    BusT &bus_;
     Interrupts &interrupts_;
     int8_t signedByte{0};
     uint8_t byte{0};
