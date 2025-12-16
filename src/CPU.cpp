@@ -49,33 +49,45 @@ void CPU::InitializeSystem(const Mode mode) {
 }
 
 void CPU::ExecuteMicroOp() {
-    if ((++tCycleCounter % 4) == 0) {
-        tCycleCounter = 0;
-        if (!instrRunning && ProcessInterrupts()) return;
-        if (halted) {
-            return;
-        }
-        mCycleCounter++;
-        if (bus_.bootromRunning && pc == 0x100) {
-            bus_.bootromRunning = false;
-        }
-        instrRunning = true;
-        if (DecodeInstruction(currentInstruction, prefixed)) {
-            prefixed = (currentInstruction >> 8) == 0xCB;
-            currentInstruction = nextInstruction;
-            mCycleCounter = 1;
-            if (haltBug) {
-                haltBug = false;
-                pc -= 1;
-            }
-            instructions_->word2 = instructions_->word = instructions_->byte = 0;
-            instructions_->jumpCondition = false;
-            instrRunning = false;
-        }
+    if (!AdvanceTCycle()) return;
+    if (!instrRunning && ProcessInterrupts()) return;
+    if (halted) return;
+    BeginMCycle();
+    if (RunInstructionCycle(currentInstruction, prefixed)) {
+        RunPostCompletion();
     }
 }
 
-uint8_t CPU::DecodeInstruction(const uint8_t opcode, const bool isPrefixed) {
+void CPU::BeginMCycle() {
+    ++mCycleCounter;
+    if (bus_.bootromRunning && pc == 0x100) {
+        bus_.bootromRunning = false;
+    }
+    instrRunning = true;
+}
+
+bool CPU::AdvanceTCycle() {
+    ++tCycleCounter;
+    if (tCycleCounter % 4 != 0) {
+        return false;
+    }
+    tCycleCounter = 0;
+    return true;
+}
+
+void CPU::RunPostCompletion() {
+    prefixed = currentInstruction >> 8 == 0xCB;
+    currentInstruction = nextInstruction;
+    mCycleCounter = 1;
+    if (haltBug) {
+        haltBug = false;
+        pc -= 1;
+    }
+    instructions_->ResetState();
+    instrRunning = false;
+}
+
+uint8_t CPU::RunInstructionCycle(const uint8_t opcode, const bool isPrefixed) {
     return isPrefixed
                ? instructions_->prefixedInstr(opcode, *this)
                : instructions_->nonPrefixedInstr(opcode, *this);

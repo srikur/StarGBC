@@ -42,11 +42,17 @@ public:
 private:
     friend class Instructions;
 
-    uint8_t DecodeInstruction(uint8_t, bool);
+    uint8_t RunInstructionCycle(uint8_t, bool);
 
     uint8_t InterruptAddress(uint8_t) const;
 
     bool ProcessInterrupts();
+
+    void BeginMCycle();
+
+    bool AdvanceTCycle();
+
+    void RunPostCompletion();
 
     Bus &bus_;
     Interrupts &interrupts_;
