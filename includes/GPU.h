@@ -58,6 +58,12 @@ enum class GPUMode {
     MODE_3
 };
 
+enum class CorruptionType {
+    Write,
+    Read,
+    ReadWrite,
+};
+
 struct Stat {
     bool enableLYInterrupt{false};
     bool enableM2Interrupt{false};

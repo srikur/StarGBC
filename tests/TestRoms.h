@@ -1,6 +1,5 @@
-#define DOCTEST_CONFIG_IMPLEMENT
-#include "doctest.h"
 #include <Gameboy.h>
+#include "doctest.h"
 
 #include <fstream>
 #include <future>
@@ -219,7 +218,7 @@ BLARGG_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
 BLARGG_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
 BLARGG_TEST(51, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
 
-int main(const int argc, char **argv) {
+int ExecuteTestRoms(const int argc, char **argv) {
     std::vector<char *> doctest_args;
     doctest_args.reserve(argc);
     doctest_args.push_back(argv[0]);

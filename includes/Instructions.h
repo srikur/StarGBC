@@ -94,76 +94,6 @@ private:
         if constexpr (target == RSTTarget::H38) return 0x38;
     }
 
-    enum class CorruptionType {
-        Write,
-        Read,
-        ReadWrite,
-    };
-
-    void HandleOAMCorruption(const CPU<BusT> &cpu, const uint16_t location, const CorruptionType type) const {
-        if (!cpu.IsDMG() || (location < 0xFE00 || location > 0xFEFF) || bus_.gpu_.stat.mode != GPUMode::MODE_2) return;
-        if (bus_.gpu_.scanlineCounter >= 76) return;
-        const int currentRowIndex = bus_.gpu_.GetOAMScanRow();
-
-        auto ReadWord = [&](const int index) -> uint16_t {
-            return static_cast<uint16_t>(bus_.gpu_.oam[index]) << 8 | bus_.gpu_.oam[index + 1];
-        };
-        auto WriteWord = [&](const int index, const uint16_t value) {
-            bus_.gpu_.oam[index] = static_cast<uint8_t>(value >> 8);
-            bus_.gpu_.oam[index + 1] = static_cast<uint8_t>(value & 0xFF);
-        };
-
-        if (type == CorruptionType::ReadWrite) {
-            if (currentRowIndex >= 4 && currentRowIndex < 19) {
-                const int row_n_addr = currentRowIndex * 8;
-                const int row_n_minus_1_addr = (currentRowIndex - 1) * 8;
-                const int row_n_minus_2_addr = (currentRowIndex - 2) * 8;
-
-                const uint16_t a_rw = ReadWord(row_n_minus_2_addr);
-                const uint16_t b_rw = ReadWord(row_n_minus_1_addr);
-                const uint16_t c_rw = ReadWord(row_n_addr);
-                const uint16_t d_rw = ReadWord(row_n_minus_1_addr + 4);
-
-                const uint16_t corrupted_b = (b_rw & (a_rw | c_rw | d_rw)) | (a_rw & c_rw & d_rw);
-                WriteWord(row_n_minus_1_addr, corrupted_b);
-
-                uint8_t temp_row[8];
-                std::memcpy(temp_row, &bus_.gpu_.oam[row_n_minus_1_addr], 8);
-                std::memcpy(&bus_.gpu_.oam[row_n_addr], temp_row, 8);
-                std::memcpy(&bus_.gpu_.oam[row_n_minus_2_addr], temp_row, 8);
-            }
-
-            if (currentRowIndex > 0) {
-                const int currentRowAddr = currentRowIndex * 8;
-                const int prevRowAddr = (currentRowIndex - 1) * 8;
-
-                const uint16_t a_read = ReadWord(currentRowAddr);
-                const uint16_t b_read = ReadWord(prevRowAddr);
-                const uint16_t c_read = ReadWord(prevRowAddr + 4);
-
-                const uint16_t corruptedWord = b_read | (a_read & c_read);
-                WriteWord(currentRowAddr, corruptedWord);
-
-                std::memcpy(&bus_.gpu_.oam[currentRowAddr + 2], &bus_.gpu_.oam[prevRowAddr + 2], 6);
-            }
-        } else {
-            if (currentRowIndex == 0) return;
-
-            const int currentRowAddr = currentRowIndex * 8;
-            const int prevRowAddr = (currentRowIndex - 1) * 8;
-
-            const uint16_t a = ReadWord(currentRowAddr);
-            const uint16_t b = ReadWord(prevRowAddr);
-            const uint16_t c = ReadWord(prevRowAddr + 4);
-
-            const uint16_t corruptedWord = (type == CorruptionType::Write)
-                                               ? ((a ^ c) & (b ^ c)) ^ c
-                                               : (b | (a & c));
-            WriteWord(currentRowAddr, corruptedWord);
-            std::memcpy(&bus_.gpu_.oam[currentRowAddr + 2], &bus_.gpu_.oam[prevRowAddr + 2], 6);
-        }
-    }
-
     bool DAA(CPU<BusT> &cpu) const {
         uint8_t adjust = 0;
         bool carry = regs_.FlagCarry();
@@ -647,18 +577,18 @@ private:
         if (cpu.mCycleCounter == 2) {
             if constexpr (target == Arithmetic16Target::BC) {
                 word = regs_.GetBC();
-                HandleOAMCorruption(cpu, word, CorruptionType::Write);
+                bus_.HandleOAMCorruption(word, CorruptionType::Write);
                 regs_.SetBC(word - 1);
             } else if constexpr (target == Arithmetic16Target::DE) {
                 word = regs_.GetDE();
-                HandleOAMCorruption(cpu, word, CorruptionType::Write);
+                bus_.HandleOAMCorruption(word, CorruptionType::Write);
                 regs_.SetDE(word - 1);
             } else if constexpr (target == Arithmetic16Target::HL) {
                 word = regs_.GetHL();
                 regs_.SetHL(word - 1);
-                HandleOAMCorruption(cpu, word, CorruptionType::Write);
+                bus_.HandleOAMCorruption(word, CorruptionType::Write);
             } else if constexpr (target == Arithmetic16Target::SP) {
-                HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
+                bus_.HandleOAMCorruption(cpu.sp, CorruptionType::Write);
                 cpu.sp -= 1;
             }
             return false;
@@ -708,18 +638,18 @@ private:
         if (cpu.mCycleCounter == 2) {
             if constexpr (target == Arithmetic16Target::BC) {
                 word = regs_.GetBC();
-                HandleOAMCorruption(cpu, word, CorruptionType::Write);
+                bus_.HandleOAMCorruption(word, CorruptionType::Write);
                 regs_.SetBC(word + 1);
             } else if constexpr (target == Arithmetic16Target::DE) {
                 word = regs_.GetDE();
-                HandleOAMCorruption(cpu, word, CorruptionType::Write);
+                bus_.HandleOAMCorruption(word, CorruptionType::Write);
                 regs_.SetDE(word + 1);
             } else if constexpr (target == Arithmetic16Target::HL) {
                 word = regs_.GetHL();
-                HandleOAMCorruption(cpu, word, CorruptionType::Write);
+                bus_.HandleOAMCorruption(word, CorruptionType::Write);
                 regs_.SetHL(word + 1);
             } else if constexpr (target == Arithmetic16Target::SP) {
-                HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
+                bus_.HandleOAMCorruption(cpu.sp, CorruptionType::Write);
                 cpu.sp += 1;
             }
             return false;
@@ -900,7 +830,7 @@ private:
     bool LDAccumulatorIndirectDec(CPU<BusT> &cpu) {
         if (cpu.mCycleCounter == 2) {
             byte = bus_.ReadByte(regs_.GetHL());
-            HandleOAMCorruption(cpu, regs_.GetHL(), CorruptionType::ReadWrite);
+            bus_.HandleOAMCorruption(regs_.GetHL(), CorruptionType::ReadWrite);
             regs_.SetHL(regs_.GetHL() - 1);
             return false;
         }
@@ -915,9 +845,9 @@ private:
     bool LDFromAccumulatorIndirectDec(CPU<BusT> &cpu) {
         if (cpu.mCycleCounter == 2) {
             word = regs_.GetHL();
-            HandleOAMCorruption(cpu, word, CorruptionType::Write);
+            bus_.HandleOAMCorruption(word, CorruptionType::Write);
             bus_.WriteByte(word, regs_.a);
-            HandleOAMCorruption(cpu, word, CorruptionType::Write);
+            bus_.HandleOAMCorruption(word, CorruptionType::Write);
             regs_.SetHL(word - 1);
             return false;
         }
@@ -931,7 +861,7 @@ private:
     bool LDAccumulatorIndirectInc(CPU<BusT> &cpu) {
         if (cpu.mCycleCounter == 2) {
             byte = bus_.ReadByte(regs_.GetHL());
-            HandleOAMCorruption(cpu, regs_.GetHL(), CorruptionType::ReadWrite);
+            bus_.HandleOAMCorruption(regs_.GetHL(), CorruptionType::ReadWrite);
             regs_.SetHL(regs_.GetHL() + 1);
             return false;
         }
@@ -946,9 +876,9 @@ private:
     bool LDFromAccumulatorIndirectInc(CPU<BusT> &cpu) {
         if (cpu.mCycleCounter == 2) {
             word = regs_.GetHL();
-            HandleOAMCorruption(cpu, word, CorruptionType::Write);
+            bus_.HandleOAMCorruption(word, CorruptionType::Write);
             bus_.WriteByte(word, regs_.a);
-            HandleOAMCorruption(cpu, word, CorruptionType::Write);
+            bus_.HandleOAMCorruption(word, CorruptionType::Write);
             regs_.SetHL(word + 1);
             return false;
         }
@@ -1102,12 +1032,12 @@ private:
     template<StackTarget target>
     bool PUSH(CPU<BusT> &cpu) {
         if (cpu.mCycleCounter == 2) {
-            HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
+            bus_.HandleOAMCorruption(cpu.sp, CorruptionType::Write);
             cpu.sp -= 1;
             return false;
         }
         if (cpu.mCycleCounter == 3) {
-            HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
+            bus_.HandleOAMCorruption(cpu.sp, CorruptionType::Write);
             if constexpr (target == StackTarget::BC) word = regs_.GetBC();
             if constexpr (target == StackTarget::DE) word = regs_.GetDE();
             if constexpr (target == StackTarget::HL) word = regs_.GetHL();
@@ -1117,7 +1047,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter == 4) {
-            HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
+            bus_.HandleOAMCorruption(cpu.sp, CorruptionType::Write);
             bus_.WriteByte(cpu.sp, word & 0xFF);
             return false;
         }
@@ -1131,13 +1061,13 @@ private:
     template<StackTarget target>
     bool POP(CPU<BusT> &cpu) {
         if (cpu.mCycleCounter == 2) {
-            HandleOAMCorruption(cpu, cpu.sp, CorruptionType::ReadWrite);
+            bus_.HandleOAMCorruption(cpu.sp, CorruptionType::ReadWrite);
             word = bus_.ReadByte(cpu.sp);
             cpu.sp += 1;
             return false;
         }
         if (cpu.mCycleCounter == 3) {
-            HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Read);
+            bus_.HandleOAMCorruption(cpu.sp, CorruptionType::Read);
             word |= static_cast<uint16_t>(bus_.ReadByte(cpu.sp)) << 8;
             cpu.sp += 1;
             return false;

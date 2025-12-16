@@ -35,8 +35,6 @@ public:
 
     void InitializeBootrom(const std::string &) const;
 
-    bool IsDMG() const;
-
     void InitializeSystem(Mode);
 
     void ExecuteMicroOp();
