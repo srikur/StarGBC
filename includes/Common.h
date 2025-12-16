@@ -10,6 +10,41 @@
 #include <utility>
 #include <vector>
 
+static constexpr uint8_t SCREEN_WIDTH = 160;
+static constexpr uint8_t SCREEN_HEIGHT = 144;
+static constexpr uint16_t VRAM_BEGIN = 0x8000;
+static constexpr uint16_t VRAM_END = 0x9FFF;
+static constexpr uint16_t VRAM_SIZE = 0x4000;
+static constexpr uint16_t GPU_REGS_BEGIN = 0xFF40;
+static constexpr uint16_t GPU_REGS_END = 0xFF4B;
+static constexpr uint16_t OAM_BEGIN = 0xFE00;
+static constexpr uint16_t OAM_END = 0xFE9F;
+
+static constexpr uint8_t OAM_PRIORITY_BIT = 7;
+static constexpr uint8_t OAM_Y_FLIP_BIT = 6;
+static constexpr uint8_t OAM_X_FLIP_BIT = 5;
+static constexpr uint8_t OAM_PALETTE_NUMBER_DMG_BIT = 4;
+static constexpr uint8_t OAM_VRAM_BANK_BIT = 3;
+
+static constexpr uint16_t SCANLINE_CYCLES = 456;
+static constexpr uint8_t MODE2_CYCLES = 80;
+
+static constexpr uint8_t OBJ_TOTAL_SPRITES = 40;
+
+// 0xFF40 -- LCD Control
+static constexpr uint8_t LCDC_ENABLE_BIT = 7;
+static constexpr uint8_t LCDC_WINDOW_TILE_MAP_AREA = 6;
+static constexpr uint8_t LCDC_WINDOW_ENABLE = 5;
+static constexpr uint8_t LCDC_BG_AND_WINDOW_TILE_DATA = 4;
+static constexpr uint8_t LCDC_BG_TILE_MAP_AREA = 3;
+static constexpr uint8_t LCDC_OBJ_SIZE = 2;
+static constexpr uint8_t LCDC_OBJ_ENABLE = 1;
+static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
+
+enum class Hardware {
+    DMG, CGB, MGB, SGB, SGB2, GBA, GBS,
+};
+
 template<uint8_t bit>
 static constexpr bool Bit(const uint8_t value) {
     static_assert(bit < 8);
@@ -41,8 +76,21 @@ enum class Mode {
     AGS_GBC = 0x0A,
 };
 
+enum class Speed {
+    Regular = 0x01,
+    Double = 0x02
+};
+
 enum class InterruptState {
     M1, M2, M3, M4, M5, M6
+};
+
+enum class InterruptType {
+    VBlank,
+    LCDStat,
+    Timer,
+    Serial,
+    Joypad,
 };
 
 class GameboyException : public std::exception {

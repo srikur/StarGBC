@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "Registers.h"
 #include "CPU.h"
+#include "Registers.h"
 
 class CPU;
 
@@ -311,12 +311,17 @@ class Instructions {
     bool ADDSigned(CPU &);
 
 public:
-    // used for storing data between cycles
-    bool jumpCondition{false};
+    explicit Instructions(Registers &regs, Bus &bus, Interrupts &interrupts) : regs_(regs), bus_(bus), interrupts_(interrupts) {
+    }
+
+    Registers &regs_;
+    Bus &bus_;
+    Interrupts &interrupts_;
     int8_t signedByte{0};
     uint8_t byte{0};
     uint16_t word{0};
     uint16_t word2{0};
+    bool jumpCondition{false};
 
     using WrappedFunction = std::function<bool(CPU &)>;
 
@@ -328,6 +333,11 @@ public:
     template<typename... Args>
     bool nonPrefixedInstr(const uint8_t opcode, Args &&... args) {
         return nonPrefixedTable[opcode](std::forward<Args>(args)...);
+    }
+
+    void ResetState() {
+        word = word2 = byte = signedByte = 0;
+        jumpCondition = false;
     }
 
     [[nodiscard]] std::string GetMnemonic(uint16_t instruction) const {

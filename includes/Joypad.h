@@ -3,7 +3,13 @@
 
 #include <fstream>
 
+#include "Common.h"
+#include "Interrupts.h"
+
 struct Joypad {
+    explicit Joypad(Interrupts &interrupts) : interrupts_(interrupts) {
+    }
+
     [[nodiscard]] uint8_t GetJoypadState() const;
 
     void SetJoypadState(uint8_t);
@@ -13,6 +19,10 @@ struct Joypad {
     [[nodiscard]] uint8_t GetMatrix() const;
 
     [[nodiscard]] uint8_t GetSelect() const;
+
+    void KeyDown(Keys key);
+
+    void KeyUp(Keys key);
 
     void SetSelect(uint8_t);
 
@@ -29,6 +39,7 @@ private:
 
     uint8_t matrix_{0xFF};
     uint8_t select_{0x00};
+    Interrupts &interrupts_;
     bool keyPressed_{false};
 };
 

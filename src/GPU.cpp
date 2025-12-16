@@ -4,7 +4,7 @@
 #include "Common.h"
 
 static constexpr uint8_t expand5(const uint8_t c) noexcept {
-    return static_cast<uint8_t>((c << 3) | (c >> 2));
+    return static_cast<uint8_t>(c << 3 | c >> 2);
 }
 
 bool GPU::LCDDisabled() const {
@@ -27,6 +27,116 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
 
 uint8_t GPU::GetOAMScanRow() const {
     return (scanlineCounter + 4) / 4;
+}
+
+void GPU::Update() {
+    if (interrupts_.interruptSetDelay > 0) {
+        interrupts_.interruptSetDelay--;
+        if (interrupts_.interruptSetDelay == 0) {
+            interrupts_.interruptFlag = interrupts_.interruptFlagDelayed;
+            interrupts_.interruptFlagDelayed = 0;
+        }
+    }
+
+    if (LCDDisabled()) {
+        return;
+    }
+
+    if (currentLine == lyc) {
+        stat.coincidenceFlag = true;
+        if (stat.enableLYInterrupt && !statTriggered) {
+            interrupts_.Set(InterruptType::LCDStat, true);
+            statTriggered = true;
+        }
+    } else {
+        stat.coincidenceFlag = false;
+    }
+
+    switch (stat.mode) {
+        case GPUMode::MODE_0:
+            if (stat.enableM0Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            break;
+        case GPUMode::MODE_1:
+            if (stat.enableM1Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            break;
+        case GPUMode::MODE_2:
+            // hblank = false;
+            // vblank = false;
+            if (stat.enableM2Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            TickOAMScan();
+            break;
+        case GPUMode::MODE_3: {
+            TickMode3();
+            if (pixelsDrawn == SCREEN_WIDTH) {
+                stat.mode = GPUMode::MODE_0;
+                hblank = true;
+                if (stat.enableM0Interrupt && !statTriggered) {
+                    interrupts_.Set(InterruptType::LCDStat, true);
+                    statTriggered = true;
+                }
+                break;
+            }
+        }
+        break;
+        default: break;
+    }
+    scanlineCounter++;
+    // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", currentLine, scanlineCounter, stat.mode);
+
+    if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
+        stat.mode = GPUMode::MODE_3;
+        pixelsDrawn = 0;
+        if (hardware != Hardware::CGB || objectPriority) {
+            std::ranges::sort(spriteBuffer, std::less{});
+        } else if (hardware == Hardware::CGB && !objectPriority) {
+            std::ranges::sort(spriteBuffer, [](const Sprite &a, const Sprite &b) {
+                return a.spriteNum < b.spriteNum;
+            });
+        }
+        ResetScanlineState(false);
+    } else if (scanlineCounter == 456) {
+        scanlineCounter = 0;
+        currentLine++;
+        statTriggered = false;
+
+        if (isFetchingWindow_) {
+            windowLineCounter_++;
+        }
+
+        if (currentLine >= 154) {
+            currentLine = 0;
+            stat.mode = GPUMode::MODE_2;
+            windowLineCounter_ = 0;
+            ResetScanlineState(true);
+            windowTriggeredThisFrame = false;
+            if (currentLine >= windowY) {
+                windowTriggeredThisFrame = true;
+            }
+            initialSCXSet = false;
+            // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", currentLine, scanlineCounter);
+        } else if (currentLine == 144) {
+            stat.mode = GPUMode::MODE_1;
+            vblank = true;
+            interrupts_.Set(InterruptType::VBlank, true);
+        } else if (currentLine < 144) {
+            stat.mode = GPUMode::MODE_2;
+            if (currentLine >= windowY) {
+                windowTriggeredThisFrame = true;
+            }
+            ResetScanlineState(true);
+            initialSCXSet = false;
+            // std::fprintf(stderr, "Scroll X Reset 2, line %d, scanline counter %d\n", currentLine, scanlineCounter);
+        }
+    }
 }
 
 void GPU::TickOAMScan() {
@@ -134,7 +244,6 @@ void GPU::CheckForWindowTrigger() {
 }
 
 void GPU::Fetcher_StepBackgroundFetch() {
-    if (spriteFetchActive_) return;
     if (fetcherDelay_ > 0) {
         fetcherDelay_--;
         return;
@@ -371,7 +480,7 @@ uint32_t GPU::GetBackgroundColor(const uint8_t color, const uint8_t palette) con
     return rgba;
 }
 
-GPU::Attributes GPU::GetAttrsFrom(const uint8_t byte) {
+Attributes GPU::GetAttrsFrom(const uint8_t byte) {
     return {
         .priority = Bit<OAM_PRIORITY_BIT>(byte), .yflip = Bit<OAM_Y_FLIP_BIT>(byte),
         .xflip = Bit<OAM_X_FLIP_BIT>(byte), .paletteNumberDMG = Bit<OAM_PALETTE_NUMBER_DMG_BIT>(byte),
@@ -389,11 +498,11 @@ void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
 }
 
 uint8_t GPU::ReadVRAM(const uint16_t address) const {
-    return stat.mode == Mode::MODE_3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
+    return stat.mode == GPUMode::MODE_3 ? 0xFF : vram[vramBank * 0x2000 + address - 0x8000];
 }
 
 void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
-    if (stat.mode == Mode::MODE_3) return;
+    if (stat.mode == GPUMode::MODE_3) return;
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
@@ -442,11 +551,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             lcdc = value;
             const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             if (!newEnable && oldEnable) {
-                stat.mode = Mode::MODE_0;
+                stat.mode = GPUMode::MODE_0;
                 screenData.fill(0);
                 vblank = true;
             } else if (newEnable && !oldEnable) {
-                stat.mode = Mode::MODE_2;
+                stat.mode = GPUMode::MODE_2;
                 vblank = false;
             }
             scanlineCounter = 0;
@@ -465,7 +574,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             scrollX = value;
             // std::fprintf(stderr, "Writing ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
         }
-            break;
+        break;
         case 0xFF44: currentLine = 0;
             break;
         case 0xFF45: lyc = value;
@@ -517,4 +626,73 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         default:
             break;
     }
+}
+
+const uint32_t *GPU::GetScreenData() const {
+    return screenData.data();
+}
+
+bool GPU::SaveState(std::ofstream &stateFile) const {
+    try {
+        stateFile.write(reinterpret_cast<const char *>(&lcdc), sizeof(lcdc));
+        stateFile.write(reinterpret_cast<const char *>(&stat), sizeof(stat));
+
+        stateFile.write(reinterpret_cast<const char *>(vram.data()), vram.size());
+        stateFile.write(reinterpret_cast<const char *>(oam.data()), oam.size());
+        stateFile.write(reinterpret_cast<const char *>(screenData.data()), screenData.size());
+        stateFile.write(reinterpret_cast<const char *>(priority_), sizeof(priority_));
+        stateFile.write(reinterpret_cast<const char *>(&lyc), sizeof(lyc));
+        stateFile.write(reinterpret_cast<const char *>(&currentLine), sizeof(currentLine));
+        stateFile.write(reinterpret_cast<const char *>(&windowX), sizeof(windowX));
+        stateFile.write(reinterpret_cast<const char *>(&windowY), sizeof(windowY));
+        stateFile.write(reinterpret_cast<const char *>(&backgroundPalette), sizeof(backgroundPalette));
+        stateFile.write(reinterpret_cast<const char *>(&obp0Palette), sizeof(obp0Palette));
+        stateFile.write(reinterpret_cast<const char *>(&obp1Palette), sizeof(obp1Palette));
+        stateFile.write(reinterpret_cast<const char *>(&scrollX), sizeof(scrollX));
+        stateFile.write(reinterpret_cast<const char *>(&scrollY), sizeof(scrollY));
+        stateFile.write(reinterpret_cast<const char *>(&scanlineCounter), sizeof(scanlineCounter));
+        stateFile.write(reinterpret_cast<const char *>(&vblank), sizeof(vblank));
+        stateFile.write(reinterpret_cast<const char *>(&hblank), sizeof(hblank));
+        stateFile.write(reinterpret_cast<const char *>(&bgpi), sizeof(bgpi));
+        stateFile.write(reinterpret_cast<const char *>(&obpi), sizeof(obpi));
+        stateFile.write(reinterpret_cast<const char *>(&vramBank), sizeof(vramBank));
+        stateFile.write(reinterpret_cast<const char *>(&bgpd), sizeof(bgpd));
+        stateFile.write(reinterpret_cast<const char *>(&obpd), sizeof(obpd));
+        stateFile.write(reinterpret_cast<const char *>(&hdma), sizeof(hdma));
+    } catch ([[maybe_unused]] const std::exception &e) {
+        return false;
+    }
+    return true;
+}
+
+bool GPU::LoadState(std::ifstream &stateFile) {
+    try {
+        stateFile.read(reinterpret_cast<char *>(&lcdc), sizeof(lcdc));
+        stateFile.read(reinterpret_cast<char *>(&stat), sizeof(stat));
+        stateFile.read(reinterpret_cast<char *>(vram.data()), vram.size());
+        stateFile.read(reinterpret_cast<char *>(oam.data()), oam.size());
+        stateFile.read(reinterpret_cast<char *>(screenData.data()), screenData.size());
+        stateFile.read(reinterpret_cast<char *>(priority_), sizeof(priority_));
+        stateFile.read(reinterpret_cast<char *>(&lyc), sizeof(lyc));
+        stateFile.read(reinterpret_cast<char *>(&currentLine), sizeof(currentLine));
+        stateFile.read(reinterpret_cast<char *>(&windowX), sizeof(windowX));
+        stateFile.read(reinterpret_cast<char *>(&windowY), sizeof(windowY));
+        stateFile.read(reinterpret_cast<char *>(&backgroundPalette), sizeof(backgroundPalette));
+        stateFile.read(reinterpret_cast<char *>(&obp0Palette), sizeof(obp0Palette));
+        stateFile.read(reinterpret_cast<char *>(&obp1Palette), sizeof(obp1Palette));
+        stateFile.read(reinterpret_cast<char *>(&scrollX), sizeof(scrollX));
+        stateFile.read(reinterpret_cast<char *>(&scrollY), sizeof(scrollY));
+        stateFile.read(reinterpret_cast<char *>(&scanlineCounter), sizeof(scanlineCounter));
+        stateFile.read(reinterpret_cast<char *>(&vblank), sizeof(vblank));
+        stateFile.read(reinterpret_cast<char *>(&hblank), sizeof(hblank));
+        stateFile.read(reinterpret_cast<char *>(&bgpi), sizeof(bgpi));
+        stateFile.read(reinterpret_cast<char *>(&obpi), sizeof(obpi));
+        stateFile.read(reinterpret_cast<char *>(&vramBank), sizeof(vramBank));
+        stateFile.read(reinterpret_cast<char *>(&bgpd), sizeof(bgpd));
+        stateFile.read(reinterpret_cast<char *>(&obpd), sizeof(obpd));
+        stateFile.read(reinterpret_cast<char *>(&hdma), sizeof(hdma));
+    } catch ([[maybe_unused]] const std::exception &e) {
+        return false;
+    }
+    return true;
 }

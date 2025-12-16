@@ -3,14 +3,11 @@
 
 #include <fstream>
 #include "Common.h"
+#include "Interrupts.h"
 
 struct Serial {
-    bool active_{false};
-    uint8_t data_{0}; // SB
-    uint8_t control_{0}; // SC
-    uint8_t bitsShifted_{0};
-    uint32_t ticksUntilShift_{0};
-    uint32_t ticksPerBit_{0};
+    explicit Serial(Interrupts &interrupts) : interrupts_(interrupts) {
+    }
 
     [[nodiscard]] uint8_t ReadSerial(uint16_t) const;
 
@@ -18,9 +15,19 @@ struct Serial {
 
     void ShiftOneBit();
 
+    void Update();
+
     bool SaveState(std::ofstream &) const;
 
     bool LoadState(std::ifstream &);
+
+    uint16_t ticksUntilShift_{0};
+    uint16_t ticksPerBit_{0};
+    uint8_t data_{0}; // SB
+    uint8_t control_{0}; // SC
+    uint8_t bitsShifted_{0};
+    bool active_{false};
+    Interrupts &interrupts_;
 };
 
 

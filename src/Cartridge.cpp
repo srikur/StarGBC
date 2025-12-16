@@ -20,25 +20,13 @@ std::string Cartridge::RemoveExtension(const std::string &filename) {
     return lastdot == std::string::npos ? filename : filename.substr(0, lastdot);
 }
 
-Cartridge::Cartridge(const std::string &romLocation) {
-    rtc = std::make_unique<RealTimeClock>();
-    rtc->RecalculateZeroTime();
-    ReadFile(romLocation);
-    romBankCount = gameRom_.size() / 0x4000;
-    lowRomMask = std::bit_width(romBankCount) - 1;
-    savepath_ = RemoveExtension(romLocation).append(".sav");
-    DetermineMBC();
-    ramBankCount = gameRam_.size() / 0x2000;
-    multicart = IsLikelyMulticart();
-}
-
 void Cartridge::LoadRam(const uint16_t size) {
     std::ifstream ifs(savepath_, std::ios::binary);
     if (!ifs.is_open()) {
         gameRam_.resize(size, 0);
         return;
     }
-    rtc->Load(ifs);
+    rtc_.Load(ifs);
     std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(ifs), {});
     gameRam_ = std::move(buffer);
     ifs.close();
@@ -223,24 +211,8 @@ bool Cartridge::IsLikelyMulticart() const {
     return false;
 }
 
-
-uint64_t Cartridge::GetRomSize(const uint8_t byte) {
-    constexpr uint64_t bank = 0x4000;
-    switch (byte) {
-        case 0x00: return bank * 2;
-        case 0x01: return bank * 4;
-        case 0x02: return bank * 8;
-        case 0x03: return bank * 16;
-        case 0x04: return bank * 32;
-        case 0x05: return bank * 64;
-        case 0x06: return bank * 128;
-        case 0x07: return bank * 256;
-        case 0x08: return bank * 512;
-        case 0x52: return bank * 72;
-        case 0x53: return bank * 80;
-        case 0x54: return bank * 96;
-        default: throw FatalErrorException("Unsupported ROM size: " + std::to_string(byte));
-    }
+uint8_t Cartridge::BankBitmask() const {
+    return lowRomMask >= 8 ? 0xFF : static_cast<uint8_t>((1 << lowRomMask) - 1);
 }
 
 uint32_t Cartridge::GetRamSize(const uint8_t byte) {
@@ -284,7 +256,7 @@ void Cartridge::Save() const {
     std::ofstream file(savepath_, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) throw std::runtime_error("Could not open " + savepath_);
 
-    rtc->Save(file);
+    rtc_.Save(file);
     file.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
 }
 
@@ -344,7 +316,7 @@ uint8_t Cartridge::ReadByteMBC3(const uint16_t address) const {
             if (ramBank <= 0x03 && gameRamSize > 0) {
                 return gameRam_[static_cast<uint64_t>(ramBank) * 0x2000ULL + (address - 0xA000)];
             }
-            return rtc->ReadRTC(ramBank);
+            return rtc_.ReadRTC(ramBank);
         }
         default: return 0xFF;
     }
@@ -444,7 +416,7 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
             ramBank = value & 0x0F;
             break;
         case 0x6000 ... 0x7FFF:
-            std::memcpy(&rtc->latchedClock, &rtc->realClock, sizeof(rtc->latchedClock));
+            std::memcpy(&rtc_.latchedClock_, &rtc_.realClock_, sizeof(rtc_.latchedClock_));
             break;
         case 0xA000 ... 0xBFFF:
             if (ramEnabled) {
@@ -452,7 +424,7 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
                 if (ramBank <= 0x03 && gameRamSize > 0) {
                     gameRam_[static_cast<uint64_t>(ramBank) * 0x2000ULL + (address - 0xA000)] = value;
                 } else {
-                    rtc->WriteRTC(ramBank, value);
+                    rtc_.WriteRTC(ramBank, value);
                 }
             }
             break;
@@ -500,4 +472,45 @@ inline void Cartridge::HandleRamEnableEdge(const bool enable) {
         ramDirty_ = false;
     }
     prevRamEnable_ = enable;
+}
+
+bool Cartridge::SaveState(std::ofstream &stateFile) const {
+    try {
+        if (!stateFile.is_open()) return false;
+        stateFile.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
+        stateFile.write(reinterpret_cast<const char *>(&gameRamSize), sizeof(gameRamSize));
+        stateFile.write(reinterpret_cast<const char *>(&ramEnabled), sizeof(ramEnabled));
+        stateFile.write(reinterpret_cast<const char *>(&mode), sizeof(mode));
+        stateFile.write(reinterpret_cast<const char *>(&romBank), sizeof(romBank));
+        stateFile.write(reinterpret_cast<const char *>(&ramBank), sizeof(ramBank));
+        stateFile.write(reinterpret_cast<const char *>(&bank1), sizeof(bank1));
+        stateFile.write(reinterpret_cast<const char *>(&bank2), sizeof(bank2));
+        stateFile.write(reinterpret_cast<const char *>(&mbc), sizeof(mbc));
+        stateFile.write(reinterpret_cast<const char *>(&ramDirty_), sizeof(ramDirty_));
+        stateFile.write(reinterpret_cast<const char *>(&prevRamEnable_), sizeof(prevRamEnable_));
+        rtc_.Save(stateFile);
+        return true;
+    } catch ([[maybe_unused]] const std::exception &e) {
+        return false;
+    }
+}
+
+bool Cartridge::LoadState(std::ifstream &stateFile) {
+    try {
+        if (!stateFile.is_open()) return false;
+        stateFile.read(reinterpret_cast<char *>(gameRam_.data()), gameRamSize);
+        stateFile.read(reinterpret_cast<char *>(&gameRamSize), sizeof(gameRamSize));
+        stateFile.read(reinterpret_cast<char *>(&ramEnabled), sizeof(ramEnabled));
+        stateFile.read(reinterpret_cast<char *>(&mode), sizeof(mode));
+        stateFile.read(reinterpret_cast<char *>(&romBank), sizeof(romBank));
+        stateFile.read(reinterpret_cast<char *>(&ramBank), sizeof(ramBank));
+        stateFile.read(reinterpret_cast<char *>(&bank1), sizeof(bank1));
+        stateFile.read(reinterpret_cast<char *>(&mbc), sizeof(mbc));
+        stateFile.read(reinterpret_cast<char *>(&ramDirty_), sizeof(ramDirty_));
+        stateFile.read(reinterpret_cast<char *>(&prevRamEnable_), sizeof(prevRamEnable_));
+        rtc_.Load(stateFile);
+        return true;
+    } catch ([[maybe_unused]] const std::exception &e) {
+        return false;
+    }
 }

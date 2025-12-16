@@ -1,26 +1,6 @@
 #include "CPU.h"
 
-static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
-static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
-static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
-static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
-static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
-
-void CPU::Save() const {
-    bus->cartridge_->Save();
-}
-
-void CPU::KeyDown(const Keys key) const {
-    bus->KeyDown(key);
-}
-
-void CPU::KeyUp(const Keys key) const {
-    bus->KeyUp(key);
-}
-
-uint32_t *CPU::GetScreenData() const {
-    return bus->gpu_->screenData.data();
-}
+#include <map>
 
 void CPU::InitializeBootrom(const std::string &bios_path) const {
     std::ifstream file(bios_path, std::ios::binary);
@@ -30,61 +10,19 @@ void CPU::InitializeBootrom(const std::string &bios_path) const {
     const std::streampos fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    bus->bootrom.reserve(fileSize);
-    bus->bootrom.insert(bus->bootrom.begin(),
+    bus_.bootrom.reserve(fileSize);
+    bus_.bootrom.insert(bus_.bootrom.begin(),
                         std::istream_iterator<uint8_t>(file),
                         std::istream_iterator<uint8_t>());
     file.close();
 }
 
 bool CPU::IsDMG() const {
-    return bus->gpu_->hardware == GPU::Hardware::DMG;
-}
-
-uint32_t CPU::RunHDMA() const {
-    if (!bus->hdmaActive || bus->gpu_->hardware == GPU::Hardware::DMG) {
-        return 0;
-    }
-
-    const bool doubleSpeed = (bus->speed == Bus::Speed::Double);
-    const uint32_t cyclesPerBlock = doubleSpeed ? 16 : 8;
-
-    switch (bus->gpu_->hdmaMode) {
-        case GPU::HDMAMode::GDMA: {
-            const uint32_t blocks = static_cast<uint32_t>(bus->hdmaRemain) + 1;
-            for (uint32_t unused = 0; unused < blocks; ++unused) {
-                const uint16_t memSource = bus->hdmaSource;
-                for (uint16_t i = 0; i < 0x10; ++i) {
-                    const uint8_t byte = bus->ReadByte(memSource + i);
-                    bus->gpu_->WriteVRAM(bus->hdmaDestination + i, byte);
-                }
-                bus->hdmaSource += 0x10;
-                bus->hdmaDestination += 0x10;
-                bus->hdmaRemain = (bus->hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->hdmaRemain - 1);
-            }
-            bus->hdmaActive = false;
-            return blocks * cyclesPerBlock;
-        }
-        case GPU::HDMAMode::HDMA: {
-            if (!bus->gpu_->hblank) return 0;
-
-            const uint16_t memSource = bus->hdmaSource;
-            for (uint16_t i = 0; i < 0x10; ++i) {
-                const uint8_t byte = bus->ReadByte(memSource + i);
-                bus->gpu_->WriteVRAM(bus->hdmaDestination + i, byte);
-            }
-            bus->hdmaSource += 0x10;
-            bus->hdmaDestination += 0x10;
-            bus->hdmaRemain = (bus->hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(bus->hdmaRemain - 1);
-            if (bus->hdmaRemain == 0x7F) bus->hdmaActive = false;
-            return cyclesPerBlock;
-        }
-        default: throw UnreachableCodeException("Gameboy::RunHDMA – invalid mode");
-    }
+    return bus_.gpu_.hardware == Hardware::DMG;
 }
 
 void CPU::InitializeSystem(const Mode mode) {
-    regs->SetStartupValues(static_cast<Registers::Model>(mode));
+    regs_.SetStartupValues(static_cast<Registers::Model>(mode));
     sp = 0xFFFE;
 
     static const std::map<uint16_t, uint8_t> initialData = {
@@ -106,59 +44,53 @@ void CPU::InitializeSystem(const Mode mode) {
     };
 
     for (const auto &[address, value]: initialData) {
-        bus->WriteByte(address, value);
+        bus_.WriteByte(address, value);
     }
-}
-
-void CPU::AdvanceFrame() {
-    const uint32_t speedDivider = bus->speed == Bus::Speed::Regular ? 2 : 1;
-    if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
-    if (masterCycles % speedDivider == 0) ExecuteMicroOp();
-    if (masterCycles % speedDivider == 0) bus->UpdateTimers();
-    if (masterCycles % RTC_CLOCK_DIVIDER == 0) bus->UpdateRTC();
-    if (masterCycles % AUDIO_CLOCK_DIVIDER == 0) bus->audio_->Tick();
-    if (masterCycles % speedDivider == 0) bus->UpdateSerial();
-    if (masterCycles % speedDivider == 0) bus->UpdateDMA();
-    if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) bus->UpdateGraphics();
-    masterCycles++;
-    // need to add hdma tick
 }
 
 void CPU::ExecuteMicroOp() {
-    if ((++tCycleCounter % 4) == 0) {
-        tCycleCounter = 0;
-        if (!instrRunning && ProcessInterrupts()) return;
-        if (halted) {
-            return;
-        }
-        mCycleCounter++;
-        if (bus->bootromRunning && pc == 0x100) {
-            bus->bootromRunning = false;
-        }
-        instrRunning = true;
-        if (DecodeInstruction(currentInstruction, prefixed)) {
-            previousPC = pc - 1;
-            instrComplete = true;
-            previousPrefixed = prefixed;
-            prefixed = (currentInstruction >> 8) == 0xCB;
-            previousInstruction = currentInstruction;
-            currentInstruction = nextInstruction;
-            mCycleCounter = 1;
-            if (haltBug) {
-                haltBug = false;
-                pc -= 1;
-            }
-            instructions->word2 = instructions->word = instructions->byte = 0;
-            instructions->jumpCondition = false;
-            instrRunning = false;
-        } else instrComplete = false;
+    if (!AdvanceTCycle()) return;
+    if (!instrRunning && ProcessInterrupts()) return;
+    if (halted) return;
+    BeginMCycle();
+    if (RunInstructionCycle(currentInstruction, prefixed)) {
+        RunPostCompletion();
     }
 }
 
-uint8_t CPU::DecodeInstruction(const uint8_t opcode, const bool isPrefixed) {
+void CPU::BeginMCycle() {
+    ++mCycleCounter;
+    if (bus_.bootromRunning && pc == 0x100) {
+        bus_.bootromRunning = false;
+    }
+    instrRunning = true;
+}
+
+bool CPU::AdvanceTCycle() {
+    ++tCycleCounter;
+    if (tCycleCounter % 4 != 0) {
+        return false;
+    }
+    tCycleCounter = 0;
+    return true;
+}
+
+void CPU::RunPostCompletion() {
+    prefixed = currentInstruction >> 8 == 0xCB;
+    currentInstruction = nextInstruction;
+    mCycleCounter = 1;
+    if (haltBug) {
+        haltBug = false;
+        pc -= 1;
+    }
+    instructions_->ResetState();
+    instrRunning = false;
+}
+
+uint8_t CPU::RunInstructionCycle(const uint8_t opcode, const bool isPrefixed) {
     return isPrefixed
-               ? instructions->prefixedInstr(opcode, *this)
-               : instructions->nonPrefixedInstr(opcode, *this);
+               ? instructions_->prefixedInstr(opcode, *this)
+               : instructions_->nonPrefixedInstr(opcode, *this);
 }
 
 uint8_t CPU::InterruptAddress(const uint8_t bit) const {
@@ -176,27 +108,27 @@ bool CPU::ProcessInterrupts() {
     using enum InterruptState;
     switch (interruptState) {
         case M1: {
-            if (bus->interruptDelay && ++icount == 2) {
-                bus->interruptDelay = false;
-                bus->interruptMasterEnable = true;
+            if (interrupts_.interruptDelay && ++icount == 2) {
+                interrupts_.interruptDelay = false;
+                interrupts_.interruptMasterEnable = true;
                 icount = 0;
             }
-            const uint8_t pending = bus->interruptEnable & bus->interruptFlag & 0x1F;
+            const uint8_t pending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
             if (pending == 0) {
                 return false;
             }
-            if (halted && !bus->interruptMasterEnable) {
+            if (halted && !interrupts_.interruptMasterEnable) {
                 halted = false;
                 return false;
             }
 
-            if (bus->interruptDelay || !bus->interruptMasterEnable) {
+            if (interrupts_.interruptDelay || !interrupts_.interruptMasterEnable) {
                 return false;
             }
 
             interruptState = M2;
             halted = false;
-            bus->interruptMasterEnable = false;
+            interrupts_.interruptMasterEnable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));
             interruptMask = static_cast<uint8_t>(1u << interruptBit);
@@ -206,15 +138,15 @@ bool CPU::ProcessInterrupts() {
         }
         case M2: {
             sp -= 1;
-            bus->WriteByte(sp, static_cast<uint8_t>(pc >> 8));
+            bus_.WriteByte(sp, static_cast<uint8_t>(pc >> 8));
             interruptState = M3;
             return true;
         }
         case M3: {
-            if (const uint8_t newPending = bus->interruptEnable & bus->interruptFlag & 0x1F; !(newPending & interruptMask)) {
+            if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(newPending & interruptMask)) {
                 if (!newPending) {
                     sp--;
-                    bus->WriteByte(sp, pc & 0xFF);
+                    bus_.WriteByte(sp, pc & 0xFF);
                     pc = 0x0000;
                     interruptState = M4;
                     return true;
@@ -225,8 +157,8 @@ bool CPU::ProcessInterrupts() {
             }
 
             sp -= 1;
-            bus->WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
-            bus->interruptFlag &= ~interruptMask;
+            bus_.WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
+            interrupts_.interruptFlag &= ~interruptMask;
             pc = InterruptAddress(interruptBit);
 
             interruptState = M4;
@@ -241,9 +173,9 @@ bool CPU::ProcessInterrupts() {
             return true;
         }
         case M6: {
-            previousPC = pc;
             prefixed = false;
-            currentInstruction = bus->ReadByte(pc++);
+            currentInstruction = bus_.ReadByte(pc++);
+            // std::printf("Set currentInstruction to be %X. pc = %d\n", currentInstruction, pc);
             interruptState = M1;
             mCycleCounter = 1;
             return false;

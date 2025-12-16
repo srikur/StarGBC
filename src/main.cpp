@@ -40,6 +40,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
             settings.mode = Mode::DMG;
         } else if (args[i] == "--debugStart") {
             settings.debugStart = true;
+        } else if (args[i] == "--unthrottled") {
+            settings.unthrottled = true;
         } else if (args[i] == "--realRTC") {
             settings.realRTC = true;
         } else if (args[i] == "--bios") {
