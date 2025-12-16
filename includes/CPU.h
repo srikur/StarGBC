@@ -54,7 +54,7 @@ private:
 
     void RunPostCompletion();
 
-    Bus &bus_;
+    BusT &bus_;
     Interrupts &interrupts_;
     Registers regs_{};
     std::unique_ptr<Instructions<BusT> > instructions_{nullptr};
