@@ -12,6 +12,8 @@ struct Interrupts {
     bool interruptDelay{false};
 
     void Set(InterruptType, bool);
+
+    bool IsSet(InterruptType) const;
 };
 
 #endif //STARGBC_INTERRUPTS_H
