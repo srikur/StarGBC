@@ -2,16 +2,16 @@
 #include <cstring>
 
 void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, const CorruptionType type) const {
-    if (!cpu.IsDMG() || (location < 0xFE00 || location > 0xFEFF) || cpu.bus->gpu_->stat.mode != GPU::Mode::MODE_2) return;
-    if (cpu.bus->gpu_->scanlineCounter >= 76) return;
-    const int currentRowIndex = cpu.bus->gpu_->GetOAMScanRow();
+    if (!cpu.IsDMG() || (location < 0xFE00 || location > 0xFEFF) || bus_.gpu_.stat.mode != GPUMode::MODE_2) return;
+    if (bus_.gpu_.scanlineCounter >= 76) return;
+    const int currentRowIndex = bus_.gpu_.GetOAMScanRow();
 
     auto ReadWord = [&](const int index) -> uint16_t {
-        return static_cast<uint16_t>(cpu.bus->gpu_->oam[index]) << 8 | cpu.bus->gpu_->oam[index + 1];
+        return static_cast<uint16_t>(bus_.gpu_.oam[index]) << 8 | bus_.gpu_.oam[index + 1];
     };
     auto WriteWord = [&](const int index, const uint16_t value) {
-        cpu.bus->gpu_->oam[index] = static_cast<uint8_t>(value >> 8);
-        cpu.bus->gpu_->oam[index + 1] = static_cast<uint8_t>(value & 0xFF);
+        bus_.gpu_.oam[index] = static_cast<uint8_t>(value >> 8);
+        bus_.gpu_.oam[index + 1] = static_cast<uint8_t>(value & 0xFF);
     };
 
     if (type == CorruptionType::ReadWrite) {
@@ -29,9 +29,9 @@ void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, 
             WriteWord(row_n_minus_1_addr, corrupted_b);
 
             uint8_t temp_row[8];
-            std::memcpy(temp_row, &cpu.bus->gpu_->oam[row_n_minus_1_addr], 8);
-            std::memcpy(&cpu.bus->gpu_->oam[row_n_addr], temp_row, 8);
-            std::memcpy(&cpu.bus->gpu_->oam[row_n_minus_2_addr], temp_row, 8);
+            std::memcpy(temp_row, &bus_.gpu_.oam[row_n_minus_1_addr], 8);
+            std::memcpy(&bus_.gpu_.oam[row_n_addr], temp_row, 8);
+            std::memcpy(&bus_.gpu_.oam[row_n_minus_2_addr], temp_row, 8);
         }
 
         if (currentRowIndex > 0) {
@@ -45,7 +45,7 @@ void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, 
             const uint16_t corruptedWord = b_read | (a_read & c_read);
             WriteWord(currentRowAddr, corruptedWord);
 
-            std::memcpy(&cpu.bus->gpu_->oam[currentRowAddr + 2], &cpu.bus->gpu_->oam[prevRowAddr + 2], 6);
+            std::memcpy(&bus_.gpu_.oam[currentRowAddr + 2], &bus_.gpu_.oam[prevRowAddr + 2], 6);
         }
     } else {
         if (currentRowIndex == 0) return;
@@ -61,42 +61,42 @@ void Instructions::HandleOAMCorruption(const CPU &cpu, const uint16_t location, 
                                            ? ((a ^ c) & (b ^ c)) ^ c
                                            : (b | (a & c));
         WriteWord(currentRowAddr, corruptedWord);
-        std::memcpy(&cpu.bus->gpu_->oam[currentRowAddr + 2], &cpu.bus->gpu_->oam[prevRowAddr + 2], 6);
+        std::memcpy(&bus_.gpu_.oam[currentRowAddr + 2], &bus_.gpu_.oam[prevRowAddr + 2], 6);
     }
 }
 
 template<Register source>
 bool Instructions::RLC(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
+    const uint8_t value = regs_.*sourceReg;
     const uint8_t old = value & 0x80 ? 1 : 0;
-    cpu.regs->SetCarry(old != 0);
+    regs_.SetCarry(old != 0);
     const uint8_t newValue = (value << 1) | old;
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetZero(newValue == 0);
+    regs_.*sourceReg = newValue;
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RLCAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         const uint8_t old = byte & 0x80 ? 1 : 0;
-        cpu.regs->SetCarry(old != 0);
+        regs_.SetCarry(old != 0);
         byte = byte << 1 | old;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -104,80 +104,80 @@ bool Instructions::RLCAddr(CPU &cpu) {
 
 bool Instructions::DAA(CPU &cpu) const {
     uint8_t adjust = 0;
-    bool carry = cpu.regs->FlagCarry();
+    bool carry = regs_.FlagCarry();
 
-    if (!cpu.regs->FlagSubtract()) {
-        if (cpu.regs->FlagHalf() || (cpu.regs->a & 0x0F) > 0x09)
+    if (!regs_.FlagSubtract()) {
+        if (regs_.FlagHalf() || (regs_.a & 0x0F) > 0x09)
             adjust |= 0x06;
 
-        if (cpu.regs->FlagCarry() || cpu.regs->a > 0x99) {
+        if (regs_.FlagCarry() || regs_.a > 0x99) {
             adjust |= 0x60;
             carry = true;
         }
 
-        cpu.regs->a += adjust;
+        regs_.a += adjust;
     } else {
-        if (cpu.regs->FlagHalf()) { adjust |= 0x06; }
-        if (cpu.regs->FlagCarry()) { adjust |= 0x60; }
-        cpu.regs->a -= adjust;
+        if (regs_.FlagHalf()) { adjust |= 0x06; }
+        if (regs_.FlagCarry()) { adjust |= 0x60; }
+        regs_.a -= adjust;
     }
 
-    cpu.regs->SetCarry(carry);
-    cpu.regs->SetZero(cpu.regs->a == 0);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetCarry(carry);
+    regs_.SetZero(regs_.a == 0);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RETI(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.sp);
+        word = bus_.ReadByte(cpu.sp);
         cpu.sp += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.sp)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.sp)) << 8;
         cpu.sp += 1;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
         cpu.pc = word;
-        cpu.bus->interruptMasterEnable = true;
+        interrupts_.interruptMasterEnable = true;
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
 }
 
 bool Instructions::DI(CPU &cpu) const {
-    cpu.bus->interruptDelay = false;
-    cpu.bus->interruptMasterEnable = false;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    interrupts_.interruptDelay = false;
+    interrupts_.interruptMasterEnable = false;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::EI(CPU &cpu) const {
-    if (!cpu.bus->interruptMasterEnable) {
+    if (!interrupts_.interruptMasterEnable) {
         cpu.icount = 0;
-        cpu.bus->interruptDelay = true;
-        cpu.bus->interruptMasterEnable = true;
+        interrupts_.interruptDelay = true;
+        interrupts_.interruptMasterEnable = true;
     }
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::HALT(CPU &cpu) const {
-    if (const bool bug = (cpu.bus->interruptEnable & cpu.bus->interruptFlag & 0x1F) != 0; !cpu.bus->interruptMasterEnable && bug) {
+    if (const bool bug = (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0; !interrupts_.interruptMasterEnable && bug) {
         cpu.haltBug = true;
         cpu.halted = false;
     } else {
         cpu.haltBug = false;
         cpu.halted = true;
     }
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
@@ -188,12 +188,12 @@ bool Instructions::RST(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.bus->WriteByte(cpu.sp, (cpu.pc & 0xFF00) >> 8);
+        bus_.WriteByte(cpu.sp, (cpu.pc & 0xFF00) >> 8);
         cpu.sp -= 1;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.bus->WriteByte(cpu.sp, cpu.pc & 0xFF);
+        bus_.WriteByte(cpu.sp, cpu.pc & 0xFF);
         constexpr auto location = GetRSTAddress<target>();
         if constexpr (target == RSTTarget::H38) {
             std::fprintf(stderr, "RST 38\n");
@@ -202,7 +202,7 @@ bool Instructions::RST(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -210,12 +210,12 @@ bool Instructions::RST(CPU &cpu) {
 
 bool Instructions::CALLUnconditional(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc);
+        word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc)) << 8;
         cpu.pc += 1;
         return false;
     }
@@ -224,17 +224,17 @@ bool Instructions::CALLUnconditional(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.bus->WriteByte(cpu.sp, (cpu.pc & 0xFF00) >> 8);
+        bus_.WriteByte(cpu.sp, (cpu.pc & 0xFF00) >> 8);
         cpu.sp -= 1;
         return false;
     }
     if (cpu.mCycleCounter == 6) {
-        cpu.bus->WriteByte(cpu.sp, cpu.pc & 0xFF);
+        bus_.WriteByte(cpu.sp, cpu.pc & 0xFF);
         cpu.pc = word;
         return false;
     }
     if (cpu.mCycleCounter == 7) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -243,16 +243,16 @@ bool Instructions::CALLUnconditional(CPU &cpu) {
 template<JumpTest test>
 bool Instructions::CALL(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc);
+        word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        if constexpr (test == JumpTest::NotZero) jumpCondition = !cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Zero) jumpCondition = cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Carry) jumpCondition = cpu.regs->FlagCarry();
-        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !cpu.regs->FlagCarry();
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc)) << 8;
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = regs_.FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !regs_.FlagCarry();
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc)) << 8;
         cpu.pc += 1;
         return false;
     }
@@ -262,151 +262,151 @@ bool Instructions::CALL(CPU &cpu) {
             return false;
         }
 
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.bus->WriteByte(cpu.sp, (cpu.pc & 0xFF00) >> 8);
+        bus_.WriteByte(cpu.sp, (cpu.pc & 0xFF00) >> 8);
         cpu.sp -= 1;
         return false;
     }
     if (cpu.mCycleCounter == 6) {
-        cpu.bus->WriteByte(cpu.sp, cpu.pc & 0xFF);
+        bus_.WriteByte(cpu.sp, cpu.pc & 0xFF);
         cpu.pc = word;
         return false;
     }
     if (cpu.mCycleCounter == 7) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
 }
 
 bool Instructions::RLCA(CPU &cpu) const {
-    const uint8_t old = (cpu.regs->a & 0x80) != 0 ? 1 : 0;
-    cpu.regs->SetCarry(old != 0);
-    cpu.regs->a = cpu.regs->a << 1 | old;
-    cpu.regs->SetZero(false);
-    cpu.regs->SetHalf(false);
-    cpu.regs->SetSubtract(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t old = (regs_.a & 0x80) != 0 ? 1 : 0;
+    regs_.SetCarry(old != 0);
+    regs_.a = regs_.a << 1 | old;
+    regs_.SetZero(false);
+    regs_.SetHalf(false);
+    regs_.SetSubtract(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RLA(CPU &cpu) const {
-    const bool flag_c = (cpu.regs->a & 0x80) >> 7 == 0x01;
-    const uint8_t r = (cpu.regs->a << 1) + static_cast<uint8_t>(cpu.regs->FlagCarry());
-    cpu.regs->SetCarry(flag_c);
-    cpu.regs->SetZero(false);
-    cpu.regs->SetHalf(false);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->a = r;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const bool flag_c = (regs_.a & 0x80) >> 7 == 0x01;
+    const uint8_t r = (regs_.a << 1) + static_cast<uint8_t>(regs_.FlagCarry());
+    regs_.SetCarry(flag_c);
+    regs_.SetZero(false);
+    regs_.SetHalf(false);
+    regs_.SetSubtract(false);
+    regs_.a = r;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 template<Register source>
 bool Instructions::RL(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
+    const uint8_t value = regs_.*sourceReg;
     const bool flag_c = (value & 0x80) >> 7 == 0x01;
-    const uint8_t newValue = value << 1 | static_cast<uint8_t>(cpu.regs->FlagCarry());
-    cpu.regs->SetCarry(flag_c);
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs->SetHalf(false);
-    cpu.regs->SetSubtract(false);
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t newValue = value << 1 | static_cast<uint8_t>(regs_.FlagCarry());
+    regs_.SetCarry(flag_c);
+    regs_.SetZero(newValue == 0);
+    regs_.SetHalf(false);
+    regs_.SetSubtract(false);
+    regs_.*sourceReg = newValue;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RLAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t oldCarry = cpu.regs->FlagCarry() ? 1 : 0;
-        cpu.regs->SetCarry((byte & 0x80) != 0);
+        const uint8_t oldCarry = regs_.FlagCarry() ? 1 : 0;
+        regs_.SetCarry((byte & 0x80) != 0);
         byte = (byte << 1) | oldCarry;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
 }
 
 bool Instructions::CCF(CPU &cpu) const {
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetCarry(!cpu.regs->FlagCarry());
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetSubtract(false);
+    regs_.SetCarry(!regs_.FlagCarry());
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::CPL(CPU &cpu) const {
-    cpu.regs->SetHalf(true);
-    cpu.regs->SetSubtract(true);
-    cpu.regs->a = ~cpu.regs->a;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetHalf(true);
+    regs_.SetSubtract(true);
+    regs_.a = ~regs_.a;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SCF(CPU &cpu) const {
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.regs->SetCarry(true);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    regs_.SetCarry(true);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RRCA(CPU &cpu) const {
-    cpu.regs->SetCarry((cpu.regs->a & 0x01) != 0);
-    cpu.regs->a = cpu.regs->a >> 1 | (cpu.regs->a & 0x01) << 7;
-    cpu.regs->SetZero(false);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetCarry((regs_.a & 0x01) != 0);
+    regs_.a = regs_.a >> 1 | (regs_.a & 0x01) << 7;
+    regs_.SetZero(false);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 template<Register source>
 bool Instructions::RRC(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
+    const uint8_t value = regs_.*sourceReg;
     const bool carry = (value & 0x01) == 0x01;
-    cpu.regs->SetCarry(carry);
-    const uint8_t newValue = cpu.regs->FlagCarry() ? 0x80 | value >> 1 : value >> 1;
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetCarry(carry);
+    const uint8_t newValue = regs_.FlagCarry() ? 0x80 | value >> 1 : value >> 1;
+    regs_.SetZero(newValue == 0);
+    regs_.*sourceReg = newValue;
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RRCAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetCarry(byte & 0x01);
-        byte = cpu.regs->FlagCarry() ? 0x80 | byte >> 1 : byte >> 1;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        regs_.SetCarry(byte & 0x01);
+        byte = regs_.FlagCarry() ? 0x80 | byte >> 1 : byte >> 1;
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -414,21 +414,21 @@ bool Instructions::RRCAddr(CPU &cpu) {
 
 bool Instructions::RRAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         word = (byte & 0x01) == 0x01; // hack for storing carry
-        byte = cpu.regs->FlagCarry() ? 0x80 | (byte >> 1) : byte >> 1;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        byte = regs_.FlagCarry() ? 0x80 | (byte >> 1) : byte >> 1;
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetCarry(word);
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetCarry(word);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -437,38 +437,38 @@ bool Instructions::RRAddr(CPU &cpu) {
 template<Register source>
 bool Instructions::RR(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
+    const uint8_t value = regs_.*sourceReg;
     const bool carry = (value & 0x01) == 0x01;
-    uint8_t newValue = cpu.regs->FlagCarry() ? 0x80 | (value >> 1) : value >> 1;
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.regs->SetCarry(carry);
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    uint8_t newValue = regs_.FlagCarry() ? 0x80 | (value >> 1) : value >> 1;
+    regs_.*sourceReg = newValue;
+    regs_.SetCarry(carry);
+    regs_.SetZero(newValue == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RRA(CPU &cpu) const {
-    const bool carry = (cpu.regs->a & 0x01) == 0x01;
-    const uint8_t newValue = cpu.regs->FlagCarry() ? 0x80 | cpu.regs->a >> 1 : cpu.regs->a >> 1;
-    cpu.regs->SetZero(false);
-    cpu.regs->a = newValue;
-    cpu.regs->SetCarry(carry);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const bool carry = (regs_.a & 0x01) == 0x01;
+    const uint8_t newValue = regs_.FlagCarry() ? 0x80 | regs_.a >> 1 : regs_.a >> 1;
+    regs_.SetZero(false);
+    regs_.a = newValue;
+    regs_.SetCarry(carry);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::RETUnconditional(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.sp);
+        word = bus_.ReadByte(cpu.sp);
         cpu.sp += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.sp)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.sp)) << 8;
         cpu.sp += 1;
         return false;
     }
@@ -477,7 +477,7 @@ bool Instructions::RETUnconditional(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -486,24 +486,24 @@ bool Instructions::RETUnconditional(CPU &cpu) {
 template<JumpTest test>
 bool Instructions::RETConditional(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        if constexpr (test == JumpTest::NotZero) jumpCondition = !cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Zero) jumpCondition = cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Carry) jumpCondition = cpu.regs->FlagCarry();
-        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !cpu.regs->FlagCarry();
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = regs_.FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !regs_.FlagCarry();
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         if (jumpCondition) {
-            word = cpu.bus->ReadByte(cpu.sp);
+            word = bus_.ReadByte(cpu.sp);
             cpu.sp += 1;
             return false;
         }
 
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     if (cpu.mCycleCounter == 4) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.sp)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.sp)) << 8;
         cpu.sp += 1;
         return false;
     }
@@ -512,7 +512,7 @@ bool Instructions::RETConditional(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 6) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -520,7 +520,7 @@ bool Instructions::RETConditional(CPU &cpu) {
 
 bool Instructions::JRUnconditional(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        signedByte = std::bit_cast<int8_t>(cpu.bus->ReadByte(cpu.pc));
+        signedByte = std::bit_cast<int8_t>(bus_.ReadByte(cpu.pc));
         cpu.pc += 1;
         return false;
     }
@@ -534,7 +534,7 @@ bool Instructions::JRUnconditional(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -543,12 +543,12 @@ bool Instructions::JRUnconditional(CPU &cpu) {
 template<JumpTest test>
 bool Instructions::JR(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        signedByte = std::bit_cast<int8_t>(cpu.bus->ReadByte(cpu.pc));
+        signedByte = std::bit_cast<int8_t>(bus_.ReadByte(cpu.pc));
         cpu.pc += 1;
-        if constexpr (test == JumpTest::NotZero) jumpCondition = !cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Zero) jumpCondition = cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Carry) jumpCondition = cpu.regs->FlagCarry();
-        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !cpu.regs->FlagCarry();
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = regs_.FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !regs_.FlagCarry();
         return false;
     }
     if (cpu.mCycleCounter == 3) {
@@ -561,11 +561,11 @@ bool Instructions::JR(CPU &cpu) {
             }
             return false;
         }
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -573,12 +573,12 @@ bool Instructions::JR(CPU &cpu) {
 
 bool Instructions::JPUnconditional(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc);
+        word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc)) << 8;
         cpu.pc += 1;
         return false;
     }
@@ -587,7 +587,7 @@ bool Instructions::JPUnconditional(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -596,17 +596,17 @@ bool Instructions::JPUnconditional(CPU &cpu) {
 template<JumpTest test>
 bool Instructions::JP(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc);
+        word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc)) << 8;
         cpu.pc += 1;
-        if constexpr (test == JumpTest::NotZero) jumpCondition = !cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Zero) jumpCondition = cpu.regs->FlagZero();
-        else if constexpr (test == JumpTest::Carry) jumpCondition = cpu.regs->FlagCarry();
-        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !cpu.regs->FlagCarry();
+        if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
+        else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
+        else if constexpr (test == JumpTest::Carry) jumpCondition = regs_.FlagCarry();
+        else if constexpr (test == JumpTest::NotCarry) jumpCondition = !regs_.FlagCarry();
         return false;
     }
     if (cpu.mCycleCounter == 4) {
@@ -614,78 +614,78 @@ bool Instructions::JP(CPU &cpu) {
             cpu.pc = word;
             return false;
         }
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
 }
 
 bool Instructions::JPHL(CPU &cpu) const {
-    cpu.pc = cpu.regs->GetHL();
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    cpu.pc = regs_.GetHL();
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::NOP(CPU &cpu) const {
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::PREFIX(CPU &cpu) const {
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     cpu.currentInstruction = 0xCB00 | cpu.nextInstruction;
     cpu.prefixed = true;
     return true;
 }
 
 bool Instructions::STOP(CPU &cpu) const {
-    const uint8_t key1 = cpu.bus->ReadByte(0xFF4D);
-    const bool speedSwitchRequested = cpu.bus->prepareSpeedShift && (key1 & 0x01);
-    cpu.bus->WriteByte(0xFF04, 0x00);
+    const uint8_t key1 = bus_.ReadByte(0xFF4D);
+    const bool speedSwitchRequested = bus_.prepareSpeedShift && (key1 & 0x01);
+    bus_.WriteByte(0xFF04, 0x00);
 
     if (speedSwitchRequested) {
-        cpu.bus->ChangeSpeed();
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        bus_.ChangeSpeed();
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
 
     cpu.stopped = true;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 template<Register source>
 bool Instructions::DECRegister(CPU &cpu) const {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t sourceValue = cpu.regs.get()->*sourceReg;
-    cpu.regs->SetHalf((sourceValue & 0xF) == 0x00);
+    const uint8_t sourceValue = regs_.*sourceReg;
+    regs_.SetHalf((sourceValue & 0xF) == 0x00);
     const uint8_t newValue = sourceValue - 1;
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs->SetSubtract(true);
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetZero(newValue == 0);
+    regs_.SetSubtract(true);
+    regs_.*sourceReg = newValue;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::DECIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetHalf((byte & 0xF) == 0x00);
+        regs_.SetHalf((byte & 0xF) == 0x00);
         const uint8_t newValue = byte - 1;
-        cpu.regs->SetZero(newValue == 0);
-        cpu.regs->SetSubtract(true);
-        cpu.bus->WriteByte(cpu.regs->GetHL(), newValue);
+        regs_.SetZero(newValue == 0);
+        regs_.SetSubtract(true);
+        bus_.WriteByte(regs_.GetHL(), newValue);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -695,16 +695,16 @@ template<Arithmetic16Target target>
 bool Instructions::DEC16(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
         if constexpr (target == Arithmetic16Target::BC) {
-            word = cpu.regs->GetBC();
+            word = regs_.GetBC();
             HandleOAMCorruption(cpu, word, CorruptionType::Write);
-            cpu.regs->SetBC(word - 1);
+            regs_.SetBC(word - 1);
         } else if constexpr (target == Arithmetic16Target::DE) {
-            word = cpu.regs->GetDE();
+            word = regs_.GetDE();
             HandleOAMCorruption(cpu, word, CorruptionType::Write);
-            cpu.regs->SetDE(word - 1);
+            regs_.SetDE(word - 1);
         } else if constexpr (target == Arithmetic16Target::HL) {
-            word = cpu.regs->GetHL();
-            cpu.regs->SetHL(word - 1);
+            word = regs_.GetHL();
+            regs_.SetHL(word - 1);
             HandleOAMCorruption(cpu, word, CorruptionType::Write);
         } else if constexpr (target == Arithmetic16Target::SP) {
             HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
@@ -713,7 +713,7 @@ bool Instructions::DEC16(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -722,31 +722,31 @@ bool Instructions::DEC16(CPU &cpu) {
 template<Register source>
 bool Instructions::INCRegister(CPU &cpu) const {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t sourceValue = cpu.regs.get()->*sourceReg;
-    cpu.regs->SetHalf((sourceValue & 0xF) == 0xF);
+    const uint8_t sourceValue = regs_.*sourceReg;
+    regs_.SetHalf((sourceValue & 0xF) == 0xF);
     const uint8_t newValue = sourceValue + 1;
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetZero(newValue == 0);
+    regs_.SetSubtract(false);
+    regs_.*sourceReg = newValue;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::INCIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetHalf((byte & 0xF) == 0xF);
+        regs_.SetHalf((byte & 0xF) == 0xF);
         const uint8_t newValue = byte + 1;
-        cpu.regs->SetZero(newValue == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.bus->WriteByte(cpu.regs->GetHL(), newValue);
+        regs_.SetZero(newValue == 0);
+        regs_.SetSubtract(false);
+        bus_.WriteByte(regs_.GetHL(), newValue);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -756,17 +756,17 @@ template<Arithmetic16Target target>
 bool Instructions::INC16(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
         if constexpr (target == Arithmetic16Target::BC) {
-            word = cpu.regs->GetBC();
+            word = regs_.GetBC();
             HandleOAMCorruption(cpu, word, CorruptionType::Write);
-            cpu.regs->SetBC(word + 1);
+            regs_.SetBC(word + 1);
         } else if constexpr (target == Arithmetic16Target::DE) {
-            word = cpu.regs->GetDE();
+            word = regs_.GetDE();
             HandleOAMCorruption(cpu, word, CorruptionType::Write);
-            cpu.regs->SetDE(word + 1);
+            regs_.SetDE(word + 1);
         } else if constexpr (target == Arithmetic16Target::HL) {
-            word = cpu.regs->GetHL();
+            word = regs_.GetHL();
             HandleOAMCorruption(cpu, word, CorruptionType::Write);
-            cpu.regs->SetHL(word + 1);
+            regs_.SetHL(word + 1);
         } else if constexpr (target == Arithmetic16Target::SP) {
             HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
             cpu.sp += 1;
@@ -774,7 +774,7 @@ bool Instructions::INC16(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -783,16 +783,16 @@ bool Instructions::INC16(CPU &cpu) {
 // 0xE0
 bool Instructions::LoadFromAccumulatorDirectA(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc));
+        word = static_cast<uint16_t>(bus_.ReadByte(cpu.pc));
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.bus->WriteByte(static_cast<uint16_t>(0xFF00) | word, cpu.regs->a);
+        bus_.WriteByte(static_cast<uint16_t>(0xFF00) | word, regs_.a);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -801,12 +801,12 @@ bool Instructions::LoadFromAccumulatorDirectA(CPU &cpu) {
 // 0xE2
 bool Instructions::LoadFromAccumulatorIndirectC(CPU &cpu) const {
     if (cpu.mCycleCounter == 2) {
-        const uint16_t c = 0xFF00 | static_cast<uint16_t>(cpu.regs->c);
-        cpu.bus->WriteByte(c, cpu.regs->a);
+        const uint16_t c = 0xFF00 | static_cast<uint16_t>(regs_.c);
+        bus_.WriteByte(c, regs_.a);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -815,17 +815,17 @@ bool Instructions::LoadFromAccumulatorIndirectC(CPU &cpu) const {
 // 0xF0
 bool Instructions::LoadAccumulatorA(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         word = 0xFF00 | static_cast<uint16_t>(byte);
-        byte = cpu.bus->ReadByte(word);
+        byte = bus_.ReadByte(word);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
-        cpu.regs->a = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
+        regs_.a = byte;
         return true;
     }
     return false;
@@ -834,12 +834,12 @@ bool Instructions::LoadAccumulatorA(CPU &cpu) {
 // 0xF2
 bool Instructions::LoadAccumulatorIndirectC(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(0xFF00 | static_cast<uint16_t>(cpu.regs->c));
+        byte = bus_.ReadByte(0xFF00 | static_cast<uint16_t>(regs_.c));
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -850,9 +850,9 @@ template<Register target, Register source>
 bool Instructions::LDRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     constexpr auto targetReg = GetRegisterPtr<target>();
-    const uint8_t sourceValue = cpu.regs.get()->*sourceReg;
-    cpu.regs.get()->*targetReg = sourceValue;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t sourceValue = regs_.*sourceReg;
+    regs_.*targetReg = sourceValue;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
@@ -860,12 +860,12 @@ template<Register source>
 bool Instructions::LDRegisterImmediate(CPU &cpu) {
     constexpr auto targetReg = GetRegisterPtr<source>();
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs.get()->*targetReg = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.*targetReg = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -875,12 +875,12 @@ template<Register source>
 bool Instructions::LDRegisterIndirect(CPU &cpu) {
     constexpr auto targetReg = GetRegisterPtr<source>();
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs.get()->*targetReg = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.*targetReg = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -890,12 +890,12 @@ template<Register source>
 bool Instructions::LDAddrRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
     if (cpu.mCycleCounter == 2) {
-        const uint8_t sourceValue = cpu.regs.get()->*sourceReg;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), sourceValue);
+        const uint8_t sourceValue = regs_.*sourceReg;
+        bus_.WriteByte(regs_.GetHL(), sourceValue);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -903,15 +903,15 @@ bool Instructions::LDAddrRegister(CPU &cpu) {
 
 bool Instructions::LDAddrImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -919,12 +919,12 @@ bool Instructions::LDAddrImmediate(CPU &cpu) {
 
 bool Instructions::LDAccumulatorBC(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetBC());
+        byte = bus_.ReadByte(regs_.GetBC());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -932,12 +932,12 @@ bool Instructions::LDAccumulatorBC(CPU &cpu) {
 
 bool Instructions::LDAccumulatorDE(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetDE());
+        byte = bus_.ReadByte(regs_.GetDE());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -945,11 +945,11 @@ bool Instructions::LDAccumulatorDE(CPU &cpu) {
 
 bool Instructions::LDFromAccBC(CPU &cpu) const {
     if (cpu.mCycleCounter == 2) {
-        cpu.bus->WriteByte(cpu.regs->GetBC(), cpu.regs->a);
+        bus_.WriteByte(regs_.GetBC(), regs_.a);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -957,11 +957,11 @@ bool Instructions::LDFromAccBC(CPU &cpu) const {
 
 bool Instructions::LDFromAccDE(CPU &cpu) const {
     if (cpu.mCycleCounter == 2) {
-        cpu.bus->WriteByte(cpu.regs->GetDE(), cpu.regs->a);
+        bus_.WriteByte(regs_.GetDE(), regs_.a);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -969,21 +969,21 @@ bool Instructions::LDFromAccDE(CPU &cpu) const {
 
 bool Instructions::LDAccumulatorDirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc);
+        word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc)) << 8;
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->a = cpu.bus->ReadByte(word);
+        regs_.a = bus_.ReadByte(word);
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -991,21 +991,21 @@ bool Instructions::LDAccumulatorDirect(CPU &cpu) {
 
 bool Instructions::LDFromAccumulatorDirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc);
+        word = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc)) << 8;
         cpu.pc += 1;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.bus->WriteByte(word, cpu.regs->a);
+        bus_.WriteByte(word, regs_.a);
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc);
         cpu.pc += 1;
         return true;
     }
@@ -1014,14 +1014,14 @@ bool Instructions::LDFromAccumulatorDirect(CPU &cpu) {
 
 bool Instructions::LDAccumulatorIndirectDec(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
-        HandleOAMCorruption(cpu, cpu.regs->GetHL(), CorruptionType::ReadWrite);
-        cpu.regs->SetHL(cpu.regs->GetHL() - 1);
+        byte = bus_.ReadByte(regs_.GetHL());
+        HandleOAMCorruption(cpu, regs_.GetHL(), CorruptionType::ReadWrite);
+        regs_.SetHL(regs_.GetHL() - 1);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1029,15 +1029,15 @@ bool Instructions::LDAccumulatorIndirectDec(CPU &cpu) {
 
 bool Instructions::LDFromAccumulatorIndirectDec(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.regs->GetHL();
+        word = regs_.GetHL();
         HandleOAMCorruption(cpu, word, CorruptionType::Write);
-        cpu.bus->WriteByte(word, cpu.regs->a);
+        bus_.WriteByte(word, regs_.a);
         HandleOAMCorruption(cpu, word, CorruptionType::Write);
-        cpu.regs->SetHL(word - 1);
+        regs_.SetHL(word - 1);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1045,14 +1045,14 @@ bool Instructions::LDFromAccumulatorIndirectDec(CPU &cpu) {
 
 bool Instructions::LDAccumulatorIndirectInc(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
-        HandleOAMCorruption(cpu, cpu.regs->GetHL(), CorruptionType::ReadWrite);
-        cpu.regs->SetHL(cpu.regs->GetHL() + 1);
+        byte = bus_.ReadByte(regs_.GetHL());
+        HandleOAMCorruption(cpu, regs_.GetHL(), CorruptionType::ReadWrite);
+        regs_.SetHL(regs_.GetHL() + 1);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a = byte;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a = byte;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1060,15 +1060,15 @@ bool Instructions::LDAccumulatorIndirectInc(CPU &cpu) {
 
 bool Instructions::LDFromAccumulatorIndirectInc(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.regs->GetHL();
+        word = regs_.GetHL();
         HandleOAMCorruption(cpu, word, CorruptionType::Write);
-        cpu.bus->WriteByte(word, cpu.regs->a);
+        bus_.WriteByte(word, regs_.a);
         HandleOAMCorruption(cpu, word, CorruptionType::Write);
-        cpu.regs->SetHL(word + 1);
+        regs_.SetHL(word + 1);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1076,24 +1076,24 @@ bool Instructions::LDFromAccumulatorIndirectInc(CPU &cpu) {
 
 bool Instructions::LD16FromStack(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc++);
+        word = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc++)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc++)) << 8;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.bus->WriteByte(word, cpu.sp & 0xFF);
+        bus_.WriteByte(word, cpu.sp & 0xFF);
         word += 1;
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.bus->WriteByte(word, cpu.sp >> 8);
+        bus_.WriteByte(word, cpu.sp >> 8);
         return false;
     }
     if (cpu.mCycleCounter == 6) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1102,19 +1102,19 @@ bool Instructions::LD16FromStack(CPU &cpu) {
 template<LoadWordTarget target>
 bool Instructions::LD16Register(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        word = cpu.bus->ReadByte(cpu.pc++);
+        word = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.pc++)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.pc++)) << 8;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        if constexpr (target == LoadWordTarget::HL) cpu.regs->SetHL(word);
+        if constexpr (target == LoadWordTarget::HL) regs_.SetHL(word);
         else if constexpr (target == LoadWordTarget::SP) cpu.sp = word;
-        else if constexpr (target == LoadWordTarget::BC) cpu.regs->SetBC(word);
-        else if constexpr (target == LoadWordTarget::DE) cpu.regs->SetDE(word);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        else if constexpr (target == LoadWordTarget::BC) regs_.SetBC(word);
+        else if constexpr (target == LoadWordTarget::DE) regs_.SetDE(word);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1122,11 +1122,11 @@ bool Instructions::LD16Register(CPU &cpu) {
 
 bool Instructions::LD16Stack(CPU &cpu) const {
     if (cpu.mCycleCounter == 2) {
-        cpu.sp = cpu.regs->GetHL();
+        cpu.sp = regs_.GetHL();
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1135,19 +1135,19 @@ bool Instructions::LD16Stack(CPU &cpu) const {
 bool Instructions::LD16StackAdjusted(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-            cpu.bus->ReadByte(cpu.pc++))));
+            bus_.ReadByte(cpu.pc++))));
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetCarry((cpu.sp & 0xFF) + (word & 0xFF) > 0xFF);
-        cpu.regs->SetHalf((cpu.sp & 0xF) + (word & 0xF) > 0xF);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetZero(false);
+        regs_.SetCarry((cpu.sp & 0xFF) + (word & 0xFF) > 0xFF);
+        regs_.SetHalf((cpu.sp & 0xF) + (word & 0xF) > 0xF);
+        regs_.SetSubtract(false);
+        regs_.SetZero(false);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetHL(cpu.sp + word);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetHL(cpu.sp + word);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1162,21 +1162,21 @@ bool Instructions::PUSH(CPU &cpu) {
     }
     if (cpu.mCycleCounter == 3) {
         HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
-        if constexpr (target == StackTarget::BC) word = cpu.regs->GetBC();
-        if constexpr (target == StackTarget::DE) word = cpu.regs->GetDE();
-        if constexpr (target == StackTarget::HL) word = cpu.regs->GetHL();
-        if constexpr (target == StackTarget::AF) word = cpu.regs->GetAF();
-        cpu.bus->WriteByte(cpu.sp, (word & 0xFF00) >> 8);
+        if constexpr (target == StackTarget::BC) word = regs_.GetBC();
+        if constexpr (target == StackTarget::DE) word = regs_.GetDE();
+        if constexpr (target == StackTarget::HL) word = regs_.GetHL();
+        if constexpr (target == StackTarget::AF) word = regs_.GetAF();
+        bus_.WriteByte(cpu.sp, (word & 0xFF00) >> 8);
         cpu.sp -= 1;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
         HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Write);
-        cpu.bus->WriteByte(cpu.sp, word & 0xFF);
+        bus_.WriteByte(cpu.sp, word & 0xFF);
         return false;
     }
     if (cpu.mCycleCounter == 5) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1186,22 +1186,22 @@ template<StackTarget target>
 bool Instructions::POP(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
         HandleOAMCorruption(cpu, cpu.sp, CorruptionType::ReadWrite);
-        word = cpu.bus->ReadByte(cpu.sp);
+        word = bus_.ReadByte(cpu.sp);
         cpu.sp += 1;
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         HandleOAMCorruption(cpu, cpu.sp, CorruptionType::Read);
-        word |= static_cast<uint16_t>(cpu.bus->ReadByte(cpu.sp)) << 8;
+        word |= static_cast<uint16_t>(bus_.ReadByte(cpu.sp)) << 8;
         cpu.sp += 1;
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        if constexpr (target == StackTarget::BC) cpu.regs->SetBC(word);
-        if constexpr (target == StackTarget::DE) cpu.regs->SetDE(word);
-        if constexpr (target == StackTarget::HL) cpu.regs->SetHL(word);
-        if constexpr (target == StackTarget::AF) cpu.regs->SetAF(word & 0xFFF0);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        if constexpr (target == StackTarget::BC) regs_.SetBC(word);
+        if constexpr (target == StackTarget::DE) regs_.SetDE(word);
+        if constexpr (target == StackTarget::HL) regs_.SetHL(word);
+        if constexpr (target == StackTarget::AF) regs_.SetAF(word & 0xFFF0);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1210,28 +1210,28 @@ bool Instructions::POP(CPU &cpu) {
 template<Register source>
 bool Instructions::CPRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    const uint8_t new_value = cpu.regs->a - value;
-    cpu.regs->SetCarry(cpu.regs->a < value);
-    cpu.regs->SetHalf((cpu.regs->a & 0xF) < (value & 0xF));
-    cpu.regs->SetSubtract(true);
-    cpu.regs->SetZero(new_value == 0x0);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    const uint8_t new_value = regs_.a - value;
+    regs_.SetCarry(regs_.a < value);
+    regs_.SetHalf((regs_.a & 0xF) < (value & 0xF));
+    regs_.SetSubtract(true);
+    regs_.SetZero(new_value == 0x0);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::CPIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t new_value = cpu.regs->a - byte;
-        cpu.regs->SetCarry(cpu.regs->a < byte);
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) < (byte & 0xF));
-        cpu.regs->SetSubtract(true);
-        cpu.regs->SetZero(new_value == 0x0);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t new_value = regs_.a - byte;
+        regs_.SetCarry(regs_.a < byte);
+        regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF));
+        regs_.SetSubtract(true);
+        regs_.SetZero(new_value == 0x0);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1239,16 +1239,16 @@ bool Instructions::CPIndirect(CPU &cpu) {
 
 bool Instructions::CPImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t new_value = cpu.regs->a - byte;
-        cpu.regs->SetCarry(cpu.regs->a < byte);
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) < (byte & 0xF));
-        cpu.regs->SetSubtract(true);
-        cpu.regs->SetZero(new_value == 0x0);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t new_value = regs_.a - byte;
+        regs_.SetCarry(regs_.a < byte);
+        regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF));
+        regs_.SetSubtract(true);
+        regs_.SetZero(new_value == 0x0);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return true;
@@ -1257,28 +1257,28 @@ bool Instructions::CPImmediate(CPU &cpu) {
 template<Register source>
 bool Instructions::ORRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    cpu.regs->a |= value;
-    cpu.regs->SetZero(cpu.regs->a == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.regs->SetCarry(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    regs_.a |= value;
+    regs_.SetZero(regs_.a == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    regs_.SetCarry(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::ORIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a |= byte;
-        cpu.regs->SetZero(cpu.regs->a == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.regs->SetCarry(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a |= byte;
+        regs_.SetZero(regs_.a == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        regs_.SetCarry(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1286,16 +1286,16 @@ bool Instructions::ORIndirect(CPU &cpu) {
 
 bool Instructions::ORImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a |= byte;
-        cpu.regs->SetZero(cpu.regs->a == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.regs->SetCarry(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a |= byte;
+        regs_.SetZero(regs_.a == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        regs_.SetCarry(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1304,28 +1304,28 @@ bool Instructions::ORImmediate(CPU &cpu) {
 template<Register source>
 bool Instructions::XORRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    cpu.regs->a ^= value;
-    cpu.regs->SetZero(cpu.regs->a == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.regs->SetCarry(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    regs_.a ^= value;
+    regs_.SetZero(regs_.a == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    regs_.SetCarry(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::XORIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a ^= byte;
-        cpu.regs->SetZero(cpu.regs->a == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.regs->SetCarry(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a ^= byte;
+        regs_.SetZero(regs_.a == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        regs_.SetCarry(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1333,16 +1333,16 @@ bool Instructions::XORIndirect(CPU &cpu) {
 
 bool Instructions::XORImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a ^= byte;
-        cpu.regs->SetZero(cpu.regs->a == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.regs->SetCarry(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a ^= byte;
+        regs_.SetZero(regs_.a == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        regs_.SetCarry(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1351,28 +1351,28 @@ bool Instructions::XORImmediate(CPU &cpu) {
 template<Register source>
 bool Instructions::AND(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    cpu.regs->a &= value;
-    cpu.regs->SetZero(cpu.regs->a == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(true);
-    cpu.regs->SetCarry(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    regs_.a &= value;
+    regs_.SetZero(regs_.a == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(true);
+    regs_.SetCarry(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::ANDImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a &= byte;
-        cpu.regs->SetZero(cpu.regs->a == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(true);
-        cpu.regs->SetCarry(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a &= byte;
+        regs_.SetZero(regs_.a == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(true);
+        regs_.SetCarry(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1380,16 +1380,16 @@ bool Instructions::ANDImmediate(CPU &cpu) {
 
 bool Instructions::ANDIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->a &= byte;
-        cpu.regs->SetZero(cpu.regs->a == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(true);
-        cpu.regs->SetCarry(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.a &= byte;
+        regs_.SetZero(regs_.a == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(true);
+        regs_.SetCarry(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1398,30 +1398,30 @@ bool Instructions::ANDIndirect(CPU &cpu) {
 template<Register source>
 bool Instructions::SUB(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    const uint8_t new_value = cpu.regs->a - value;
-    cpu.regs->SetCarry(cpu.regs->a < value);
-    cpu.regs->SetHalf((cpu.regs->a & 0xF) < (value & 0xF));
-    cpu.regs->SetSubtract(true);
-    cpu.regs->SetZero(new_value == 0x0);
-    cpu.regs->a = new_value;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    const uint8_t new_value = regs_.a - value;
+    regs_.SetCarry(regs_.a < value);
+    regs_.SetHalf((regs_.a & 0xF) < (value & 0xF));
+    regs_.SetSubtract(true);
+    regs_.SetZero(new_value == 0x0);
+    regs_.a = new_value;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SUBImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t new_value = cpu.regs->a - byte;
-        cpu.regs->SetCarry(cpu.regs->a < byte);
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) < (byte & 0xF));
-        cpu.regs->SetSubtract(true);
-        cpu.regs->SetZero(new_value == 0x0);
-        cpu.regs->a = new_value;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t new_value = regs_.a - byte;
+        regs_.SetCarry(regs_.a < byte);
+        regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF));
+        regs_.SetSubtract(true);
+        regs_.SetZero(new_value == 0x0);
+        regs_.a = new_value;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1429,17 +1429,17 @@ bool Instructions::SUBImmediate(CPU &cpu) {
 
 bool Instructions::SUBIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t new_value = cpu.regs->a - byte;
-        cpu.regs->SetCarry(cpu.regs->a < byte);
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) < (byte & 0xF));
-        cpu.regs->SetSubtract(true);
-        cpu.regs->SetZero(new_value == 0x0);
-        cpu.regs->a = new_value;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t new_value = regs_.a - byte;
+        regs_.SetCarry(regs_.a < byte);
+        regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF));
+        regs_.SetSubtract(true);
+        regs_.SetZero(new_value == 0x0);
+        regs_.a = new_value;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1448,33 +1448,33 @@ bool Instructions::SUBIndirect(CPU &cpu) {
 template<Register source>
 bool Instructions::SLA(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    cpu.regs->SetCarry(((value & 0x80) >> 7) == 0x01);
+    const uint8_t value = regs_.*sourceReg;
+    regs_.SetCarry(((value & 0x80) >> 7) == 0x01);
     const uint8_t newValue = value << 1;
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.*sourceReg = newValue;
+    regs_.SetZero(newValue == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SLAAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetCarry((byte & 0x80) != 0);
+        regs_.SetCarry((byte & 0x80) != 0);
         byte <<= 1;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1483,33 +1483,33 @@ bool Instructions::SLAAddr(CPU &cpu) {
 template<Register source>
 bool Instructions::SRA(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
+    const uint8_t value = regs_.*sourceReg;
     const uint8_t newValue = (value >> 1) | (value & 0x80);
-    cpu.regs.get()->*sourceReg = newValue;
-    cpu.regs->SetCarry((value & 0x01) != 0);
-    cpu.regs->SetZero(newValue == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.*sourceReg = newValue;
+    regs_.SetCarry((value & 0x01) != 0);
+    regs_.SetZero(newValue == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SRAAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetCarry((byte & 0x01) != 0);
+        regs_.SetCarry((byte & 0x01) != 0);
         byte = (byte >> 1) | (byte & 0x80);
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1518,33 +1518,33 @@ bool Instructions::SRAAddr(CPU &cpu) {
 template<Register source>
 bool Instructions::SWAP(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    uint8_t value = cpu.regs.get()->*sourceReg;
+    uint8_t value = regs_.*sourceReg;
     value = (value >> 4) | (value << 4);
-    cpu.regs.get()->*sourceReg = value;
-    cpu.regs->SetZero(value == 0);
-    cpu.regs->SetCarry(false);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.*sourceReg = value;
+    regs_.SetZero(value == 0);
+    regs_.SetCarry(false);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SWAPAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         byte = (byte >> 4) | (byte << 4);
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetCarry(false);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetCarry(false);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1553,33 +1553,33 @@ bool Instructions::SWAPAddr(CPU &cpu) {
 template<Register source>
 bool Instructions::SRL(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    uint8_t value = cpu.regs.get()->*sourceReg;
-    cpu.regs->SetCarry((value & 0x01) != 0);
+    uint8_t value = regs_.*sourceReg;
+    regs_.SetCarry((value & 0x01) != 0);
     value = value >> 1;
-    cpu.regs.get()->*sourceReg = value;
-    cpu.regs->SetZero(value == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(false);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.*sourceReg = value;
+    regs_.SetZero(value == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(false);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SRLAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
-        cpu.regs->SetCarry((byte & 0x01) != 0);
+        byte = bus_.ReadByte(regs_.GetHL());
+        regs_.SetCarry((byte & 0x01) != 0);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         byte = byte >> 1;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetZero(byte == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(false);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero(byte == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(false);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1589,11 +1589,11 @@ bool Instructions::SRLAddr(CPU &cpu) {
 template<Register source, int bit>
 bool Instructions::BIT(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t sourceValue = cpu.regs.get()->*sourceReg;
-    cpu.regs->SetZero((sourceValue & (1 << bit)) == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf(true);
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t sourceValue = regs_.*sourceReg;
+    regs_.SetZero((sourceValue & (1 << bit)) == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf(true);
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
@@ -1601,14 +1601,14 @@ bool Instructions::BIT(CPU &cpu) {
 template<int bit>
 bool Instructions::BITAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        cpu.regs->SetZero((byte & (1 << bit)) == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf(true);
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetZero((byte & (1 << bit)) == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf(true);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1617,26 +1617,26 @@ bool Instructions::BITAddr(CPU &cpu) {
 template<Register source, int bit>
 bool Instructions::RES(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    uint8_t sourceValue = cpu.regs.get()->*sourceReg;
+    uint8_t sourceValue = regs_.*sourceReg;
     sourceValue &= ~(1 << bit);
-    cpu.regs.get()->*sourceReg = sourceValue;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.*sourceReg = sourceValue;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 template<int bit>
 bool Instructions::RESAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         byte &= ~(1 << bit);
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1645,26 +1645,26 @@ bool Instructions::RESAddr(CPU &cpu) {
 template<Register source, int bit>
 bool Instructions::SET(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    uint8_t sourceValue = cpu.regs.get()->*sourceReg;
+    uint8_t sourceValue = regs_.*sourceReg;
     sourceValue |= 1 << bit;
-    cpu.regs.get()->*sourceReg = sourceValue;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.*sourceReg = sourceValue;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 template<int bit>
 bool Instructions::SETAddr(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
         byte |= 1 << bit;
-        cpu.bus->WriteByte(cpu.regs->GetHL(), byte);
+        bus_.WriteByte(regs_.GetHL(), byte);
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1673,32 +1673,32 @@ bool Instructions::SETAddr(CPU &cpu) {
 template<Register source>
 bool Instructions::SBCRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    const uint8_t flag_carry = cpu.regs->FlagCarry() ? 1 : 0;
-    const uint8_t r = cpu.regs->a - value - flag_carry;
-    cpu.regs->SetCarry(cpu.regs->a < value + static_cast<uint16_t>(flag_carry));
-    cpu.regs->SetHalf((cpu.regs->a & 0xF) < (value & 0xF) + flag_carry);
-    cpu.regs->SetSubtract(true);
-    cpu.regs->SetZero(r == 0x0);
-    cpu.regs->a = r;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
+    const uint8_t r = regs_.a - value - flag_carry;
+    regs_.SetCarry(regs_.a < value + static_cast<uint16_t>(flag_carry));
+    regs_.SetHalf((regs_.a & 0xF) < (value & 0xF) + flag_carry);
+    regs_.SetSubtract(true);
+    regs_.SetZero(r == 0x0);
+    regs_.a = r;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::SBCIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t flag_carry = cpu.regs->FlagCarry() ? 1 : 0;
-        const uint8_t r = cpu.regs->a - byte - flag_carry;
-        cpu.regs->SetCarry(cpu.regs->a < byte + static_cast<uint16_t>(flag_carry));
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) < (byte & 0xF) + flag_carry);
-        cpu.regs->SetSubtract(true);
-        cpu.regs->SetZero(r == 0x0);
-        cpu.regs->a = r;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
+        const uint8_t r = regs_.a - byte - flag_carry;
+        regs_.SetCarry(regs_.a < byte + static_cast<uint16_t>(flag_carry));
+        regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF) + flag_carry);
+        regs_.SetSubtract(true);
+        regs_.SetZero(r == 0x0);
+        regs_.a = r;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1706,18 +1706,18 @@ bool Instructions::SBCIndirect(CPU &cpu) {
 
 bool Instructions::SBCImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t flag_carry = cpu.regs->FlagCarry() ? 1 : 0;
-        const uint8_t r = cpu.regs->a - byte - flag_carry;
-        cpu.regs->SetCarry(cpu.regs->a < byte + static_cast<uint16_t>(flag_carry));
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) < (byte & 0xF) + flag_carry);
-        cpu.regs->SetSubtract(true);
-        cpu.regs->SetZero(r == 0x0);
-        cpu.regs->a = r;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
+        const uint8_t r = regs_.a - byte - flag_carry;
+        regs_.SetCarry(regs_.a < byte + static_cast<uint16_t>(flag_carry));
+        regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF) + flag_carry);
+        regs_.SetSubtract(true);
+        regs_.SetZero(r == 0x0);
+        regs_.a = r;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1726,32 +1726,32 @@ bool Instructions::SBCImmediate(CPU &cpu) {
 template<Register source>
 bool Instructions::ADCRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    const uint8_t flag_carry = cpu.regs->FlagCarry() ? 1 : 0;
-    const uint8_t r = cpu.regs->a + value + flag_carry;
-    cpu.regs->SetCarry(static_cast<uint16_t>(cpu.regs->a) + value + static_cast<uint16_t>(flag_carry) > 0xFF);
-    cpu.regs->SetHalf(((cpu.regs->a & 0xF) + (value & 0xF) + (flag_carry & 0xF)) > 0xF);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetZero(r == 0x0);
-    cpu.regs->a = r;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    const uint8_t value = regs_.*sourceReg;
+    const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
+    const uint8_t r = regs_.a + value + flag_carry;
+    regs_.SetCarry(static_cast<uint16_t>(regs_.a) + value + static_cast<uint16_t>(flag_carry) > 0xFF);
+    regs_.SetHalf(((regs_.a & 0xF) + (value & 0xF) + (flag_carry & 0xF)) > 0xF);
+    regs_.SetSubtract(false);
+    regs_.SetZero(r == 0x0);
+    regs_.a = r;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::ADCIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t flag_carry = cpu.regs->FlagCarry() ? 1 : 0;
-        const uint8_t r = cpu.regs->a + byte + flag_carry;
-        cpu.regs->SetCarry(static_cast<uint16_t>(cpu.regs->a) + byte + static_cast<uint16_t>(flag_carry) > 0xFF);
-        cpu.regs->SetHalf(((cpu.regs->a & 0xF) + (byte & 0xF) + (flag_carry & 0xF)) > 0xF);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetZero(r == 0x0);
-        cpu.regs->a = r;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
+        const uint8_t r = regs_.a + byte + flag_carry;
+        regs_.SetCarry(static_cast<uint16_t>(regs_.a) + byte + static_cast<uint16_t>(flag_carry) > 0xFF);
+        regs_.SetHalf(((regs_.a & 0xF) + (byte & 0xF) + (flag_carry & 0xF)) > 0xF);
+        regs_.SetSubtract(false);
+        regs_.SetZero(r == 0x0);
+        regs_.a = r;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1759,18 +1759,18 @@ bool Instructions::ADCIndirect(CPU &cpu) {
 
 bool Instructions::ADCImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t flag_carry = cpu.regs->FlagCarry() ? 1 : 0;
-        const uint8_t r = cpu.regs->a + byte + flag_carry;
-        cpu.regs->SetCarry(static_cast<uint16_t>(cpu.regs->a) + byte + static_cast<uint16_t>(flag_carry) > 0xFF);
-        cpu.regs->SetHalf(((cpu.regs->a & 0xF) + (byte & 0xF) + (flag_carry & 0xF)) > 0xF);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetZero(r == 0x0);
-        cpu.regs->a = r;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        const uint8_t flag_carry = regs_.FlagCarry() ? 1 : 0;
+        const uint8_t r = regs_.a + byte + flag_carry;
+        regs_.SetCarry(static_cast<uint16_t>(regs_.a) + byte + static_cast<uint16_t>(flag_carry) > 0xFF);
+        regs_.SetHalf(((regs_.a & 0xF) + (byte & 0xF) + (flag_carry & 0xF)) > 0xF);
+        regs_.SetSubtract(false);
+        regs_.SetZero(r == 0x0);
+        regs_.a = r;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1779,23 +1779,23 @@ bool Instructions::ADCImmediate(CPU &cpu) {
 template<Arithmetic16Target target>
 bool Instructions::ADD16(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        if constexpr (target == Arithmetic16Target::BC) word = cpu.regs->GetBC();
-        if constexpr (target == Arithmetic16Target::DE) word = cpu.regs->GetDE();
-        if constexpr (target == Arithmetic16Target::HL) word = cpu.regs->GetHL();
+        if constexpr (target == Arithmetic16Target::BC) word = regs_.GetBC();
+        if constexpr (target == Arithmetic16Target::DE) word = regs_.GetDE();
+        if constexpr (target == Arithmetic16Target::HL) word = regs_.GetHL();
         if constexpr (target == Arithmetic16Target::SP) word = cpu.sp;
         return false;
     }
 
     if (cpu.mCycleCounter == 3) {
-        const uint16_t reg = cpu.regs->GetHL();
+        const uint16_t reg = regs_.GetHL();
         const uint16_t sum = reg + word;
 
-        cpu.regs->SetCarry(reg > 0xFFFF - word);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf((reg & 0x07FF) + (word & 0x07FF) > 0x07FF);
-        cpu.regs->SetHL(sum);
+        regs_.SetCarry(reg > 0xFFFF - word);
+        regs_.SetSubtract(false);
+        regs_.SetHalf((reg & 0x07FF) + (word & 0x07FF) > 0x07FF);
+        regs_.SetHL(sum);
 
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1804,32 +1804,32 @@ bool Instructions::ADD16(CPU &cpu) {
 template<Register source>
 bool Instructions::ADDRegister(CPU &cpu) {
     constexpr auto sourceReg = GetRegisterPtr<source>();
-    const uint8_t value = cpu.regs.get()->*sourceReg;
-    const uint8_t a = cpu.regs->a;
+    const uint8_t value = regs_.*sourceReg;
+    const uint8_t a = regs_.a;
     const uint8_t new_value = a + value;
-    cpu.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(value) > 0xFF);
-    cpu.regs->SetZero(new_value == 0);
-    cpu.regs->SetSubtract(false);
-    cpu.regs->SetHalf((cpu.regs->a & 0xF) + (value & 0xF) > 0xF);
-    cpu.regs->a = new_value;
-    cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+    regs_.SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(value) > 0xFF);
+    regs_.SetZero(new_value == 0);
+    regs_.SetSubtract(false);
+    regs_.SetHalf((regs_.a & 0xF) + (value & 0xF) > 0xF);
+    regs_.a = new_value;
+    cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
     return true;
 }
 
 bool Instructions::ADDIndirect(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.regs->GetHL());
+        byte = bus_.ReadByte(regs_.GetHL());
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t a = cpu.regs->a;
+        const uint8_t a = regs_.a;
         const uint8_t new_value = a + byte;
-        cpu.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(byte) > 0xFF);
-        cpu.regs->SetZero(new_value == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) + (byte & 0xF) > 0xF);
-        cpu.regs->a = new_value;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(byte) > 0xFF);
+        regs_.SetZero(new_value == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf((regs_.a & 0xF) + (byte & 0xF) > 0xF);
+        regs_.a = new_value;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1837,18 +1837,18 @@ bool Instructions::ADDIndirect(CPU &cpu) {
 
 bool Instructions::ADDImmediate(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
-        byte = cpu.bus->ReadByte(cpu.pc++);
+        byte = bus_.ReadByte(cpu.pc++);
         return false;
     }
     if (cpu.mCycleCounter == 3) {
-        const uint8_t a = cpu.regs->a;
+        const uint8_t a = regs_.a;
         const uint8_t new_value = a + byte;
-        cpu.regs->SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(byte) > 0xFF);
-        cpu.regs->SetZero(new_value == 0);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetHalf((cpu.regs->a & 0xF) + (byte & 0xF) > 0xF);
-        cpu.regs->a = new_value;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        regs_.SetCarry(static_cast<uint16_t>(a) + static_cast<uint16_t>(byte) > 0xFF);
+        regs_.SetZero(new_value == 0);
+        regs_.SetSubtract(false);
+        regs_.SetHalf((regs_.a & 0xF) + (byte & 0xF) > 0xF);
+        regs_.a = new_value;
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;
@@ -1858,7 +1858,7 @@ bool Instructions::ADDImmediate(CPU &cpu) {
 bool Instructions::ADDSigned(CPU &cpu) {
     if (cpu.mCycleCounter == 2) {
         word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-            cpu.bus->ReadByte(cpu.pc++))));
+            bus_.ReadByte(cpu.pc++))));
         return false;
     }
     if (cpu.mCycleCounter == 3) {
@@ -1866,15 +1866,15 @@ bool Instructions::ADDSigned(CPU &cpu) {
         return false;
     }
     if (cpu.mCycleCounter == 4) {
-        cpu.regs->SetCarry(((word2 & 0xFF) + (word & 0xFF)) > 0xFF);
-        cpu.regs->SetHalf(((word2 & 0xF) + (word & 0xF)) > 0xF);
-        cpu.regs->SetSubtract(false);
-        cpu.regs->SetZero(false);
+        regs_.SetCarry(((word2 & 0xFF) + (word & 0xFF)) > 0xFF);
+        regs_.SetHalf(((word2 & 0xF) + (word & 0xF)) > 0xF);
+        regs_.SetSubtract(false);
+        regs_.SetZero(false);
         return false;
     }
     if (cpu.mCycleCounter == 5) {
         cpu.sp = word2 + word;
-        cpu.nextInstruction = cpu.bus->ReadByte(cpu.pc++);
+        cpu.nextInstruction = bus_.ReadByte(cpu.pc++);
         return true;
     }
     return false;

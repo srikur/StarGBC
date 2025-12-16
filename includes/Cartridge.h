@@ -1,10 +1,33 @@
 #pragma once
 #include <functional>
-#include <iostream>
-
 #include "RealTimeClock.h"
 
 class Cartridge {
+public:
+    explicit Cartridge(const std::string &romLocation, RealTimeClock &rtc) : rtc_(rtc) {
+        rtc_.RecalculateZeroTime();
+        ReadFile(romLocation);
+        romBankCount = gameRom_.size() / 0x4000;
+        lowRomMask = std::bit_width(romBankCount) - 1;
+        savepath_ = RemoveExtension(romLocation).append(".sav");
+        DetermineMBC();
+        ramBankCount = gameRam_.size() / 0x2000;
+        multicart = IsLikelyMulticart();
+    }
+
+    static uint32_t GetRamSize(uint8_t byte);
+
+    void Save() const;
+
+    [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
+
+    void WriteByte(uint16_t address, uint8_t value);
+
+    bool SaveState(std::ofstream &stateFile) const;
+
+    bool LoadState(std::ifstream &stateFile);
+
+private:
     void ReadFile(const std::string &file);
 
     void LoadRam(uint16_t size);
@@ -35,13 +58,17 @@ class Cartridge {
 
     [[nodiscard]] bool IsLikelyMulticart() const;
 
-    [[nodiscard]] uint8_t BankBitmask() const {
-        return (lowRomMask >= 8) ? 0xFF : static_cast<uint8_t>((1 << lowRomMask) - 1);
-    }
+    [[nodiscard]] uint8_t BankBitmask() const;
+
+    inline void HandleRamEnableEdge(bool enable);
+
+    static std::string RemoveExtension(const std::string &filename);
 
     enum class MBC {
         None, MBC1, MBC2, MBC3, MBC5
     };
+
+    RealTimeClock& rtc_;
 
     std::string savepath_;
     std::vector<uint8_t> gameRom_;
@@ -65,76 +92,4 @@ class Cartridge {
     bool hasRumble_{false};
     bool rumbleOn_{false};
     std::function<void(bool)> rumbleCallback_;
-
-public:
-    explicit Cartridge(const std::string &romLocation);
-
-    Cartridge(const Cartridge &other) = delete;
-
-    Cartridge &operator=(const Cartridge &other) = delete;
-
-    Cartridge(Cartridge &&other) = delete;
-
-    Cartridge &operator=(Cartridge &&other) = delete;
-
-    ~Cartridge() = default;
-
-    static uint64_t GetRomSize(uint8_t byte);
-
-    static uint32_t GetRamSize(uint8_t byte);
-
-    void Save() const;
-
-    [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
-
-    static std::string RemoveExtension(const std::string &filename);
-
-    void WriteByte(uint16_t address, uint8_t value);
-
-    inline void HandleRamEnableEdge(bool enable);
-
-    std::unique_ptr<RealTimeClock> rtc = nullptr;
-
-    bool SaveState(std::ofstream &stateFile) const {
-        try {
-            if (!stateFile.is_open()) return false;
-            stateFile.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
-            stateFile.write(reinterpret_cast<const char *>(&gameRamSize), sizeof(gameRamSize));
-            stateFile.write(reinterpret_cast<const char *>(&ramEnabled), sizeof(ramEnabled));
-            stateFile.write(reinterpret_cast<const char *>(&mode), sizeof(mode));
-            stateFile.write(reinterpret_cast<const char *>(&romBank), sizeof(romBank));
-            stateFile.write(reinterpret_cast<const char *>(&ramBank), sizeof(ramBank));
-            stateFile.write(reinterpret_cast<const char *>(&bank1), sizeof(bank1));
-            stateFile.write(reinterpret_cast<const char *>(&bank2), sizeof(bank2));
-            stateFile.write(reinterpret_cast<const char *>(&mbc), sizeof(mbc));
-            stateFile.write(reinterpret_cast<const char *>(&ramDirty_), sizeof(ramDirty_));
-            stateFile.write(reinterpret_cast<const char *>(&prevRamEnable_), sizeof(prevRamEnable_));
-            rtc->Save(stateFile);
-            return true;
-        } catch (const std::exception &e) {
-            std::cerr << "Error saving state: " << e.what() << std::endl;
-            return false;
-        }
-    }
-
-    bool LoadState(std::ifstream &stateFile) {
-        try {
-            if (!stateFile.is_open()) return false;
-            stateFile.read(reinterpret_cast<char *>(gameRam_.data()), gameRamSize);
-            stateFile.read(reinterpret_cast<char *>(&gameRamSize), sizeof(gameRamSize));
-            stateFile.read(reinterpret_cast<char *>(&ramEnabled), sizeof(ramEnabled));
-            stateFile.read(reinterpret_cast<char *>(&mode), sizeof(mode));
-            stateFile.read(reinterpret_cast<char *>(&romBank), sizeof(romBank));
-            stateFile.read(reinterpret_cast<char *>(&ramBank), sizeof(ramBank));
-            stateFile.read(reinterpret_cast<char *>(&bank1), sizeof(bank1));
-            stateFile.read(reinterpret_cast<char *>(&mbc), sizeof(mbc));
-            stateFile.read(reinterpret_cast<char *>(&ramDirty_), sizeof(ramDirty_));
-            stateFile.read(reinterpret_cast<char *>(&prevRamEnable_), sizeof(prevRamEnable_));
-            rtc->Load(stateFile);
-            return true;
-        } catch (const std::exception &e) {
-            std::cerr << "Error loading state: " << e.what() << std::endl;
-            return false;
-        }
-    }
 };
