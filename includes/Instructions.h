@@ -335,6 +335,11 @@ public:
         return nonPrefixedTable[opcode](std::forward<Args>(args)...);
     }
 
+    void ResetState() {
+        word = word2 = byte = signedByte = 0;
+        jumpCondition = false;
+    }
+
     [[nodiscard]] std::string GetMnemonic(uint16_t instruction) const {
         const bool prefixed = instruction >> 8 == 0xCB;
         instruction &= 0xFF;
