@@ -2,7 +2,8 @@
 
 #include <map>
 
-void CPU::InitializeBootrom(const std::string &bios_path) const {
+template<BusLike BusT>
+void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
     std::ifstream file(bios_path, std::ios::binary);
     file.unsetf(std::ios::skipws);
 
@@ -17,11 +18,13 @@ void CPU::InitializeBootrom(const std::string &bios_path) const {
     file.close();
 }
 
-bool CPU::IsDMG() const {
+template<BusLike BusT>
+bool CPU<BusT>::IsDMG() const {
     return bus_.gpu_.hardware == Hardware::DMG;
 }
 
-void CPU::InitializeSystem(const Mode mode) {
+template<BusLike BusT>
+void CPU<BusT>::InitializeSystem(const Mode mode) {
     regs_.SetStartupValues(static_cast<Registers::Model>(mode));
     sp = 0xFFFE;
 
@@ -48,7 +51,8 @@ void CPU::InitializeSystem(const Mode mode) {
     }
 }
 
-void CPU::ExecuteMicroOp() {
+template<BusLike BusT>
+void CPU<BusT>::ExecuteMicroOp() {
     if (!AdvanceTCycle()) return;
     if (!instrRunning && ProcessInterrupts()) return;
     if (halted) return;
@@ -58,7 +62,8 @@ void CPU::ExecuteMicroOp() {
     }
 }
 
-void CPU::BeginMCycle() {
+template<BusLike BusT>
+void CPU<BusT>::BeginMCycle() {
     ++mCycleCounter;
     if (bus_.bootromRunning && pc == 0x100) {
         bus_.bootromRunning = false;
@@ -66,7 +71,8 @@ void CPU::BeginMCycle() {
     instrRunning = true;
 }
 
-bool CPU::AdvanceTCycle() {
+template<BusLike BusT>
+bool CPU<BusT>::AdvanceTCycle() {
     ++tCycleCounter;
     if (tCycleCounter % 4 != 0) {
         return false;
@@ -75,7 +81,8 @@ bool CPU::AdvanceTCycle() {
     return true;
 }
 
-void CPU::RunPostCompletion() {
+template<BusLike BusT>
+void CPU<BusT>::RunPostCompletion() {
     prefixed = currentInstruction >> 8 == 0xCB;
     currentInstruction = nextInstruction;
     mCycleCounter = 1;
@@ -87,13 +94,15 @@ void CPU::RunPostCompletion() {
     instrRunning = false;
 }
 
-uint8_t CPU::RunInstructionCycle(const uint8_t opcode, const bool isPrefixed) {
+template<BusLike BusT>
+uint8_t CPU<BusT>::RunInstructionCycle(const uint8_t opcode, const bool isPrefixed) {
     return isPrefixed
                ? instructions_->prefixedInstr(opcode, *this)
                : instructions_->nonPrefixedInstr(opcode, *this);
 }
 
-uint8_t CPU::InterruptAddress(const uint8_t bit) const {
+template<BusLike BusT>
+uint8_t CPU<BusT>::InterruptAddress(const uint8_t bit) const {
     switch (bit) {
         case 0: return 0x40; // VBlank
         case 1: return 0x48; // LCD STAT
@@ -104,7 +113,8 @@ uint8_t CPU::InterruptAddress(const uint8_t bit) const {
     }
 }
 
-bool CPU::ProcessInterrupts() {
+template<BusLike BusT>
+bool CPU<BusT>::ProcessInterrupts() {
     using enum InterruptState;
     switch (interruptState) {
         case M1: {
@@ -175,7 +185,6 @@ bool CPU::ProcessInterrupts() {
         case M6: {
             prefixed = false;
             currentInstruction = bus_.ReadByte(pc++);
-            // std::printf("Set currentInstruction to be %X. pc = %d\n", currentInstruction, pc);
             interruptState = M1;
             mCycleCounter = 1;
             return false;
@@ -183,3 +192,5 @@ bool CPU::ProcessInterrupts() {
     }
     return true;
 }
+
+template class CPU<Bus>;

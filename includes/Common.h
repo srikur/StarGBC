@@ -93,6 +93,13 @@ enum class InterruptType {
     Joypad,
 };
 
+template<typename T>
+concept BusLike = requires(T bus, uint16_t addr, uint8_t val)
+{
+    { bus.ReadByte(addr) } -> std::same_as<uint8_t>;
+    { bus.WriteByte(addr, val) } -> std::same_as<void>;
+};
+
 class GameboyException : public std::exception {
     virtual void message() const noexcept {
         std::printf("Gameboy Exception!\n");
