@@ -23,9 +23,11 @@ public:
     explicit Gameboy(const GameboySettings &settings) : romPath_(std::move(settings.romName)),
                                                         biosPath_(std::move(settings.biosPath)),
                                                         rtc_(settings.realRTC),
-                                                        cartridge_(romPath_, rtc_), joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
+                                                        cartridge_(romPath_, rtc_),
+                                                        joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
-                                                        cpu_(settings.mode, biosPath_, bus_, interrupts_),
+                                                        cpu_(settings.mode, biosPath_, bus_, interrupts_, registers_),
+                                                        instructions_(registers_, interrupts_),
                                                         throttleSpeed_(!settings.unthrottled),
                                                         paused_(settings.debugStart) {
     }
@@ -83,6 +85,7 @@ private:
     RealTimeClock rtc_; // init in constructor
     Cartridge cartridge_; // init in constructor
     Interrupts interrupts_{};
+    Registers registers_{};
     DMA dma_{};
     Joypad joypad_;
     Audio audio_{};
@@ -92,6 +95,7 @@ private:
     GPU gpu_;
     Bus bus_;
     CPU<Bus> cpu_;
+    Instructions<CPU<Bus> > instructions_;
 
     uint32_t masterCycles{0x00000000};
     int speedMultiplier_{1};
