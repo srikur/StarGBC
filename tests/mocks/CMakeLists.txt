@@ -1,2 +1,0 @@
-file(GLOB_RECURSE TEST_SOURCES *.cpp)
-

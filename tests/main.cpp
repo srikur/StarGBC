@@ -5,18 +5,18 @@
 int main(const int argc, char **argv) {
     const std::string_view arg = argc > 1 ? argv[1] : "";
     if (arg == "--instructions") {
-        InstructionTests::ExecuteAll();
+        ExecuteInstructionTests(argc, argv);
     } else if (arg == "--blargg") {
         ExecuteTestRoms(argc, argv);
     } else if (arg == "--all") {
-        InstructionTests::ExecuteAll();
+        ExecuteInstructionTests(argc, argv);
         ExecuteTestRoms(argc, argv);
     } else {
         std::fprintf(stderr, "USAGE: StarGBC_Tests [options]\n"
                      "Options:\n"
                      "  --instructions      instruction unit tests\n"
                      "  --blargg            blargg test roms\n"
-                     "  --all              all tests\n");
+                     "  --all               all tests\n");
         return -1;
     }
 }

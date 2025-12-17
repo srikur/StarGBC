@@ -57,6 +57,26 @@ struct MockCPU {
         stopped_ = value;
     }
 
+    void Reset() {
+        pc_ = 0;
+        sp_ = 0;
+        icount_ = 0;
+        mCycleCounter_ = 1;
+        nextInstruction_ = 0;
+        halted_ = false;
+        haltBug_ = false;
+        stopped_ = false;
+        currentInstruction = 0;
+        prefixed = false;
+    }
+
+    bool ExecuteMicroOp(Instructions<MockCPU<MockBus> > &instructions) {
+        mCycleCounter_++;
+        return prefixed
+                   ? instructions.prefixedInstr(currentInstruction, *this)
+                   : instructions.nonPrefixedInstr(currentInstruction, *this);
+    }
+
     BusT &bus_;
     uint16_t currentInstruction{};
     bool prefixed{};
@@ -65,7 +85,7 @@ private:
     uint16_t pc_{};
     uint16_t sp_{};
     uint8_t icount_{};
-    uint8_t mCycleCounter_{};
+    uint8_t mCycleCounter_{0x01};
     uint16_t nextInstruction_{};
     bool halted_{};
     bool haltBug_{};
