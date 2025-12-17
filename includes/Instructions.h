@@ -35,10 +35,20 @@ enum class Register {
 template<typename CPUType>
 class Instructions {
 public:
-
-    template<typename T = CPUType>
-    requires requires(T cpu) {
-        { cpu.pc() } -> std::same_as<std::add_lvalue_reference_t<uint16_t>>;
+    template<typename T = CPUType> requires requires(T cpu, uint16_t word, uint8_t byte, bool boolean)
+    {
+        { cpu.pc() } -> std::same_as<std::add_lvalue_reference_t<uint16_t> >;
+        { cpu.sp() } -> std::same_as<std::add_lvalue_reference_t<uint16_t> >;
+        { cpu.pc(word) } -> std::same_as<void>;
+        { cpu.sp(word) } -> std::same_as<void>;
+        { cpu.icount(word) } -> std::same_as<void>;
+        { cpu.mCycleCounter() } -> std::same_as<std::add_lvalue_reference_t<uint8_t> >;
+        { cpu.mCycleCounter(byte) } -> std::same_as<void>;
+        { cpu.nextInstruction() } -> std::same_as<std::add_lvalue_reference_t<uint16_t> >;
+        { cpu.nextInstruction(word) } -> std::same_as<void>;
+        { cpu.halted(boolean) } -> std::same_as<void>;
+        { cpu.haltBug(boolean) } -> std::same_as<void>;
+        { cpu.stopped(boolean) } -> std::same_as<void>;
     }
 
     explicit Instructions(Registers &regs, Interrupts &interrupts) : regs_(regs), interrupts_(interrupts) {
@@ -129,12 +139,12 @@ private:
     bool RETI(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
             word = cpu.bus_.ReadByte(cpu.sp());
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -181,12 +191,12 @@ private:
     template<RSTTarget target>
     bool RST(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8);
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -217,12 +227,12 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
             cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8);
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
@@ -255,7 +265,7 @@ private:
         }
         if (cpu.mCycleCounter() == 4) {
             if (jumpCondition) {
-                cpu.sp()-= 1;
+                cpu.sp() -= 1;
                 return false;
             }
 
@@ -264,7 +274,7 @@ private:
         }
         if (cpu.mCycleCounter() == 5) {
             cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8);
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
@@ -351,12 +361,12 @@ private:
     bool RETUnconditional(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
             word = cpu.bus_.ReadByte(cpu.sp());
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -382,7 +392,7 @@ private:
         if (cpu.mCycleCounter() == 3) {
             if (jumpCondition) {
                 word = cpu.bus_.ReadByte(cpu.sp());
-                cpu.sp()+= 1;
+                cpu.sp() += 1;
                 return false;
             }
 
@@ -391,7 +401,7 @@ private:
         }
         if (cpu.mCycleCounter() == 4) {
             word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
@@ -594,7 +604,7 @@ private:
                 cpu.bus_.HandleOAMCorruption(word, CorruptionType::Write);
             } else if constexpr (target == Arithmetic16Target::SP) {
                 cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::Write);
-                cpu.sp()-= 1;
+                cpu.sp() -= 1;
             }
             return false;
         }
@@ -655,7 +665,7 @@ private:
                 regs_.SetHL(word + 1);
             } else if constexpr (target == Arithmetic16Target::SP) {
                 cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::Write);
-                cpu.sp()+= 1;
+                cpu.sp() += 1;
             }
             return false;
         }
@@ -967,7 +977,7 @@ private:
         }
         if (cpu.mCycleCounter() == 4) {
             if constexpr (target == LoadWordTarget::HL) regs_.SetHL(word);
-            else if constexpr (target == LoadWordTarget::SP) cpu.sp()= word;
+            else if constexpr (target == LoadWordTarget::SP) cpu.sp() = word;
             else if constexpr (target == LoadWordTarget::BC) regs_.SetBC(word);
             else if constexpr (target == LoadWordTarget::DE) regs_.SetDE(word);
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
@@ -986,12 +996,12 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.bus_.WriteByte(word, cpu.sp()& 0xFF);
+            cpu.bus_.WriteByte(word, cpu.sp() & 0xFF);
             word += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.bus_.WriteByte(word, cpu.sp()>> 8);
+            cpu.bus_.WriteByte(word, cpu.sp() >> 8);
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
@@ -1008,14 +1018,14 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            regs_.SetCarry((cpu.sp()& 0xFF) + (word & 0xFF) > 0xFF);
-            regs_.SetHalf((cpu.sp()& 0xF) + (word & 0xF) > 0xF);
+            regs_.SetCarry((cpu.sp() & 0xFF) + (word & 0xFF) > 0xFF);
+            regs_.SetHalf((cpu.sp() & 0xF) + (word & 0xF) > 0xF);
             regs_.SetSubtract(false);
             regs_.SetZero(false);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            regs_.SetHL(cpu.sp()+ word);
+            regs_.SetHL(cpu.sp() + word);
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
             return true;
         }
@@ -1024,7 +1034,7 @@ private:
 
     bool LD16Stack(CPUType &cpu) const {
         if (cpu.mCycleCounter() == 2) {
-            cpu.sp()= regs_.GetHL();
+            cpu.sp() = regs_.GetHL();
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1038,7 +1048,7 @@ private:
     bool PUSH(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
             cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::Write);
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1048,7 +1058,7 @@ private:
             if constexpr (target == StackTarget::HL) word = regs_.GetHL();
             if constexpr (target == StackTarget::AF) word = regs_.GetAF();
             cpu.bus_.WriteByte(cpu.sp(), (word & 0xFF00) >> 8);
-            cpu.sp()-= 1;
+            cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -1068,13 +1078,13 @@ private:
         if (cpu.mCycleCounter() == 2) {
             cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::ReadWrite);
             word = cpu.bus_.ReadByte(cpu.sp());
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::Read);
             word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
-            cpu.sp()+= 1;
+            cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -1899,7 +1909,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.sp()= word2 + word;
+            cpu.sp() = word2 + word;
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
             return true;
         }
