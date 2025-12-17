@@ -3,6 +3,8 @@
 #include <functional>
 
 #include "Common.h"
+#include "GPU.h"
+#include "Interrupts.h"
 #include "Registers.h"
 
 template<BusLike BusT>

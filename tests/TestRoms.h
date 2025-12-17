@@ -66,7 +66,6 @@ static bool runBlarggTest(const std::string &rom,
             if (gameboy->ShouldRender()) {
                 continue;
             }
-
         }
         gameboy->SetPaused(true);
 
@@ -160,10 +159,10 @@ static auto &blarggFutures() {
     return futures;
 }
 
-#define BLARGG_TEST(IDX, ROM_STR)                                                 \
-TEST_CASE("blargg: " ROM_STR) {                                              \
-auto& futures = blarggFutures();                                    \
-CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);                   \
+#define BLARGG_TEST(IDX, ROM_STR)                       \
+TEST_CASE("blargg: " ROM_STR) {                         \
+auto& futures = blarggFutures();                        \
+CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);  \
 }
 
 BLARGG_TEST(0, "roms/blargg/halt_bug.gb")
