@@ -6,15 +6,18 @@
 #include "Registers.h"
 
 template<BusLike BusT>
-class Instructions;
-
-template<BusLike BusT>
 class CPU {
 public:
-    explicit CPU(const Mode mode, const std::string &biosPath, BusT &bus, Interrupts &interrupts) : bus_(bus),
-                                                                                                    interrupts_(interrupts),
-                                                                                                    instructions_(std::make_unique<Instructions<BusT> >(regs_, bus_, interrupts_)),
-                                                                                                    mode_(mode) {
+    using Self = CPU<BusT>;
+
+    explicit CPU(const Mode mode,
+                 const std::string &biosPath,
+                 BusT &bus,
+                 Interrupts &interrupts,
+                 Registers &registers) : bus_(bus),
+                                         interrupts_(interrupts),
+                                         regs_(registers),
+                                         mode_(mode) {
         if (mode_ != Mode::None) {
             bus.gpu_.hardware = mode == Mode::DMG ? Hardware::DMG : Hardware::CGB;
             bus.audio_.SetDMG(bus.gpu_.hardware == Hardware::DMG);
@@ -27,9 +30,9 @@ public:
             bus.bootromRunning = true;
             InitializeBootrom(biosPath);
         } else {
-            pc = 0x100;
+            pc_ = 0x100;
             InitializeSystem(mode);
-            currentInstruction = bus.ReadByte(pc++);
+            currentInstruction = bus.ReadByte(pc_++);
         }
     }
 
@@ -37,12 +40,62 @@ public:
 
     void InitializeSystem(Mode);
 
-    void ExecuteMicroOp();
+    void ExecuteMicroOp(Instructions<Self> &instructions);
+
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() {
+        return pc_;
+    }
+
+    void pc(const uint16_t value) {
+        pc_ = value;
+    }
+
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t>  sp() {
+        return sp_;
+    }
+
+    void sp(const uint16_t value) {
+        sp_ = value;
+    }
+
+    void icount(const uint8_t value) {
+        icount_ = value;
+    }
+
+    [[nodiscard]] std::add_lvalue_reference_t<uint8_t> mCycleCounter() {
+        return mCycleCounter_;
+    }
+
+    void mCycleCounter(const uint8_t value) {
+        mCycleCounter_ = value;
+    }
+
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> nextInstruction() {
+        return nextInstruction_;
+    }
+
+    void nextInstruction(const uint16_t value) {
+        nextInstruction_ = value;
+    }
+
+    void halted(const bool value) {
+        halted_ = value;
+    }
+
+    void haltBug(const bool value) {
+        haltBug_ = value;
+    }
+
+    void stopped(const bool value) {
+        stopped_ = value;
+    }
+
+    BusT &bus_;
+    uint16_t currentInstruction{0x0000};
+    bool prefixed{false};
 
 private:
-    friend class Instructions<BusT>;
-
-    uint8_t RunInstructionCycle(uint8_t, bool);
+    uint8_t RunInstructionCycle(Instructions<Self> &, uint8_t, bool);
 
     uint8_t InterruptAddress(uint8_t) const;
 
@@ -52,25 +105,21 @@ private:
 
     bool AdvanceTCycle();
 
-    void RunPostCompletion();
+    void RunPostCompletion(Instructions<Self> &);
 
-    BusT &bus_;
     Interrupts &interrupts_;
-    Registers regs_{};
-    std::unique_ptr<Instructions<BusT> > instructions_{nullptr};
+    Registers &regs_;
 
     Mode mode_{Mode::DMG};
 
-    uint16_t pc{0x0000};
-    uint16_t sp{0x0000};
-    uint8_t icount{0};
-    uint8_t mCycleCounter{0x01};
-    uint16_t nextInstruction{0x0000};
-    bool halted{false};
-    bool haltBug{false};
-    bool stopped{false};
-    uint16_t currentInstruction{0x0000};
-    bool prefixed{false};
+    uint16_t pc_{0x0000};
+    uint16_t sp_{0x0000};
+    uint8_t icount_{0};
+    uint8_t mCycleCounter_{0x01};
+    uint16_t nextInstruction_{0x0000};
+    bool halted_{false};
+    bool haltBug_{false};
+    bool stopped_{false};
 
     InterruptState interruptState{InterruptState::M1};
     uint8_t tCycleCounter{0x00};
