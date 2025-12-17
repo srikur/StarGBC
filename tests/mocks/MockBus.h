@@ -7,7 +7,7 @@
 
 struct MockBus {
     uint8_t ReadByte(const uint16_t address) {
-        return memory_[address];
+        return memory_.contains(address) ? memory_[address] : 0x00;
     }
 
     void WriteByte(const uint16_t address, const uint8_t value) {
@@ -25,7 +25,7 @@ struct MockBus {
     bool prepareSpeedShift{false};
 
 private:
-    std::unordered_map<uint16_t, uint8_t> memory_;
+    std::unordered_map<uint16_t, uint8_t> memory_{};
 };
 
 #endif //STARGBC_MOCKBUS_H
