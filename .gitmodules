@@ -10,3 +10,6 @@
 [submodule "dependencies/doctest"]
 	path = dependencies/doctest
 	url = https://github.com/doctest/doctest.git
+[submodule "dependencies/spdlog"]
+	path = dependencies/spdlog
+	url = https://github.com/gabime/spdlog.git
