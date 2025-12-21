@@ -205,7 +205,7 @@ private:
             cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF);
             constexpr auto location = GetRSTAddress<target>();
             if constexpr (target == RSTTarget::H38) {
-                std::fprintf(stderr, "RST 38\n");
+                std::terminate();
             }
             cpu.pc() = location;
             return false;
