@@ -49,8 +49,10 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions) {
     if (!AdvanceTCycle()) return;
-    if (!instrRunning && ProcessInterrupts()) return;
-    if (halted_) return;
+    if (!instrRunning) {
+        if (ProcessInterrupts()) return;
+        if (halted_) return;
+    }
     BeginMCycle();
     if (RunInstructionCycle(instructions, currentInstruction, prefixed)) {
         RunPostCompletion(instructions);
@@ -68,8 +70,7 @@ void CPU<BusT>::BeginMCycle() {
 
 template<BusLike BusT>
 bool CPU<BusT>::AdvanceTCycle() {
-    ++tCycleCounter;
-    if (tCycleCounter % 4 != 0) {
+    if (++tCycleCounter % 4 != 0) {
         return false;
     }
     tCycleCounter = 0;
