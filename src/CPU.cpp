@@ -111,6 +111,7 @@ uint8_t CPU<BusT>::InterruptAddress(const uint8_t bit) const {
 
 template<BusLike BusT>
 bool CPU<BusT>::ProcessInterrupts() {
+    if (prefixed) return false;
     using enum InterruptState;
     switch (interruptState) {
         case M1: {
