@@ -29,11 +29,12 @@ public:
         if (!biosPath.empty()) {
             bus.bootromRunning = true;
             InitializeBootrom(biosPath);
+            pc_ = 0x0000;
         } else {
             pc_ = 0x100;
             InitializeSystem(mode);
-            currentInstruction = bus.ReadByte(pc_++);
         }
+        currentInstruction = bus.ReadByte(pc_++);
     }
 
     void InitializeBootrom(const std::string &) const;
@@ -88,6 +89,10 @@ public:
 
     void stopped(const bool value) {
         stopped_ = value;
+    }
+
+    std::add_lvalue_reference_t<bool> stopped() {
+        return stopped_;
     }
 
     BusT &bus_;

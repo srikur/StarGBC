@@ -222,7 +222,7 @@ void Bus::ChangeSpeed() {
 
 void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type) const {
     if ((gpu_.hardware != Hardware::DMG) || (location < 0xFE00 || location > 0xFEFF) || gpu_.stat.mode != GPUMode::MODE_2) return;
-    if (gpu_.scanlineCounter >= 76) return;
+    if (gpu_.scanlineCounter >= 81) return;
     const int currentRowIndex = gpu_.GetOAMScanRow();
 
     auto ReadWord = [&](const int index) -> uint16_t {

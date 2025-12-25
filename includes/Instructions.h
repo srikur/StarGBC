@@ -51,6 +51,7 @@ public:
         { cpu.halted(boolean) } -> std::same_as<void>;
         { cpu.haltBug(boolean) } -> std::same_as<void>;
         { cpu.stopped(boolean) } -> std::same_as<void>;
+        { cpu.stopped() } -> std::same_as<std::add_lvalue_reference_t<bool> >;
     }
 
     explicit Instructions(Registers &regs, Interrupts &interrupts) : regs_(regs), interrupts_(interrupts) {
@@ -204,9 +205,6 @@ private:
         if (cpu.mCycleCounter() == 4) {
             cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF);
             constexpr auto location = GetRSTAddress<target>();
-            if constexpr (target == RSTTarget::H38) {
-                std::terminate();
-            }
             cpu.pc() = location;
             return false;
         }
@@ -551,7 +549,12 @@ private:
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
         } else {
             cpu.stopped(true);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            // On DMG -- blank out the screen white, on CGB -- blank out the screen black, unless GPU is in Mode 3
+            if (cpu.bus_.gpu_.hardware == Hardware::DMG) {
+                std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), 0xFFFFFFFF);
+            } else if (cpu.bus_.gpu_.stat.mode != GPUMode::MODE_3) {
+                std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), 0x00000000);
+            }
         }
         return true;
     }
@@ -1144,7 +1147,7 @@ private:
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
             return true;
         }
-        return true;
+        return false;
     }
 
     template<Register source>
