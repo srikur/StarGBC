@@ -44,6 +44,8 @@ public:
 
     void ChangeSpeed();
 
+    void HandleOAMCorruption(const uint16_t location, const CorruptionType type) const;
+
     bool SaveState(std::ofstream &stateFile) const;
 
     void LoadState(std::ifstream &stateFile);
