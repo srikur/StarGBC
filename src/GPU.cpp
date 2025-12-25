@@ -90,7 +90,6 @@ void GPU::Update() {
         default: break;
     }
     scanlineCounter++;
-    // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", currentLine, scanlineCounter, stat.mode);
 
     if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         stat.mode = GPUMode::MODE_3;
@@ -122,7 +121,6 @@ void GPU::Update() {
                 windowTriggeredThisFrame = true;
             }
             initialSCXSet = false;
-            // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", currentLine, scanlineCounter);
         } else if (currentLine == 144) {
             stat.mode = GPUMode::MODE_1;
             vblank = true;
@@ -134,7 +132,6 @@ void GPU::Update() {
             }
             ResetScanlineState(true);
             initialSCXSet = false;
-            // std::fprintf(stderr, "Scroll X Reset 2, line %d, scanline counter %d\n", currentLine, scanlineCounter);
         }
     }
 }
