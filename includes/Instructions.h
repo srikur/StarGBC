@@ -1141,7 +1141,7 @@ private:
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
             return true;
         }
-        return true;
+        return false;
     }
 
     template<Register source>
