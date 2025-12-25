@@ -51,6 +51,7 @@ public:
         { cpu.halted(boolean) } -> std::same_as<void>;
         { cpu.haltBug(boolean) } -> std::same_as<void>;
         { cpu.stopped(boolean) } -> std::same_as<void>;
+        { cpu.stopped() } -> std::same_as<std::add_lvalue_reference_t<bool> >;
     }
 
     explicit Instructions(Registers &regs, Interrupts &interrupts) : regs_(regs), interrupts_(interrupts) {
@@ -548,6 +549,9 @@ private:
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
         } else {
             cpu.stopped(true);
+            // On DMG -- blank out the screen white, on CGB -- blank out the screen black
+            const uint32_t fillColor = cpu.bus_.gpu_.hardware == Hardware::DMG ? 0xFFFFFFFF : 0x000000FF;
+            std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), fillColor);
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
         }
         return true;

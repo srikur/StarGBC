@@ -91,6 +91,10 @@ public:
         stopped_ = value;
     }
 
+    std::add_lvalue_reference_t<bool> stopped() {
+        return stopped_;
+    }
+
     BusT &bus_;
     uint16_t currentInstruction{0x0000};
     bool prefixed{false};

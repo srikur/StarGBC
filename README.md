@@ -96,8 +96,8 @@ Current Performance: (150/270)
 | blargg/cgb_sound/12-wave.gb                                           | :white_check_mark: |
 | daid/ppu_scanline_bgp.gb (DMG)                                        | :x:                |
 | daid/ppu_scanline_bgp.gb (GBC)                                        | :x:                |
-| daid/stop_instr.gb (DMG)                                              | :x:                |
-| daid/stop_instr.gb (GBC)                                              | :x:                |
+| daid/stop_instr.gb (DMG)                                              | :white_check_mark: |
+| daid/stop_instr.gb (GBC)                                              | :white_check_mark: |
 | daid/stop_instr_gbc_mode3.gb                                          | :x:                |
 | daid/speed_switch_timing_ly.gbc                                       | :x:                |
 | ax6/rtc3test-1.gb                                                     | :white_check_mark: |
