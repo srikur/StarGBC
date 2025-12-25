@@ -26,7 +26,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
 }
 
 uint8_t GPU::GetOAMScanRow() const {
-    return (scanlineCounter + 4) / 4;
+    return scanlineCounter / 4;
 }
 
 void GPU::Update() {
@@ -91,6 +91,7 @@ void GPU::Update() {
     }
     scanlineCounter++;
 
+    const uint16_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
     if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         stat.mode = GPUMode::MODE_3;
         pixelsDrawn = 0;
@@ -102,7 +103,8 @@ void GPU::Update() {
             });
         }
         ResetScanlineState(false);
-    } else if (scanlineCounter == 456) {
+    } else if (scanlineCounter == scanlineDuration) {
+        shortenScanline = false;
         scanlineCounter = 0;
         currentLine++;
         statTriggered = false;
@@ -553,6 +555,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 screenData.fill(0);
                 vblank = true;
             } else if (newEnable && !oldEnable) {
+                shortenScanline = true;
                 stat.mode = GPUMode::MODE_2;
                 vblank = false;
             }
