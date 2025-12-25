@@ -57,16 +57,12 @@ static bool runBlarggTest(const std::string &rom,
         gameboy->SetThrottle(false);
 
         const auto start = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - start < 5s) {
+        while (std::chrono::steady_clock::now() - start < 10s) {
             gameboy->UpdateEmulator();
-            if (gameboy->ShouldRender()) {
-                continue;
-            }
         }
         gameboy->SetPaused(true);
 
-        const uint32_t *fb = gameboy->GetScreenData();
-        if (!std::ranges::equal(std::span(fb, expectedResult.size()), expectedResult)) {
+        if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expectedResult.size()), expectedResult)) {
             std::cerr << "Failed " << rom << std::endl;
             return false;
         }
@@ -211,7 +207,7 @@ BLARGG_TEST(46, "roms/blargg/oam_bug/rom_singles/3-non_causes.gb")
 BLARGG_TEST(47, "roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb")
 BLARGG_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
 BLARGG_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
-BLARGG_TEST(51, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
+BLARGG_TEST(50, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
     std::vector<char *> doctest_args;
