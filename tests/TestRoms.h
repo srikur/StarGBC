@@ -1,15 +1,17 @@
-#define DOCTEST_CONFIG_IMPLEMENT
-#include "doctest.h"
-#include <Gameboy.h>
+#ifndef STARGBC_TESTROMS_H
+#define STARGBC_TESTROMS_H
 
 #include <fstream>
 #include <future>
+#include <Gameboy.h>
 #include <iostream>
 #include <semaphore>
 #include <span>
 #include <string>
-#include <thread>
 #include <vector>
+
+#include "doctest.h"
+#include "ThreadContext.h"
 
 using namespace std::chrono_literals;
 
@@ -26,13 +28,6 @@ struct Bootroms {
 };
 
 constexpr Bootroms bootroms{};
-static size_t maxThreads = std::thread::hardware_concurrency();
-static std::shared_ptr<std::counting_semaphore<> > threadSemaphore;
-
-struct ThreadPermit {
-    ThreadPermit() { threadSemaphore->acquire(); }
-    ~ThreadPermit() { threadSemaphore->release(); }
-};
 
 static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     std::ifstream ifs(path, std::ios::binary);
@@ -67,7 +62,6 @@ static bool runBlarggTest(const std::string &rom,
             if (gameboy->ShouldRender()) {
                 continue;
             }
-
         }
         gameboy->SetPaused(true);
 
@@ -161,10 +155,10 @@ static auto &blarggFutures() {
     return futures;
 }
 
-#define BLARGG_TEST(IDX, ROM_STR)                                                 \
-TEST_CASE("blargg: " ROM_STR) {                                              \
-auto& futures = blarggFutures();                                    \
-CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);                   \
+#define BLARGG_TEST(IDX, ROM_STR)                       \
+TEST_CASE("blargg: " ROM_STR) {                         \
+auto& futures = blarggFutures();                        \
+CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);  \
 }
 
 BLARGG_TEST(0, "roms/blargg/halt_bug.gb")
@@ -219,7 +213,7 @@ BLARGG_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
 BLARGG_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
 BLARGG_TEST(51, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
 
-int main(const int argc, char **argv) {
+inline int ExecuteTestRoms(const int argc, char **argv) {
     std::vector<char *> doctest_args;
     doctest_args.reserve(argc);
     doctest_args.push_back(argv[0]);
@@ -242,6 +236,9 @@ int main(const int argc, char **argv) {
     threadSemaphore = std::make_shared<std::counting_semaphore<> >(maxThreads);
 
     doctest::Context ctx;
+    ctx.setOption("test-case", "*blargg*");
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());
     return ctx.run();
 }
+
+#endif //STARGBC_TESTROMS_H

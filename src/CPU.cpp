@@ -2,7 +2,8 @@
 
 #include <map>
 
-void CPU::InitializeBootrom(const std::string &bios_path) const {
+template<BusLike BusT>
+void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
     std::ifstream file(bios_path, std::ios::binary);
     file.unsetf(std::ios::skipws);
 
@@ -17,13 +18,10 @@ void CPU::InitializeBootrom(const std::string &bios_path) const {
     file.close();
 }
 
-bool CPU::IsDMG() const {
-    return bus_.gpu_.hardware == Hardware::DMG;
-}
-
-void CPU::InitializeSystem(const Mode mode) {
+template<BusLike BusT>
+void CPU<BusT>::InitializeSystem(const Mode mode) {
     regs_.SetStartupValues(static_cast<Registers::Model>(mode));
-    sp = 0xFFFE;
+    sp_ = 0xFFFE;
 
     static const std::map<uint16_t, uint8_t> initialData = {
         {0xFF00, 0xCF}, {0xFF02, 0x7C}, {0xFF03, 0xFF}, {0xFF04, 0x1E}, {0xFF07, 0xF8}, {0xFF08, 0xFF}, {0xFF09, 0xFF},
@@ -48,52 +46,59 @@ void CPU::InitializeSystem(const Mode mode) {
     }
 }
 
-void CPU::ExecuteMicroOp() {
+template<BusLike BusT>
+void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions) {
     if (!AdvanceTCycle()) return;
-    if (!instrRunning && ProcessInterrupts()) return;
-    if (halted) return;
+    if (!instrRunning) {
+        if (ProcessInterrupts()) return;
+        if (halted_) return;
+    }
     BeginMCycle();
-    if (RunInstructionCycle(currentInstruction, prefixed)) {
-        RunPostCompletion();
+    if (RunInstructionCycle(instructions, currentInstruction, prefixed)) {
+        RunPostCompletion(instructions);
     }
 }
 
-void CPU::BeginMCycle() {
-    ++mCycleCounter;
-    if (bus_.bootromRunning && pc == 0x100) {
+template<BusLike BusT>
+void CPU<BusT>::BeginMCycle() {
+    ++mCycleCounter_;
+    if (bus_.bootromRunning && pc_ == 0x100) {
         bus_.bootromRunning = false;
     }
     instrRunning = true;
 }
 
-bool CPU::AdvanceTCycle() {
-    ++tCycleCounter;
-    if (tCycleCounter % 4 != 0) {
+template<BusLike BusT>
+bool CPU<BusT>::AdvanceTCycle() {
+    if (++tCycleCounter % 4 != 0) {
         return false;
     }
     tCycleCounter = 0;
     return true;
 }
 
-void CPU::RunPostCompletion() {
+template<BusLike BusT>
+void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
     prefixed = currentInstruction >> 8 == 0xCB;
-    currentInstruction = nextInstruction;
-    mCycleCounter = 1;
-    if (haltBug) {
-        haltBug = false;
-        pc -= 1;
+    currentInstruction = nextInstruction_;
+    mCycleCounter_ = 1;
+    if (haltBug_) {
+        haltBug_ = false;
+        pc_ -= 1;
     }
-    instructions_->ResetState();
+    instructions.ResetState();
     instrRunning = false;
 }
 
-uint8_t CPU::RunInstructionCycle(const uint8_t opcode, const bool isPrefixed) {
+template<BusLike BusT>
+uint8_t CPU<BusT>::RunInstructionCycle(Instructions<Self> &instructions, const uint8_t opcode, const bool isPrefixed) {
     return isPrefixed
-               ? instructions_->prefixedInstr(opcode, *this)
-               : instructions_->nonPrefixedInstr(opcode, *this);
+               ? instructions.prefixedInstr(opcode, *this)
+               : instructions.nonPrefixedInstr(opcode, *this);
 }
 
-uint8_t CPU::InterruptAddress(const uint8_t bit) const {
+template<BusLike BusT>
+uint8_t CPU<BusT>::InterruptAddress(const uint8_t bit) const {
     switch (bit) {
         case 0: return 0x40; // VBlank
         case 1: return 0x48; // LCD STAT
@@ -104,21 +109,23 @@ uint8_t CPU::InterruptAddress(const uint8_t bit) const {
     }
 }
 
-bool CPU::ProcessInterrupts() {
+template<BusLike BusT>
+bool CPU<BusT>::ProcessInterrupts() {
+    if (prefixed) return false;
     using enum InterruptState;
     switch (interruptState) {
         case M1: {
-            if (interrupts_.interruptDelay && ++icount == 2) {
+            if (interrupts_.interruptDelay && ++icount_ == 2) {
                 interrupts_.interruptDelay = false;
                 interrupts_.interruptMasterEnable = true;
-                icount = 0;
+                icount_ = 0;
             }
             const uint8_t pending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
             if (pending == 0) {
                 return false;
             }
-            if (halted && !interrupts_.interruptMasterEnable) {
-                halted = false;
+            if (halted_ && !interrupts_.interruptMasterEnable) {
+                halted_ = false;
                 return false;
             }
 
@@ -127,27 +134,27 @@ bool CPU::ProcessInterrupts() {
             }
 
             interruptState = M2;
-            halted = false;
+            halted_ = false;
             interrupts_.interruptMasterEnable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));
             interruptMask = static_cast<uint8_t>(1u << interruptBit);
 
-            pc -= 1;
+            pc_ -= 1;
             return true;
         }
         case M2: {
-            sp -= 1;
-            bus_.WriteByte(sp, static_cast<uint8_t>(pc >> 8));
+            sp_ -= 1;
+            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ >> 8));
             interruptState = M3;
             return true;
         }
         case M3: {
             if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(newPending & interruptMask)) {
                 if (!newPending) {
-                    sp--;
-                    bus_.WriteByte(sp, pc & 0xFF);
-                    pc = 0x0000;
+                    sp_--;
+                    bus_.WriteByte(sp_, pc_ & 0xFF);
+                    pc_ = 0x0000;
                     interruptState = M4;
                     return true;
                 } else {
@@ -156,10 +163,10 @@ bool CPU::ProcessInterrupts() {
                 }
             }
 
-            sp -= 1;
-            bus_.WriteByte(sp, static_cast<uint8_t>(pc & 0xFF));
+            sp_ -= 1;
+            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF));
             interrupts_.interruptFlag &= ~interruptMask;
-            pc = InterruptAddress(interruptBit);
+            pc_ = InterruptAddress(interruptBit);
 
             interruptState = M4;
             return true;
@@ -174,12 +181,13 @@ bool CPU::ProcessInterrupts() {
         }
         case M6: {
             prefixed = false;
-            currentInstruction = bus_.ReadByte(pc++);
-            // std::printf("Set currentInstruction to be %X. pc = %d\n", currentInstruction, pc);
+            currentInstruction = bus_.ReadByte(pc_++);
             interruptState = M1;
-            mCycleCounter = 1;
+            mCycleCounter_ = 1;
             return false;
         }
     }
     return true;
 }
+
+template class CPU<Bus>;
