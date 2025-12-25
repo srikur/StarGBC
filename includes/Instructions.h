@@ -549,10 +549,12 @@ private:
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
         } else {
             cpu.stopped(true);
-            // On DMG -- blank out the screen white, on CGB -- blank out the screen black
-            const uint32_t fillColor = cpu.bus_.gpu_.hardware == Hardware::DMG ? 0xFFFFFFFF : 0x000000FF;
-            std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), fillColor);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            // On DMG -- blank out the screen white, on CGB -- blank out the screen black, unless GPU is in Mode 3
+            if (cpu.bus_.gpu_.hardware == Hardware::DMG) {
+                std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), 0xFFFFFFFF);
+            } else if (cpu.bus_.gpu_.stat.mode != GPUMode::MODE_3) {
+                std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), 0x00000000);
+            }
         }
         return true;
     }
