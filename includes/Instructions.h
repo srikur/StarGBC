@@ -204,9 +204,6 @@ private:
         if (cpu.mCycleCounter() == 4) {
             cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF);
             constexpr auto location = GetRSTAddress<target>();
-            if constexpr (target == RSTTarget::H38) {
-                std::terminate();
-            }
             cpu.pc() = location;
             return false;
         }
