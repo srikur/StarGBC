@@ -26,7 +26,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
 }
 
 uint8_t GPU::GetOAMScanRow() const {
-    return (scanlineCounter + 4) / 4;
+    return scanlineCounter / 4;
 }
 
 void GPU::Update() {
@@ -90,8 +90,8 @@ void GPU::Update() {
         default: break;
     }
     scanlineCounter++;
-    // std::fprintf(stderr, "currentLine: %d, scanlineCounter: %d, mode: %d\n", currentLine, scanlineCounter, stat.mode);
 
+    const uint16_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
     if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         stat.mode = GPUMode::MODE_3;
         pixelsDrawn = 0;
@@ -103,7 +103,8 @@ void GPU::Update() {
             });
         }
         ResetScanlineState(false);
-    } else if (scanlineCounter == 456) {
+    } else if (scanlineCounter == scanlineDuration) {
+        shortenScanline = false;
         scanlineCounter = 0;
         currentLine++;
         statTriggered = false;
@@ -122,7 +123,6 @@ void GPU::Update() {
                 windowTriggeredThisFrame = true;
             }
             initialSCXSet = false;
-            // std::fprintf(stderr, "Scroll X Reset 1, line %d, scanline counter: %d\n", currentLine, scanlineCounter);
         } else if (currentLine == 144) {
             stat.mode = GPUMode::MODE_1;
             vblank = true;
@@ -134,7 +134,6 @@ void GPU::Update() {
             }
             ResetScanlineState(true);
             initialSCXSet = false;
-            // std::fprintf(stderr, "Scroll X Reset 2, line %d, scanline counter %d\n", currentLine, scanlineCounter);
         }
     }
 }
@@ -551,15 +550,15 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             lcdc = value;
             const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
             if (!newEnable && oldEnable) {
+                scanlineCounter = currentLine = 0;
                 stat.mode = GPUMode::MODE_0;
                 screenData.fill(0);
                 vblank = true;
             } else if (newEnable && !oldEnable) {
+                shortenScanline = true;
                 stat.mode = GPUMode::MODE_2;
                 vblank = false;
             }
-            scanlineCounter = 0;
-            currentLine = 0;
             break;
         }
         case 0xFF41:

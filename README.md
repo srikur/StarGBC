@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (149/270)
+Current Performance: (153/270)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -63,7 +63,7 @@ Current Performance: (149/270)
 | blargg/mem_timing-2/01-read_timing.gb                                 | :white_check_mark: |
 | blargg/mem_timing-2/02-write_timing.gb                                | :white_check_mark: |
 | blargg/mem_timing-2/03-modify_timing.gb                               | :white_check_mark: |
-| blargg/oam_bug/1-lcd_sync.gb                                          | :x:                |
+| blargg/oam_bug/1-lcd_sync.gb                                          | :white_check_mark: |
 | blargg/oam_bug/2-causes.gb                                            | :white_check_mark: |
 | blargg/oam_bug/3-non_causes.gb                                        | :white_check_mark: |
 | blargg/oam_bug/4-scanline_timing.gb                                   | :white_check_mark: |
@@ -96,9 +96,9 @@ Current Performance: (149/270)
 | blargg/cgb_sound/12-wave.gb                                           | :white_check_mark: |
 | daid/ppu_scanline_bgp.gb (DMG)                                        | :x:                |
 | daid/ppu_scanline_bgp.gb (GBC)                                        | :x:                |
-| daid/stop_instr.gb (DMG)                                              | :x:                |
-| daid/stop_instr.gb (GBC)                                              | :x:                |
-| daid/stop_instr_gbc_mode3.gb                                          | :x:                |
+| daid/stop_instr.gb (DMG)                                              | :white_check_mark: |
+| daid/stop_instr.gb (GBC)                                              | :white_check_mark: |
+| daid/stop_instr_gbc_mode3.gb                                          | :white_check_mark: |
 | daid/speed_switch_timing_ly.gbc                                       | :x:                |
 | ax6/rtc3test-1.gb                                                     | :white_check_mark: |
 | ax6/rtc3test-2.gb                                                     | :white_check_mark: |
