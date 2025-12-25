@@ -137,6 +137,7 @@ public:
     uint8_t scrollX = 0; // 0xFF43
     uint8_t scrollY = 0; // 0xFF42
     uint32_t scanlineCounter = 0; // current dot in scanline
+    bool shortenScanline{};
 
     bool vblank = false;
     bool statTriggered{false};
