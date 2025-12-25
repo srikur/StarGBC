@@ -51,6 +51,14 @@ void Gameboy::SaveScreen() const {
 void Gameboy::AdvanceFrame() {
     const uint32_t speedDivider = bus_.speed == Speed::Regular ? 2 : 1;
     if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
+    if (cpu_.stopped()) {
+        if (bus_.joypad_.KeyPressed()) {
+            cpu_.stopped() = false;
+        } else {
+            masterCycles++;
+            return;
+        }
+    }
     if (masterCycles % speedDivider == 0) cpu_.ExecuteMicroOp(instructions_);
     if (masterCycles % speedDivider == 0) bus_.UpdateTimers();
     if (masterCycles % RTC_CLOCK_DIVIDER == 0) rtc_.Update();
