@@ -36,7 +36,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (153/270)
+Current Performance: (154/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -99,7 +99,9 @@ Current Performance: (153/270)
 | daid/stop_instr.gb (DMG)                                              | :white_check_mark: |
 | daid/stop_instr.gb (GBC)                                              | :white_check_mark: |
 | daid/stop_instr_gbc_mode3.gb                                          | :white_check_mark: |
+| daid/speed_switch_timing_div.gbc                                      | :white_check_mark: |
 | daid/speed_switch_timing_ly.gbc                                       | :x:                |
+| daid/speed_switch_timing_stat.gbc                                     | :x:                |
 | ax6/rtc3test-1.gb                                                     | :white_check_mark: |
 | ax6/rtc3test-2.gb                                                     | :white_check_mark: |
 | ax6/rtc3test-3.gb                                                     | :white_check_mark: |
