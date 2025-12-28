@@ -26,15 +26,15 @@ public:
                                                                    gpu_(gpu) {
     }
 
-    [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
+    [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
 
-    [[nodiscard]] uint8_t ReadDMASource(uint16_t src) const;
+    [[nodiscard]] uint8_t ReadDMASource(uint16_t) const;
 
-    [[nodiscard]] uint8_t ReadOAM(uint16_t address) const;
+    [[nodiscard]] uint8_t ReadOAM(uint16_t) const;
 
-    void WriteOAM(uint16_t address, uint8_t value) const;
+    void WriteOAM(uint16_t, uint8_t) const;
 
-    void WriteByte(uint16_t address, uint8_t value);
+    void WriteByte(uint16_t, uint8_t, ComponentSource);
 
     void UpdateTimers() const;
 
@@ -44,11 +44,11 @@ public:
 
     void ChangeSpeed();
 
-    void HandleOAMCorruption(const uint16_t location, const CorruptionType type) const;
+    void HandleOAMCorruption(uint16_t, CorruptionType) const;
 
-    bool SaveState(std::ofstream &stateFile) const;
+    bool SaveState(std::ofstream &) const;
 
-    void LoadState(std::ifstream &stateFile);
+    void LoadState(std::ifstream &);
 
     Joypad &joypad_;
     Memory &memory_;
@@ -63,5 +63,6 @@ public:
     bool bootromRunning{false};
     bool prepareSpeedShift{false};
     Speed speed{Speed::Regular};
+    uint8_t dmaReadByte{};
     std::vector<uint8_t> bootrom;
 };

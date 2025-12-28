@@ -42,7 +42,7 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
     };
 
     for (const auto &[address, value]: initialData) {
-        bus_.WriteByte(address, value);
+        bus_.WriteByte(address, value, ComponentSource::CPU);
     }
 }
 
@@ -145,7 +145,7 @@ bool CPU<BusT>::ProcessInterrupts() {
         }
         case M2: {
             sp_ -= 1;
-            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ >> 8));
+            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ >> 8), ComponentSource::CPU);
             interruptState = M3;
             return true;
         }
@@ -153,7 +153,7 @@ bool CPU<BusT>::ProcessInterrupts() {
             if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(newPending & interruptMask)) {
                 if (!newPending) {
                     sp_--;
-                    bus_.WriteByte(sp_, pc_ & 0xFF);
+                    bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);
                     pc_ = 0x0000;
                     interruptState = M4;
                     return true;
@@ -164,7 +164,7 @@ bool CPU<BusT>::ProcessInterrupts() {
             }
 
             sp_ -= 1;
-            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF));
+            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF), ComponentSource::CPU);
             interrupts_.interruptFlag &= ~interruptMask;
             pc_ = InterruptAddress(interruptBit);
 
@@ -181,7 +181,7 @@ bool CPU<BusT>::ProcessInterrupts() {
         }
         case M6: {
             prefixed = false;
-            currentInstruction = bus_.ReadByte(pc_++);
+            currentInstruction = bus_.ReadByte(pc_++, ComponentSource::CPU);
             interruptState = M1;
             mCycleCounter_ = 1;
             return false;

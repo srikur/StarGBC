@@ -569,11 +569,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF42: scrollY = value;
             break;
-        case 0xFF43: {
-            scrollX = value;
-            // std::fprintf(stderr, "Writing ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
-        }
-        break;
+        case 0xFF43: scrollX = value;
+            break;
         case 0xFF44: currentLine = 0;
             break;
         case 0xFF45: lyc = value;
