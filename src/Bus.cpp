@@ -2,13 +2,15 @@
 
 #include <algorithm>
 
-uint8_t Bus::ReadDMASource(const uint16_t src) const {
+uint8_t Bus::ReadDMASource(const uint16_t src) {
     const uint8_t page = src >> 8;
-    if (page <= 0x7F) return cartridge_.ReadByte(src);
-    if (page <= 0x9F) return gpu_.ReadVRAM(src);
-    if (page <= 0xBF) return cartridge_.ReadByte(src);
-    if (page <= 0xFF) return memory_.wram_[src & 0x1FFF];
-    return 0xFF;
+    uint8_t returnValue{};
+    if (page <= 0x7F) returnValue = cartridge_.ReadByte(src);
+    if (page <= 0x9F) returnValue = gpu_.ReadVRAM(src);
+    if (page <= 0xBF) returnValue = cartridge_.ReadByte(src);
+    if (page <= 0xFF) returnValue = memory_.wram_[src & 0x1FFF];
+    dmaReadByte = returnValue;
+    return returnValue;
 }
 
 uint8_t Bus::ReadOAM(const uint16_t address) const {
@@ -21,7 +23,7 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
 
 uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
-    if (dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return 0xFF;
+    if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return dmaReadByte;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
@@ -69,7 +71,7 @@ uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return;
-    if (dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return;
+    if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return;
     switch (address) {
         case 0x0000 ... 0x7FFF: cartridge_.WriteByte(address, value);
             break;
@@ -147,7 +149,7 @@ void Bus::UpdateTimers() const {
     }
 }
 
-void Bus::UpdateDMA() const {
+void Bus::UpdateDMA() {
     if (++dma_.dmaTickCounter % 4 == 0) {
         dma_.dmaTickCounter = 0;
         if (dma_.transferComplete) {

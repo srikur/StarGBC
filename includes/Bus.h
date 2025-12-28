@@ -28,7 +28,7 @@ public:
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
 
-    [[nodiscard]] uint8_t ReadDMASource(uint16_t) const;
+    [[nodiscard]] uint8_t ReadDMASource(uint16_t);
 
     [[nodiscard]] uint8_t ReadOAM(uint16_t) const;
 
@@ -38,7 +38,7 @@ public:
 
     void UpdateTimers() const;
 
-    void UpdateDMA() const;
+    void UpdateDMA();
 
     uint32_t RunHDMA() const;
 
