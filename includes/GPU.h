@@ -47,8 +47,8 @@ enum class FetcherState {
 };
 
 struct Gpi {
-    uint8_t index;
-    bool autoIncrement;
+    uint8_t index{};
+    bool autoIncrement{};
 };
 
 enum class GPUMode {
@@ -144,8 +144,8 @@ public:
 
     // GBC
     bool hblank = false;
-    Gpi bgpi{.index = 0x00, .autoIncrement = false}; // 0xFF68
-    Gpi obpi{.index = 0x00, .autoIncrement = false}; // 0xFF6A
+    Gpi bgpi{}; // 0xFF68
+    Gpi obpi{}; // 0xFF6A
     uint8_t vramBank = 0;
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> bgpd = {}; // 0xFF69
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B

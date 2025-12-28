@@ -19,8 +19,9 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
     if (gpu_.stat.mode != GPUMode::MODE_3) gpu_.oam[address - 0xFE00] = value;
 }
 
-uint8_t Bus::ReadByte(const uint16_t address) const {
+uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
+    if (dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return 0xFF;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
@@ -66,8 +67,9 @@ uint8_t Bus::ReadByte(const uint16_t address) const {
     }
 }
 
-void Bus::WriteByte(const uint16_t address, const uint8_t value) {
+void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return;
+    if (dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return;
     switch (address) {
         case 0x0000 ... 0x7FFF: cartridge_.WriteByte(address, value);
             break;
@@ -172,7 +174,6 @@ void Bus::UpdateDMA() const {
     }
 }
 
-/* Lots of pointer indirection going on here :( */
 uint32_t Bus::RunHDMA() const {
     if (!gpu_.hdma.hdmaActive || gpu_.hardware == Hardware::DMG) {
         return 0;
@@ -185,7 +186,7 @@ uint32_t Bus::RunHDMA() const {
             for (uint32_t unused = 0; unused < blocks; ++unused) {
                 const uint16_t memSource = gpu_.hdma.hdmaSource;
                 for (uint16_t i = 0; i < 0x10; ++i) {
-                    const uint8_t byte = ReadByte(memSource + i);
+                    const uint8_t byte = ReadByte(memSource + i, ComponentSource::HDMA);
                     gpu_.WriteVRAM(gpu_.hdma.hdmaDestination + i, byte);
                 }
                 gpu_.hdma.hdmaSource += 0x10;
@@ -200,7 +201,7 @@ uint32_t Bus::RunHDMA() const {
 
             const uint16_t memSource = gpu_.hdma.hdmaSource;
             for (uint16_t i = 0; i < 0x10; ++i) {
-                const uint8_t byte = ReadByte(memSource + i);
+                const uint8_t byte = ReadByte(memSource + i, ComponentSource::HDMA);
                 gpu_.WriteVRAM(gpu_.hdma.hdmaDestination + i, byte);
             }
             gpu_.hdma.hdmaSource += 0x10;

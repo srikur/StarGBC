@@ -218,7 +218,7 @@ Current Performance: (154/272)
 | mooneye/misc/bits/unused_hwio-C.gb                                    | :x:                |
 | mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :x:                |
 | samesuite/apu/channel_1/channel_1_align.gb                            | :x:                |
-| samesuite/apu/channel_1/channel_1_align-cpu.gb                        | :x:                |
+| samesuite/apu/channel_1/channel_1_align_cpu.gb                        | :x:                |
 | samesuite/apu/channel_1/channel_1_delay.gb                            | :x:                |
 | samesuite/apu/channel_1/channel_1_duty.gb                             | :x:                |
 | samesuite/apu/channel_1/channel_1_duty_delay.gb                       | :x:                |

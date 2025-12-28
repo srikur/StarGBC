@@ -135,18 +135,18 @@ private:
         regs_.SetCarry(carry);
         regs_.SetZero(regs_.a == 0);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool RETI(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.sp());
+            word = cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU);
             cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU)) << 8;
             cpu.sp() += 1;
             return false;
         }
@@ -156,7 +156,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -165,7 +165,7 @@ private:
     bool DI(CPUType &cpu) const {
         interrupts_.interruptDelay = false;
         interrupts_.interruptMasterEnable = false;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -175,7 +175,7 @@ private:
             interrupts_.interruptDelay = true;
             interrupts_.interruptMasterEnable = true;
         }
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -187,7 +187,7 @@ private:
             cpu.haltBug(false);
             cpu.halted(true);
         }
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -198,18 +198,18 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8);
+            cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8, ComponentSource::CPU);
             cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF);
+            cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF, ComponentSource::CPU);
             constexpr auto location = GetRSTAddress<target>();
             cpu.pc() = location;
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -217,12 +217,12 @@ private:
 
     bool CALLUnconditional(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc());
+            word = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU)) << 8;
             cpu.pc() += 1;
             return false;
         }
@@ -231,17 +231,17 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8);
+            cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8, ComponentSource::CPU);
             cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
-            cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF);
+            cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF, ComponentSource::CPU);
             cpu.pc() = word;
             return false;
         }
         if (cpu.mCycleCounter() == 7) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -250,7 +250,7 @@ private:
     template<JumpTest test>
     bool CALL(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc());
+            word = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return false;
         }
@@ -259,7 +259,7 @@ private:
             else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
             else if constexpr (test == JumpTest::Carry) jumpCondition = regs_.FlagCarry();
             else if constexpr (test == JumpTest::NotCarry) jumpCondition = !regs_.FlagCarry();
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU)) << 8;
             cpu.pc() += 1;
             return false;
         }
@@ -269,21 +269,21 @@ private:
                 return false;
             }
 
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8);
+            cpu.bus_.WriteByte(cpu.sp(), (cpu.pc() & 0xFF00) >> 8, ComponentSource::CPU);
             cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
-            cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF);
+            cpu.bus_.WriteByte(cpu.sp(), cpu.pc() & 0xFF, ComponentSource::CPU);
             cpu.pc() = word;
             return false;
         }
         if (cpu.mCycleCounter() == 7) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -296,7 +296,7 @@ private:
         regs_.SetZero(false);
         regs_.SetHalf(false);
         regs_.SetSubtract(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -308,7 +308,7 @@ private:
         regs_.SetHalf(false);
         regs_.SetSubtract(false);
         regs_.a = r;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -316,7 +316,7 @@ private:
         regs_.SetSubtract(false);
         regs_.SetCarry(!regs_.FlagCarry());
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -324,7 +324,7 @@ private:
         regs_.SetHalf(true);
         regs_.SetSubtract(true);
         regs_.a = ~regs_.a;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -332,7 +332,7 @@ private:
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
         regs_.SetCarry(true);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -342,7 +342,7 @@ private:
         regs_.SetZero(false);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -354,18 +354,18 @@ private:
         regs_.SetCarry(carry);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool RETUnconditional(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.sp());
+            word = cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU);
             cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU)) << 8;
             cpu.sp() += 1;
             return false;
         }
@@ -374,7 +374,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -391,16 +391,16 @@ private:
         }
         if (cpu.mCycleCounter() == 3) {
             if (jumpCondition) {
-                word = cpu.bus_.ReadByte(cpu.sp());
+                word = cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU);
                 cpu.sp() += 1;
                 return false;
             }
 
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         if (cpu.mCycleCounter() == 4) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU)) << 8;
             cpu.sp() += 1;
             return false;
         }
@@ -409,7 +409,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -417,7 +417,7 @@ private:
 
     bool JRUnconditional(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            signedByte = std::bit_cast<int8_t>(cpu.bus_.ReadByte(cpu.pc()));
+            signedByte = std::bit_cast<int8_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU));
             cpu.pc() += 1;
             return false;
         }
@@ -431,7 +431,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -440,7 +440,7 @@ private:
     template<JumpTest test>
     bool JR(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            signedByte = std::bit_cast<int8_t>(cpu.bus_.ReadByte(cpu.pc()));
+            signedByte = std::bit_cast<int8_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU));
             cpu.pc() += 1;
             if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
             else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
@@ -458,11 +458,11 @@ private:
                 }
                 return false;
             }
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -470,12 +470,12 @@ private:
 
     bool JPUnconditional(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc());
+            word = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU)) << 8;
             cpu.pc() += 1;
             return false;
         }
@@ -484,7 +484,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -493,12 +493,12 @@ private:
     template<JumpTest test>
     bool JP(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc());
+            word = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU)) << 8;
             cpu.pc() += 1;
             if constexpr (test == JumpTest::NotZero) jumpCondition = !regs_.FlagZero();
             else if constexpr (test == JumpTest::Zero) jumpCondition = regs_.FlagZero();
@@ -511,11 +511,11 @@ private:
                 cpu.pc() = word;
                 return false;
             }
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -523,30 +523,30 @@ private:
 
     bool JPHL(CPUType &cpu) const {
         cpu.pc() = regs_.GetHL();
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool NOP(CPUType &cpu) const {
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool PREFIX(CPUType &cpu) const {
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         cpu.currentInstruction = 0xCB00 | cpu.nextInstruction();
         cpu.prefixed = true;
         return true;
     }
 
     bool STOP(CPUType &cpu) const {
-        const uint8_t key1 = cpu.bus_.ReadByte(0xFF4D);
+        const uint8_t key1 = cpu.bus_.ReadByte(0xFF4D, ComponentSource::CPU);
         const bool speedSwitchRequested = cpu.bus_.prepareSpeedShift && (key1 & 0x01);
-        cpu.bus_.WriteByte(0xFF04, 0x00);
+        cpu.bus_.WriteByte(0xFF04, 0x00, ComponentSource::CPU);
 
         if (speedSwitchRequested) {
             cpu.bus_.ChangeSpeed();
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         } else {
             cpu.stopped(true);
             // On DMG -- blank out the screen white, on CGB -- blank out the screen black, unless GPU is in Mode 3
@@ -568,13 +568,13 @@ private:
         regs_.SetZero(newValue == 0);
         regs_.SetSubtract(true);
         regs_.*sourceReg = newValue;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool DECIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -582,11 +582,11 @@ private:
             const uint8_t newValue = byte - 1;
             regs_.SetZero(newValue == 0);
             regs_.SetSubtract(true);
-            cpu.bus_.WriteByte(regs_.GetHL(), newValue);
+            cpu.bus_.WriteByte(regs_.GetHL(), newValue, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -614,7 +614,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -629,13 +629,13 @@ private:
         regs_.SetZero(newValue == 0);
         regs_.SetSubtract(false);
         regs_.*sourceReg = newValue;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool INCIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -643,11 +643,11 @@ private:
             const uint8_t newValue = byte + 1;
             regs_.SetZero(newValue == 0);
             regs_.SetSubtract(false);
-            cpu.bus_.WriteByte(regs_.GetHL(), newValue);
+            cpu.bus_.WriteByte(regs_.GetHL(), newValue, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -675,7 +675,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -687,7 +687,7 @@ private:
         constexpr auto targetReg = GetRegisterPtr<target>();
         const uint8_t sourceValue = regs_.*sourceReg;
         regs_.*targetReg = sourceValue;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -695,12 +695,12 @@ private:
     bool LDRegisterImmediate(CPUType &cpu) {
         constexpr auto targetReg = GetRegisterPtr<source>();
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.*targetReg = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -710,12 +710,12 @@ private:
     bool LDRegisterIndirect(CPUType &cpu) {
         constexpr auto targetReg = GetRegisterPtr<source>();
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.*targetReg = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -726,11 +726,11 @@ private:
         constexpr auto sourceReg = GetRegisterPtr<source>();
         if (cpu.mCycleCounter() == 2) {
             const uint8_t sourceValue = regs_.*sourceReg;
-            cpu.bus_.WriteByte(regs_.GetHL(), sourceValue);
+            cpu.bus_.WriteByte(regs_.GetHL(), sourceValue, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -738,15 +738,15 @@ private:
 
     bool LDAddrImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -754,12 +754,12 @@ private:
 
     bool LDAccumulatorBC(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetBC());
+            byte = cpu.bus_.ReadByte(regs_.GetBC(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.a = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -767,12 +767,12 @@ private:
 
     bool LDAccumulatorDE(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetDE());
+            byte = cpu.bus_.ReadByte(regs_.GetDE(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.a = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -780,11 +780,11 @@ private:
 
     bool LDFromAccBC(CPUType &cpu) const {
         if (cpu.mCycleCounter() == 2) {
-            cpu.bus_.WriteByte(regs_.GetBC(), regs_.a);
+            cpu.bus_.WriteByte(regs_.GetBC(), regs_.a, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -792,11 +792,11 @@ private:
 
     bool LDFromAccDE(CPUType &cpu) const {
         if (cpu.mCycleCounter() == 2) {
-            cpu.bus_.WriteByte(regs_.GetDE(), regs_.a);
+            cpu.bus_.WriteByte(regs_.GetDE(), regs_.a, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -804,21 +804,21 @@ private:
 
     bool LDAccumulatorDirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc());
+            word = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU)) << 8;
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            regs_.a = cpu.bus_.ReadByte(word);
+            regs_.a = cpu.bus_.ReadByte(word, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -826,21 +826,21 @@ private:
 
     bool LDFromAccumulatorDirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc());
+            word = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU)) << 8;
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.bus_.WriteByte(word, regs_.a);
+            cpu.bus_.WriteByte(word, regs_.a, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc());
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU);
             cpu.pc() += 1;
             return true;
         }
@@ -849,14 +849,14 @@ private:
 
     bool LDAccumulatorIndirectDec(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             cpu.bus_.HandleOAMCorruption(regs_.GetHL(), CorruptionType::ReadWrite);
             regs_.SetHL(regs_.GetHL() - 1);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.a = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -866,13 +866,13 @@ private:
         if (cpu.mCycleCounter() == 2) {
             word = regs_.GetHL();
             cpu.bus_.HandleOAMCorruption(word, CorruptionType::Write);
-            cpu.bus_.WriteByte(word, regs_.a);
+            cpu.bus_.WriteByte(word, regs_.a, ComponentSource::CPU);
             cpu.bus_.HandleOAMCorruption(word, CorruptionType::Write);
             regs_.SetHL(word - 1);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -880,14 +880,14 @@ private:
 
     bool LDAccumulatorIndirectInc(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             cpu.bus_.HandleOAMCorruption(regs_.GetHL(), CorruptionType::ReadWrite);
             regs_.SetHL(regs_.GetHL() + 1);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.a = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -897,13 +897,13 @@ private:
         if (cpu.mCycleCounter() == 2) {
             word = regs_.GetHL();
             cpu.bus_.HandleOAMCorruption(word, CorruptionType::Write);
-            cpu.bus_.WriteByte(word, regs_.a);
+            cpu.bus_.WriteByte(word, regs_.a, ComponentSource::CPU);
             cpu.bus_.HandleOAMCorruption(word, CorruptionType::Write);
             regs_.SetHL(word + 1);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -912,11 +912,11 @@ private:
     bool LoadFromAccumulatorIndirectC(CPUType &cpu) const {
         if (cpu.mCycleCounter() == 2) {
             const uint16_t c = 0xFF00 | static_cast<uint16_t>(regs_.c);
-            cpu.bus_.WriteByte(c, regs_.a);
+            cpu.bus_.WriteByte(c, regs_.a, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -924,16 +924,16 @@ private:
 
     bool LoadFromAccumulatorDirectA(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc()));
+            word = static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc(), ComponentSource::CPU));
             cpu.pc() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.bus_.WriteByte(static_cast<uint16_t>(0xFF00) | word, regs_.a);
+            cpu.bus_.WriteByte(static_cast<uint16_t>(0xFF00) | word, regs_.a, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -941,16 +941,16 @@ private:
 
     bool LoadAccumulatorA(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             word = 0xFF00 | static_cast<uint16_t>(byte);
-            byte = cpu.bus_.ReadByte(word);
+            byte = cpu.bus_.ReadByte(word, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             regs_.a = byte;
             return true;
         }
@@ -959,12 +959,12 @@ private:
 
     bool LoadAccumulatorIndirectC(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(0xFF00 | static_cast<uint16_t>(regs_.c));
+            byte = cpu.bus_.ReadByte(0xFF00 | static_cast<uint16_t>(regs_.c), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.a = byte;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -973,11 +973,11 @@ private:
     template<LoadWordTarget target>
     bool LD16Register(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc()++);
+            word = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc()++)) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU)) << 8;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -985,7 +985,7 @@ private:
             else if constexpr (target == LoadWordTarget::SP) cpu.sp() = word;
             else if constexpr (target == LoadWordTarget::BC) regs_.SetBC(word);
             else if constexpr (target == LoadWordTarget::DE) regs_.SetDE(word);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -993,24 +993,24 @@ private:
 
     bool LD16FromStack(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            word = cpu.bus_.ReadByte(cpu.pc()++);
+            word = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc()++)) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU)) << 8;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.bus_.WriteByte(word, cpu.sp() & 0xFF);
+            cpu.bus_.WriteByte(word, cpu.sp() & 0xFF, ComponentSource::CPU);
             word += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.bus_.WriteByte(word, cpu.sp() >> 8);
+            cpu.bus_.WriteByte(word, cpu.sp() >> 8, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 6) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1019,7 +1019,7 @@ private:
     bool LD16StackAdjusted(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
             word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-                cpu.bus_.ReadByte(cpu.pc()++))));
+                cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU))));
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1031,7 +1031,7 @@ private:
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetHL(cpu.sp() + word);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1043,7 +1043,7 @@ private:
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1062,17 +1062,17 @@ private:
             if constexpr (target == StackTarget::DE) word = regs_.GetDE();
             if constexpr (target == StackTarget::HL) word = regs_.GetHL();
             if constexpr (target == StackTarget::AF) word = regs_.GetAF();
-            cpu.bus_.WriteByte(cpu.sp(), (word & 0xFF00) >> 8);
+            cpu.bus_.WriteByte(cpu.sp(), (word & 0xFF00) >> 8, ComponentSource::CPU);
             cpu.sp() -= 1;
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::Write);
-            cpu.bus_.WriteByte(cpu.sp(), word & 0xFF);
+            cpu.bus_.WriteByte(cpu.sp(), word & 0xFF, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1082,13 +1082,13 @@ private:
     bool POP(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
             cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::ReadWrite);
-            word = cpu.bus_.ReadByte(cpu.sp());
+            word = cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU);
             cpu.sp() += 1;
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             cpu.bus_.HandleOAMCorruption(cpu.sp(), CorruptionType::Read);
-            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp())) << 8;
+            word |= static_cast<uint16_t>(cpu.bus_.ReadByte(cpu.sp(), ComponentSource::CPU)) << 8;
             cpu.sp() += 1;
             return false;
         }
@@ -1097,7 +1097,7 @@ private:
             if constexpr (target == StackTarget::DE) regs_.SetDE(word);
             if constexpr (target == StackTarget::HL) regs_.SetHL(word);
             if constexpr (target == StackTarget::AF) regs_.SetAF(word & 0xFFF0);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1112,13 +1112,13 @@ private:
         regs_.SetHalf((regs_.a & 0xF) < (value & 0xF));
         regs_.SetSubtract(true);
         regs_.SetZero(new_value == 0x0);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool CPIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1127,7 +1127,7 @@ private:
             regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF));
             regs_.SetSubtract(true);
             regs_.SetZero(new_value == 0x0);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1135,7 +1135,7 @@ private:
 
     bool CPImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1144,7 +1144,7 @@ private:
             regs_.SetHalf((regs_.a & 0xF) < (byte & 0xF));
             regs_.SetSubtract(true);
             regs_.SetZero(new_value == 0x0);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1159,13 +1159,13 @@ private:
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
         regs_.SetCarry(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool ORIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1174,7 +1174,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
             regs_.SetCarry(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1182,7 +1182,7 @@ private:
 
     bool ORImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1191,7 +1191,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
             regs_.SetCarry(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1206,13 +1206,13 @@ private:
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
         regs_.SetCarry(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool XORIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1221,7 +1221,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
             regs_.SetCarry(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1229,7 +1229,7 @@ private:
 
     bool XORImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1238,7 +1238,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
             regs_.SetCarry(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1253,13 +1253,13 @@ private:
         regs_.SetSubtract(false);
         regs_.SetHalf(true);
         regs_.SetCarry(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool ANDIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1268,7 +1268,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf(true);
             regs_.SetCarry(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1276,7 +1276,7 @@ private:
 
     bool ANDImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1285,7 +1285,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf(true);
             regs_.SetCarry(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1301,13 +1301,13 @@ private:
         regs_.SetSubtract(true);
         regs_.SetZero(new_value == 0x0);
         regs_.a = new_value;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool SUBIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1317,7 +1317,7 @@ private:
             regs_.SetSubtract(true);
             regs_.SetZero(new_value == 0x0);
             regs_.a = new_value;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1325,7 +1325,7 @@ private:
 
     bool SUBImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1335,7 +1335,7 @@ private:
             regs_.SetSubtract(true);
             regs_.SetZero(new_value == 0x0);
             regs_.a = new_value;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1352,26 +1352,26 @@ private:
         regs_.*sourceReg = newValue;
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool RRCAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.SetCarry(byte & 0x01);
             byte = regs_.FlagCarry() ? 0x80 | byte >> 1 : byte >> 1;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1388,19 +1388,19 @@ private:
         regs_.SetZero(newValue == 0);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool RRAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             word = (byte & 0x01) == 0x01; // hack for storing carry
             byte = regs_.FlagCarry() ? 0x80 | (byte >> 1) : byte >> 1;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -1408,7 +1408,7 @@ private:
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1424,26 +1424,26 @@ private:
         regs_.SetZero(newValue == 0);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool SLAAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.SetCarry((byte & 0x80) != 0);
             byte <<= 1;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1460,27 +1460,27 @@ private:
         regs_.*sourceReg = newValue;
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool RLCAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             const uint8_t old = byte & 0x80 ? 1 : 0;
             regs_.SetCarry(old != 0);
             byte = byte << 1 | old;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1497,27 +1497,27 @@ private:
         regs_.SetHalf(false);
         regs_.SetSubtract(false);
         regs_.*sourceReg = newValue;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool RLAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             const uint8_t oldCarry = regs_.FlagCarry() ? 1 : 0;
             regs_.SetCarry((byte & 0x80) != 0);
             byte = (byte << 1) | oldCarry;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1533,26 +1533,26 @@ private:
         regs_.SetZero(newValue == 0);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool SRAAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.SetCarry((byte & 0x01) != 0);
             byte = (byte >> 1) | (byte & 0x80);
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1568,18 +1568,18 @@ private:
         regs_.SetCarry(false);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool SWAPAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             byte = (byte >> 4) | (byte << 4);
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
@@ -1587,7 +1587,7 @@ private:
             regs_.SetCarry(false);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1603,26 +1603,26 @@ private:
         regs_.SetZero(value == 0);
         regs_.SetSubtract(false);
         regs_.SetHalf(false);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool SRLAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             regs_.SetCarry((byte & 0x01) != 0);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             byte = byte >> 1;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
             regs_.SetZero(byte == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(false);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1636,7 +1636,7 @@ private:
         regs_.SetZero((sourceValue & (1 << bit)) == 0);
         regs_.SetSubtract(false);
         regs_.SetHalf(true);
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
@@ -1644,14 +1644,14 @@ private:
     template<int bit>
     bool BITAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             regs_.SetZero((byte & (1 << bit)) == 0);
             regs_.SetSubtract(false);
             regs_.SetHalf(true);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1663,23 +1663,23 @@ private:
         uint8_t sourceValue = regs_.*sourceReg;
         sourceValue &= ~(1 << bit);
         regs_.*sourceReg = sourceValue;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     template<int bit>
     bool RESAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             byte &= ~(1 << bit);
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1691,23 +1691,23 @@ private:
         uint8_t sourceValue = regs_.*sourceReg;
         sourceValue |= 1 << bit;
         regs_.*sourceReg = sourceValue;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     template<int bit>
     bool SETAddr(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
             byte |= 1 << bit;
-            cpu.bus_.WriteByte(regs_.GetHL(), byte);
+            cpu.bus_.WriteByte(regs_.GetHL(), byte, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 4) {
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1724,13 +1724,13 @@ private:
         regs_.SetSubtract(true);
         regs_.SetZero(r == 0x0);
         regs_.a = r;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool SBCIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1741,7 +1741,7 @@ private:
             regs_.SetSubtract(true);
             regs_.SetZero(r == 0x0);
             regs_.a = r;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1749,7 +1749,7 @@ private:
 
     bool SBCImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1760,7 +1760,7 @@ private:
             regs_.SetSubtract(true);
             regs_.SetZero(r == 0x0);
             regs_.a = r;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1777,13 +1777,13 @@ private:
         regs_.SetSubtract(false);
         regs_.SetZero(r == 0x0);
         regs_.a = r;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool ADCIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1794,7 +1794,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetZero(r == 0x0);
             regs_.a = r;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1802,7 +1802,7 @@ private:
 
     bool ADCImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1813,7 +1813,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetZero(r == 0x0);
             regs_.a = r;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1837,7 +1837,7 @@ private:
             regs_.SetHalf((reg & 0x07FF) + (word & 0x07FF) > 0x07FF);
             regs_.SetHL(sum);
 
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1854,13 +1854,13 @@ private:
         regs_.SetSubtract(false);
         regs_.SetHalf((regs_.a & 0xF) + (value & 0xF) > 0xF);
         regs_.a = new_value;
-        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+        cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool ADDIndirect(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(regs_.GetHL());
+            byte = cpu.bus_.ReadByte(regs_.GetHL(), ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1871,7 +1871,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf((regs_.a & 0xF) + (byte & 0xF) > 0xF);
             regs_.a = new_value;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1879,7 +1879,7 @@ private:
 
     bool ADDImmediate(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
-            byte = cpu.bus_.ReadByte(cpu.pc()++);
+            byte = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1890,7 +1890,7 @@ private:
             regs_.SetSubtract(false);
             regs_.SetHalf((regs_.a & 0xF) + (byte & 0xF) > 0xF);
             regs_.a = new_value;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
@@ -1899,7 +1899,7 @@ private:
     bool ADDSigned(CPUType &cpu) {
         if (cpu.mCycleCounter() == 2) {
             word = static_cast<uint16_t>(static_cast<int16_t>(static_cast<int8_t>(
-                cpu.bus_.ReadByte(cpu.pc()++))));
+                cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU))));
             return false;
         }
         if (cpu.mCycleCounter() == 3) {
@@ -1915,7 +1915,7 @@ private:
         }
         if (cpu.mCycleCounter() == 5) {
             cpu.sp() = word2 + word;
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++);
+            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
             return true;
         }
         return false;
