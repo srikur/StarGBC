@@ -66,8 +66,6 @@ void GPU::Update() {
             }
             break;
         case GPUMode::MODE_2:
-            // hblank = false;
-            // vblank = false;
             if (stat.enableM2Interrupt && !statTriggered) {
                 interrupts_.Set(InterruptType::LCDStat, true);
                 statTriggered = true;
@@ -232,13 +230,11 @@ void GPU::CheckForSpriteTrigger() {
 }
 
 void GPU::CheckForWindowTrigger() {
-    if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_) {
-        if (windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
-            isFetchingWindow_ = true;
-            backgroundQueue.clear();
-            fetcherState_ = FetcherState::GetTile;
-            fetcherTileX_ = 0;
-        }
+    if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
+        isFetchingWindow_ = true;
+        backgroundQueue.clear();
+        fetcherState_ = FetcherState::GetTile;
+        fetcherTileX_ = 0;
     }
 }
 
@@ -393,7 +389,6 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
         const uint8_t tileRow = ((scrollY + currentLine & 0xFF) >> 3) & 0x1F;
-        // std::fprintf(stderr, "Reading ScrollX: %d at line %d, scanline counter: %d\n", scrollX, currentLine, scanlineCounter);
         const uint8_t tileCol = (fetcherTileX_ + (scrollX / 8)) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
