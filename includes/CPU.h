@@ -34,7 +34,7 @@ public:
             pc_ = 0x100;
             InitializeSystem(mode);
         }
-        currentInstruction = bus.ReadByte(pc_++);
+        currentInstruction = bus.ReadByte(pc_++, ComponentSource::CPU);
     }
 
     void InitializeBootrom(const std::string &) const;

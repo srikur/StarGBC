@@ -93,11 +93,15 @@ enum class InterruptType {
     Joypad,
 };
 
+enum class ComponentSource {
+    CPU, DMA, PPU, HDMA
+};
+
 template<typename T>
-concept BusLike = requires(T bus, uint16_t addr, uint8_t val)
+concept BusLike = requires(T bus, uint16_t addr, uint8_t val, ComponentSource source)
 {
-    { bus.ReadByte(addr) } -> std::same_as<uint8_t>;
-    { bus.WriteByte(addr, val) } -> std::same_as<void>;
+    { bus.ReadByte(addr, source) } -> std::same_as<uint8_t>;
+    { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };
 
 class GameboyException : public std::exception {

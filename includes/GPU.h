@@ -47,8 +47,8 @@ enum class FetcherState {
 };
 
 struct Gpi {
-    uint8_t index;
-    bool autoIncrement;
+    uint8_t index{};
+    bool autoIncrement{};
 };
 
 enum class GPUMode {
@@ -134,8 +134,8 @@ public:
     uint8_t obp0Palette = 0; // 0xFF48
     uint8_t obp1Palette = 0; // 0xFF49
 
-    uint8_t scrollX = 0; // 0xFF43
-    uint8_t scrollY = 0; // 0xFF42
+    uint8_t scrollX{}; // 0xFF43
+    uint8_t scrollY{}; // 0xFF42
     uint32_t scanlineCounter = 0; // current dot in scanline
     bool shortenScanline{};
 
@@ -144,8 +144,8 @@ public:
 
     // GBC
     bool hblank = false;
-    Gpi bgpi{.index = 0x00, .autoIncrement = false}; // 0xFF68
-    Gpi obpi{.index = 0x00, .autoIncrement = false}; // 0xFF6A
+    Gpi bgpi{}; // 0xFF68
+    Gpi obpi{}; // 0xFF6A
     uint8_t vramBank = 0;
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> bgpd = {}; // 0xFF69
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
