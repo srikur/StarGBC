@@ -53,8 +53,16 @@ struct MockCPU {
         haltBug_ = value;
     }
 
+    std::add_lvalue_reference_t<bool> stopped() {
+        return stopped_;
+    }
+
     void stopped(const bool value) {
         stopped_ = value;
+    }
+
+    Hardware hardware() {
+        return Hardware::DMG;
     }
 
     void Reset() {
