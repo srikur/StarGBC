@@ -95,6 +95,10 @@ public:
         return stopped_;
     }
 
+    Hardware hardware() {
+        return bus_.gpu_.hardware;
+    }
+
     BusT &bus_;
     uint16_t currentInstruction{0x0000};
     bool prefixed{false};
