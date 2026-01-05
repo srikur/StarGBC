@@ -25,6 +25,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
             hdmaActive = true;
             hdmaStartDelay = 4;
             bytesThisBlock = 0x10;
+            step = HDMAStep::Read;
             hdma5 = hdmaRemain = value & 0x7F;
             hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             break;

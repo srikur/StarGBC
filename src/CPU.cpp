@@ -49,7 +49,6 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdmaActive) {
     if (!AdvanceTCycle()) return;
-    if (hdmaActive) return; // "During the copy periods, the CPU is stopped, the same as GDMA" -- TCAGBD
     if (!instrRunning) {
         if (ProcessInterrupts()) return;
         if (halted_) return;
