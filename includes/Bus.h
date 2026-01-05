@@ -32,6 +32,8 @@ public:
 
     [[nodiscard]] uint8_t ReadOAM(uint16_t) const;
 
+    [[nodiscard]] uint8_t ReadHDMASource(uint16_t) const;
+
     void WriteOAM(uint16_t, uint8_t) const;
 
     void WriteByte(uint16_t, uint8_t, ComponentSource);

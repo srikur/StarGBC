@@ -13,6 +13,13 @@ uint8_t Bus::ReadDMASource(const uint16_t src) {
     return returnValue;
 }
 
+uint8_t Bus::ReadHDMASource(uint16_t address) const {
+    if (address >= 0xE000) address -= 0x4000;
+    // Need to research and implement corruption patterns
+    if (address >= VRAM_BEGIN && address <= VRAM_END) return 0xFF;
+    return ReadByte(address, ComponentSource::HDMA);
+}
+
 uint8_t Bus::ReadOAM(const uint16_t address) const {
     return gpu_.stat.mode == GPUMode::MODE_3 ? 0xFF : gpu_.oam[address - 0xFE00];
 }
@@ -206,7 +213,7 @@ void Bus::RunHDMA() const {
             if (gpu_.hdma.bytesThisBlock >= 0x10) return; // Copies one block per H-Blank
 
             if (gpu_.hdma.step == HDMAStep::Read) {
-                gpu_.hdma.byte = ReadByte(gpu_.hdma.hdmaSource, ComponentSource::HDMA);
+                gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
                 gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
@@ -221,7 +228,6 @@ void Bus::RunHDMA() const {
                 gpu_.hdma.hdma5 |= gpu_.hdma.hdmaRemain;
                 if (gpu_.hdma.hdmaRemain == 0x00) gpu_.hdma.hdmaActive = false;
             }
-
             return;
         }
         default: return;
