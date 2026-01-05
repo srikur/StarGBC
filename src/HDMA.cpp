@@ -12,13 +12,19 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
         case 0xFF54: hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF55: {
-            if (hdmaActive && hdmaMode == HDMAMode::HDMA && !Bit<7>(value)) {
-                hdmaActive = false;
+            if (hdmaActive) {
+                if (!Bit<7>(value)) {
+                    hdmaActive = true;
+                    hdma5 = 0x80 | value;
+                } else {
+                    // restart copy
+                    hdma5 = hdmaRemain = value & 0x7F;
+                }
                 return;
             }
             hdmaActive = true;
             hdmaStartDelay = 4;
-            hdmaRemain = value & 0x7F;
+            hdma5 = hdmaRemain = value & 0x7F;
             hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             break;
         }
@@ -31,7 +37,7 @@ uint8_t HDMA::ReadHDMA(const uint16_t address, const bool gbc) const {
         /* Cycle-Accurate docs pg. 47 -- "Always returns FFh when read" */
         case 0xFF50 ... 0xFF54: return 0xFF;
         /* Cycle-Accurate docs pg. 47 -- "Returns FFh in DMG and GBC in DMG mode" */
-        case 0xFF55: return !gbc || !hdmaActive ? 0xFF : hdmaRemain / 16 - 1;
+        case 0xFF55: return !gbc || !hdmaActive ? 0xFF : hdma5;
         default: throw UnreachableCodeException("HDMA::ReadHDMA unreachable code at address: " + std::to_string(address));
     }
 }
