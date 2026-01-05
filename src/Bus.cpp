@@ -176,9 +176,9 @@ void Bus::UpdateDMA() {
     }
 }
 
-uint32_t Bus::RunHDMA() const {
+void Bus::RunHDMA() const {
     if (!gpu_.hdma.hdmaActive || gpu_.hardware == Hardware::DMG) {
-        return 0;
+        return;
     }
 
     const uint32_t cyclesPerBlock = speed == Speed::Double ? 16 : 8;
@@ -196,10 +196,11 @@ uint32_t Bus::RunHDMA() const {
                 gpu_.hdma.hdmaRemain = (gpu_.hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_.hdma.hdmaRemain - 1);
             }
             gpu_.hdma.hdmaActive = false;
-            return blocks * cyclesPerBlock;
+            return;
         }
         case HDMAMode::HDMA: {
-            if (!gpu_.hblank) return 0;
+            // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
+            if (!gpu_.hblank || gpu_.vblank || speedShiftActive) return;
 
             const uint16_t memSource = gpu_.hdma.hdmaSource;
             for (uint16_t i = 0; i < 0x10; ++i) {
@@ -210,9 +211,9 @@ uint32_t Bus::RunHDMA() const {
             gpu_.hdma.hdmaDestination += 0x10;
             gpu_.hdma.hdmaRemain = (gpu_.hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_.hdma.hdmaRemain - 1);
             if (gpu_.hdma.hdmaRemain == 0x7F) gpu_.hdma.hdmaActive = false;
-            return cyclesPerBlock;
+            return;
         }
-        default: return 0;
+        default: return;
     }
 }
 

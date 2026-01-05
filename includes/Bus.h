@@ -40,7 +40,7 @@ public:
 
     void UpdateDMA();
 
-    uint32_t RunHDMA() const;
+    void RunHDMA() const;
 
     void ChangeSpeed();
 
@@ -62,6 +62,7 @@ public:
 
     bool bootromRunning{false};
     bool prepareSpeedShift{false};
+    bool speedShiftActive{false};
     Speed speed{Speed::Regular};
     uint8_t dmaReadByte{};
     std::vector<uint8_t> bootrom;
