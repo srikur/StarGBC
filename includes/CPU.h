@@ -41,7 +41,7 @@ public:
 
     void InitializeSystem(Mode);
 
-    void ExecuteMicroOp(Instructions<Self> &instructions);
+    void ExecuteMicroOp(Instructions<Self> &instructions, bool);
 
     [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() {
         return pc_;
