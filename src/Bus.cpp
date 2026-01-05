@@ -199,6 +199,8 @@ void Bus::RunHDMA() const {
             return;
         }
         case HDMAMode::HDMA: {
+            // Delay is always 4 cycles whether in single or double speed mode
+            if (gpu_.hdma.hdmaStartDelay-- > 0) return;
             // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
             if (!gpu_.hblank || gpu_.vblank || speedShiftActive) return;
 
