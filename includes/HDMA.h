@@ -12,6 +12,7 @@ struct HDMA {
     uint16_t hdmaDestination{};
     uint8_t hdmaRemain{};
     uint8_t hdmaStartDelay{};
+    uint8_t hdma5{};
     HDMAMode hdmaMode{HDMAMode::GDMA};
     bool hdmaActive{};
 

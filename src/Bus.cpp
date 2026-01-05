@@ -211,8 +211,9 @@ void Bus::RunHDMA() const {
             }
             gpu_.hdma.hdmaSource += 0x10;
             gpu_.hdma.hdmaDestination += 0x10;
-            gpu_.hdma.hdmaRemain = (gpu_.hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_.hdma.hdmaRemain - 1);
-            if (gpu_.hdma.hdmaRemain == 0x7F) gpu_.hdma.hdmaActive = false;
+            gpu_.hdma.hdmaRemain -= 1;
+            gpu_.hdma.hdma5 |= gpu_.hdma.hdmaRemain;
+            if (gpu_.hdma.hdmaRemain == 0x00) gpu_.hdma.hdmaActive = false;
             return;
         }
         default: return;
