@@ -18,7 +18,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
                     hdma5 = 0x80 | value;
                 } else {
                     // restart copy
-                    hdma5 = hdmaRemain = value & 0x7F;
+                    hdma5 = hdmaRemain = value & 0x7F + 1;
                 }
                 return;
             }
@@ -26,7 +26,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
             hdmaStartDelay = 4;
             bytesThisBlock = 0x10;
             step = HDMAStep::Read;
-            hdma5 = hdmaRemain = value & 0x7F;
+            hdma5 = hdmaRemain = value & 0x7F + 1;
             hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             break;
         }

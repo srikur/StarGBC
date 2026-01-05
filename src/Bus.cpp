@@ -188,21 +188,19 @@ void Bus::RunHDMA() const {
         return;
     }
 
-    const uint32_t cyclesPerBlock = speed == Speed::Double ? 16 : 8;
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
-            const uint32_t blocks = static_cast<uint32_t>(gpu_.hdma.hdmaRemain) + 1;
-            for (uint32_t unused = 0; unused < blocks; ++unused) {
-                const uint16_t memSource = gpu_.hdma.hdmaSource;
-                for (uint16_t i = 0; i < 0x10; ++i) {
-                    const uint8_t byte = ReadByte(memSource + i, ComponentSource::HDMA);
-                    gpu_.WriteVRAM(gpu_.hdma.hdmaDestination + i, byte);
-                }
-                gpu_.hdma.hdmaSource += 0x10;
-                gpu_.hdma.hdmaDestination += 0x10;
-                gpu_.hdma.hdmaRemain = (gpu_.hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_.hdma.hdmaRemain - 1);
+            if (gpu_.hdma.step == HDMAStep::Read) {
+                gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
+                gpu_.hdma.step = HDMAStep::Write;
+            } else {
+                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.hdma.step = HDMAStep::Read;
             }
-            gpu_.hdma.hdmaActive = false;
+            gpu_.hdma.hdmaSource++;
+            gpu_.hdma.hdmaDestination++;
+            gpu_.hdma.hdmaRemain -= 1;
+            if (gpu_.hdma.hdmaRemain == 0) gpu_.hdma.hdmaActive = false;
             return;
         }
         case HDMAMode::HDMA: {
