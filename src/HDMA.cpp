@@ -12,19 +12,14 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
         case 0xFF54: hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF55: {
-            if (hdmaActive && hdmaMode == HDMAMode::HDMA) {
-                if (!Bit<7>(value)) {
-                    hdmaActive = false;
-                }
+            if (hdmaActive && hdmaMode == HDMAMode::HDMA && !Bit<7>(value)) {
+                hdmaActive = false;
                 return;
             }
             hdmaActive = true;
+            hdmaStartDelay = 4;
             hdmaRemain = value & 0x7F;
-            if (Bit<7>(value)) {
-                hdmaMode = HDMAMode::HDMA;
-            } else {
-                hdmaMode = HDMAMode::GDMA;
-            }
+            hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             break;
         }
         default: throw UnreachableCodeException("HDMA::WriteHDMA unreachable code");
