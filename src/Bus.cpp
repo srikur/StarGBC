@@ -203,17 +203,25 @@ void Bus::RunHDMA() const {
             if (gpu_.hdma.hdmaStartDelay-- > 0) return;
             // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
             if (!gpu_.hblank || gpu_.vblank || speedShiftActive) return;
+            if (gpu_.hdma.bytesThisBlock >= 0x10) return; // Copies one block per H-Blank
 
-            const uint16_t memSource = gpu_.hdma.hdmaSource;
-            for (uint16_t i = 0; i < 0x10; ++i) {
-                const uint8_t byte = ReadByte(memSource + i, ComponentSource::HDMA);
-                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination + i, byte);
+            if (gpu_.hdma.step == HDMAStep::Read) {
+                gpu_.hdma.byte = ReadByte(gpu_.hdma.hdmaSource, ComponentSource::HDMA);
+                gpu_.hdma.step = HDMAStep::Write;
+            } else {
+                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.hdma.bytesThisBlock++;
+                gpu_.hdma.step = HDMAStep::Read;
             }
-            gpu_.hdma.hdmaSource += 0x10;
-            gpu_.hdma.hdmaDestination += 0x10;
-            gpu_.hdma.hdmaRemain -= 1;
-            gpu_.hdma.hdma5 |= gpu_.hdma.hdmaRemain;
-            if (gpu_.hdma.hdmaRemain == 0x00) gpu_.hdma.hdmaActive = false;
+
+            gpu_.hdma.hdmaSource++;
+            gpu_.hdma.hdmaDestination++;
+            if (gpu_.hdma.bytesThisBlock == 0x10) {
+                gpu_.hdma.hdmaRemain -= 1;
+                gpu_.hdma.hdma5 |= gpu_.hdma.hdmaRemain;
+                if (gpu_.hdma.hdmaRemain == 0x00) gpu_.hdma.hdmaActive = false;
+            }
+
             return;
         }
         default: return;
