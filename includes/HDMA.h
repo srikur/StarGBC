@@ -25,7 +25,7 @@ struct HDMA {
     bool hblankBlockFinished{};
     bool singleBlockTransfer{};
 
-    void WriteHDMA(uint16_t, uint8_t, bool);
+    void WriteHDMA(uint16_t, uint8_t, bool, bool);
     [[nodiscard]] uint8_t ReadHDMA(uint16_t, bool) const;
 };
 
