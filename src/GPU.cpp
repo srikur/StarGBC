@@ -77,6 +77,7 @@ void GPU::Update() {
             if (pixelsDrawn == SCREEN_WIDTH) {
                 stat.mode = GPUMode::MODE_0;
                 hblank = true;
+                hdma.hblankBlockFinished = false;
                 if (stat.enableM0Interrupt && !statTriggered) {
                     interrupts_.Set(InterruptType::LCDStat, true);
                     statTriggered = true;
