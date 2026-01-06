@@ -12,19 +12,14 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
         case 0xFF54: hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF55: {
-            if (hdmaActive) {
-                if (!Bit<7>(value)) {
-                    hdmaActive = true;
-                    hdma5 = 0x80 | value;
-                } else {
-                    // restart copy
-                    hdma5 = hdmaRemain = (value & 0x7F) + 1;
-                }
+            if (hdmaActive && !Bit<7>(value)) {
+                hdmaActive = false;
+                hdma5 = 0x80 | value;
                 return;
             }
             hdmaActive = true;
             hdmaStartDelay = 4;
-            bytesThisBlock = 0x10;
+            bytesThisBlock = 0x00;
             hblankBlockFinished = false;
             step = HDMAStep::Read;
             hdma5 = hdmaRemain = (value & 0x7F) + 1;

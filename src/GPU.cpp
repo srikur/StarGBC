@@ -113,6 +113,7 @@ void GPU::Update() {
         }
 
         if (currentLine >= 154) {
+            vblank = false;
             currentLine = 0;
             stat.mode = GPUMode::MODE_2;
             windowLineCounter_ = 0;
@@ -127,6 +128,7 @@ void GPU::Update() {
             vblank = true;
             interrupts_.Set(InterruptType::VBlank, true);
         } else if (currentLine < 144) {
+            hblank = false;
             stat.mode = GPUMode::MODE_2;
             if (currentLine >= windowY) {
                 windowTriggeredThisFrame = true;

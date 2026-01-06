@@ -49,6 +49,7 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdmaActive) {
     if (!AdvanceTCycle()) return;
+    if (hdmaActive) return;
     if (!instrRunning) {
         if (ProcessInterrupts()) return;
         if (halted_) return;
