@@ -23,8 +23,9 @@ struct HDMA {
     HDMAMode hdmaMode{HDMAMode::GDMA};
     bool hdmaActive{};
     bool hblankBlockFinished{};
+    bool singleBlockTransfer{};
 
-    void WriteHDMA(uint16_t, uint8_t);
+    void WriteHDMA(uint16_t, uint8_t, bool);
     [[nodiscard]] uint8_t ReadHDMA(uint16_t, bool) const;
 };
 

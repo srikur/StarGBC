@@ -1,7 +1,7 @@
 #include "HDMA.h"
 #include "Common.h"
 
-void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
+void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool screenOff) {
     switch (address) {
         case 0xFF51: hdmaSource = (static_cast<uint16_t>(value) << 8) | (hdmaSource & 0xFF);
             break;
@@ -24,6 +24,9 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value) {
             step = HDMAStep::Read;
             hdma5 = hdmaRemain = (value & 0x7F) + 1;
             hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
+            if (screenOff) {
+                singleBlockTransfer = true;
+            }
             break;
         }
         default: throw UnreachableCodeException("HDMA::WriteHDMA unreachable code");

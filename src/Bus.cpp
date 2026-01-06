@@ -112,7 +112,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
             } else { gpu_.WriteRegisters(address, value); }
             break;
         }
-        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value);
+        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled());
             break;
         case 0xFF68 ... 0xFF6C: gpu_.WriteRegisters(address, value);
             break;
@@ -202,6 +202,7 @@ void Bus::RunHDMA() const {
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
+                    gpu_.hdma.hdma5 = (gpu_.hdma.hdma5 & 0x80) | gpu_.hdma.hdmaRemain;
                 }
             }
             if (gpu_.hdma.hdmaRemain == 0) gpu_.hdma.hdmaActive = false;
@@ -213,6 +214,8 @@ void Bus::RunHDMA() const {
             // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
             if (!gpu_.hblank || gpu_.vblank || speedShiftActive) return;
             if (gpu_.hdma.hblankBlockFinished) return; // Copies one block per H-Blank
+            // When the LCD is off, only a single block is copied until the LCD is turned on again
+            if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer) return;
 
             if (gpu_.hdma.step == HDMAStep::Read) {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
@@ -225,6 +228,7 @@ void Bus::RunHDMA() const {
                 gpu_.hdma.hdmaDestination++;
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.hblankBlockFinished = true;
+                    gpu_.hdma.singleBlockTransfer = false;
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
                     gpu_.hdma.hdma5 = (gpu_.hdma.hdma5 & 0x80) | gpu_.hdma.hdmaRemain;
