@@ -112,7 +112,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
             } else { gpu_.WriteRegisters(address, value); }
             break;
         }
-        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled());
+        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), gpu_.stat.mode == GPUMode::MODE_0);
             break;
         case 0xFF68 ... 0xFF6C: gpu_.WriteRegisters(address, value);
             break;
