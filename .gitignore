@@ -11,3 +11,4 @@ roms/*
 *.bin
 .cache/*
 compile_commands.json
+CLAUDE.md

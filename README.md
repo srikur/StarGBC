@@ -274,7 +274,7 @@ Current Performance: (154/272)
 | samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
 | samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |
 | samesuite/dma/gbc_dma_cont.gb                                         | :white_check_mark: |
-| samesuite/dma/gdma_addr_mask.gb                                       | :x:                |
+| samesuite/dma/gdma_addr_mask.gb                                       | :white_check_mark: |
 | samesuite/dma/hdma_lcd_off.gb                                         | :x:                |
 | samesuite/dma/hdma_mode0.gb                                           | :x:                |
 | samesuite/ppu/blocking_bgpi_increase.gb                               | :x:                |
