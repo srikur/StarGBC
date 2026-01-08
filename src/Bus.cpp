@@ -228,7 +228,7 @@ void Bus::RunHDMA() const {
                 gpu_.hdma.hdmaDestination++;
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.hblankBlockFinished = true;
-                    gpu_.hdma.singleBlockTransfer = false;
+                    gpu_.hdma.hdmaActive = false;
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
                     gpu_.hdma.hdma5 = (gpu_.hdma.hdma5 & 0x80) | gpu_.hdma.hdmaRemain;
