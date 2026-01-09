@@ -28,7 +28,7 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
     if (gpu_.stat.mode != GPUMode::MODE_3) gpu_.oam[address - 0xFE00] = value;
 }
 
-uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
+uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
     if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return dmaReadByte;
     switch (address) {
@@ -78,7 +78,7 @@ uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
     }
 }
 
-void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource source) {
+void Bus::WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return;
     if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return;
     switch (address) {
@@ -106,7 +106,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
             break;
         case 0xFF0F: interrupts_.interruptFlag = value;
             break;
-        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value);
+        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value, Bit<4>(timer_.divCounter));
             break;
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {

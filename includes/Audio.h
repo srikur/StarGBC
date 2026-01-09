@@ -263,6 +263,7 @@ class Audio {
     bool dmg{false};
     int32_t cycleCounter{0};
     uint8_t frameSeqStep{0};
+    bool skipNextFrameSeqTick{false};
 
     std::vector<float> sampleBuffer{};
     size_t bufferWritePos{0};
@@ -305,13 +306,13 @@ public:
 
     void Tick();
 
-    void WriteAudioControl(uint8_t value);
+    void WriteAudioControl(uint8_t value, bool);
 
     [[nodiscard]] uint8_t ReadAudioControl() const;
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value);
+    void WriteByte(uint16_t address, uint8_t value, bool);
 
     [[nodiscard]] uint8_t ReadPCM12() const;
 
