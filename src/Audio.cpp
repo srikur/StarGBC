@@ -1,7 +1,7 @@
 #include "Audio.h"
-#include <string>
-#include <cstring>
+#include <cmath>
 #include <set>
+#include <string>
 
 void Audio::TickFrameSequencer() {
     if (!audioEnabled) return;
@@ -399,9 +399,9 @@ void Channel3::Trigger(const uint8_t freqStep, const bool dmg) {
     }
     if (dmg && playing && (period == 2)) {
         const uint8_t position = (waveStep + 1) & 31;
-        const uint8_t sampleByte = waveRam[position >> 1];
+        const uint8_t byte = waveRam[position >> 1];
         if ((position >> 3) == 0) {
-            waveRam[0] = sampleByte;
+            waveRam[0] = byte;
         } else if ((position >> 3) <= 3) {
             std::memcpy(&waveRam[0x00], &waveRam[(position >> 1) & 12], 4);
         }
@@ -604,54 +604,128 @@ uint8_t Channel4::GetDigitalOutput() const {
     return (~lfsr & 1) ? envelope.currentVolume : 0;
 }
 
+void Audio::InitBandLimitedTable() {
+    constexpr double a0 = 7938.0 / 18608.0;
+    constexpr double a1 = 9240.0 / 18608.0;
+    constexpr double a2 = 1430.0 / 18608.0;
+
+    for (int phase = 0; phase < BL_PHASES; phase++) {
+        double sum = 0.0;
+        for (int i = 0; i < BL_WIDTH; i++) {
+            constexpr double lowpass = 0.9375;
+            const double x = static_cast<double>(i - BL_WIDTH / 2) +
+                       static_cast<double>(phase) / BL_PHASES;
+            const double angle = x * M_PI * lowpass;
+
+            const double sinc = (std::abs(angle) < 1e-10) ? 1.0 : std::sin(angle) / angle;
+
+            const double windowAngle = M_PI * (static_cast<double>(i) + 0.5) / BL_WIDTH;
+            const double window = a0 - a1 * std::cos(windowAngle) + a2 * std::cos(2.0 * windowAngle);
+
+            blSteps[phase][i] = sinc * window;
+            sum += blSteps[phase][i];
+        }
+
+        if (sum > 0.0) {
+            for (int i = 0; i < BL_WIDTH; i++) {
+                blSteps[phase][i] /= sum;
+            }
+        }
+    }
+}
+
+void Audio::BandLimitedUpdate(const int channel, const double left, const double right, const int phase) {
+    BandLimited &bl = bandLimited[channel];
+
+    const double deltaLeft = left - bl.lastLeft;
+    const double deltaRight = right - bl.lastRight;
+
+    if (std::abs(deltaLeft) < 1e-10 && std::abs(deltaRight) < 1e-10) {
+        return;
+    }
+
+    bl.lastLeft = left;
+    bl.lastRight = right;
+
+    const auto &kernel = blSteps[phase];
+    for (int i = 0; i < BL_WIDTH; i++) {
+        const int idx = (bl.pos + i) & (BL_BUFFER_SIZE - 1);
+        bl.bufferLeft[idx] += deltaLeft * kernel[i];
+        bl.bufferRight[idx] += deltaRight * kernel[i];
+    }
+}
+
+void Audio::BandLimitedRead(const int channel, double &outLeft, double &outRight) {
+    BandLimited &bl = bandLimited[channel];
+
+    bl.outputLeft += bl.bufferLeft[bl.pos];
+    bl.outputRight += bl.bufferRight[bl.pos];
+    bl.bufferLeft[bl.pos] = 0.0;
+    bl.bufferRight[bl.pos] = 0.0;
+    bl.pos = (bl.pos + 1) & (BL_BUFFER_SIZE - 1);
+    outLeft = bl.outputLeft;
+    outRight = bl.outputRight;
+}
+
 void Audio::GenerateSample() {
-    sampleCounter += 1.0f;
+    auto dac = [](const double digital, const bool dacOn) -> double {
+        if (!dacOn) return 0.0;
+        return (15.0 - digital * 2.0) / 15.0;
+    };
+
+    const int phase = static_cast<int>((sampleCounter / CYCLES_PER_SAMPLE) * BL_PHASES) & (BL_PHASES - 1);
+    auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled,
+                                const uint8_t leftMask, const uint8_t rightMask) {
+        const double val = dac(output, enabled && dacEnabled);
+        double left = (nr51 & leftMask) ? val : 0.0;
+        double right = (nr51 & rightMask) ? val : 0.0;
+
+        const double leftVol = (nr50 >> 4 & 0x07) + 1;
+        const double rightVol = (nr50 & 0x07) + 1;
+        left *= leftVol;
+        right *= rightVol;
+
+        BandLimitedUpdate(ch, left, right, phase);
+    };
+
+    getChannelOutput(0, ch1.currentOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
+    getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
+    getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
+    getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
+
+    sampleCounter += 1.0;
     if (sampleCounter < CYCLES_PER_SAMPLE) {
         return;
     }
     sampleCounter -= CYCLES_PER_SAMPLE;
 
     if (samplesAvailable >= AUDIO_BUFFER_SIZE) {
+        for (int i = 0; i < 4; i++) {
+            double dummy1, dummy2;
+            BandLimitedRead(i, dummy1, dummy2);
+        }
         return;
     }
 
-    const float ch1Out = ch1.enabled && ch1.dacEnabled ? ch1.currentOutput : 0.0f;
-    const float ch2Out = ch2.enabled && ch2.dacEnabled ? ch2.currentOutput : 0.0f;
-    const float ch3Out = ch3.enabled && ch3.dacEnabled ? ch3.currentOutput : 0.0f;
-    const float ch4Out = ch4.enabled && ch4.dacEnabled ? ch4.currentOutput : 0.0f;
+    double outLeft = 0.0;
+    double outRight = 0.0;
+    for (int i = 0; i < 4; i++) {
+        double chLeft, chRight;
+        BandLimitedRead(i, chLeft, chRight);
+        outLeft += chLeft;
+        outRight += chRight;
+    }
 
-    // Mix channels based on NR51 (panning)
-    float leftSample = 0.0f;
-    float rightSample = 0.0f;
+    outLeft /= 32.0;
+    outRight /= 32.0;
 
-    if (nr51 & 0x10) leftSample += ch1Out;
-    if (nr51 & 0x20) leftSample += ch2Out;
-    if (nr51 & 0x40) leftSample += ch3Out;
-    if (nr51 & 0x80) leftSample += ch4Out;
+    highpassLeft = outLeft - (outLeft - highpassLeft) * highpassRate;
+    highpassRight = outRight - (outRight - highpassRight) * highpassRate;
+    outLeft -= highpassLeft;
+    outRight -= highpassRight;
 
-    if (nr51 & 0x01) rightSample += ch1Out;
-    if (nr51 & 0x02) rightSample += ch2Out;
-    if (nr51 & 0x04) rightSample += ch3Out;
-    if (nr51 & 0x08) rightSample += ch4Out;
-
-    const float leftVolume = static_cast<float>((nr50 >> 4) & 0x07) + 1.0f;
-    const float rightVolume = static_cast<float>(nr50 & 0x07) + 1.0f;
-
-    leftSample *= leftVolume;
-    rightSample *= rightVolume;
-
-    leftSample = leftSample / 240.0f;
-    rightSample = rightSample / 240.0f;
-
-    constexpr float lpf = 0.85f;
-    lowPass1Left = lpf * leftSample + (1.0f - lpf) * lowPass1Left;
-    lowPass1Right = lpf * rightSample + (1.0f - lpf) * lowPass1Right;
-    leftSample = lowPass1Left;
-    rightSample = lowPass1Right;
-
-    // Write to buffer (interleaved stereo)
-    sampleBuffer[bufferWritePos * 2] = leftSample;
-    sampleBuffer[bufferWritePos * 2 + 1] = rightSample;
+    sampleBuffer[bufferWritePos * 2] = static_cast<float>(outLeft);
+    sampleBuffer[bufferWritePos * 2 + 1] = static_cast<float>(outRight);
     bufferWritePos = (bufferWritePos + 1) % AUDIO_BUFFER_SIZE;
     samplesAvailable++;
 }
@@ -673,11 +747,10 @@ void Audio::ClearBuffer() {
     bufferWritePos = 0;
     bufferReadPos = 0;
     samplesAvailable = 0;
-    sampleCounter = 0.0f;
-    capacitorLeft = 0.0f;
-    capacitorRight = 0.0f;
-    lowPass1Left = 0.0f;
-    lowPass1Right = 0.0f;
-    lowPass2Left = 0.0f;
-    lowPass2Right = 0.0f;
+    sampleCounter = 0.0;
+    highpassLeft = 0.0;
+    highpassRight = 0.0;
+    for (auto &bl: bandLimited) {
+        bl.Reset();
+    }
 }

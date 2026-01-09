@@ -1,17 +1,39 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
+#include <cmath>
 #include <vector>
 
 #include "Common.h"
 
 class Audio;
 
-static constexpr int AUDIO_SAMPLE_RATE = 44100;
+static constexpr int AUDIO_SAMPLE_RATE = 48000; // Higher sample rate for better quality
 static constexpr int AUDIO_BUFFER_SIZE = 2048;
-static constexpr float APU_CLOCK_RATE = 4213440.0f;
-static constexpr float CYCLES_PER_SAMPLE = APU_CLOCK_RATE / AUDIO_SAMPLE_RATE;
+static constexpr double APU_CLOCK_RATE = 4194304.0;
+static constexpr double CYCLES_PER_SAMPLE = APU_CLOCK_RATE / AUDIO_SAMPLE_RATE;
+
+static constexpr int BL_WIDTH = 32;
+static constexpr int BL_PHASES = 128;
+static constexpr int BL_BUFFER_SIZE = 64;
+
+struct BandLimited {
+    std::array<double, BL_BUFFER_SIZE> bufferLeft{};
+    std::array<double, BL_BUFFER_SIZE> bufferRight{};
+    double outputLeft{0.0};
+    double outputRight{0.0};
+    double lastLeft{0.0};
+    double lastRight{0.0};
+    int pos{0};
+
+    void Reset() {
+        bufferLeft.fill(0.0);
+        bufferRight.fill(0.0);
+        outputLeft = outputRight = 0.0;
+        lastLeft = lastRight = 0.0;
+        pos = 0;
+    }
+};
 
 struct Frequency {
     uint16_t value{0}; // Only 11 bits used
@@ -246,20 +268,26 @@ class Audio {
     size_t bufferWritePos{0};
     size_t bufferReadPos{0};
     size_t samplesAvailable{0};
-    float sampleCounter{0.0f};
+    double sampleCounter{0.0};
 
-    float capacitorLeft{0.0f};
-    float capacitorRight{0.0f};
-    static constexpr float HIGH_PASS_CHARGE_FACTOR = 0.996f;
+    std::array<BandLimited, 4> bandLimited{};
+    std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
+    double highpassLeft{0.0};
+    double highpassRight{0.0};
+    double highpassRate{0.0};
 
-    float lowPass1Left{0.0f};
-    float lowPass1Right{0.0f};
-    float lowPass2Left{0.0f};
-    float lowPass2Right{0.0f};
-    static constexpr float LOW_PASS_FACTOR = 0.25f;
+    void InitBandLimitedTable();
+
+    void BandLimitedUpdate(int channel, double left, double right, int phase);
+
+    void BandLimitedRead(int channel, double &outLeft, double &outRight);
 
 public:
-    Audio() { sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); } // *2 for stereo
+    Audio() {
+        sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); // *2 for stereo
+        highpassRate = std::pow(0.999958, APU_CLOCK_RATE / AUDIO_SAMPLE_RATE);
+        InitBandLimitedTable();
+    }
 
     Channel1 ch1{};
     Channel2 ch2{};
