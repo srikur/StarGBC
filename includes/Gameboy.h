@@ -72,6 +72,18 @@ public:
         return paused_;
     }
 
+    [[nodiscard]] size_t GetAudioSamplesAvailable() const {
+        return audio_.GetSamplesAvailable();
+    }
+
+    size_t ReadAudioSamples(float *output, size_t numSamples) {
+        return audio_.ReadSamples(output, numSamples);
+    }
+
+    void ClearAudioBuffer() {
+        audio_.ClearBuffer();
+    }
+
 private:
     static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
     static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;

@@ -1,10 +1,17 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
+#include <vector>
 
 #include "Common.h"
 
 class Audio;
+
+static constexpr int AUDIO_SAMPLE_RATE = 44100;
+static constexpr int AUDIO_BUFFER_SIZE = 4096;
+static constexpr float APU_CLOCK_RATE = 2097152.0f; // ~4.194 MHz / 2
+static constexpr float CYCLES_PER_SAMPLE = APU_CLOCK_RATE / AUDIO_SAMPLE_RATE;
 
 struct Frequency {
     uint16_t value{0}; // Only 11 bits used
@@ -235,7 +242,19 @@ class Audio {
     int32_t cycleCounter{0};
     uint8_t frameSeqStep{0};
 
+    std::vector<float> sampleBuffer{};
+    size_t bufferWritePos{0};
+    size_t bufferReadPos{0};
+    size_t samplesAvailable{0};
+    float sampleCounter{0.0f};
+
+    float highPassLeft{0.0f};
+    float highPassRight{0.0f};
+    static constexpr float HIGH_PASS_FACTOR = 0.999f;
+
 public:
+    Audio() { sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); } // *2 for stereo
+
     Channel1 ch1{};
     Channel2 ch2{};
     Channel3 ch3{};
@@ -263,4 +282,12 @@ public:
     [[nodiscard]] uint8_t ReadPCM12() const;
 
     [[nodiscard]] uint8_t ReadPCM34() const;
+
+    void GenerateSample();
+
+    [[nodiscard]] size_t GetSamplesAvailable() const { return samplesAvailable; }
+
+    size_t ReadSamples(float *output, size_t numSamples);
+
+    void ClearBuffer();
 };

@@ -8,23 +8,28 @@
 #include <vector>
 #include <memory>
 #include <Gameboy.h>
+#include <Audio.h>
 
 constexpr int GB_SCREEN_W = 160;
 constexpr int GB_SCREEN_H = 144;
 constexpr int WINDOW_SCALE = 3;
 constexpr int WINDOW_W = GB_SCREEN_W * WINDOW_SCALE;
 constexpr int WINDOW_H = GB_SCREEN_H * WINDOW_SCALE;
+constexpr int AUDIO_BUFFER_FRAMES = 1024;
 
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
 static SDL_Texture *texture = nullptr;
+static SDL_AudioStream *audioStream = nullptr;
 static std::unique_ptr<Gameboy> gameboy = nullptr;
 static bool useNearest = true;
+static bool audioEnabled = true;
+static std::vector<float> audioBuffer(AUDIO_BUFFER_FRAMES * 2);
 
 SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     SDL_SetAppMetadata("StarGBC", "0.0.1", "com.srikur.stargbc");
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         SDL_Log("Couldn't initialise SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -94,6 +99,20 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     SDL_SetTextureScaleMode(texture,
                             useNearest ? SDL_SCALEMODE_NEAREST : SDL_SCALEMODE_LINEAR);
     gameboy = Gameboy::init(settings);
+
+    SDL_AudioSpec audioSpec{};
+    audioSpec.freq = AUDIO_SAMPLE_RATE;
+    audioSpec.format = SDL_AUDIO_F32;
+    audioSpec.channels = 2;
+
+    audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, nullptr, nullptr);
+    if (!audioStream) {
+        SDL_Log("Failed to create audio stream: %s", SDL_GetError());
+        audioEnabled = false;
+    } else {
+        SDL_ResumeAudioStreamDevice(audioStream);
+    }
+
     return SDL_APP_CONTINUE;
 }
 
@@ -131,6 +150,16 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
                     break;
                 case SDLK_F2:
                     gameboy->SaveScreen();
+                    break;
+                case SDLK_N:
+                    audioEnabled = !audioEnabled;
+                    if (audioStream) {
+                        if (audioEnabled) {
+                            SDL_ResumeAudioStreamDevice(audioStream);
+                        } else {
+                            SDL_PauseAudioStreamDevice(audioStream);
+                        }
+                    }
                     break;
                 // Save states with Shift + 1-9, load with Ctrl + 1-9
                 // case SDLK_1:
@@ -208,10 +237,27 @@ SDL_AppResult SDL_AppIterate(void *) {
         SDL_RenderTexture(renderer, texture, nullptr, nullptr);
         SDL_RenderPresent(renderer);
     }
+
+    if (audioEnabled && audioStream) {
+        const size_t samplesAvailable = gameboy->GetAudioSamplesAvailable();
+        if (samplesAvailable > 0) {
+            const size_t samplesToRead = std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES));
+            const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), samplesToRead);
+            if (samplesRead > 0) {
+                SDL_PutAudioStreamData(audioStream, audioBuffer.data(),
+                                       static_cast<int>(samplesRead * 2 * sizeof(float)));
+            }
+        }
+    }
+
     return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *, SDL_AppResult) {
+    if (audioStream) {
+        SDL_DestroyAudioStream(audioStream);
+        audioStream = nullptr;
+    }
     if (texture) {
         SDL_DestroyTexture(texture);
         texture = nullptr;

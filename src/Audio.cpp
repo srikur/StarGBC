@@ -43,12 +43,14 @@ void Audio::TickFrameSequencer() {
 }
 
 void Audio::Tick() {
-    if (!audioEnabled) return;
-    ch3.alternateRead = false;
-    ch1.Tick();
-    ch2.Tick();
-    ch3.Tick();
-    ch4.Tick();
+    if (audioEnabled) {
+        ch3.alternateRead = false;
+        ch1.Tick();
+        ch2.Tick();
+        ch3.Tick();
+        ch4.Tick();
+    }
+    GenerateSample();
 }
 
 void Audio::WriteAudioControl(const uint8_t value) {
@@ -600,4 +602,85 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
 uint8_t Channel4::GetDigitalOutput() const {
     if (!enabled || !dacEnabled) return 0;
     return (~lfsr & 1) ? envelope.currentVolume : 0;
+}
+
+void Audio::GenerateSample() {
+    sampleCounter += 1.0f;
+    if (sampleCounter < CYCLES_PER_SAMPLE) {
+        return;
+    }
+    sampleCounter -= CYCLES_PER_SAMPLE;
+
+    if (samplesAvailable >= AUDIO_BUFFER_SIZE) {
+        return; // Drop sample if buffer is full
+    }
+
+    const float ch1Out = ch1.currentOutput;
+    const float ch2Out = ch2.currentOutput;
+    const float ch3Out = ch3.currentOutput;
+    const float ch4Out = ch4.currentOutput;
+
+    // Mix channels based on NR51 (panning)
+    // NR51 bits: 7=CH4 left, 6=CH3 left, 5=CH2 left, 4=CH1 left
+    //            3=CH4 right, 2=CH3 right, 1=CH2 right, 0=CH1 right
+    float leftSample = 0.0f;
+    float rightSample = 0.0f;
+
+    if (nr51 & 0x10) leftSample += ch1Out;
+    if (nr51 & 0x20) leftSample += ch2Out;
+    if (nr51 & 0x40) leftSample += ch3Out;
+    if (nr51 & 0x80) leftSample += ch4Out;
+
+    if (nr51 & 0x01) rightSample += ch1Out;
+    if (nr51 & 0x02) rightSample += ch2Out;
+    if (nr51 & 0x04) rightSample += ch3Out;
+    if (nr51 & 0x08) rightSample += ch4Out;
+
+    // Apply master volume from NR50 (0-7 range, we use +1 to avoid silence at 0)
+    // NR50 bits: 6-4=left volume, 2-0=right volume
+    const float leftVolume = static_cast<float>((nr50 >> 4) & 0x07) + 1.0f;
+    const float rightVolume = static_cast<float>(nr50 & 0x07) + 1.0f;
+
+    leftSample *= leftVolume;
+    rightSample *= rightVolume;
+
+    // Normalize: max possible value is 15 * 4 channels * 8 volume = 480
+    // Scale to -1.0 to 1.0 range
+    constexpr float NORMALIZATION_FACTOR = 1.0f / 480.0f;
+    leftSample = (leftSample * NORMALIZATION_FACTOR * 2.0f) - 1.0f;
+    rightSample = (rightSample * NORMALIZATION_FACTOR * 2.0f) - 1.0f;
+
+    // Apply high-pass filter to remove DC offset
+    highPassLeft = leftSample - highPassLeft * HIGH_PASS_FACTOR;
+    highPassRight = rightSample - highPassRight * HIGH_PASS_FACTOR;
+    leftSample = highPassLeft;
+    rightSample = highPassRight;
+
+    // Write to buffer (interleaved stereo)
+    sampleBuffer[bufferWritePos * 2] = leftSample;
+    sampleBuffer[bufferWritePos * 2 + 1] = rightSample;
+    bufferWritePos = (bufferWritePos + 1) % AUDIO_BUFFER_SIZE;
+    samplesAvailable++;
+}
+
+size_t Audio::ReadSamples(float *output, size_t numSamples) {
+    const size_t samplesToRead = std::min(numSamples, samplesAvailable);
+
+    for (size_t i = 0; i < samplesToRead; i++) {
+        output[i * 2] = sampleBuffer[bufferReadPos * 2];
+        output[i * 2 + 1] = sampleBuffer[bufferReadPos * 2 + 1];
+        bufferReadPos = (bufferReadPos + 1) % AUDIO_BUFFER_SIZE;
+    }
+
+    samplesAvailable -= samplesToRead;
+    return samplesToRead;
+}
+
+void Audio::ClearBuffer() {
+    bufferWritePos = 0;
+    bufferReadPos = 0;
+    samplesAvailable = 0;
+    sampleCounter = 0.0f;
+    highPassLeft = 0.0f;
+    highPassRight = 0.0f;
 }
