@@ -15,7 +15,8 @@ constexpr int GB_SCREEN_H = 144;
 constexpr int WINDOW_SCALE = 3;
 constexpr int WINDOW_W = GB_SCREEN_W * WINDOW_SCALE;
 constexpr int WINDOW_H = GB_SCREEN_H * WINDOW_SCALE;
-constexpr int AUDIO_BUFFER_FRAMES = 1024;
+constexpr int AUDIO_BUFFER_FRAMES = 512;
+constexpr int MAX_AUDIO_QUEUE_BYTES = AUDIO_SAMPLE_RATE * 2 * sizeof(float) / 15;
 
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
@@ -239,13 +240,20 @@ SDL_AppResult SDL_AppIterate(void *) {
     }
 
     if (audioEnabled && audioStream) {
-        const size_t samplesAvailable = gameboy->GetAudioSamplesAvailable();
-        if (samplesAvailable > 0) {
-            const size_t samplesToRead = std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES));
-            const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), samplesToRead);
-            if (samplesRead > 0) {
-                SDL_PutAudioStreamData(audioStream, audioBuffer.data(),
-                                       static_cast<int>(samplesRead * 2 * sizeof(float)));
+        const int queuedBytes = SDL_GetAudioStreamQueued(audioStream);
+        if (queuedBytes > MAX_AUDIO_QUEUE_BYTES * 2) {
+            SDL_ClearAudioStream(audioStream);
+            gameboy->ClearAudioBuffer();
+        }
+        else if (queuedBytes < MAX_AUDIO_QUEUE_BYTES) {
+            const size_t samplesAvailable = gameboy->GetAudioSamplesAvailable();
+            if (samplesAvailable > 0) {
+                const size_t samplesToRead = std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES));
+                const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), samplesToRead);
+                if (samplesRead > 0) {
+                    SDL_PutAudioStreamData(audioStream, audioBuffer.data(),
+                                           static_cast<int>(samplesRead * 2 * sizeof(float)));
+                }
             }
         }
     }
