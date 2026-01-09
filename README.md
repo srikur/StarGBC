@@ -1,13 +1,13 @@
 # StarGBC
 
 <p align="center">
-  <img src="images/blue_title.png" width="30%" />
-  <img src="images/blue_ingame.png" width="30%" />
-  <img src="images/gold_title.png" width="30%" />
+  <img src="images/blue_title.png" width="30%"  alt="Blue Title Screen"/>
+  <img src="images/blue_ingame.png" width="30%"  alt="Blue In-Game"/>
+  <img src="images/gold_title.png" width="30%"  alt="Gold Title Screen"/>
   <br/>
-  <img src="images/gold_ingame.png" width="30%" />
-  <img src="images/smb_title.png" width="30%" />
-  <img src="images/crystal_title.png" width="30%" />
+  <img src="images/gold_ingame.png" width="30%"  alt="Gold In-Game"/>
+  <img src="images/smb_title.png" width="30%"  alt="Super Mario Bros Title Screen"/>
+  <img src="images/crystal_title.png" width="30%"  alt="Crystal Title Screen"/>
 </p>
 
 ## Dependencies
@@ -270,6 +270,7 @@ Current Performance: (157/272)
 | samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :x:                |
 | samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :x:                |
 | samesuite/apu/channel_4/channel_4_volume_div.gb                       | :x:                |
+| samesuite/apu/div_write_trigger.gb                                    | :x:                |
 | samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
 | samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
 | samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |
