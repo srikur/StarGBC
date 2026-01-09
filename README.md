@@ -270,7 +270,7 @@ Current Performance: (157/272)
 | samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :x:                |
 | samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :x:                |
 | samesuite/apu/channel_4/channel_4_volume_div.gb                       | :x:                |
-| samesuite/apu/div_write_trigger.gb                                    | :x:                |
+| samesuite/apu/div_write_trigger.gb                                    | :white_check_mark: |
 | samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
 | samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
 | samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |

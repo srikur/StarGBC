@@ -5,6 +5,10 @@
 
 void Audio::TickFrameSequencer() {
     if (!audioEnabled) return;
+    if (skipNextFrameSeqTick) {
+        skipNextFrameSeqTick = false;
+        return;
+    }
 
     switch (frameSeqStep) {
         case 0: ch1.TickLength();
@@ -53,7 +57,7 @@ void Audio::Tick() {
     GenerateSample();
 }
 
-void Audio::WriteAudioControl(const uint8_t value) {
+void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
     const bool wasEnabled = audioEnabled;
     audioEnabled = (value & 0x80) != 0;
 
@@ -66,9 +70,12 @@ void Audio::WriteAudioControl(const uint8_t value) {
         ch4 = {};
         nr50 = 0;
         nr51 = 0;
+        skipNextFrameSeqTick = false;
     } else if (!wasEnabled && audioEnabled) {
         // Turning APU on resets frame sequencer
         frameSeqStep = 0;
+        // If DIV bit 4 is high when APU is enabled, skip the first DIV-APU event
+        skipNextFrameSeqTick = divBit4High;
     }
 }
 
@@ -90,7 +97,7 @@ uint8_t Audio::ReadByte(const uint16_t address) const {
     }
 }
 
-void Audio::WriteByte(const uint16_t address, const uint8_t value) {
+void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool divBit4High) {
     static const std::set<uint16_t> allowedAddresses = {
         0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20
     };
@@ -110,7 +117,7 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF25: nr51 = value;
             break;
-        case 0xFF26: WriteAudioControl(value);
+        case 0xFF26: WriteAudioControl(value, divBit4High);
             break;
         case 0xFF30 ... 0xFF3F: ch3.WriteWaveRam(address, value, dmg);
             break;
@@ -614,7 +621,7 @@ void Audio::InitBandLimitedTable() {
         for (int i = 0; i < BL_WIDTH; i++) {
             constexpr double lowpass = 0.9375;
             const double x = static_cast<double>(i - BL_WIDTH / 2) +
-                       static_cast<double>(phase) / BL_PHASES;
+                             static_cast<double>(phase) / BL_PHASES;
             const double angle = x * M_PI * lowpass;
 
             const double sinc = (std::abs(angle) < 1e-10) ? 1.0 : std::sin(angle) / angle;
