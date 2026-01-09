@@ -19,14 +19,17 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
                 hdmaActive = false;
                 hdma5 = 0x80 | value;
                 hblankBlockFinished = false;
+                transferringBlock = false;
                 return;
             }
             hdmaActive = true;
             if (!modeZero) hdmaStartDelay = 4;
             bytesThisBlock = 0x00;
             hblankBlockFinished = false;
+            transferringBlock = false;  // Will be set true by RunHDMA when transfer starts
             step = HDMAStep::Read;
-            hdma5 = hdmaRemain = (value & 0x7F) + 1;
+            hdmaRemain = (value & 0x7F) + 1;
+            hdma5 = value & 0x7F;  // HDMA5 reads show remaining - 1
             hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             singleBlockTransfer = screenOff;
             break;
@@ -40,7 +43,15 @@ uint8_t HDMA::ReadHDMA(const uint16_t address, const bool gbc) const {
         /* Cycle-Accurate docs pg. 47 -- "Always returns FFh when read" */
         case 0xFF50 ... 0xFF54: return 0xFF;
         /* Cycle-Accurate docs pg. 47 -- "Returns FFh in DMG and GBC in DMG mode" */
-        case 0xFF55: return !gbc || !hdmaActive ? 0xFF : hdma5;
+        case 0xFF55: return !gbc ? 0xFF : hdma5;
         default: throw UnreachableCodeException("HDMA::ReadHDMA unreachable code at address: " + std::to_string(address));
     }
+}
+
+bool HDMA::ShouldHaltCPU() const {
+    if (!hdmaActive) return false;
+    // GDMA always halts CPU until complete
+    if (hdmaMode == HDMAMode::GDMA) return true;
+    // HDMA only halts CPU when actively transferring a block
+    return transferringBlock;
 }

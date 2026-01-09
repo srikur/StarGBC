@@ -202,7 +202,7 @@ void Bus::RunHDMA() const {
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
-                    gpu_.hdma.hdma5 = (gpu_.hdma.hdma5 & 0x80) | gpu_.hdma.hdmaRemain;
+                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
                 }
             }
             if (gpu_.hdma.hdmaRemain == 0) gpu_.hdma.hdmaActive = false;
@@ -210,12 +210,29 @@ void Bus::RunHDMA() const {
         }
         case HDMAMode::HDMA: {
             // Delay is always 4 cycles whether in single or double speed mode
-            if (gpu_.hdma.hdmaStartDelay-- > 0) return;
+            if (gpu_.hdma.hdmaStartDelay > 0) {
+                gpu_.hdma.hdmaStartDelay--;
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
             // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
-            if (!gpu_.hblank || gpu_.vblank || speedShiftActive) return;
-            if (gpu_.hdma.hblankBlockFinished) return; // Copies one block per H-Blank
-            // When the LCD is off, only a single block is copied until the LCD is turned on again
-            if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer) return;
+            if (!gpu_.hblank || gpu_.vblank || speedShiftActive) {
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
+            // When LCD is on: one block per H-blank period
+            if (!gpu_.LCDDisabled() && gpu_.hdma.hblankBlockFinished) {
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
+            // When LCD is off: only one block transfers until LCD turns back on
+            if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer) {
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
+
+            // We're actively transferring
+            gpu_.hdma.transferringBlock = true;
 
             if (gpu_.hdma.step == HDMAStep::Read) {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
@@ -227,11 +244,12 @@ void Bus::RunHDMA() const {
                 gpu_.hdma.hdmaSource++;
                 gpu_.hdma.hdmaDestination++;
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
+                    gpu_.hdma.singleBlockTransfer = false;
                     gpu_.hdma.hblankBlockFinished = true;
-                    gpu_.hdma.hdmaActive = false;
+                    gpu_.hdma.transferringBlock = false;  // Block complete, CPU can resume
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
-                    gpu_.hdma.hdma5 = (gpu_.hdma.hdma5 & 0x80) | gpu_.hdma.hdmaRemain;
+                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
                 }
             }
             if (gpu_.hdma.hdmaRemain == 0x00) gpu_.hdma.hdmaActive = false;
