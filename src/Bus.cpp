@@ -128,36 +128,6 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
     }
 }
 
-void Bus::UpdateTimers() const {
-    const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
-
-    timer_.reloadActive = false;
-    if (timer_.overflowPending && --timer_.overflowDelay == 0) {
-        timer_.tima = timer_.tma;
-        interrupts_.Set(InterruptType::Timer, false);
-        timer_.overflowPending = false;
-        timer_.reloadActive = true;
-    }
-
-    const bool timerEnabled = timer_.tac & 0x04;
-    const int timerBit = timer_.TimerBit(timer_.tac);
-    const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-    const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
-
-    ++timer_.divCounter;
-
-    const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-    if (oldSignal && !newSignal) {
-        timer_.IncrementTIMA();
-    }
-
-    // Check for a falling edge for the APU Frame Sequencer
-    const bool newFrameSeqSignal = (timer_.divCounter & (1u << frameSeqBit));
-    if (oldFrameSeqSignal && !newFrameSeqSignal) {
-        audio_.TickFrameSequencer();
-    }
-}
-
 void Bus::UpdateDMA() {
     if (++dma_.dmaTickCounter % 4 == 0) {
         dma_.dmaTickCounter = 0;
