@@ -59,14 +59,14 @@ void Gameboy::AdvanceFrame() {
             return;
         }
     }
-    if (masterCycles % speedDivider == 0) bus_.UpdateTimers();
+    if (masterCycles % speedDivider == 0) timer_.Tick(bus_.speed);
     if (masterCycles % RTC_CLOCK_DIVIDER == 0) rtc_.Update();
     if (masterCycles % AUDIO_CLOCK_DIVIDER == 0) audio_.Tick();
     if (masterCycles % speedDivider == 0) serial_.Update();
     if (masterCycles % speedDivider == 0) bus_.UpdateDMA();
     if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) gpu_.Update();
-    if (masterCycles % speedDivider == 0) cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
     if (masterCycles % 2 == 0) bus_.RunHDMA();
+    if (masterCycles % speedDivider == 0) cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
     masterCycles++;
 }
 

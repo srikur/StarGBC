@@ -29,6 +29,7 @@ public:
                                                         cpu_(settings.mode, biosPath_, bus_, interrupts_, registers_),
                                                         instructions_(registers_, interrupts_),
                                                         throttleSpeed_(!settings.unthrottled),
+                                                        timer_(audio_, interrupts_),
                                                         paused_(settings.debugStart) {
     }
 
@@ -102,7 +103,7 @@ private:
     Joypad joypad_;
     Audio audio_{};
     Memory memory_{};
-    Timer timer_{};
+    Timer timer_;
     Serial serial_;
     GPU gpu_;
     Bus bus_;
