@@ -70,6 +70,8 @@ uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
         case 0xFF50 ... 0xFF55: return gpu_.hdma.ReadHDMA(address, gpu_.hardware == Hardware::CGB);
         case 0xFF68 ... 0xFF6C: return gpu_.ReadRegisters(address);
         case 0xFF70: return gpu_.hardware == Hardware::CGB ? memory_.wramBank_ : 0xFF;
+        case 0xFF76: return gpu_.hardware == Hardware::CGB ? audio_.ReadPCM12() : 0xFF;
+        case 0xFF77: return gpu_.hardware == Hardware::CGB ? audio_.ReadPCM34() : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
         case 0xFFFF: return interrupts_.interruptEnable;
         default: return 0xFF;
