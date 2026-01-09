@@ -612,17 +612,15 @@ void Audio::GenerateSample() {
     sampleCounter -= CYCLES_PER_SAMPLE;
 
     if (samplesAvailable >= AUDIO_BUFFER_SIZE) {
-        return; // Drop sample if buffer is full
+        return;
     }
 
-    const float ch1Out = ch1.currentOutput;
-    const float ch2Out = ch2.currentOutput;
-    const float ch3Out = ch3.currentOutput;
-    const float ch4Out = ch4.currentOutput;
+    const float ch1Out = ch1.enabled && ch1.dacEnabled ? ch1.currentOutput : 0.0f;
+    const float ch2Out = ch2.enabled && ch2.dacEnabled ? ch2.currentOutput : 0.0f;
+    const float ch3Out = ch3.enabled && ch3.dacEnabled ? ch3.currentOutput : 0.0f;
+    const float ch4Out = ch4.enabled && ch4.dacEnabled ? ch4.currentOutput : 0.0f;
 
     // Mix channels based on NR51 (panning)
-    // NR51 bits: 7=CH4 left, 6=CH3 left, 5=CH2 left, 4=CH1 left
-    //            3=CH4 right, 2=CH3 right, 1=CH2 right, 0=CH1 right
     float leftSample = 0.0f;
     float rightSample = 0.0f;
 
@@ -636,25 +634,20 @@ void Audio::GenerateSample() {
     if (nr51 & 0x04) rightSample += ch3Out;
     if (nr51 & 0x08) rightSample += ch4Out;
 
-    // Apply master volume from NR50 (0-7 range, we use +1 to avoid silence at 0)
-    // NR50 bits: 6-4=left volume, 2-0=right volume
     const float leftVolume = static_cast<float>((nr50 >> 4) & 0x07) + 1.0f;
     const float rightVolume = static_cast<float>(nr50 & 0x07) + 1.0f;
 
     leftSample *= leftVolume;
     rightSample *= rightVolume;
 
-    // Normalize: max possible value is 15 * 4 channels * 8 volume = 480
-    // Scale to -1.0 to 1.0 range
-    constexpr float NORMALIZATION_FACTOR = 1.0f / 480.0f;
-    leftSample = (leftSample * NORMALIZATION_FACTOR * 2.0f) - 1.0f;
-    rightSample = (rightSample * NORMALIZATION_FACTOR * 2.0f) - 1.0f;
+    leftSample = leftSample / 240.0f;
+    rightSample = rightSample / 240.0f;
 
-    // Apply high-pass filter to remove DC offset
-    highPassLeft = leftSample - highPassLeft * HIGH_PASS_FACTOR;
-    highPassRight = rightSample - highPassRight * HIGH_PASS_FACTOR;
-    leftSample = highPassLeft;
-    rightSample = highPassRight;
+    constexpr float lpf = 0.85f;
+    lowPass1Left = lpf * leftSample + (1.0f - lpf) * lowPass1Left;
+    lowPass1Right = lpf * rightSample + (1.0f - lpf) * lowPass1Right;
+    leftSample = lowPass1Left;
+    rightSample = lowPass1Right;
 
     // Write to buffer (interleaved stereo)
     sampleBuffer[bufferWritePos * 2] = leftSample;
@@ -663,7 +656,7 @@ void Audio::GenerateSample() {
     samplesAvailable++;
 }
 
-size_t Audio::ReadSamples(float *output, size_t numSamples) {
+size_t Audio::ReadSamples(float *output, const size_t numSamples) {
     const size_t samplesToRead = std::min(numSamples, samplesAvailable);
 
     for (size_t i = 0; i < samplesToRead; i++) {
@@ -681,6 +674,10 @@ void Audio::ClearBuffer() {
     bufferReadPos = 0;
     samplesAvailable = 0;
     sampleCounter = 0.0f;
-    highPassLeft = 0.0f;
-    highPassRight = 0.0f;
+    capacitorLeft = 0.0f;
+    capacitorRight = 0.0f;
+    lowPass1Left = 0.0f;
+    lowPass1Right = 0.0f;
+    lowPass2Left = 0.0f;
+    lowPass2Right = 0.0f;
 }

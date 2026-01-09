@@ -241,13 +241,13 @@ SDL_AppResult SDL_AppIterate(void *) {
 
     if (audioEnabled && audioStream) {
         const int queuedBytes = SDL_GetAudioStreamQueued(audioStream);
-        if (queuedBytes > MAX_AUDIO_QUEUE_BYTES * 2) {
-            SDL_ClearAudioStream(audioStream);
-            gameboy->ClearAudioBuffer();
-        }
-        else if (queuedBytes < MAX_AUDIO_QUEUE_BYTES) {
-            const size_t samplesAvailable = gameboy->GetAudioSamplesAvailable();
-            if (samplesAvailable > 0) {
+        const size_t samplesAvailable = gameboy->GetAudioSamplesAvailable();
+
+        if (samplesAvailable > 0) {
+            if (queuedBytes > MAX_AUDIO_QUEUE_BYTES) {
+                gameboy->ReadAudioSamples(audioBuffer.data(),
+                    std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES)));
+            } else {
                 const size_t samplesToRead = std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES));
                 const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), samplesToRead);
                 if (samplesRead > 0) {

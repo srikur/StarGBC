@@ -248,9 +248,15 @@ class Audio {
     size_t samplesAvailable{0};
     float sampleCounter{0.0f};
 
-    float highPassLeft{0.0f};
-    float highPassRight{0.0f};
-    static constexpr float HIGH_PASS_FACTOR = 0.999f;
+    float capacitorLeft{0.0f};
+    float capacitorRight{0.0f};
+    static constexpr float HIGH_PASS_CHARGE_FACTOR = 0.996f;
+
+    float lowPass1Left{0.0f};
+    float lowPass1Right{0.0f};
+    float lowPass2Left{0.0f};
+    float lowPass2Right{0.0f};
+    static constexpr float LOW_PASS_FACTOR = 0.25f;
 
 public:
     Audio() { sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); } // *2 for stereo
