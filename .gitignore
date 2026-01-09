@@ -12,3 +12,4 @@ roms/*
 .cache/*
 compile_commands.json
 CLAUDE.md
+.claude/*

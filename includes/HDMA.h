@@ -24,9 +24,11 @@ struct HDMA {
     bool hdmaActive{};
     bool hblankBlockFinished{};
     bool singleBlockTransfer{};
+    bool transferringBlock{};  // True when actively transferring bytes (CPU should halt)
 
     void WriteHDMA(uint16_t, uint8_t, bool, bool);
     [[nodiscard]] uint8_t ReadHDMA(uint16_t, bool) const;
+    [[nodiscard]] bool ShouldHaltCPU() const;
 };
 
 #endif //STARGBC_HDMA_H

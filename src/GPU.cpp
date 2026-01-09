@@ -559,6 +559,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 vblank = false;
             } else if (newEnable && !oldEnable) {
                 hdma.singleBlockTransfer = false;
+                hdma.hblankBlockFinished = false;
                 shortenScanline = true;
                 stat.mode = GPUMode::MODE_2;
                 hblank = false;
