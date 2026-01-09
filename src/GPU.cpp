@@ -77,6 +77,8 @@ void GPU::Update() {
             if (pixelsDrawn == SCREEN_WIDTH) {
                 stat.mode = GPUMode::MODE_0;
                 hblank = true;
+                hdma.bytesThisBlock = 0;
+                hdma.hblankBlockFinished = false;
                 if (stat.enableM0Interrupt && !statTriggered) {
                     interrupts_.Set(InterruptType::LCDStat, true);
                     statTriggered = true;
@@ -111,7 +113,9 @@ void GPU::Update() {
             windowLineCounter_++;
         }
 
-        if (currentLine >= 154) {
+        if (currentLine == 154) {
+            vblank = false;
+            hblank = false;
             currentLine = 0;
             stat.mode = GPUMode::MODE_2;
             windowLineCounter_ = 0;
@@ -124,8 +128,10 @@ void GPU::Update() {
         } else if (currentLine == 144) {
             stat.mode = GPUMode::MODE_1;
             vblank = true;
+            hblank = false;
             interrupts_.Set(InterruptType::VBlank, true);
         } else if (currentLine < 144) {
+            hblank = false;
             stat.mode = GPUMode::MODE_2;
             if (currentLine >= windowY) {
                 windowTriggeredThisFrame = true;
@@ -548,10 +554,15 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 scanlineCounter = currentLine = 0;
                 stat.mode = GPUMode::MODE_0;
                 screenData.fill(0);
-                vblank = true;
+                hblank = true;
+                hdma.hblankBlockFinished = false;
+                vblank = false;
             } else if (newEnable && !oldEnable) {
+                hdma.singleBlockTransfer = false;
+                hdma.hblankBlockFinished = false;
                 shortenScanline = true;
                 stat.mode = GPUMode::MODE_2;
+                hblank = false;
                 vblank = false;
             }
             break;
