@@ -9,8 +9,8 @@
 class Audio;
 
 static constexpr int AUDIO_SAMPLE_RATE = 44100;
-static constexpr int AUDIO_BUFFER_SIZE = 4096;
-static constexpr float APU_CLOCK_RATE = 2097152.0f; // ~4.194 MHz / 2
+static constexpr int AUDIO_BUFFER_SIZE = 2048;
+static constexpr float APU_CLOCK_RATE = 4213440.0f;
 static constexpr float CYCLES_PER_SAMPLE = APU_CLOCK_RATE / AUDIO_SAMPLE_RATE;
 
 struct Frequency {
