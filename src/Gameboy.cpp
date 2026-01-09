@@ -65,8 +65,8 @@ void Gameboy::AdvanceFrame() {
     if (masterCycles % speedDivider == 0) serial_.Update();
     if (masterCycles % speedDivider == 0) bus_.UpdateDMA();
     if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) gpu_.Update();
-    if (masterCycles % speedDivider == 0) cpu_.ExecuteMicroOp(instructions_);
-    if (masterCycles % speedDivider == 0) bus_.RunHDMA();
+    if (masterCycles % speedDivider == 0) cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+    if (masterCycles % 2 == 0) bus_.RunHDMA();
     masterCycles++;
 }
 

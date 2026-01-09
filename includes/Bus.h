@@ -32,6 +32,8 @@ public:
 
     [[nodiscard]] uint8_t ReadOAM(uint16_t) const;
 
+    [[nodiscard]] uint8_t ReadHDMASource(uint16_t) const;
+
     void WriteOAM(uint16_t, uint8_t) const;
 
     void WriteByte(uint16_t, uint8_t, ComponentSource);
@@ -40,7 +42,7 @@ public:
 
     void UpdateDMA();
 
-    uint32_t RunHDMA() const;
+    void RunHDMA() const;
 
     void ChangeSpeed();
 
@@ -62,6 +64,7 @@ public:
 
     bool bootromRunning{false};
     bool prepareSpeedShift{false};
+    bool speedShiftActive{false};
     Speed speed{Speed::Regular};
     uint8_t dmaReadByte{};
     std::vector<uint8_t> bootrom;

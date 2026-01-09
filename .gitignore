@@ -9,3 +9,7 @@ cmake-build-release/*
 roms/*
 .DS_Store
 *.bin
+.cache/*
+compile_commands.json
+CLAUDE.md
+.claude/*

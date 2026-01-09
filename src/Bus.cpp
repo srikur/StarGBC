@@ -13,6 +13,13 @@ uint8_t Bus::ReadDMASource(const uint16_t src) {
     return returnValue;
 }
 
+uint8_t Bus::ReadHDMASource(uint16_t address) const {
+    if (address >= 0xE000) address -= 0x4000;
+    // Need to research and implement corruption patterns
+    if (address >= VRAM_BEGIN && address <= VRAM_END) return 0xFF;
+    return ReadByte(address, ComponentSource::HDMA);
+}
+
 uint8_t Bus::ReadOAM(const uint16_t address) const {
     return gpu_.stat.mode == GPUMode::MODE_3 ? 0xFF : gpu_.oam[address - 0xFE00];
 }
@@ -105,7 +112,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
             } else { gpu_.WriteRegisters(address, value); }
             break;
         }
-        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value);
+        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), gpu_.stat.mode == GPUMode::MODE_0);
             break;
         case 0xFF68 ... 0xFF6C: gpu_.WriteRegisters(address, value);
             break;
@@ -176,43 +183,79 @@ void Bus::UpdateDMA() {
     }
 }
 
-uint32_t Bus::RunHDMA() const {
+void Bus::RunHDMA() const {
     if (!gpu_.hdma.hdmaActive || gpu_.hardware == Hardware::DMG) {
-        return 0;
+        return;
     }
 
-    const uint32_t cyclesPerBlock = speed == Speed::Double ? 16 : 8;
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
-            const uint32_t blocks = static_cast<uint32_t>(gpu_.hdma.hdmaRemain) + 1;
-            for (uint32_t unused = 0; unused < blocks; ++unused) {
-                const uint16_t memSource = gpu_.hdma.hdmaSource;
-                for (uint16_t i = 0; i < 0x10; ++i) {
-                    const uint8_t byte = ReadByte(memSource + i, ComponentSource::HDMA);
-                    gpu_.WriteVRAM(gpu_.hdma.hdmaDestination + i, byte);
+            if (gpu_.hdma.step == HDMAStep::Read) {
+                gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
+                gpu_.hdma.step = HDMAStep::Write;
+            } else {
+                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.hdma.bytesThisBlock++;
+                gpu_.hdma.step = HDMAStep::Read;
+                gpu_.hdma.hdmaSource++;
+                gpu_.hdma.hdmaDestination++;
+                if (gpu_.hdma.bytesThisBlock == 0x10) {
+                    gpu_.hdma.bytesThisBlock = 0;
+                    gpu_.hdma.hdmaRemain -= 1;
+                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
                 }
-                gpu_.hdma.hdmaSource += 0x10;
-                gpu_.hdma.hdmaDestination += 0x10;
-                gpu_.hdma.hdmaRemain = (gpu_.hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_.hdma.hdmaRemain - 1);
             }
-            gpu_.hdma.hdmaActive = false;
-            return blocks * cyclesPerBlock;
+            if (gpu_.hdma.hdmaRemain == 0) gpu_.hdma.hdmaActive = false;
+            return;
         }
         case HDMAMode::HDMA: {
-            if (!gpu_.hblank) return 0;
-
-            const uint16_t memSource = gpu_.hdma.hdmaSource;
-            for (uint16_t i = 0; i < 0x10; ++i) {
-                const uint8_t byte = ReadByte(memSource + i, ComponentSource::HDMA);
-                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination + i, byte);
+            // Delay is always 4 cycles whether in single or double speed mode
+            if (gpu_.hdma.hdmaStartDelay > 0) {
+                gpu_.hdma.hdmaStartDelay--;
+                gpu_.hdma.transferringBlock = false;
+                return;
             }
-            gpu_.hdma.hdmaSource += 0x10;
-            gpu_.hdma.hdmaDestination += 0x10;
-            gpu_.hdma.hdmaRemain = (gpu_.hdma.hdmaRemain == 0) ? 0x7F : static_cast<uint8_t>(gpu_.hdma.hdmaRemain - 1);
-            if (gpu_.hdma.hdmaRemain == 0x7F) gpu_.hdma.hdmaActive = false;
-            return cyclesPerBlock;
+            // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
+            if (!gpu_.hblank || gpu_.vblank || speedShiftActive) {
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
+            // When LCD is on: one block per H-blank period
+            if (!gpu_.LCDDisabled() && gpu_.hdma.hblankBlockFinished) {
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
+            // When LCD is off: only one block transfers until LCD turns back on
+            if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer) {
+                gpu_.hdma.transferringBlock = false;
+                return;
+            }
+
+            // We're actively transferring
+            gpu_.hdma.transferringBlock = true;
+
+            if (gpu_.hdma.step == HDMAStep::Read) {
+                gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
+                gpu_.hdma.step = HDMAStep::Write;
+            } else {
+                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.hdma.bytesThisBlock++;
+                gpu_.hdma.step = HDMAStep::Read;
+                gpu_.hdma.hdmaSource++;
+                gpu_.hdma.hdmaDestination++;
+                if (gpu_.hdma.bytesThisBlock == 0x10) {
+                    gpu_.hdma.singleBlockTransfer = false;
+                    gpu_.hdma.hblankBlockFinished = true;
+                    gpu_.hdma.transferringBlock = false;  // Block complete, CPU can resume
+                    gpu_.hdma.bytesThisBlock = 0;
+                    gpu_.hdma.hdmaRemain -= 1;
+                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
+                }
+            }
+            if (gpu_.hdma.hdmaRemain == 0x00) gpu_.hdma.hdmaActive = false;
+            return;
         }
-        default: return 0;
+        default: return;
     }
 }
 
