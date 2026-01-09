@@ -133,6 +133,8 @@ struct Channel1 final : Channel {
     void HandleNR14Write(uint8_t value, uint8_t freqStep);
 
     void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+
+    [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
 struct Channel2 final : Channel {
@@ -156,6 +158,8 @@ struct Channel2 final : Channel {
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
     void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+
+    [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
 struct Channel3 final : Channel {
@@ -192,6 +196,8 @@ struct Channel3 final : Channel {
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
     void WriteByte(uint16_t address, uint8_t value, uint8_t freqStep, bool dmg);
+
+    [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
 struct Channel4 final : Channel {
@@ -219,6 +225,8 @@ struct Channel4 final : Channel {
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
     void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+
+    [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
 class Audio {
@@ -251,4 +259,8 @@ public:
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
     void WriteByte(uint16_t address, uint8_t value);
+
+    [[nodiscard]] uint8_t ReadPCM12() const;
+
+    [[nodiscard]] uint8_t ReadPCM34() const;
 };

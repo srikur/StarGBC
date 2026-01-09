@@ -116,6 +116,14 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value) {
     }
 }
 
+uint8_t Audio::ReadPCM12() const {
+    return (ch2.GetDigitalOutput() << 4) | (ch1.GetDigitalOutput() & 0x0F);
+}
+
+uint8_t Audio::ReadPCM34() const {
+    return (ch4.GetDigitalOutput() << 4) | (ch3.GetDigitalOutput() & 0x0F);
+}
+
 void Channel1::Trigger(const uint8_t freqStep) {
     if (dacEnabled) enabled = true;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
@@ -258,6 +266,11 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
     }
 }
 
+uint8_t Channel1::GetDigitalOutput() const {
+    if (!enabled || !dacEnabled) return 0;
+    return DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+}
+
 void Channel2::Trigger(const uint8_t freqStep) {
     if (dacEnabled) enabled = true;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
@@ -346,6 +359,11 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
             break;
         default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
     }
+}
+
+uint8_t Channel2::GetDigitalOutput() const {
+    if (!enabled || !dacEnabled) return 0;
+    return DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
 }
 
 
@@ -467,6 +485,11 @@ void Channel3::WriteByte(const uint16_t address, const uint8_t value, const uint
     }
 }
 
+uint8_t Channel3::GetDigitalOutput() const {
+    if (!enabled || !dacEnabled) return 0;
+    return sampleByte >> volumeShift;
+}
+
 void Channel4::Trigger(const uint8_t freqStep) {
     if (dacEnabled) enabled = true;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
@@ -572,4 +595,9 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
             break;
         default: throw UnreachableCodeException("Channel4::WriteByte unreachable code at address: " + std::to_string(address));
     }
+}
+
+uint8_t Channel4::GetDigitalOutput() const {
+    if (!enabled || !dacEnabled) return 0;
+    return (~lfsr & 1) ? envelope.currentVolume : 0;
 }
