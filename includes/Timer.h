@@ -23,11 +23,11 @@ public:
 
     void Tick(Speed);
 
-    void WriteByte(uint16_t, uint8_t);
+    void WriteByte(uint16_t, uint8_t, Speed);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t) const;
 
-    void WriteDIV();
+    void WriteDIV(bool);
 
     void WriteTAC(uint8_t);
 
