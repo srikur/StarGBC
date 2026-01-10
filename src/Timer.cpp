@@ -32,8 +32,8 @@ void Timer::Tick(const Speed speed) {
     }
 }
 
-void Timer::WriteByte(const uint16_t address, const uint8_t value) {
-    if (address == 0xFF04) WriteDIV();
+void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed speed) {
+    if (address == 0xFF04) WriteDIV(speed == Speed::Double);
     else if (address == 0xFF05) WriteTIMA(value);
     else if (address == 0xFF06) WriteTMA(value);
     else if (address == 0xFF07) WriteTAC(value);
@@ -47,12 +47,13 @@ void Timer::WriteByte(const uint16_t address, const uint8_t value) {
     return 0xFF;
 }
 
-void Timer::WriteDIV() {
+void Timer::WriteDIV(const bool doubleSpeed) {
     const bool enabled = tac & 0x04;
     const int bit = TimerBit(tac);
     const bool oldSignal = enabled && (divCounter & (1u << bit));
 
-    if (Bit<4>(divCounter)) {
+    const uint8_t frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 4 : 5;
+    if (divCounter & (1u << frameSeqBit)) {
         audio_.TickFrameSequencer();
     }
 

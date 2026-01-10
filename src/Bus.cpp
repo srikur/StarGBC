@@ -102,11 +102,11 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
             break;
         case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, gpu_.hardware == Hardware::CGB);
             break;
-        case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
+        case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value, speed);
             break;
         case 0xFF0F: interrupts_.interruptFlag = value;
             break;
-        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value, Bit<4>(timer_.divCounter));
+        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value, timer_.divCounter >> (speed == Speed::Double ? 5 : 4) & 0x10);
             break;
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {
