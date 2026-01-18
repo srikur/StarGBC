@@ -29,6 +29,7 @@ public:
                                                         cpu_(settings.mode, biosPath_, bus_, interrupts_, registers_),
                                                         instructions_(registers_, interrupts_),
                                                         throttleSpeed_(!settings.unthrottled),
+                                                        timer_(audio_, interrupts_),
                                                         paused_(settings.debugStart) {
     }
 
@@ -72,6 +73,18 @@ public:
         return paused_;
     }
 
+    [[nodiscard]] size_t GetAudioSamplesAvailable() const {
+        return audio_.GetSamplesAvailable();
+    }
+
+    size_t ReadAudioSamples(float *output, size_t numSamples) {
+        return audio_.ReadSamples(output, numSamples);
+    }
+
+    void ClearAudioBuffer() {
+        audio_.ClearBuffer();
+    }
+
 private:
     static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
     static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
@@ -90,7 +103,7 @@ private:
     Joypad joypad_;
     Audio audio_{};
     Memory memory_{};
-    Timer timer_{};
+    Timer timer_;
     Serial serial_;
     GPU gpu_;
     Bus bus_;
