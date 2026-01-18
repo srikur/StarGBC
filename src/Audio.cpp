@@ -47,6 +47,7 @@ void Audio::TickFrameSequencer() {
 }
 
 void Audio::Tick() {
+    tickCounter++;
     if (audioEnabled) {
         ch3.alternateRead = false;
         ch1.Tick();
@@ -74,6 +75,8 @@ void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
     } else if (!wasEnabled && audioEnabled) {
         // Turning APU on resets frame sequencer
         frameSeqStep = 0;
+        // Reset tick counter for phase tracking
+        tickCounter = 0;
         // If DIV bit 4 is high when APU is enabled, skip the first DIV-APU event
         skipNextFrameSeqTick = divBit4High;
     }
@@ -105,9 +108,9 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
         return;
     }
     switch (address) {
-        case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep);
+        case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep, tickCounter);
             break;
-        case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep);
+        case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep, tickCounter);
             break;
         case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep, dmg);
             break;
@@ -133,7 +136,7 @@ uint8_t Audio::ReadPCM34() const {
     return (ch4.GetDigitalOutput() << 4) | (ch3.GetDigitalOutput() & 0x0F);
 }
 
-void Channel1::Trigger(const uint8_t freqStep) {
+void Channel1::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
     if (dacEnabled) enabled = true;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
@@ -144,7 +147,13 @@ void Channel1::Trigger(const uint8_t freqStep) {
         }
     }
 
-    freqTimer = (2048 - frequency.Value()) * 4;
+    if (freqTimer == 0) {
+        dutyStep = (dutyStep + 1) & 7;
+    }
+
+    // Samesuite -- Channel 1 align
+    const int32_t phaseDelay = (tickCounter & 2) ? 14 : 12;
+    freqTimer = (2048 - frequency.Value()) * 4 + phaseDelay;
 
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
@@ -240,7 +249,7 @@ void Channel1::Tick() {
     }
 }
 
-void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep) {
+void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, const uint32_t tickCounter) {
     frequency.WriteHigh(value);
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
@@ -250,10 +259,10 @@ void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep) {
         }
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(freqStep);
+    if (value & 0x80) Trigger(freqStep, tickCounter);
 }
 
-void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
+void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint32_t tickCounter) {
     switch (address & 0xF) {
         case 0x00: {
             const bool oldDirection = sweep.direction;
@@ -269,7 +278,7 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
             break;
         case 0x03: frequency.WriteLow(value);
             break;
-        case 0x04: HandleNR14Write(value, freqStep);
+        case 0x04: HandleNR14Write(value, freqStep, tickCounter);
             break;
         default: throw UnreachableCodeException("Channel1::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -280,7 +289,7 @@ uint8_t Channel1::GetDigitalOutput() const {
     return DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
 }
 
-void Channel2::Trigger(const uint8_t freqStep) {
+void Channel2::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
     if (dacEnabled) enabled = true;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
 
@@ -290,7 +299,14 @@ void Channel2::Trigger(const uint8_t freqStep) {
             lengthTimer.lengthTimer++;
         }
     }
-    freqTimer = (2048 - frequency.Value()) * 4;
+
+    if (freqTimer == 0) {
+        dutyStep = (dutyStep + 1) & 7;
+    }
+
+    // Samesuite -- Channel 3 align
+    const int32_t phaseDelay = (tickCounter & 2) ? 14 : 12;
+    freqTimer = (2048 - frequency.Value()) * 4 + phaseDelay;
 
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
@@ -331,7 +347,7 @@ void Channel2::Tick() {
     }
 }
 
-void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep) {
+void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, const uint32_t tickCounter) {
     frequency.WriteHigh(value);
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
@@ -339,7 +355,7 @@ void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep) {
         if (lengthTimer.lengthTimer < 64) lengthTimer.lengthTimer++;
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(freqStep);
+    if (value & 0x80) Trigger(freqStep, tickCounter);
 }
 
 [[nodiscard]] uint8_t Channel2::ReadByte(const uint16_t address) const {
@@ -353,7 +369,7 @@ void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep) {
     }
 }
 
-void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
+void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint32_t tickCounter) {
     switch (address & 0xF) {
         case 0x05: break;
         case 0x06: lengthTimer.Write(value, audioEnabled);
@@ -364,7 +380,7 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
             break;
         case 0x08: frequency.WriteLow(value);
             break;
-        case 0x09: HandleNR24Write(value, freqStep);
+        case 0x09: HandleNR24Write(value, freqStep, tickCounter);
             break;
         default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
     }

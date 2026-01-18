@@ -33,7 +33,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (157/272)
+Current Performance: (160/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -214,7 +214,7 @@ Current Performance: (157/272)
 | mooneye/misc/boot_regs-A.gb                                           | :x:                |
 | mooneye/misc/bits/unused_hwio-C.gb                                    | :x:                |
 | mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :x:                |
-| samesuite/apu/channel_1/channel_1_align.gb                            | :x:                |
+| samesuite/apu/channel_1/channel_1_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align_cpu.gb                        | :x:                |
 | samesuite/apu/channel_1/channel_1_delay.gb                            | :x:                |
 | samesuite/apu/channel_1/channel_1_duty.gb                             | :x:                |
@@ -231,7 +231,7 @@ Current Performance: (157/272)
 | samesuite/apu/channel_1/channel_1_sweep_restart_2.gb                  | :x:                |
 | samesuite/apu/channel_1/channel_1_volume.gb                           | :x:                |
 | samesuite/apu/channel_1/channel_1_volume_div.gb                       | :x:                |
-| samesuite/apu/channel_2/channel_2_align.gb                            | :x:                |
+| samesuite/apu/channel_2/channel_2_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_align_cpu.gb                        | :x:                |
 | samesuite/apu/channel_2/channel_2_delay.gb                            | :x:                |
 | samesuite/apu/channel_2/channel_2_duty.gb                             | :x:                |

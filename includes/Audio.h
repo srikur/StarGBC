@@ -145,7 +145,7 @@ struct Channel1 final : Channel {
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t freqStep);
+    void Trigger(uint8_t freqStep, uint32_t tickCounter);
 
     void TickLength() override;
 
@@ -159,9 +159,9 @@ struct Channel1 final : Channel {
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint32_t tickCounter);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint32_t tickCounter);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -174,7 +174,7 @@ struct Channel2 final : Channel {
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t freqStep);
+    void Trigger(uint8_t freqStep, uint32_t tickCounter);
 
     void TickLength() override;
 
@@ -182,11 +182,11 @@ struct Channel2 final : Channel {
 
     void Tick();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep);
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint32_t tickCounter);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint32_t tickCounter);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -264,6 +264,7 @@ class Audio {
     int32_t cycleCounter{0};
     uint8_t frameSeqStep{0};
     bool skipNextFrameSeqTick{false};
+    uint32_t tickCounter{0};
 
     std::vector<float> sampleBuffer{};
     size_t bufferWritePos{0};
@@ -300,6 +301,7 @@ public:
 
     void SetDMG(const bool value) { dmg = value; }
     [[nodiscard]] bool IsDMG() const { return dmg; }
+    [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
 
     // DIV-APU
     void TickFrameSequencer();
