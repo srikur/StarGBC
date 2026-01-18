@@ -3,7 +3,11 @@
 
 #include <fstream>
 
-struct Timer {
+#include "Audio.h"
+#include "Interrupts.h"
+
+class Timer {
+public:
     uint8_t tma{0x00};
     uint8_t tima{0x00};
     uint8_t tac{0x00};
@@ -11,12 +15,19 @@ struct Timer {
     uint16_t divCounter{0x0000};
     bool overflowPending{false};
     bool reloadActive{false};
+    Audio &audio_;
+    Interrupts &interrupts_;
 
-    void WriteByte(uint16_t, uint8_t);
+    explicit Timer(Audio &audio, Interrupts &interrupts) : audio_(audio), interrupts_(interrupts) {
+    }
+
+    void Tick(Speed);
+
+    void WriteByte(uint16_t, uint8_t, Speed);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t) const;
 
-    void WriteDIV();
+    void WriteDIV(bool);
 
     void WriteTAC(uint8_t);
 
@@ -24,16 +35,7 @@ struct Timer {
 
     void WriteTMA(uint8_t);
 
-    constexpr int TimerBit(uint8_t tacMode) const {
-        switch (tacMode & 0x03) {
-            case 0x00: return 9; // 4096 Hz
-            case 0x01: return 3; // 262144 Hz
-            case 0x02: return 5; // 65536 Hz
-            case 0x03: return 7; // 16384 Hz
-            default: ;
-        }
-        return 9;
-    }
+    int TimerBit(uint8_t) const;
 
     void IncrementTIMA();
 

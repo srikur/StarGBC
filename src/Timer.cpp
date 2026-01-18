@@ -1,7 +1,39 @@
 #include "Timer.h"
 
-void Timer::WriteByte(const uint16_t address, const uint8_t value) {
-    if (address == 0xFF04) WriteDIV();
+#include "Common.h"
+
+void Timer::Tick(const Speed speed) {
+    const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
+
+    reloadActive = false;
+    if (overflowPending && --overflowDelay == 0) {
+        tima = tma;
+        interrupts_.Set(InterruptType::Timer, false);
+        overflowPending = false;
+        reloadActive = true;
+    }
+
+    const bool timerEnabled = tac & 0x04;
+    const int timerBit = TimerBit(tac);
+    const bool oldSignal = timerEnabled && (divCounter & (1u << timerBit));
+    const bool oldFrameSeqSignal = divCounter & 1u << frameSeqBit;
+
+    ++divCounter;
+
+    const bool newSignal = timerEnabled && (divCounter & (1u << timerBit));
+    if (oldSignal && !newSignal) {
+        IncrementTIMA();
+    }
+
+    // Check for a falling edge for the APU Frame Sequencer
+    const bool newFrameSeqSignal = (divCounter & (1u << frameSeqBit));
+    if (oldFrameSeqSignal && !newFrameSeqSignal) {
+        audio_.TickFrameSequencer();
+    }
+}
+
+void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed speed) {
+    if (address == 0xFF04) WriteDIV(speed == Speed::Double);
     else if (address == 0xFF05) WriteTIMA(value);
     else if (address == 0xFF06) WriteTMA(value);
     else if (address == 0xFF07) WriteTAC(value);
@@ -15,10 +47,15 @@ void Timer::WriteByte(const uint16_t address, const uint8_t value) {
     return 0xFF;
 }
 
-void Timer::WriteDIV() {
+void Timer::WriteDIV(const bool doubleSpeed) {
     const bool enabled = tac & 0x04;
     const int bit = TimerBit(tac);
     const bool oldSignal = enabled && (divCounter & (1u << bit));
+
+    const uint8_t frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 4 : 5;
+    if (divCounter & (1u << frameSeqBit)) {
+        audio_.TickFrameSequencer();
+    }
 
     divCounter = 0;
 
@@ -50,12 +87,19 @@ void Timer::WriteTIMA(const uint8_t value) {
 }
 
 void Timer::WriteTMA(const uint8_t value) {
-    if (reloadActive) {
-        tma = value;
-        tima = value;
-        return;
-    }
     tma = value;
+    if (reloadActive) tima = value;
+}
+
+int Timer::TimerBit(const uint8_t tacMode) const {
+    switch (tacMode & 0x03) {
+        case 0x00: return 9; // 4096 Hz
+        case 0x01: return 3; // 262144 Hz
+        case 0x02: return 5; // 65536 Hz
+        case 0x03: return 7; // 16384 Hz
+        default: ;
+    }
+    return 9;
 }
 
 void Timer::IncrementTIMA() {

@@ -38,8 +38,6 @@ public:
 
     void WriteByte(uint16_t, uint8_t, ComponentSource);
 
-    void UpdateTimers() const;
-
     void UpdateDMA();
 
     void RunHDMA() const;

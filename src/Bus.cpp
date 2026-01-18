@@ -28,7 +28,7 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
     if (gpu_.stat.mode != GPUMode::MODE_3) gpu_.oam[address - 0xFE00] = value;
 }
 
-uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
+uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
     if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return dmaReadByte;
     switch (address) {
@@ -70,13 +70,15 @@ uint8_t Bus::ReadByte(const uint16_t address, ComponentSource source) const {
         case 0xFF50 ... 0xFF55: return gpu_.hdma.ReadHDMA(address, gpu_.hardware == Hardware::CGB);
         case 0xFF68 ... 0xFF6C: return gpu_.ReadRegisters(address);
         case 0xFF70: return gpu_.hardware == Hardware::CGB ? memory_.wramBank_ : 0xFF;
+        case 0xFF76: return gpu_.hardware == Hardware::CGB ? audio_.ReadPCM12() : 0xFF;
+        case 0xFF77: return gpu_.hardware == Hardware::CGB ? audio_.ReadPCM34() : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
         case 0xFFFF: return interrupts_.interruptEnable;
         default: return 0xFF;
     }
 }
 
-void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource source) {
+void Bus::WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return;
     if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return;
     switch (address) {
@@ -100,11 +102,11 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
             break;
         case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, gpu_.hardware == Hardware::CGB);
             break;
-        case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value);
+        case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value, speed);
             break;
         case 0xFF0F: interrupts_.interruptFlag = value;
             break;
-        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value);
+        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value, timer_.divCounter >> (speed == Speed::Double ? 5 : 4) & 0x10);
             break;
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {
@@ -123,36 +125,6 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, ComponentSource
         case 0xFFFF: interrupts_.interruptEnable = value;
             break;
         default: break;
-    }
-}
-
-void Bus::UpdateTimers() const {
-    const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
-
-    timer_.reloadActive = false;
-    if (timer_.overflowPending && --timer_.overflowDelay == 0) {
-        timer_.tima = timer_.tma;
-        interrupts_.Set(InterruptType::Timer, false);
-        timer_.overflowPending = false;
-        timer_.reloadActive = true;
-    }
-
-    const bool timerEnabled = timer_.tac & 0x04;
-    const int timerBit = timer_.TimerBit(timer_.tac);
-    const bool oldSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-    const bool oldFrameSeqSignal = timer_.divCounter & 1u << frameSeqBit;
-
-    ++timer_.divCounter;
-
-    const bool newSignal = timerEnabled && (timer_.divCounter & (1u << timerBit));
-    if (oldSignal && !newSignal) {
-        timer_.IncrementTIMA();
-    }
-
-    // Check for a falling edge for the APU Frame Sequencer
-    const bool newFrameSeqSignal = (timer_.divCounter & (1u << frameSeqBit));
-    if (oldFrameSeqSignal && !newFrameSeqSignal) {
-        audio_.TickFrameSequencer();
     }
 }
 
