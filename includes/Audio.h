@@ -142,7 +142,9 @@ struct Channel1 final : Channel {
     Frequency frequency{};
 
     int32_t freqTimer{0};
+    int32_t pcmUpdateDelay{0};
     uint8_t dutyStep{0};
+    uint8_t pcmOutput{0};
     float currentOutput{0.0f};
 
     void Trigger(uint8_t freqStep, uint32_t tickCounter);

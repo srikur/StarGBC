@@ -155,6 +155,11 @@ void Channel1::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
     const int32_t phaseDelay = (tickCounter & 2) ? 14 : 12;
     freqTimer = (2048 - frequency.Value()) * 4 + phaseDelay;
 
+    // Samesuite -- Channel 1 delay
+    // It takes (sample_length + 2) ticks before PCM12 reflects channel output
+    pcmUpdateDelay = (2048 - frequency.Value()) + 2;
+    pcmOutput = 0;
+
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
 
@@ -226,12 +231,17 @@ uint16_t Channel1::CalculateSweep() {
 void Channel1::Tick() {
     if (!enabled) return;
     freqTimer--;
+    if (pcmUpdateDelay > 0) pcmUpdateDelay--;
     if (lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
         enabled = false;
     }
     if (freqTimer <= 0) {
         freqTimer = (2048 - frequency.Value()) * 4;
         dutyStep = (dutyStep + 1) % 8;
+        // Only update PCM output after the delay has expired
+        if (pcmUpdateDelay == 0) {
+            pcmOutput = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+        }
         if (dacEnabled) {
             currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) * static_cast<float>(envelope.currentVolume);
         }
@@ -286,7 +296,7 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
 
 uint8_t Channel1::GetDigitalOutput() const {
     if (!enabled || !dacEnabled) return 0;
-    return DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+    return pcmOutput;
 }
 
 void Channel2::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
