@@ -1,7 +1,9 @@
 #include "Audio.h"
+#include <algorithm>
 #include <cmath>
 #include <set>
 #include <string>
+#include <utility>
 
 void Audio::TickFrameSequencer() {
     if (!audioEnabled) return;
@@ -54,6 +56,41 @@ void Audio::Tick() {
         ch2.Tick();
         ch3.Tick();
         ch4.Tick();
+
+        const int phase = static_cast<int>((sampleCounter / CYCLES_PER_SAMPLE) * BL_PHASES) % BL_PHASES;
+
+        auto updateChannel = [&](const int chNum, const float &current, float &last, const bool enabled, const bool dacEnabled,
+                                 const uint8_t leftMask, const uint8_t rightMask) {
+            if (current != last) {
+                const float val = (enabled && dacEnabled) ? (current - 7.5f) / 7.5f : 0.0f;
+                const float prevVal = (enabled && dacEnabled) ? (last - 7.5f) / 7.5f : 0.0f;
+                const double left = (nr51 & leftMask) ? val : 0.0;
+                const double right = (nr51 & rightMask) ? val : 0.0;
+                const double prevLeft = (nr51 & leftMask) ? prevVal : 0.0;
+                const double prevRight = (nr51 & rightMask) ? prevVal : 0.0;
+
+                BandLimited &bl = bandLimited[chNum];
+                const double deltaLeft = left - prevLeft;
+                const double deltaRight = right - prevRight;
+
+                if (std::abs(deltaLeft) > 1e-6 || std::abs(deltaRight) > 1e-6) {
+                    const auto &kernel = blSteps[phase];
+                    for (int i = 0; i < BL_WIDTH; i++) {
+                        const int idx = (bl.pos + i) & (BL_BUFFER_SIZE - 1);
+                        bl.bufferLeft[idx] += deltaLeft * kernel[i];
+                        bl.bufferRight[idx] += deltaRight * kernel[i];
+                    }
+                    bl.lastLeft = left;
+                    bl.lastRight = right;
+                }
+                last = current;
+            }
+        };
+
+        updateChannel(0, ch1.currentOutput, ch1.lastOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
+        updateChannel(1, ch2.currentOutput, ch2.lastOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
+        updateChannel(2, ch3.currentOutput, ch3.lastOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
+        updateChannel(3, ch4.currentOutput, ch4.lastOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
     }
     GenerateSample();
 }
@@ -162,6 +199,9 @@ void Channel1::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
 
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
+
+    currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) *
+                    static_cast<float>(envelope.initialVolume);
 
     sweep.enabled = sweep.pace > 0 || sweep.step > 0;
     sweep.shadowFreq = frequency.Value();
@@ -314,12 +354,15 @@ void Channel2::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
         dutyStep = (dutyStep + 1) & 7;
     }
 
-    // Samesuite -- Channel 3 align
+    // Samesuite -- Channel 2 align
     const int32_t phaseDelay = (tickCounter & 2) ? 14 : 12;
     freqTimer = (2048 - frequency.Value()) * 4 + phaseDelay;
 
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
+
+    currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) *
+                    static_cast<float>(envelope.initialVolume);
 }
 
 void Channel2::TickLength() {
@@ -442,6 +485,9 @@ void Channel3::Trigger(const uint8_t freqStep, const bool dmg) {
     waveStep = 0;
     period = (2048 - frequency.Value()) * 2 + 6;
     playing = true;
+
+    sampleByte = waveRam[0] >> 4;
+    currentOutput = static_cast<float>(sampleByte >> volumeShift);
 }
 
 void Channel3::TickLength() {
@@ -543,6 +589,7 @@ void Channel4::Trigger(const uint8_t freqStep) {
     envelope.currentVolume = envelope.initialVolume;
 
     lfsr = 0xFFFF;
+    currentOutput = 0.0f;
 }
 
 void Channel4::TickLength() {
@@ -645,13 +692,14 @@ void Audio::InitBandLimitedTable() {
     for (int phase = 0; phase < BL_PHASES; phase++) {
         double sum = 0.0;
         for (int i = 0; i < BL_WIDTH; i++) {
-            constexpr double lowpass = 0.9375;
+            constexpr double lowpass = 15.0 / 16.0;
             const double x = static_cast<double>(i - BL_WIDTH / 2) +
                              static_cast<double>(phase) / BL_PHASES;
             const double angle = x * M_PI * lowpass;
 
             const double sinc = (std::abs(angle) < 1e-10) ? 1.0 : std::sin(angle) / angle;
 
+            // Blackman-Harris window
             const double windowAngle = M_PI * (static_cast<double>(i) + 0.5) / BL_WIDTH;
             const double window = a0 - a1 * std::cos(windowAngle) + a2 * std::cos(2.0 * windowAngle);
 
@@ -701,31 +749,6 @@ void Audio::BandLimitedRead(const int channel, double &outLeft, double &outRight
 }
 
 void Audio::GenerateSample() {
-    auto dac = [](const double digital, const bool dacOn) -> double {
-        if (!dacOn) return 0.0;
-        return (15.0 - digital * 2.0) / 15.0;
-    };
-
-    const int phase = static_cast<int>((sampleCounter / CYCLES_PER_SAMPLE) * BL_PHASES) & (BL_PHASES - 1);
-    auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled,
-                                const uint8_t leftMask, const uint8_t rightMask) {
-        const double val = dac(output, enabled && dacEnabled);
-        double left = (nr51 & leftMask) ? val : 0.0;
-        double right = (nr51 & rightMask) ? val : 0.0;
-
-        const double leftVol = (nr50 >> 4 & 0x07) + 1;
-        const double rightVol = (nr50 & 0x07) + 1;
-        left *= leftVol;
-        right *= rightVol;
-
-        BandLimitedUpdate(ch, left, right, phase);
-    };
-
-    getChannelOutput(0, ch1.currentOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
-    getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
-    getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
-    getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
-
     sampleCounter += 1.0;
     if (sampleCounter < CYCLES_PER_SAMPLE) {
         return;
@@ -733,37 +756,39 @@ void Audio::GenerateSample() {
     sampleCounter -= CYCLES_PER_SAMPLE;
 
     if (samplesAvailable >= AUDIO_BUFFER_SIZE) {
-        for (int i = 0; i < 4; i++) {
-            double dummy1, dummy2;
-            BandLimitedRead(i, dummy1, dummy2);
-        }
         return;
     }
 
-    double outLeft = 0.0;
-    double outRight = 0.0;
-    for (int i = 0; i < 4; i++) {
-        double chLeft, chRight;
-        BandLimitedRead(i, chLeft, chRight);
-        outLeft += chLeft;
-        outRight += chRight;
+    double mixLeft = 0.0, mixRight = 0.0;
+    for (int ch = 0; ch < 4; ch++) {
+        BandLimited &bl = bandLimited[ch];
+        bl.outputLeft += bl.bufferLeft[bl.pos];
+        bl.outputRight += bl.bufferRight[bl.pos];
+        bl.bufferLeft[bl.pos] = 0.0;
+        bl.bufferRight[bl.pos] = 0.0;
+        bl.pos = (bl.pos + 1) & (BL_BUFFER_SIZE - 1);
+        mixLeft += bl.outputLeft;
+        mixRight += bl.outputRight;
     }
 
-    outLeft /= 32.0;
-    outRight /= 32.0;
+    const double leftVol = static_cast<double>((nr50 >> 4 & 0x07) + 1) / 8.0;
+    const double rightVol = static_cast<double>((nr50 & 0x07) + 1) / 8.0;
+
+    double outLeft = mixLeft * 0.25 * leftVol;
+    double outRight = mixRight * 0.25 * rightVol;
 
     highpassLeft = outLeft - (outLeft - highpassLeft) * highpassRate;
     highpassRight = outRight - (outRight - highpassRight) * highpassRate;
     outLeft -= highpassLeft;
     outRight -= highpassRight;
 
-    sampleBuffer[bufferWritePos * 2] = static_cast<float>(outLeft);
-    sampleBuffer[bufferWritePos * 2 + 1] = static_cast<float>(outRight);
+    sampleBuffer[bufferWritePos * 2] = static_cast<int16_t>(std::clamp(outLeft * 32767.0, -32768.0, 32767.0));
+    sampleBuffer[bufferWritePos * 2 + 1] = static_cast<int16_t>(std::clamp(outRight * 32767.0, -32768.0, 32767.0));
     bufferWritePos = (bufferWritePos + 1) % AUDIO_BUFFER_SIZE;
     samplesAvailable++;
 }
 
-size_t Audio::ReadSamples(float *output, const size_t numSamples) {
+size_t Audio::ReadSamples(int16_t *output, const size_t numSamples) {
     const size_t samplesToRead = std::min(numSamples, samplesAvailable);
 
     for (size_t i = 0; i < samplesToRead; i++) {

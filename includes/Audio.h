@@ -8,14 +8,21 @@
 
 class Audio;
 
-static constexpr int AUDIO_SAMPLE_RATE = 48000; // Higher sample rate for better quality
+static constexpr int AUDIO_SAMPLE_RATE = 48000;
 static constexpr int AUDIO_BUFFER_SIZE = 2048;
 static constexpr double APU_CLOCK_RATE = 4194304.0;
-static constexpr double CYCLES_PER_SAMPLE = APU_CLOCK_RATE / AUDIO_SAMPLE_RATE;
+// Audio::Tick() is called 70224 times per frame at 60 FPS = 4,213,440 Hz
+// This matches the emulator's actual tick rate (140448 master cycles / 2 per frame)
+static constexpr double APU_TICK_RATE = 70224.0 * 60.0;
+static constexpr double CYCLES_PER_SAMPLE = APU_TICK_RATE / AUDIO_SAMPLE_RATE;
 
-static constexpr int BL_WIDTH = 32;
-static constexpr int BL_PHASES = 128;
-static constexpr int BL_BUFFER_SIZE = 64;
+static constexpr int BL_WIDTH = 64;
+static constexpr int BL_PHASES = 256;
+static constexpr int BL_BUFFER_SIZE = 128;
+
+// DAC capacitor simulation constants (from SameBoy)
+static constexpr double DAC_DECAY_SPEED = 20000.0;
+static constexpr double DAC_ATTACK_SPEED = 20000.0;
 
 struct BandLimited {
     std::array<double, BL_BUFFER_SIZE> bufferLeft{};
@@ -146,6 +153,7 @@ struct Channel1 final : Channel {
     uint8_t dutyStep{0};
     uint8_t pcmOutput{0};
     float currentOutput{0.0f};
+    float lastOutput{0.0f}; // For detecting transitions
 
     void Trigger(uint8_t freqStep, uint32_t tickCounter);
 
@@ -175,6 +183,7 @@ struct Channel2 final : Channel {
     int32_t freqTimer{0};
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
+    float lastOutput{0.0f};
 
     void Trigger(uint8_t freqStep, uint32_t tickCounter);
 
@@ -207,6 +216,7 @@ struct Channel3 final : Channel {
     uint32_t period{0};
     uint8_t waveStep{0};
     float currentOutput{0.0f};
+    float lastOutput{0.0f};
 
     std::array<uint8_t, 0x10> waveRam{};
 
@@ -239,6 +249,7 @@ struct Channel4 final : Channel {
     int32_t freqTimer{0};
     uint16_t lfsr{0xFFFF};
     float currentOutput{0.0f};
+    float lastOutput{0.0f};
     uint8_t trigger{0};
 
     void Trigger(uint8_t freqStep);
@@ -268,7 +279,7 @@ class Audio {
     bool skipNextFrameSeqTick{false};
     uint32_t tickCounter{0};
 
-    std::vector<float> sampleBuffer{};
+    std::vector<int16_t> sampleBuffer{};
     size_t bufferWritePos{0};
     size_t bufferReadPos{0};
     size_t samplesAvailable{0};
@@ -280,6 +291,9 @@ class Audio {
     double highpassRight{0.0};
     double highpassRate{0.0};
 
+    // DAC capacitor discharge state (per channel) - simulates hardware capacitor behavior
+    std::array<double, 4> dacDischarge{1.0, 1.0, 1.0, 1.0};
+
     void InitBandLimitedTable();
 
     void BandLimitedUpdate(int channel, double left, double right, int phase);
@@ -289,7 +303,7 @@ class Audio {
 public:
     Audio() {
         sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); // *2 for stereo
-        highpassRate = std::pow(0.999958, APU_CLOCK_RATE / AUDIO_SAMPLE_RATE);
+        highpassRate = std::pow(0.999958, APU_TICK_RATE / AUDIO_SAMPLE_RATE);
         InitBandLimitedTable();
     }
 
@@ -326,7 +340,7 @@ public:
 
     [[nodiscard]] size_t GetSamplesAvailable() const { return samplesAvailable; }
 
-    size_t ReadSamples(float *output, size_t numSamples);
+    size_t ReadSamples(int16_t *output, size_t numSamples);
 
     void ClearBuffer();
 };

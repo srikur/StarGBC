@@ -77,7 +77,7 @@ public:
         return audio_.GetSamplesAvailable();
     }
 
-    size_t ReadAudioSamples(float *output, size_t numSamples) {
+    size_t ReadAudioSamples(int16_t *output, size_t numSamples) {
         return audio_.ReadSamples(output, numSamples);
     }
 

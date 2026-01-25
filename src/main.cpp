@@ -25,7 +25,7 @@ static SDL_AudioStream *audioStream = nullptr;
 static std::unique_ptr<Gameboy> gameboy = nullptr;
 static bool useNearest = true;
 static bool audioEnabled = true;
-static std::vector<float> audioBuffer(AUDIO_BUFFER_FRAMES * 2);
+static std::vector<int16_t> audioBuffer(AUDIO_BUFFER_FRAMES * 2);
 
 SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     SDL_SetAppMetadata("StarGBC", "0.0.1", "com.srikur.stargbc");
@@ -103,7 +103,7 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
 
     SDL_AudioSpec audioSpec{};
     audioSpec.freq = AUDIO_SAMPLE_RATE;
-    audioSpec.format = SDL_AUDIO_F32;
+    audioSpec.format = SDL_AUDIO_S16;
     audioSpec.channels = 2;
 
     audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, nullptr, nullptr);
@@ -252,7 +252,7 @@ SDL_AppResult SDL_AppIterate(void *) {
                 const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), samplesToRead);
                 if (samplesRead > 0) {
                     SDL_PutAudioStreamData(audioStream, audioBuffer.data(),
-                                           static_cast<int>(samplesRead * 2 * sizeof(float)));
+                                           static_cast<int>(samplesRead * 2 * sizeof(int16_t)));
                 }
             }
         }
