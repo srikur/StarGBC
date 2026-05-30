@@ -20,9 +20,14 @@ void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
 }
 
 template<BusLike BusT>
-void CPU<BusT>::InitializeEmbeddedBootrom() const {
+void CPU<BusT>::InitializeEmbeddedBootrom(const bool cgb) const {
+    using stargbc::bootroms::kCgbBootrom;
     using stargbc::bootroms::kDmgBootrom;
-    bus_.bootrom.assign(kDmgBootrom.begin(), kDmgBootrom.end());
+    if (cgb) {
+        bus_.bootrom.assign(kCgbBootrom.begin(), kCgbBootrom.end());
+    } else {
+        bus_.bootrom.assign(kDmgBootrom.begin(), kDmgBootrom.end());
+    }
 }
 
 template<BusLike BusT>

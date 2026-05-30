@@ -13,6 +13,9 @@ if(RGBASM_EXECUTABLE AND RGBLINK_EXECUTABLE AND PYTHON3_EXECUTABLE)
     set(DMG_BIN  ${BOOTROM_BUILD_DIR}/dmg.bin)
     set(DMG_OBJ  ${BOOTROM_BUILD_DIR}/dmg.o)
     set(DMG_ASM  ${CMAKE_CURRENT_SOURCE_DIR}/dmg.asm)
+    set(CGB_BIN  ${BOOTROM_BUILD_DIR}/cgb.bin)
+    set(CGB_OBJ  ${BOOTROM_BUILD_DIR}/cgb.o)
+    set(CGB_ASM  ${CMAKE_CURRENT_SOURCE_DIR}/cgb.asm)
     set(EMBED_PY ${CMAKE_CURRENT_SOURCE_DIR}/embed.py)
 
     add_custom_command(
@@ -25,9 +28,18 @@ if(RGBASM_EXECUTABLE AND RGBLINK_EXECUTABLE AND PYTHON3_EXECUTABLE)
     )
 
     add_custom_command(
+        OUTPUT  ${CGB_BIN}
+        COMMAND ${RGBASM_EXECUTABLE}  -o ${CGB_OBJ} ${CGB_ASM}
+        COMMAND ${RGBLINK_EXECUTABLE} -x -o ${CGB_BIN} ${CGB_OBJ}
+        DEPENDS ${CGB_ASM}
+        COMMENT "Assembling StarGBC CGB bootrom"
+        VERBATIM
+    )
+
+    add_custom_command(
         OUTPUT  ${BOOTROM_HEADER}
-        COMMAND ${PYTHON3_EXECUTABLE} ${EMBED_PY} ${BOOTROM_HEADER} ${DMG_BIN}
-        DEPENDS ${DMG_BIN} ${EMBED_PY}
+        COMMAND ${PYTHON3_EXECUTABLE} ${EMBED_PY} ${BOOTROM_HEADER} ${DMG_BIN} ${CGB_BIN}
+        DEPENDS ${DMG_BIN} ${CGB_BIN} ${EMBED_PY}
         COMMENT "Embedding bootrom binaries into EmbeddedBootroms.h"
         VERBATIM
     )

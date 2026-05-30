@@ -31,9 +31,9 @@ public:
             bus.bootromRunning = true;
             InitializeBootrom(biosPath);
             pc_ = 0x0000;
-        } else if (!noBootrom && bus.gpu_.hardware == Hardware::DMG) {
+        } else if (!noBootrom) {
             bus.bootromRunning = true;
-            InitializeEmbeddedBootrom();
+            InitializeEmbeddedBootrom(bus.gpu_.hardware == Hardware::CGB);
             pc_ = 0x0000;
         } else {
             pc_ = 0x100;
@@ -44,7 +44,7 @@ public:
 
     void InitializeBootrom(const std::string &) const;
 
-    void InitializeEmbeddedBootrom() const;
+    void InitializeEmbeddedBootrom(bool cgb) const;
 
     void InitializeSystem(Mode);
 
