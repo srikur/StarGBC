@@ -6,7 +6,7 @@ BOOTROM_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 OUT_DIR     ?= $(BOOTROM_DIR)build
 EMBED_OUT   ?= $(BOOTROM_DIR)../includes/EmbeddedBootroms.h
 
-ROMS := $(OUT_DIR)/dmg.bin
+ROMS := $(OUT_DIR)/dmg.bin $(OUT_DIR)/cgb.bin
 
 .PHONY: all clean
 all: $(EMBED_OUT)
