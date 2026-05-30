@@ -22,14 +22,18 @@
 1. Clone the repository:
    ```bash
    git clone https://github.com/srikur/StarGBC.git
-2. Update submodules:
-   ```bash
-   git submodule update --init --recursive
    ```
-3. Configure CMake and build:
+2. Configure and build (submodules are initialized automatically during configure):
    ```bash
-   cmake --build --preset release
+   cmake --workflow --preset release
    ```
+   If you prefer the two-step form (e.g. to rebuild without reconfiguring):
+   ```bash
+   cmake --preset release        # configure: fetches submodules, creates build/release/CMakeCache.txt
+   cmake --build --preset release # build
+   ```
+   To opt out of the automatic submodule update, pass
+   `-DSTARGBC_UPDATE_SUBMODULES=OFF` to the configure step.
 
 ## Test ROM Performance
 
