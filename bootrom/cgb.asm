@@ -14,7 +14,7 @@ EntryPoint:
     bit 7, h
     jr nz, .clearBank0
 
-    ; --- Switch to VRAM bank 1, clear, switch back ---
+    ; --- Switch to bank 1, clear, switch back ---
     ld a, 1
     ldh [$FF4F], a
     xor a
@@ -24,42 +24,42 @@ EntryPoint:
     bit 7, h
     jr nz, .clearBank1
     xor a
-    ldh [$FF4F], a              ; back to bank 0
+    ldh [$FF4F], a              ; bank 0
 
-    ; --- APU on, ch1 setup ---
     ld a, $80
-    ldh [$FF26], a              ; NR52: APU on
-    ldh [$FF11], a              ; NR11: duty 50%
+    ldh [$FF26], a              ; NR52
+    ldh [$FF11], a              ; NR11
     ld a, $F3
-    ldh [$FF12], a              ; NR12: envelope
-    ldh [$FF25], a              ; NR51: panning
+    ldh [$FF12], a              ; NR12
+    ldh [$FF25], a              ; NR51
     ld a, $77
-    ldh [$FF24], a              ; NR50: master volume
+    ldh [$FF24], a              ; NR50
 
     ld a, $FC
     ldh [$FF47], a
 
-    ; --- Initialise CGB BG palettes 0 + 1 ---
     ld a, $80                   ; BCPS auto-increment from index 0
     ldh [$FF68], a
     ld hl, BgPaletteInit
-    ld b, 16                    ; 2 palettes × 4 colors × 2 bytes
+    ld b, 64                    ; 8 palettes × 4 colors × 2 bytes
 .bgpalLoop:
     ld a, [hl+]
-    ldh [$FF69], a              ; BCPD
+    ldh [$FF69], a
     dec b
     jr nz, .bgpalLoop
 
-    jp Main                     ; into $0200 segment
+    jp Main
 
 ; Pad first segment to $0100 with $FF
     ds $100 - @, $FF
+
+; Gap $0100-$01FF — cart header on a real cart.
     ds $100, $FF
 
 SECTION "BootromMain", ROM0[$0200]
 
 Main:
-    ; --- Expand StarGBC text glyphs into VRAM tiles 1..28 ---
+    ; --- Expand 1bpp StarGBC glyphs into tiles 1..28 ---
     call ExpandGlyphs
 
     ; --- Copy the 64-byte gold star bitmap into tiles 29..32 ($81D0-$820F) ---
@@ -73,20 +73,21 @@ Main:
     dec b
     jr nz, .starCopy
 
-    ; --- Tilemap (VRAM bank 0): row 5-6 cols 9-10 = star (4 tiles),
-    ;                            rows 8-9 cols 3-16 = text (14 tiles each row) ---
+    ; -------------------------------------------------------------------------
+    ; Tilemap (VRAM bank 0)
+    ; -------------------------------------------------------------------------
     xor a
-    ldh [$FF4F], a              ; ensure bank 0 for the tilemap writes
+    ldh [$FF4F], a
 
-    ; Star top row (row 5 cols 9-10): tiles 29, 30
-    ld hl, $98A9                ; $9800 + 5*32 + 9
+    ; Star top-row cells (row 5 cols 9-10): tiles 29, 30
+    ld hl, $98A9
     ld a, 29
     ld [hl+], a
     inc a
-    ld [hl], a                  ; HL = $98AA, holds tile 30
+    ld [hl], a
 
-    ; Star bottom row (row 6 cols 9-10): tiles 31, 32
-    ld hl, $98C9                ; $9800 + 6*32 + 9
+    ; Star bottom-row cells (row 6 cols 9-10): tiles 31, 32
+    ld hl, $98C9
     ld a, 31
     ld [hl+], a
     inc a
@@ -112,15 +113,38 @@ Main:
     jr nz, .tmBot
 
     ld a, 1
-    ldh [$FF4F], a              ; switch to bank 1
+    ldh [$FF4F], a
 
-    ld hl, $98A9                ; star top-left
-    ld a, $01                   ; palette 1
+    ; Star: 4 cells = palette 7
+    ld hl, $98A9
+    ld a, 7
     ld [hl+], a
-    ld [hl], a                  ; star top-right
-    ld hl, $98C9                ; star bottom-left
+    ld [hl], a
+    ld hl, $98C9
     ld [hl+], a
-    ld [hl], a                  ; star bottom-right
+    ld [hl], a
+
+    ; Text top row attributes: AttrPattern → row 8 cols 3-16
+    ld hl, $9903
+    ld de, AttrPattern
+    ld b, 14
+.attrTop:
+    ld a, [de]
+    inc de
+    ld [hl+], a
+    dec b
+    jr nz, .attrTop
+
+    ; Text bottom row attributes: reuse AttrPattern → row 9 cols 3-16
+    ld hl, $9923
+    ld de, AttrPattern
+    ld b, 14
+.attrBot:
+    ld a, [de]
+    inc de
+    ld [hl+], a
+    dec b
+    jr nz, .attrBot
 
     xor a
     ldh [$FF4F], a              ; back to bank 0
@@ -139,7 +163,9 @@ Main:
     ld a, $87
     ldh [$FF14], a
 
-    ; --- Scroll loop: SCY 64 → 0 in 64 steps × 2 frames ---
+    ; -------------------------------------------------------------------------
+    ; Scroll loop: SCY 64 → 0 over 64 steps × 2 frames each.
+    ; -------------------------------------------------------------------------
     ld c, 64
 .scroll:
     call WaitFrame
@@ -150,50 +176,82 @@ Main:
     dec c
     jr nz, .scroll
 
-    ; --- Second ding (high note) ---
+    ; --- Second ding (high note) at the start of the flash ---
     ld a, $C1
     ldh [$FF13], a
     ld a, $87
     ldh [$FF14], a
 
-    ; --- Rainbow palette flash on palette 0 colour 3
-    ;     6 colours × 10 frames each (red → yellow → green → blue → purple → cyan-blue)
-    ld de, FlashColors
-    ld b, 6
-.flashColor:
-    push bc
-    ld a, $86                   ; BCPS = palette 0 colour 3, auto-increment
-    ldh [$FF68], a
-    ld a, [de]
-    inc de
-    ldh [$FF69], a              ; low byte
-    ld a, [de]
-    inc de
-    ldh [$FF69], a              ; high byte
-
-    ld c, 10                    ; 10 frames per colour
-.flashWait:
+    ld b, 50                    ; total flash frames
+    ld d, 0                     ; rotation offset (0..6)
+.flashFrame:
     call WaitFrame
-    dec c
-    jr nz, .flashWait
+    ld e, 0                     ; palette index
+.palLoop:
+    ; Colour index = (E + D) mod 7
+    ld a, e
+    add d
+    cp 7
+    jr c, .noWrap
+    sub 7
+.noWrap:
+    ; HL = RainbowColors + (color_idx * 2)
+    add a
+    ld c, a
+    ld hl, RainbowColors
+    ld a, l
+    add c
+    ld l, a
+    ld a, h
+    adc 0
+    ld h, a
 
-    pop bc
+    ; BCPS = palette E colour 3 byte 0 (= E*8 + 6) with auto-increment
+    ld a, e
+    sla a
+    sla a
+    sla a
+    add 6
+    or $80
+    ldh [$FF68], a
+
+    ; Write the two colour bytes
+    ld a, [hl+]
+    ldh [$FF69], a
+    ld a, [hl]
+    ldh [$FF69], a
+
+    inc e
+    ld a, e
+    cp 7
+    jr c, .palLoop
+
+    ; Rotate (D = (D+1) mod 7)
+    inc d
+    ld a, d
+    cp 7
+    jr c, .noDWrap
+    xor a
+    ld d, a
+.noDWrap:
+
     dec b
-    jr nz, .flashColor
+    jr nz, .flashFrame
 
-    ; --- Hold final blue-cyan for ~30 frames ---
-    ld c, 30
+    ; --- Hold the settled rainbow for ~45 frames so the user can see it ---
+    ld c, 45
 .hold:
     call WaitFrame
     dec c
     jr nz, .hold
 
-    ; --- Set CGB handoff register A=$11 and jump to cart ---
+    ; --- Hand off: A = $11 (CGB indicator), jump to cart ---
     ld a, $11
     jp $0100
 
 ; -----------------------------------------------------------------------------
-; WaitFrame: spin until LY enters VBlank.
+; WaitFrame: spin until LY transitions into VBlank.
+; Clobbers A only.
 ; -----------------------------------------------------------------------------
 WaitFrame:
 .notVbl:
@@ -206,6 +264,9 @@ WaitFrame:
     jr nz, .vbl
     ret
 
+; -----------------------------------------------------------------------------
+; ExpandGlyphs / ExpandLookup — same as the DMG bootrom.
+; -----------------------------------------------------------------------------
 ExpandGlyphs:
     ld de, GlyphData
     ld hl, $8010
@@ -238,7 +299,6 @@ ExpandGlyphs:
     jr nz, .tile
     ret
 
-; Preserves HL/DE/BC.
 ExpandLookup:
     push bc
     push hl
@@ -256,25 +316,33 @@ ExpandLookup:
 ; Data
 ; -----------------------------------------------------------------------------
 BgPaletteInit:
-    ; Palette 0
-    dw $0000        ; color 0
-    dw $0000        ; color 1
-    dw $0000        ; color 2
-    dw $7FFF        ; color 3 (white, will be overwritten by the flash)
-    ; Palette 1 — gold ramp
-    dw $0000        ; color 0
+    ; Palette 0..6 — letters start white
+    REPT 7
+    dw $0000, $0000, $0000, $7FFF
+    ENDR
+    ; Palette 7 — gold ramp
+    dw $0000        ; color 0 (black)
     dw $0843        ; color 1 (dark amber)
     dw $0CC7        ; color 2 (deep gold)
     dw $131F        ; color 3 (bright gold: R=31 G=24 B=4)
 
-; Rainbow flash sequence applied to palette 0 colour 3.
-FlashColors:
-    dw $001F        ; Red       (R=31 G=0  B=0)
-    dw $039F        ; Yellow    (R=31 G=28 B=0)
-    dw $23E0        ; Green     (R=0  G=31 B=8)
-    dw $7D40        ; Blue      (R=0  G=10 B=31)
-    dw $5014        ; Purple    (R=20 G=0  B=20)
-    dw $7F08        ; Cyan-blue (R=8  G=24 B=31) — settles here
+AttrPattern:
+    db $00, $00     ; S (palette 0)
+    db $01, $01     ; t (palette 1)
+    db $02, $02     ; a (palette 2)
+    db $03, $03     ; r (palette 3)
+    db $04, $04     ; G (palette 4)
+    db $05, $05     ; B (palette 5)
+    db $06, $06     ; C (palette 6)
+
+RainbowColors:
+    dw $001F        ; 0: Red       (R=31 G=0  B=0)
+    dw $025F        ; 1: Orange    (R=31 G=18 B=0)
+    dw $03DF        ; 2: Yellow    (R=31 G=30 B=0)
+    dw $23E0        ; 3: Green     (R=0  G=31 B=8)
+    dw $7FE0        ; 4: Cyan      (R=0  G=31 B=31)
+    dw $7C00        ; 5: Blue      (R=0  G=0  B=31)
+    dw $600C        ; 6: Violet    (R=12 G=0  B=24)
 
 ExpandTable:
     db $00, $03, $0C, $0F
@@ -282,8 +350,7 @@ ExpandTable:
     db $C0, $C3, $CC, $CF
     db $F0, $F3, $FC, $FF
 
-; 1bpp 8×8 glyphs for "StarGBC", same layout as the DMG bootrom:
-; 28 bytes of top halves (rows 0-3), then 28 bytes of bottom halves (rows 4-7).
+; 1bpp 8×8 glyphs for "StarGBC" — top halves then bottom halves, 4 bytes each.
 GlyphData:
     db $7E, $C0, $C0, $7C       ; S top
     db $30, $30, $FC, $30       ; t top
@@ -302,9 +369,7 @@ GlyphData:
     db $C0, $C0, $7E, $00       ; C bot
 
 ; -----------------------------------------------------------------------------
-; Gold star: 16×16 pre-rendered as 4 2bpp tiles (16 bytes each).
-; Both bit-planes are identical, so each pixel is color 3 of palette 1.
-; Tile order: top-left, top-right, bottom-left, bottom-right.
+; Gold star: 16×16, pre-rendered 2bpp
 ; -----------------------------------------------------------------------------
 StarData:
     ; Tile 29 — top-left
