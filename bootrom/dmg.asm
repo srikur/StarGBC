@@ -56,8 +56,8 @@ EntryPoint:
     dec c
     jr nz, .tmBot
 
-    ; --- Initial scroll: text just below visible area ---
-    ld a, 192                   ; SCY = -64 → text at screen Y=128
+    ; --- Initial scroll: text at top of screen (like the original Nintendo logo) ---
+    ld a, 64                    ; SCY = 64 → text at screen Y=0
     ldh [$FF42], a
 
     ; --- Turn on LCD ---
@@ -70,13 +70,13 @@ EntryPoint:
     ld a, $87
     ldh [$FF14], a                ; NR14 trigger
 
-    ; --- Scroll loop: SCY 192 → 0 over 64 steps (×2 frames each) ---
+    ; --- Scroll loop: SCY 64 → 0 over 64 steps (×2 frames each); text descends to centre ---
     ld c, 64
 .scroll:
     call WaitFrame
     call WaitFrame
     ldh a, [$FF42]
-    inc a
+    dec a
     ldh [$FF42], a
     dec c
     jr nz, .scroll
