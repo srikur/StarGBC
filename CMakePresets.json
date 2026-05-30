@@ -45,5 +45,23 @@
       "displayName": "Build Release",
       "configurePreset": "release"
     }
+  ],
+  "workflowPresets": [
+    {
+      "name": "debug",
+      "displayName": "Configure + Build Debug",
+      "steps": [
+        { "type": "configure", "name": "debug" },
+        { "type": "build", "name": "debug" }
+      ]
+    },
+    {
+      "name": "release",
+      "displayName": "Configure + Build Release",
+      "steps": [
+        { "type": "configure", "name": "release" },
+        { "type": "build", "name": "release" }
+      ]
+    }
   ]
 }
