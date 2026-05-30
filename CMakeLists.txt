@@ -34,5 +34,6 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/dependencies/SDL/CMakeLists.txt")
 endif()
 
 add_subdirectory(dependencies EXCLUDE_FROM_ALL)
+add_subdirectory(bootrom)
 add_subdirectory(src)
 add_subdirectory(tests)
