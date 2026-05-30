@@ -57,6 +57,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
                 std::fprintf(stderr, "Error: --bios requires a path argument\n");
                 return SDL_APP_FAILURE;
             }
+        } else if (args[i] == "--no-bootrom") {
+            settings.noBootrom = true;
         } else if (i == args.size() - 1 ||
                    args[i].ends_with(".gb") || args[i].ends_with(".gbc")) {
             settings.romName = args[i];
@@ -65,7 +67,8 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
                          "Options:\n"
                          "  --gbc | --gb        force gbc/dmg mode\n"
                          "  --bios <path>       external BIOS ROM\n"
-                         "  --no-aliasing       nearest-neighbour pixels");
+                         "  --no-bootrom        skip built-in bootrom; jump straight to cart\n"
+                         "  --anti-aliasing     linear-filter pixels");
             return SDL_APP_FAILURE;
         }
     }

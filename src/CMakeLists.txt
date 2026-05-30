@@ -1,6 +1,9 @@
 file(GLOB_RECURSE SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
 add_library(${PROJECT_NAME}_Core STATIC ${SRC_FILES})
+if(TARGET stargbc_bootroms)
+    add_dependencies(${PROJECT_NAME}_Core stargbc_bootroms)
+endif()
 target_include_directories(${PROJECT_NAME}_Core PUBLIC "${CMAKE_SOURCE_DIR}/includes")
 target_include_directories(${PROJECT_NAME}_Core PUBLIC "${CMAKE_SOURCE_DIR}/dependencies/SDL/include")
 target_include_directories(${PROJECT_NAME}_Core PUBLIC "${CMAKE_SOURCE_DIR}/dependencies/spdlog/include")

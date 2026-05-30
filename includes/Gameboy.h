@@ -12,7 +12,7 @@ struct GameboySettings {
     std::string romName;
     std::string biosPath;
     Mode mode{Mode::None};
-    bool runBootrom{false};
+    bool noBootrom{false};
     bool debugStart{false};
     bool realRTC{false};
     bool unthrottled{false};
@@ -26,7 +26,7 @@ public:
                                                         cartridge_(romPath_, rtc_),
                                                         joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
-                                                        cpu_(settings.mode, biosPath_, bus_, interrupts_, registers_),
+                                                        cpu_(settings.mode, biosPath_, settings.noBootrom, bus_, interrupts_, registers_),
                                                         instructions_(registers_, interrupts_),
                                                         throttleSpeed_(!settings.unthrottled),
                                                         timer_(audio_, interrupts_),
