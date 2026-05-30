@@ -1,4 +1,5 @@
 #include "CPU.h"
+#include "EmbeddedBootroms.h"
 
 #include <map>
 
@@ -16,6 +17,12 @@ void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
                         std::istream_iterator<uint8_t>(file),
                         std::istream_iterator<uint8_t>());
     file.close();
+}
+
+template<BusLike BusT>
+void CPU<BusT>::InitializeEmbeddedBootrom() const {
+    using stargbc::bootroms::kDmgBootrom;
+    bus_.bootrom.assign(kDmgBootrom.begin(), kDmgBootrom.end());
 }
 
 template<BusLike BusT>
