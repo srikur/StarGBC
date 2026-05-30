@@ -13,3 +13,6 @@ roms/*
 compile_commands.json
 CLAUDE.md
 .claude/*
+bootrom/build/
+bootrom/*.o
+bootrom/*.sym
