@@ -52,7 +52,6 @@ static bool runBlarggTest(const std::string &rom,
             .romName = rom,
             .biosPath = bios,
             .mode = mode,
-            .runBootrom = true
         });
         gameboy->SetThrottle(false);
 

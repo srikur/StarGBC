@@ -12,6 +12,7 @@ public:
 
     explicit CPU(const Mode mode,
                  const std::string &biosPath,
+                 const bool noBootrom,
                  BusT &bus,
                  Interrupts &interrupts,
                  Registers &registers) : bus_(bus),
@@ -30,6 +31,10 @@ public:
             bus.bootromRunning = true;
             InitializeBootrom(biosPath);
             pc_ = 0x0000;
+        } else if (!noBootrom) {
+            bus.bootromRunning = true;
+            InitializeEmbeddedBootrom(bus.gpu_.hardware == Hardware::CGB);
+            pc_ = 0x0000;
         } else {
             pc_ = 0x100;
             InitializeSystem(mode);
@@ -38,6 +43,8 @@ public:
     }
 
     void InitializeBootrom(const std::string &) const;
+
+    void InitializeEmbeddedBootrom(bool cgb) const;
 
     void InitializeSystem(Mode);
 
