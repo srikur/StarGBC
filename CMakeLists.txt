@@ -14,6 +14,25 @@ endif()
 
 project(StarGBC VERSION 0.0.1 LANGUAGES CXX)
 
+option(STARGBC_UPDATE_SUBMODULES "Init/update git submodules during configure" ON)
+if(STARGBC_UPDATE_SUBMODULES AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+    find_package(Git QUIET)
+    if(GIT_FOUND)
+        message(STATUS "Updating git submodules")
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+            RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init --recursive failed (exit ${GIT_SUBMOD_RESULT}). Run it manually or pass -DSTARGBC_UPDATE_SUBMODULES=OFF to skip.")
+        endif()
+    endif()
+endif()
+
+if(NOT EXISTS "${PROJECT_SOURCE_DIR}/dependencies/SDL/CMakeLists.txt")
+    message(FATAL_ERROR "Submodules are missing. Run `git submodule update --init --recursive` or re-run CMake with -DSTARGBC_UPDATE_SUBMODULES=ON.")
+endif()
+
 add_subdirectory(dependencies EXCLUDE_FROM_ALL)
 add_subdirectory(src)
 add_subdirectory(tests)
