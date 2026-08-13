@@ -1,0 +1,14 @@
+README.md
+  h_83b6cee88cb5ab 40,294-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9f42309a52c67f5e1a544277f53daf251420af45",
+  "prompts": {},
+  "humans": {
+    "h_83b6cee88cb5ab": {
+      "author": "srikur <srikur@endeavorai.com>"
+    }
+  }
+}
