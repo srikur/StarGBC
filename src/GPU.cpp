@@ -254,8 +254,7 @@ void GPU::Fetcher_StepBackgroundFetch() {
     switch (fetcherState_) {
         case GetTile: {
             if (!initialSCXSet) {
-                initialScrollXDiscard_ = scrollX & 0x07;
-                // std::fprintf(stderr, "Scroll X: %d, Initial scroll X discard: %d, scanline: %d\n", scrollX, initialScrollXDiscard_, scanlineCounter);
+                initialScrollXDiscard_ = isFetchingWindow_ ? 0 : scrollX & 0x07;
                 initialSCXSet = true;
             }
             const auto tileMapAddress = CalculateBGTileMapAddress();
