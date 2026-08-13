@@ -139,6 +139,7 @@ static const std::vector<Case> romTestcases = {
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -225,6 +226,7 @@ ROM_TEST(56, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb")
 ROM_TEST(57, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb")
 ROM_TEST(58, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb")
 ROM_TEST(59, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb")
+ROM_TEST(60, "roms/mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
