@@ -172,6 +172,10 @@ public:
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
     uint8_t scxWriteStage{0};
+    uint8_t obp0Pending{0};
+    uint8_t obp0WriteStage{0};
+    uint8_t obp1Pending{0};
+    uint8_t obp1WriteStage{0};
 
     // GBC
     bool hblank = false;
