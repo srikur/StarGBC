@@ -1,0 +1,14 @@
+tests/TestRoms.h
+  h_83b6cee88cb5ab 138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bc9ee3a3cb902431b65c27c67133430562c94720",
+  "prompts": {},
+  "humans": {
+    "h_83b6cee88cb5ab": {
+      "author": "srikur <srikur@endeavorai.com>"
+    }
+  }
+}
