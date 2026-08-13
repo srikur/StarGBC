@@ -1,0 +1,20 @@
+tests/TestRoms.h
+  s_495a566b9c1a66::t_9fa2e839bae278 144-145
+  s_495a566b9c1a66::t_9e59b1514d1df2 234-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "017fc7b5af7231a2b5e8e696c0ce3d60ede4461c",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@endeavorai.com>"
+    }
+  }
+}
