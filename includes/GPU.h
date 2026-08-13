@@ -154,6 +154,8 @@ public:
     bool m2IrqRaisedEarly{false};
     uint8_t bgpPending{0};
     uint8_t bgpWriteStage{0};
+    uint8_t lcdcPending{0};
+    uint8_t lcdcWriteStage{0};
 
     // GBC
     bool hblank = false;
@@ -200,6 +202,8 @@ private:
     void Fetcher_StepSpriteFetch();
 
     void Fetcher_StepBackgroundFetch();
+
+    void ApplyLCDC(uint8_t value);
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
 

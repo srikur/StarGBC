@@ -49,6 +49,12 @@ void GPU::Update() {
         }
     }
 
+    // DMG: a mode-3 LCDC write reaches the fetcher two dots late, same latency class as BGP
+    if (lcdcWriteStage > 0) {
+        lcdcWriteStage--;
+        if (lcdcWriteStage == 0) ApplyLCDC(lcdcPending);
+    }
+
     if (LCDDisabled()) {
         return;
     }
@@ -182,11 +188,12 @@ void GPU::TickOAMScan() {
     const Attributes attr = GetAttrsFrom(oam[base + 3]);
     const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
 
-    const bool cond1 = spriteX > -8;
+    // OAM scan checks only Y — off-screen X (0 or ≥168) still occupies a buffer
+    // slot, and an X=0 sprite stalls mode 3 without drawing anything
     const bool cond2 = currentLine >= spriteY;
     const bool cond3 = currentLine < spriteY + spriteSize;
     const bool cond4 = spriteBuffer.size() < 10;
-    if (cond1 && cond2 && cond3 && cond4) {
+    if (cond2 && cond3 && cond4) {
         spriteBuffer.push_back(Sprite{
             .spriteNum = static_cast<uint8_t>(scanlineCounter), .x = spriteX, .y = spriteY, .tileIndex = spriteTileIndex, .attributes = attr, .processed = false
         });
@@ -246,10 +253,14 @@ void GPU::TickMode3() {
     if (!spriteFetchActive_ && !spritePending) CheckForWindowTrigger();
     if (spritePending) {
         if (spriteFetchWait_ > 0) {
-            // Pixel output pauses while the background fetcher catches up to its
-            // high-byte read; only then does the sprite fetch take over
+            // Pixel output pauses until the sprite fetch may take over. Sprites
+            // clipped by the left edge halt the background fetch for the whole wait
+            // (only a pending push completes); on-screen sprites let it keep stepping
             spriteFetchWait_--;
-            Fetcher_StepBackgroundFetch();
+            if (spriteFetchQueue.front().x >= 0 ||
+                (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty())) {
+                Fetcher_StepBackgroundFetch();
+            }
             return;
         }
         // A background push that is ready on the takeover tick runs first, so the
@@ -614,26 +625,36 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
     }
 }
 
+void GPU::ApplyLCDC(const uint8_t value) {
+    const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+    lcdc = value;
+    const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+    if (!newEnable && oldEnable) {
+        scanlineCounter = currentLine = 0;
+        stat.mode = GPUMode::MODE_0;
+        screenData.fill(0);
+        hblank = true;
+        hdma.hblankBlockFinished = false;
+        vblank = false;
+    } else if (newEnable && !oldEnable) {
+        hdma.singleBlockTransfer = false;
+        hdma.hblankBlockFinished = false;
+        shortenScanline = true;
+        stat.mode = GPUMode::MODE_2;
+        hblank = false;
+        vblank = false;
+    }
+}
+
 void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     switch (address) {
         case 0xFF40: {
-            const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
-            lcdc = value;
-            const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
-            if (!newEnable && oldEnable) {
-                scanlineCounter = currentLine = 0;
-                stat.mode = GPUMode::MODE_0;
-                screenData.fill(0);
-                hblank = true;
-                hdma.hblankBlockFinished = false;
-                vblank = false;
-            } else if (newEnable && !oldEnable) {
-                hdma.singleBlockTransfer = false;
-                hdma.hblankBlockFinished = false;
-                shortenScanline = true;
-                stat.mode = GPUMode::MODE_2;
-                hblank = false;
-                vblank = false;
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (lcdcWriteStage > 0) ApplyLCDC(lcdcPending);
+                lcdcPending = value;
+                lcdcWriteStage = 3;
+            } else {
+                ApplyLCDC(value);
             }
             break;
         }
