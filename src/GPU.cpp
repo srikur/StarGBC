@@ -38,6 +38,16 @@ void GPU::Update() {
         }
     }
 
+    // DMG BGP write glitch: a mode-3 write reaches the pixel pipe late — one dot where the palette reads as old|new, then the new value
+    if (bgpWriteStage > 0) {
+        bgpWriteStage--;
+        if (bgpWriteStage == 1) {
+            backgroundPalette |= bgpPending;
+        } else if (bgpWriteStage == 0) {
+            backgroundPalette = bgpPending;
+        }
+    }
+
     if (LCDDisabled()) {
         return;
     }
@@ -67,7 +77,7 @@ void GPU::Update() {
             break;
         case GPUMode::MODE_2:
             if (stat.enableM2Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+                interrupts_.Set(InterruptType::LCDStat, hardware == Hardware::CGB);
                 statTriggered = true;
             }
             TickOAMScan();
@@ -92,6 +102,17 @@ void GPU::Update() {
     scanlineCounter++;
 
     const uint16_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
+    // DMG: the mode 2 (OAM) STAT interrupt for lines 1-143 asserts ~4 dots before
+    // the line starts (line 0's asserts at line start instead, handled in the mode 2
+    // case above). Blocked only if the STAT line is currently high from another
+    // enabled condition, not by this line's statTriggered latch — the current line's
+    // mode 2 condition deasserted back at mode 3 entry
+    if (hardware != Hardware::CGB && scanlineCounter == scanlineDuration - 3 &&
+        currentLine < 143 && stat.mode == GPUMode::MODE_0 && stat.enableM2Interrupt &&
+        !stat.enableM0Interrupt && !(stat.enableLYInterrupt && currentLine == lyc)) {
+        interrupts_.Set(InterruptType::LCDStat, false);
+        m2IrqRaisedEarly = true;
+    }
     if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         stat.mode = GPUMode::MODE_3;
         pixelsDrawn = 0;
@@ -107,7 +128,8 @@ void GPU::Update() {
         shortenScanline = false;
         scanlineCounter = 0;
         currentLine++;
-        statTriggered = false;
+        statTriggered = m2IrqRaisedEarly;
+        m2IrqRaisedEarly = false;
 
         if (isFetchingWindow_) {
             windowLineCounter_++;
@@ -585,7 +607,14 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF45: lyc = value;
             break;
-        case 0xFF47: backgroundPalette = value;
+        case 0xFF47:
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (bgpWriteStage > 0) backgroundPalette = bgpPending;
+                bgpPending = value;
+                bgpWriteStage = 3;
+            } else {
+                backgroundPalette = value;
+            }
             break;
         case 0xFF48: obp0Palette = value;
             break;
