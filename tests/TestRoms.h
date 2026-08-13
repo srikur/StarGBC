@@ -135,7 +135,8 @@ static const std::vector<Case> romTestcases = {
     {"roms/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
-    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb.screen", bootroms.dmgBootrom, Mode::DMG}
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
