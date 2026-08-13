@@ -1,0 +1,32 @@
+includes/GPU.h
+  s_495a566b9c1a66::t_d902512d14d8cc 175-176
+  s_495a566b9c1a66::t_2a0db4e1536e3f 177
+tests/TestRoms.h
+  s_495a566b9c1a66::t_1229c35159ace0 251
+  s_495a566b9c1a66::t_8ab67d8e1f3af2 153
+src/GPU.cpp
+  s_495a566b9c1a66::t_1acfc3e1b1ae45 631-632
+  s_495a566b9c1a66::t_f01c120fa6b63a 642
+  s_495a566b9c1a66::t_95a114b7016cc3 70-71,73-77
+  s_495a566b9c1a66::t_cf82547a24640a 640-641
+  s_495a566b9c1a66::t_b3de8e0e2d4ea5 633
+  s_495a566b9c1a66::t_6a00f69458a359 69
+  s_495a566b9c1a66::t_773f5afae520e8 837,840
+  s_495a566b9c1a66::t_18b3ec3cb50848 836,838-839,841-842
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "30d2e7d0ff692090189043c02ce0ee5e52c28d07",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@endeavorai.com>"
+    }
+  }
+}
