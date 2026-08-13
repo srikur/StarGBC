@@ -76,14 +76,22 @@ void Gameboy::UpdateEmulator() {
     }
 
     using clock = std::chrono::steady_clock;
-    static constexpr auto kFramePeriod = std::chrono::microseconds{16'667}; // ≈ 60 FPS (16.667 ms)
-    const auto frameStart = clock::now();
+    static constexpr auto kFramePeriod = std::chrono::nanoseconds{
+        kFrameCyclesDMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND
+    };
 
     for (uint32_t i = 0; i < kFrameCyclesCGB; i++) {
         AdvanceFrame();
     }
 
-    const auto elapsed = clock::now() - frameStart;
-    if (const auto effectiveFrameTime = kFramePeriod / speedMultiplier_; throttleSpeed_ && elapsed < effectiveFrameTime)
-        std::this_thread::sleep_for(effectiveFrameTime - elapsed);
+    if (throttleSpeed_) {
+        nextFrameTime_ += kFramePeriod / speedMultiplier_;
+        if (const auto now = clock::now(); nextFrameTime_ > now) {
+            std::this_thread::sleep_until(nextFrameTime_);
+        } else {
+            nextFrameTime_ = now; // fell behind; don't try to catch up in a burst
+        }
+    } else {
+        nextFrameTime_ = clock::now();
+    }
 }

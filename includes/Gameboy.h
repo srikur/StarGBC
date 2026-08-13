@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <fstream>
 #include <memory>
 #include <utility>
@@ -86,7 +87,7 @@ public:
     }
 
 private:
-    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194034;
+    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194304;
     static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
     static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
     static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
@@ -114,6 +115,7 @@ private:
     int speedMultiplier_{1};
     bool throttleSpeed_{true};
     bool paused_{false};
+    std::chrono::steady_clock::time_point nextFrameTime_{};
 
     void AdvanceFrame();
 };
