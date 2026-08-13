@@ -460,7 +460,10 @@ void GPU::CheckForWindowTrigger() {
         windowActivatePending_ = false;
         // A window with WX <= 7 triggers mid-warmup (dot 85 + WX); its first
         // 7 - WX pixels pop into the offscreen dots, left-clipping the first
-        // window tile, and any unconsumed SCX fine-scroll discards stack on top
+        // window tile. The SCX fine-scroll discard belongs to the background,
+        // so an activation cancels any unconsumed discards rather than letting
+        // them eat window pixels — except at WX = 0, whose delayed trigger
+        // lets the SCX stall play out, stacking under the window's clip
         if (windowWasActiveThisLine_) windowLineCounter_++;
         windowWasActiveThisLine_ = true;
         isFetchingWindow_ = true;
@@ -468,7 +471,10 @@ void GPU::CheckForWindowTrigger() {
         fetcherState_ = FetcherState::GetTile;
         fetcherDelay_ = 0;
         fetcherTileX_ = 0;
-        if (pixelsDrawn == 0) initialScrollXDiscard_ += 7 - windowX;
+        if (pixelsDrawn == 0) {
+            if (windowX != 0) initialScrollXDiscard_ = 0;
+            initialScrollXDiscard_ += 7 - windowX;
+        }
     } else if (windowTriggeredThisFrame && pixelsDrawn != 0 &&
                windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
                fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
