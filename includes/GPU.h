@@ -111,6 +111,33 @@ public:
     uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
     uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
 
+    // Dots until a pending sprite fetch may take over the fetcher, and the
+    // interrupted background fetch context to resume from afterwards. Sprites
+    // clipped by the left edge fetch immediately; the alignment wait is served
+    // between their high-byte read and the merge into the FIFO. Only the line's
+    // first sprite fetch overlaps its tile step with the background fetch tail,
+    // so later fetches do their VRAM reads one dot later
+    uint8_t spriteFetchWait_{0};
+    uint8_t spriteMergeDelay_{0};
+    bool spriteFetchAbort_{false};
+    bool spriteFetchedThisLine_{false};
+    bool spriteFetchIsFirst_{true};
+    // Edge detector for the WX comparator: the reactivation glitch fires only
+    // on a fresh transition into the match state, not on the match that keeps
+    // holding while pixel output is stalled after a window activation
+    bool windowMatchLatch_{false};
+    bool windowWasActiveThisLine_{false};
+    bool windowEndPending_{false};
+    uint8_t windowEndStage_{0};
+    bool windowActivatePending_{false};
+    bool windowPixel0Triggered_{false};
+    FetcherState savedBgFetcherState_{FetcherState::GetTile};
+    uint8_t savedBgFetcherDelay_{0};
+    uint8_t savedBgTileNum_{0};
+    uint8_t savedBgTileDataLow_{0};
+    uint8_t savedBgTileDataHigh_{0};
+    uint16_t savedBgLastAddress_{0};
+
     uint8_t windowLineCounter_{0x00};
 
     std::vector<Sprite> spriteBuffer{10};
@@ -141,6 +168,22 @@ public:
 
     bool vblank = false;
     bool statTriggered{false};
+    bool m2IrqRaisedEarly{false};
+    uint8_t bgpPending{0};
+    uint8_t bgpWriteStage{0};
+    uint8_t lcdcPending{0};
+    uint8_t lcdcWriteStage{0};
+    uint8_t wxPending{0};
+    uint8_t wxWriteStage{0};
+    uint8_t scxFetcherOld{0};
+    uint8_t scxWriteStage{0};
+    uint8_t scyFetcherOld{0};
+    uint8_t scyWriteStage{0};
+    bool scyJustApplied_{false};
+    uint8_t obp0Pending{0};
+    uint8_t obp0WriteStage{0};
+    uint8_t obp1Pending{0};
+    uint8_t obp1WriteStage{0};
 
     // GBC
     bool hblank = false;
@@ -159,7 +202,7 @@ public:
 
     void TickMode3();
 
-    void OutputPixel();
+    void OutputPixel(bool lcdcAhead = false);
 
     void ResetScanlineState(bool clearBuffer);
 
@@ -187,6 +230,8 @@ private:
     void Fetcher_StepSpriteFetch();
 
     void Fetcher_StepBackgroundFetch();
+
+    void ApplyLCDC(uint8_t value);
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
 
