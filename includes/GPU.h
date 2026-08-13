@@ -168,6 +168,8 @@ public:
     uint8_t bgpWriteStage{0};
     uint8_t lcdcPending{0};
     uint8_t lcdcWriteStage{0};
+    uint8_t wxPending{0};
+    uint8_t wxWriteStage{0};
 
     // GBC
     bool hblank = false;
