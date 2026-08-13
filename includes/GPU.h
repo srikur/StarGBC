@@ -114,11 +114,14 @@ public:
     // Dots until a pending sprite fetch may take over the fetcher, and the
     // interrupted background fetch context to resume from afterwards. Sprites
     // clipped by the left edge fetch immediately; the alignment wait is served
-    // between their high-byte read and the merge into the FIFO
+    // between their high-byte read and the merge into the FIFO. Only the line's
+    // first sprite fetch overlaps its tile step with the background fetch tail,
+    // so later fetches do their VRAM reads one dot later
     uint8_t spriteFetchWait_{0};
     uint8_t spriteMergeDelay_{0};
     bool spriteFetchAbort_{false};
-    bool offscreenSpriteFetched_{false};
+    bool spriteFetchedThisLine_{false};
+    bool spriteFetchIsFirst_{true};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};
