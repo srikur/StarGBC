@@ -1,0 +1,28 @@
+src/GPU.cpp
+  s_495a566b9c1a66::t_03465f46cc0757 14-22
+  s_495a566b9c1a66::t_d3ba006375b04b 923-927
+  s_495a566b9c1a66::t_32fcc23a175927 170-176,183-184,187
+includes/GPU.h
+  s_495a566b9c1a66::t_719d8e9aefd211 233-234
+README.md
+  s_495a566b9c1a66::t_05b6546ef1e0d7 40,160
+tests/TestRoms.h
+  s_495a566b9c1a66::t_8cfe9a3324164f 275
+  s_495a566b9c1a66::t_dfbb7abf873391 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "76791120fac1ca385893bc4e7f3a651b2095d97c",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
