@@ -130,6 +130,7 @@ public:
     bool windowEndPending_{false};
     uint8_t windowEndStage_{0};
     bool windowActivatePending_{false};
+    bool windowPixel0Triggered_{false};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};

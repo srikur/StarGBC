@@ -32,6 +32,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     windowEndPending_ = false;
     windowEndStage_ = 0;
     windowActivatePending_ = false;
+    windowPixel0Triggered_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -298,6 +299,12 @@ void GPU::OutputPixel() {
 }
 
 void GPU::TickMode3() {
+    // The WX <= 7 warmup trigger fires only on its exact dot, latched here so
+    // it survives a sprite fetch occupying the fetcher at that moment
+    if (pixelsDrawn == 0 && windowX <= 7 &&
+        scanlineCounter == 85u + windowX + (windowX == 0 && (scrollX & 7) != 0 ? 1 : 0)) {
+        windowPixel0Triggered_ = true;
+    }
     // The window comparator is evaluated before the sprite one: an activation
     // resets the fetcher, deferring a pixel-0 sprite to the window's own push.
     // Sprites near the left edge (OAM X <= 2) claim the fetcher first instead —
@@ -431,9 +438,11 @@ void GPU::CheckForWindowTrigger() {
     const bool matched = windowMatchLatch_;
     windowMatchLatch_ = pixelsDrawn + 7 == windowX;
     // The comparator is equality-based: a match missed while WIN_EN was off
-    // never re-fires. Only the left-edge warmup case (WX <= 7) activates by
-    // level, handled through the dot-based gate below
-    const bool windowMatch = (windowX <= 7 && pixelsDrawn == 0) || pixelsDrawn + 7 == windowX;
+    // never re-fires. The left-edge case (WX <= 7) matches only on its exact
+    // warmup dot — latched in TickMode3 so a sprite claim can defer the
+    // restart — and a WX rewrite landing on that dot pre-empts it
+    const bool windowMatch = (pixelsDrawn == 0 && windowPixel0Triggered_) ||
+                             (pixelsDrawn > 0 && pixelsDrawn + 7 == windowX);
     // The comparator sees a WIN_EN change one dot after the write, in both
     // directions. An activation whose enable is just arriving via the pending
     // value takes effect one dot later still
@@ -445,16 +454,9 @@ void GPU::CheckForWindowTrigger() {
             return;
         }
         windowActivatePending_ = false;
-        // The WX comparator runs on an internal counter that starts 7 dots
-        // before pixel 0 (dot 85), so a window with WX <= 7 triggers at dot
-        // 85 + WX, mid-warmup — one dot later still when WX = 0 with a fine
-        // scroll pending. Its first 7 - WX pixels then pop into the offscreen
-        // dots, left-clipping the first window tile, and any unconsumed SCX
-        // fine-scroll discards stack on top
-        if (windowX <= 7 && pixelsDrawn == 0 &&
-            scanlineCounter < 85u + windowX + (windowX == 0 && (scrollX & 7) != 0 ? 1 : 0)) {
-            return;
-        }
+        // A window with WX <= 7 triggers mid-warmup (dot 85 + WX); its first
+        // 7 - WX pixels pop into the offscreen dots, left-clipping the first
+        // window tile, and any unconsumed SCX fine-scroll discards stack on top
         if (windowWasActiveThisLine_) windowLineCounter_++;
         windowWasActiveThisLine_ = true;
         isFetchingWindow_ = true;
@@ -930,7 +932,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
                 if (wxWriteStage > 0) windowX = wxPending;
                 wxPending = value;
-                wxWriteStage = 6;
+                wxWriteStage = 4;
             } else {
                 windowX = value;
             }
