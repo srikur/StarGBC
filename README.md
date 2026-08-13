@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (188/272)
+Current Performance: (189/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -157,7 +157,7 @@ Current Performance: (188/272)
 | mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb                        | :white_check_mark: |
 | mooneye/acceptance/ppu/lcdon_timing-GS.gb                             | :x:                |
 | mooneye/acceptance/ppu/lcdon_write_timing-GS.gb                       | :x:                |
-| mooneye/acceptance/ppu/stat_irq_blocking.gb                           | :x:                |
+| mooneye/acceptance/ppu/stat_irq_blocking.gb                           | :white_check_mark: |
 | mooneye/acceptance/ppu/stat_lyc_onoff.gb                              | :white_check_mark: |
 | mooneye/acceptance/ppu/vblank_stat_intr-GS.gb                         | :white_check_mark: |
 | mooneye/acceptance/push_timing.gb                                     | :white_check_mark: |

@@ -230,6 +230,8 @@ public:
 private:
     Interrupts &interrupts_;
 
+    [[nodiscard]] bool StatLineHigh() const;
+
     void Fetcher_StepSpriteFetch();
 
     void Fetcher_StepBackgroundFetch();

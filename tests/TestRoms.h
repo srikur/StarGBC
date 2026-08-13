@@ -162,6 +162,7 @@ static const std::vector<Case> romTestcases = {
     {"roms/mooneye/acceptance/ppu/vblank_stat_intr-GS.gb", "tests/expected/mooneye/ppu/vblank_stat_intr-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mooneye/acceptance/ppu/intr_2_0_timing.gb", "tests/expected/mooneye/ppu/intr_2_0_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mooneye/acceptance/ppu/stat_lyc_onoff.gb", "tests/expected/mooneye/ppu/stat_lyc_onoff.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/stat_irq_blocking.gb", "tests/expected/mooneye/ppu/stat_irq_blocking.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -271,6 +272,7 @@ ROM_TEST(79, "roms/mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb")
 ROM_TEST(80, "roms/mooneye/acceptance/ppu/vblank_stat_intr-GS.gb")
 ROM_TEST(81, "roms/mooneye/acceptance/ppu/intr_2_0_timing.gb")
 ROM_TEST(82, "roms/mooneye/acceptance/ppu/stat_lyc_onoff.gb")
+ROM_TEST(83, "roms/mooneye/acceptance/ppu/stat_irq_blocking.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

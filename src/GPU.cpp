@@ -11,6 +11,15 @@ bool GPU::LCDDisabled() const {
     return !Bit<LCDC_ENABLE_BIT>(lcdc);
 }
 
+bool GPU::StatLineHigh() const {
+    // The DMG early OAM assert counts as the next line's mode 2 condition
+    // already being high
+    return (stat.enableLYInterrupt && stat.coincidenceFlag) ||
+           (stat.enableM0Interrupt && stat.mode == GPUMode::MODE_0) ||
+           (stat.enableM1Interrupt && stat.mode == GPUMode::MODE_1) ||
+           (stat.enableM2Interrupt && (stat.mode == GPUMode::MODE_2 || m2IrqRaisedEarly));
+}
+
 void GPU::ResetScanlineState(const bool clearBuffer) {
     backgroundQueue.clear();
     spriteArray.fill({.isPlaceholder = true});
@@ -158,17 +167,24 @@ void GPU::Update() {
         break;
         default: break;
     }
+    // The STAT IRQ line is the OR of every enabled condition; latch its level
+    // here, after this dot's mode/coincidence updates but before the boundary
+    // transitions below, so next dot's raise sites fire only on a rising edge.
+    // A condition that stays true across a boundary (hblank into a new line,
+    // LYC held while modes cycle) never re-fires
+    statTriggered = StatLineHigh();
+
     scanlineCounter++;
 
     const uint16_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
     // DMG: the mode 2 (OAM) STAT interrupt for lines 1-143 asserts ~4 dots before
     // the line starts (line 0's asserts at line start instead, handled in the mode 2
     // case above). Blocked only if the STAT line is currently high from another
-    // enabled condition, not by this line's statTriggered latch — the current line's
-    // mode 2 condition deasserted back at mode 3 entry
+    // enabled condition — the current line's mode 2 condition deasserted back at
+    // mode 3 entry
     if (hardware != Hardware::CGB && scanlineCounter == scanlineDuration - 3 &&
         currentLine < 143 && stat.mode == GPUMode::MODE_0 && stat.enableM2Interrupt &&
-        !stat.enableM0Interrupt && !(stat.enableLYInterrupt && currentLine == lyc)) {
+        !statTriggered) {
         interrupts_.Set(InterruptType::LCDStat, false);
         m2IrqRaisedEarly = true;
     }
@@ -192,7 +208,6 @@ void GPU::Update() {
         lcdEnableLine0_ = false;
         scanlineCounter = 0;
         currentLine++;
-        statTriggered = m2IrqRaisedEarly;
         m2IrqRaisedEarly = false;
 
         if (isFetchingWindow_ || windowWasActiveThisLine_) {
@@ -905,17 +920,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             stat.enableM2Interrupt = value & 0x20;
             stat.enableM1Interrupt = value & 0x10;
             stat.enableM0Interrupt = value & 0x08;
-            // The STAT IRQ line is the OR of the enabled conditions; a write
-            // that leaves every enabled condition false drops the line and
-            // re-arms the edge detector, so the next condition fires an IRQ
-            // even if one was already taken this scanline
-            if (!LCDDisabled()) {
-                const bool lineHigh = (stat.enableLYInterrupt && stat.coincidenceFlag) ||
-                                      (stat.enableM0Interrupt && stat.mode == GPUMode::MODE_0) ||
-                                      (stat.enableM1Interrupt && stat.mode == GPUMode::MODE_1) ||
-                                      (stat.enableM2Interrupt && stat.mode == GPUMode::MODE_2);
-                if (!lineHigh) statTriggered = false;
-            }
+            // A write that leaves every enabled condition false drops the line
+            // and re-arms the edge detector, so the next condition fires an IRQ
+            // even if one was already taken this scanline. A write that raises
+            // the line fires through the per-dot condition sites instead
+            if (!LCDDisabled() && !StatLineHigh()) statTriggered = false;
             break;
         }
         case 0xFF42:
