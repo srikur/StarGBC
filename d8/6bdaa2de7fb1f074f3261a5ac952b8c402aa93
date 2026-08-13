@@ -1,0 +1,29 @@
+src/Interrupts.cpp
+  s_495a566b9c1a66::t_db59ad8387cf63 7-8
+src/GPU.cpp
+  s_495a566b9c1a66::t_942f476b8fd520 129-131,133
+  s_495a566b9c1a66::t_7305090473b3e9 219-224
+src/CPU.cpp
+  s_495a566b9c1a66::t_191bc6489dfa64 149-155
+tests/TestRoms.h
+  s_495a566b9c1a66::t_860991abf8bb64 264-269
+  s_495a566b9c1a66::t_ad9bca2c5b3ad1 157-162
+README.md
+  s_495a566b9c1a66::t_475c29c8ede64a 40,151,153,157,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d86bdaa2de7fb1f074f3261a5ac952b8c402aa93",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
