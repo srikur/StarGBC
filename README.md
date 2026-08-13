@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (186/272)
+Current Performance: (187/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -150,7 +150,7 @@ Current Performance: (186/272)
 | mooneye/acceptance/pop_timing.gb                                      | :white_check_mark: |
 | mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb                     | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_1_2_timing-GS.gb                          | :white_check_mark: |
-| mooneye/acceptance/ppu/intr_2_0_timing.gb                             | :x:                |
+| mooneye/acceptance/ppu/intr_2_0_timing.gb                             | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_mode0_timing.gb                         | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb                 | :x:                |
 | mooneye/acceptance/ppu/intr_2_mode3_timing.gb                         | :white_check_mark: |

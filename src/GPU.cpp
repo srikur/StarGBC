@@ -891,12 +891,24 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         }
-        case 0xFF41:
+        case 0xFF41: {
             stat.enableLYInterrupt = value & 0x40;
             stat.enableM2Interrupt = value & 0x20;
             stat.enableM1Interrupt = value & 0x10;
             stat.enableM0Interrupt = value & 0x08;
+            // The STAT IRQ line is the OR of the enabled conditions; a write
+            // that leaves every enabled condition false drops the line and
+            // re-arms the edge detector, so the next condition fires an IRQ
+            // even if one was already taken this scanline
+            if (!LCDDisabled()) {
+                const bool lineHigh = (stat.enableLYInterrupt && stat.coincidenceFlag) ||
+                                      (stat.enableM0Interrupt && stat.mode == GPUMode::MODE_0) ||
+                                      (stat.enableM1Interrupt && stat.mode == GPUMode::MODE_1) ||
+                                      (stat.enableM2Interrupt && stat.mode == GPUMode::MODE_2);
+                if (!lineHigh) statTriggered = false;
+            }
             break;
+        }
         case 0xFF42:
             // Like SCX, a mode-3 SCY write reaches the fetcher two dots late
             if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
