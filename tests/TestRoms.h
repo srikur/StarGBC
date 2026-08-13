@@ -40,7 +40,7 @@ static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     return result;
 }
 
-static bool runBlarggTest(const std::string &rom,
+static bool runRomTest(const std::string &rom,
                           const std::string &expected_screen,
                           const std::string &bios,
                           const Mode mode) {
@@ -71,14 +71,14 @@ static bool runBlarggTest(const std::string &rom,
     }
 }
 
-struct BlarggCase {
+struct Case {
     std::string rom;
     std::string expected;
     std::string bios;
     Mode mode;
 };
 
-static const std::vector<BlarggCase> blarggTestcases = {
+static const std::vector<Case> romTestcases = {
     {"roms/blargg/halt_bug.gb", "tests/expected/blargg/halt_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/instr_timing/instr_timing.gb", "tests/expected/blargg/instr_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/interrupt_time/interrupt_time.gb", "tests/expected/blargg/interrupt_time.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
@@ -130,18 +130,24 @@ static const std::vector<BlarggCase> blarggTestcases = {
     {"roms/blargg/oam_bug/rom_singles/5-timing_bug.gb", "tests/expected/blargg/oam_bug/5-timing_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb", "tests/expected/blargg/oam_bug/6-timing_no_bug.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/blargg/oam_bug/rom_singles/8-instr_effect.gb", "tests/expected/blargg/oam_bug/8-instr_effect.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb", "tests/expected/mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_bgp_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_bgp_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb.screen", bootroms.dmgBootrom, Mode::DMG}
 };
 
-static auto &blarggFutures() {
+static auto &romFutures() {
     using SF = std::shared_future<bool>;
     static std::vector<SF> futures = [] {
         std::vector<SF> tmp;
-        tmp.reserve(blarggTestcases.size());
+        tmp.reserve(romTestcases.size());
 
-        for (const auto &tc: blarggTestcases) {
+        for (const auto &tc: romTestcases) {
             tmp.emplace_back(
                 std::async(std::launch::async, [tc] {
-                    return runBlarggTest(tc.rom, tc.expected, tc.bios, tc.mode);
+                    return runRomTest(tc.rom, tc.expected, tc.bios, tc.mode);
                 }).share()
             );
         }
@@ -150,63 +156,70 @@ static auto &blarggFutures() {
     return futures;
 }
 
-#define BLARGG_TEST(IDX, ROM_STR)                       \
-TEST_CASE("blargg: " ROM_STR) {                         \
-auto& futures = blarggFutures();                        \
+#define ROM_TEST(IDX, ROM_STR)                       \
+TEST_CASE("rom: " ROM_STR) {                         \
+auto& futures = romFutures();                        \
 CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);  \
 }
 
-BLARGG_TEST(0, "roms/blargg/halt_bug.gb")
-BLARGG_TEST(1, "roms/blargg/instr_timing/instr_timing.gb")
-BLARGG_TEST(2, "roms/blargg/interrupt_time/interrupt_time.gb")
-BLARGG_TEST(3, "roms/blargg/cpu_instrs/individual/01-special.gb")
-BLARGG_TEST(4, "roms/blargg/cpu_instrs/individual/02-interrupts.gb")
-BLARGG_TEST(5, "roms/blargg/cpu_instrs/individual/03-op sp,hl.gb")
-BLARGG_TEST(6, "roms/blargg/cpu_instrs/individual/04-op r,imm.gb")
-BLARGG_TEST(7, "roms/blargg/cpu_instrs/individual/05-op rp.gb")
-BLARGG_TEST(8, "roms/blargg/cpu_instrs/individual/06-ld r,r.gb")
-BLARGG_TEST(9, "roms/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb")
-BLARGG_TEST(10, "roms/blargg/cpu_instrs/individual/08-misc instrs.gb")
-BLARGG_TEST(11, "roms/blargg/cpu_instrs/individual/09-op r,r.gb")
-BLARGG_TEST(12, "roms/blargg/cpu_instrs/individual/10-bit ops.gb")
-BLARGG_TEST(13, "roms/blargg/cpu_instrs/individual/11-op a,(hl).gb")
-BLARGG_TEST(14, "roms/blargg/mem_timing/individual/01-read_timing.gb")
-BLARGG_TEST(15, "roms/blargg/mem_timing/individual/02-write_timing.gb")
-BLARGG_TEST(16, "roms/blargg/mem_timing/individual/03-modify_timing.gb")
-BLARGG_TEST(17, "roms/blargg/mem_timing-2/rom_singles/01-read_timing.gb")
-BLARGG_TEST(18, "roms/blargg/mem_timing-2/rom_singles/02-write_timing.gb")
-BLARGG_TEST(19, "roms/blargg/mem_timing-2/rom_singles/03-modify_timing.gb")
-BLARGG_TEST(20, "roms/blargg/dmg_sound/rom_singles/01-registers.gb")
-BLARGG_TEST(21, "roms/blargg/dmg_sound/rom_singles/02-len ctr.gb")
-BLARGG_TEST(22, "roms/blargg/dmg_sound/rom_singles/03-trigger.gb")
-BLARGG_TEST(23, "roms/blargg/dmg_sound/rom_singles/04-sweep.gb")
-BLARGG_TEST(24, "roms/blargg/dmg_sound/rom_singles/05-sweep details.gb")
-BLARGG_TEST(25, "roms/blargg/dmg_sound/rom_singles/06-overflow on trigger.gb")
-BLARGG_TEST(26, "roms/blargg/dmg_sound/rom_singles/07-len sweep period sync.gb")
-BLARGG_TEST(27, "roms/blargg/dmg_sound/rom_singles/08-len ctr during power.gb")
-BLARGG_TEST(28, "roms/blargg/dmg_sound/rom_singles/09-wave read while on.gb")
-BLARGG_TEST(29, "roms/blargg/dmg_sound/rom_singles/10-wave trigger while on.gb")
-BLARGG_TEST(30, "roms/blargg/dmg_sound/rom_singles/11-regs after power.gb")
-BLARGG_TEST(31, "roms/blargg/dmg_sound/rom_singles/12-wave write while on.gb")
-BLARGG_TEST(32, "roms/blargg/cgb_sound/rom_singles/01-registers.gb")
-BLARGG_TEST(33, "roms/blargg/cgb_sound/rom_singles/02-len ctr.gb")
-BLARGG_TEST(34, "roms/blargg/cgb_sound/rom_singles/03-trigger.gb")
-BLARGG_TEST(35, "roms/blargg/cgb_sound/rom_singles/04-sweep.gb")
-BLARGG_TEST(36, "roms/blargg/cgb_sound/rom_singles/05-sweep details.gb")
-BLARGG_TEST(37, "roms/blargg/cgb_sound/rom_singles/06-overflow on trigger.gb")
-BLARGG_TEST(38, "roms/blargg/cgb_sound/rom_singles/07-len sweep period sync.gb")
-BLARGG_TEST(39, "roms/blargg/cgb_sound/rom_singles/08-len ctr during power.gb")
-BLARGG_TEST(40, "roms/blargg/cgb_sound/rom_singles/09-wave read while on.gb")
-BLARGG_TEST(41, "roms/blargg/cgb_sound/rom_singles/10-wave trigger while on.gb")
-BLARGG_TEST(42, "roms/blargg/cgb_sound/rom_singles/11-regs after power.gb")
-BLARGG_TEST(43, "roms/blargg/cgb_sound/rom_singles/12-wave.gb")
-BLARGG_TEST(44, "roms/blargg/oam_bug/rom_singles/1-lcd_sync.gb")
-BLARGG_TEST(45, "roms/blargg/oam_bug/rom_singles/2-causes.gb")
-BLARGG_TEST(46, "roms/blargg/oam_bug/rom_singles/3-non_causes.gb")
-BLARGG_TEST(47, "roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb")
-BLARGG_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
-BLARGG_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
-BLARGG_TEST(50, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
+ROM_TEST(0, "roms/blargg/halt_bug.gb")
+ROM_TEST(1, "roms/blargg/instr_timing/instr_timing.gb")
+ROM_TEST(2, "roms/blargg/interrupt_time/interrupt_time.gb")
+ROM_TEST(3, "roms/blargg/cpu_instrs/individual/01-special.gb")
+ROM_TEST(4, "roms/blargg/cpu_instrs/individual/02-interrupts.gb")
+ROM_TEST(5, "roms/blargg/cpu_instrs/individual/03-op sp,hl.gb")
+ROM_TEST(6, "roms/blargg/cpu_instrs/individual/04-op r,imm.gb")
+ROM_TEST(7, "roms/blargg/cpu_instrs/individual/05-op rp.gb")
+ROM_TEST(8, "roms/blargg/cpu_instrs/individual/06-ld r,r.gb")
+ROM_TEST(9, "roms/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb")
+ROM_TEST(10, "roms/blargg/cpu_instrs/individual/08-misc instrs.gb")
+ROM_TEST(11, "roms/blargg/cpu_instrs/individual/09-op r,r.gb")
+ROM_TEST(12, "roms/blargg/cpu_instrs/individual/10-bit ops.gb")
+ROM_TEST(13, "roms/blargg/cpu_instrs/individual/11-op a,(hl).gb")
+ROM_TEST(14, "roms/blargg/mem_timing/individual/01-read_timing.gb")
+ROM_TEST(15, "roms/blargg/mem_timing/individual/02-write_timing.gb")
+ROM_TEST(16, "roms/blargg/mem_timing/individual/03-modify_timing.gb")
+ROM_TEST(17, "roms/blargg/mem_timing-2/rom_singles/01-read_timing.gb")
+ROM_TEST(18, "roms/blargg/mem_timing-2/rom_singles/02-write_timing.gb")
+ROM_TEST(19, "roms/blargg/mem_timing-2/rom_singles/03-modify_timing.gb")
+ROM_TEST(20, "roms/blargg/dmg_sound/rom_singles/01-registers.gb")
+ROM_TEST(21, "roms/blargg/dmg_sound/rom_singles/02-len ctr.gb")
+ROM_TEST(22, "roms/blargg/dmg_sound/rom_singles/03-trigger.gb")
+ROM_TEST(23, "roms/blargg/dmg_sound/rom_singles/04-sweep.gb")
+ROM_TEST(24, "roms/blargg/dmg_sound/rom_singles/05-sweep details.gb")
+ROM_TEST(25, "roms/blargg/dmg_sound/rom_singles/06-overflow on trigger.gb")
+ROM_TEST(26, "roms/blargg/dmg_sound/rom_singles/07-len sweep period sync.gb")
+ROM_TEST(27, "roms/blargg/dmg_sound/rom_singles/08-len ctr during power.gb")
+ROM_TEST(28, "roms/blargg/dmg_sound/rom_singles/09-wave read while on.gb")
+ROM_TEST(29, "roms/blargg/dmg_sound/rom_singles/10-wave trigger while on.gb")
+ROM_TEST(30, "roms/blargg/dmg_sound/rom_singles/11-regs after power.gb")
+ROM_TEST(31, "roms/blargg/dmg_sound/rom_singles/12-wave write while on.gb")
+ROM_TEST(32, "roms/blargg/cgb_sound/rom_singles/01-registers.gb")
+ROM_TEST(33, "roms/blargg/cgb_sound/rom_singles/02-len ctr.gb")
+ROM_TEST(34, "roms/blargg/cgb_sound/rom_singles/03-trigger.gb")
+ROM_TEST(35, "roms/blargg/cgb_sound/rom_singles/04-sweep.gb")
+ROM_TEST(36, "roms/blargg/cgb_sound/rom_singles/05-sweep details.gb")
+ROM_TEST(37, "roms/blargg/cgb_sound/rom_singles/06-overflow on trigger.gb")
+ROM_TEST(38, "roms/blargg/cgb_sound/rom_singles/07-len sweep period sync.gb")
+ROM_TEST(39, "roms/blargg/cgb_sound/rom_singles/08-len ctr during power.gb")
+ROM_TEST(40, "roms/blargg/cgb_sound/rom_singles/09-wave read while on.gb")
+ROM_TEST(41, "roms/blargg/cgb_sound/rom_singles/10-wave trigger while on.gb")
+ROM_TEST(42, "roms/blargg/cgb_sound/rom_singles/11-regs after power.gb")
+ROM_TEST(43, "roms/blargg/cgb_sound/rom_singles/12-wave.gb")
+ROM_TEST(44, "roms/blargg/oam_bug/rom_singles/1-lcd_sync.gb")
+ROM_TEST(45, "roms/blargg/oam_bug/rom_singles/2-causes.gb")
+ROM_TEST(46, "roms/blargg/oam_bug/rom_singles/3-non_causes.gb")
+ROM_TEST(47, "roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb")
+ROM_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
+ROM_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
+ROM_TEST(50, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
+ROM_TEST(51, "roms/mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb")
+ROM_TEST(52, "roms/mealybug-tearoom-tests/ppu/m3_bgp_change.gb")
+ROM_TEST(53, "roms/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb")
+ROM_TEST(54, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb")
+ROM_TEST(55, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb")
+ROM_TEST(56, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb")
+
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
     std::vector<char *> doctest_args;
@@ -231,7 +244,6 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     threadSemaphore = std::make_shared<std::counting_semaphore<> >(maxThreads);
 
     doctest::Context ctx;
-    ctx.setOption("test-case", "*blargg*");
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());
     return ctx.run();
 }
