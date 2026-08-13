@@ -66,6 +66,10 @@ void GPU::Update() {
         if (wxWriteStage == 0) windowX = wxPending;
     }
 
+    // DMG: a mode-3 SCX write reaches the fetcher's tile-map read two dots
+    // late, same latency class as BGP
+    if (scxWriteStage > 0) scxWriteStage--;
+
     if (LCDDisabled()) {
         return;
     }
@@ -547,8 +551,9 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
         return tileMapBase + tileRow * 32 + tileCol;
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
+        const uint8_t scxForFetch = scxWriteStage > 0 ? scxFetcherOld : scrollX;
         const uint8_t tileRow = ((scrollY + currentLine & 0xFF) >> 3) & 0x1F;
-        const uint8_t tileCol = (fetcherTileX_ + (scrollX / 8)) & 0x1F;
+        const uint8_t tileCol = (fetcherTileX_ + (scxForFetch / 8)) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
 }
@@ -747,7 +752,14 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF42: scrollY = value;
             break;
-        case 0xFF43: scrollX = value;
+        case 0xFF43:
+            // The fine-scroll consumers see an SCX write immediately, but the
+            // fetcher's tile-map read keeps seeing the old value for two dots
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (scxWriteStage == 0) scxFetcherOld = scrollX;
+                scxWriteStage = 3;
+            }
+            scrollX = value;
             break;
         case 0xFF44: currentLine = 0;
             break;
