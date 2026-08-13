@@ -126,8 +126,11 @@ void GPU::Update() {
             }
             break;
         case GPUMode::MODE_1:
+            // The mode 1 STAT condition asserts as soon as vblank starts; the
+            // halt-wake dispatch penalty accounts for the extra cycle mooneye's
+            // intr_1_2_timing observes, so no delayed set here
             if (stat.enableM1Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+                interrupts_.Set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
             break;
@@ -211,6 +214,12 @@ void GPU::Update() {
             // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT condition
             if (stat.enableM2Interrupt && !statTriggered) {
                 interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
+            // The mode 1 STAT condition asserts on the line boundary itself, one
+            // M-cycle ahead of the vblank IF (mooneye intr_1_2_timing)
+            if (stat.enableM1Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
         } else if (currentLine < 144) {

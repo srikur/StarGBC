@@ -146,8 +146,14 @@ bool CPU<BusT>::ProcessInterrupts() {
                 return false;
             }
 
+            // Waking from HALT into a dispatch costs one extra M-cycle before
+            // the normal 5-cycle interrupt sequence begins
+            if (halted_) {
+                halted_ = false;
+                return true;
+            }
+
             interruptState = M2;
-            halted_ = false;
             interrupts_.interruptMasterEnable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));

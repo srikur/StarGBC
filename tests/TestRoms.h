@@ -154,6 +154,12 @@ static const std::vector<Case> romTestcases = {
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_wx_6_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_wx_6_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb", "tests/expected/mooneye/ppu/hblank_ly_scx_timing-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/intr_1_2_timing-GS.gb", "tests/expected/mooneye/ppu/intr_1_2_timing-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/intr_2_mode0_timing.gb", "tests/expected/mooneye/ppu/intr_2_mode0_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/intr_2_mode3_timing.gb", "tests/expected/mooneye/ppu/intr_2_mode3_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb", "tests/expected/mooneye/ppu/intr_2_oam_ok_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/vblank_stat_intr-GS.gb", "tests/expected/mooneye/ppu/vblank_stat_intr-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -255,6 +261,12 @@ ROM_TEST(71, "roms/mealybug-tearoom-tests/ppu/m3_scy_change.gb")
 ROM_TEST(72, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb")
 ROM_TEST(73, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb")
 ROM_TEST(74, "roms/mealybug-tearoom-tests/ppu/m3_wx_6_change.gb")
+ROM_TEST(75, "roms/mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb")
+ROM_TEST(76, "roms/mooneye/acceptance/ppu/intr_1_2_timing-GS.gb")
+ROM_TEST(77, "roms/mooneye/acceptance/ppu/intr_2_mode0_timing.gb")
+ROM_TEST(78, "roms/mooneye/acceptance/ppu/intr_2_mode3_timing.gb")
+ROM_TEST(79, "roms/mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb")
+ROM_TEST(80, "roms/mooneye/acceptance/ppu/vblank_stat_intr-GS.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
