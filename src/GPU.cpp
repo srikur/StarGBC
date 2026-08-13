@@ -70,6 +70,24 @@ void GPU::Update() {
     // late, same latency class as BGP
     if (scxWriteStage > 0) scxWriteStage--;
 
+    // DMG: OBP0/OBP1 mode-3 writes share BGP's latency, glitch dot included
+    if (obp0WriteStage > 0) {
+        obp0WriteStage--;
+        if (obp0WriteStage == 1) {
+            obp0Palette |= obp0Pending;
+        } else if (obp0WriteStage == 0) {
+            obp0Palette = obp0Pending;
+        }
+    }
+    if (obp1WriteStage > 0) {
+        obp1WriteStage--;
+        if (obp1WriteStage == 1) {
+            obp1Palette |= obp1Pending;
+        } else if (obp1WriteStage == 0) {
+            obp1Palette = obp1Pending;
+        }
+    }
+
     if (LCDDisabled()) {
         return;
     }
@@ -510,7 +528,10 @@ void GPU::Fetcher_StepSpriteFetch() {
         }
         case PushToFIFO: {
             const Attributes attrs = sprite.attributes;
-            const uint8_t paletteRegister = attrs.paletteNumberDMG ? obp1Palette : obp0Palette;
+            // Only the palette SELECT is latched into the FIFO — the OBP
+            // register itself is read when the pixel is output, so a mode-3
+            // palette write lands on pixels still queued
+            const uint8_t paletteSelect = attrs.paletteNumberDMG ? 1 : 0;
 
             const auto xPos = sprite.x;
             const int clip = xPos < 0 ? -xPos : 0; // leftmost tile pixels lost off the screen edge
@@ -524,7 +545,7 @@ void GPU::Fetcher_StepSpriteFetch() {
 
                 spriteArray[i] = Pixel{
                     .color = color,
-                    .dmgPalette = paletteRegister,
+                    .dmgPalette = paletteSelect,
                     .cgbPalette = attrs.paletteNumberCGB,
                     .priority = attrs.priority,
                     .isSprite = true,
@@ -589,7 +610,10 @@ uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
 }
 
 uint32_t GPU::GetSpriteColor(const uint8_t color, const uint8_t palette) const {
-    if (hardware != Hardware::CGB) return DMG_SHADE[(palette >> (color * 2)) & 0x03];
+    if (hardware != Hardware::CGB) {
+        const uint8_t reg = palette ? obp1Palette : obp0Palette;
+        return DMG_SHADE[(reg >> (color * 2)) & 0x03];
+    }
 
     const uint8_t red = obpd[palette][color][0];
     const uint8_t green = obpd[palette][color][1];
@@ -774,9 +798,23 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 backgroundPalette = value;
             }
             break;
-        case 0xFF48: obp0Palette = value;
+        case 0xFF48:
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (obp0WriteStage > 0) obp0Palette = obp0Pending;
+                obp0Pending = value;
+                obp0WriteStage = 3;
+            } else {
+                obp0Palette = value;
+            }
             break;
-        case 0xFF49: obp1Palette = value;
+        case 0xFF49:
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (obp1WriteStage > 0) obp1Palette = obp1Pending;
+                obp1Pending = value;
+                obp1WriteStage = 3;
+            } else {
+                obp1Palette = value;
+            }
             break;
         case 0xFF4A: windowY = value;
             break;
