@@ -27,6 +27,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     spriteMergeDelay_ = 0;
     spriteFetchAbort_ = false;
     spriteFetchedThisLine_ = false;
+    windowMatchLatch_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -338,11 +339,30 @@ void GPU::CheckForSpriteTrigger() {
 }
 
 void GPU::CheckForWindowTrigger() {
+    const bool matched = windowMatchLatch_;
+    windowMatchLatch_ = pixelsDrawn + 7 == windowX;
     if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
         isFetchingWindow_ = true;
         backgroundQueue.clear();
         fetcherState_ = FetcherState::GetTile;
         fetcherTileX_ = 0;
+    } else if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && isFetchingWindow_ && windowTriggeredThisFrame &&
+               windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
+               fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
+        // WX re-match while the window is already active: when the match dot
+        // coincides with the window fetcher's tile-number read (the dot our
+        // model refills the FIFO), a single color-0 glitch pixel is emitted
+        // ahead of the pending push and the rest of the line shifts right by
+        // one dot. Priority sprites show through it since it mixes as
+        // background color 0
+        backgroundQueue.push_front(Pixel{
+            .color = 0,
+            .dmgPalette = backgroundPalette ? obp1Palette : obp0Palette,
+            .cgbPalette = 0,
+            .priority = false,
+            .isSprite = false,
+            .isPlaceholder = false,
+        });
     }
 }
 
@@ -356,7 +376,12 @@ void GPU::Fetcher_StepBackgroundFetch() {
     switch (fetcherState_) {
         case GetTile: {
             if (!initialSCXSet) {
-                initialScrollXDiscard_ = isFetchingWindow_ ? 0 : scrollX & 0x07;
+                // A window that starts the line with WX < 7 has its first tile
+                // left-clipped by 7 - WX pixels, mirroring the SCX fine-scroll
+                // discard for the background
+                initialScrollXDiscard_ = isFetchingWindow_
+                                             ? (windowX < 7 ? 7 - windowX : 0)
+                                             : scrollX & 0x07;
                 initialSCXSet = true;
             }
             const auto tileMapAddress = CalculateBGTileMapAddress();
