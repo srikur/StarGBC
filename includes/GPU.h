@@ -141,6 +141,9 @@ public:
 
     bool vblank = false;
     bool statTriggered{false};
+    bool m2IrqRaisedEarly{false};
+    uint8_t bgpPending{0};
+    uint8_t bgpWriteStage{0};
 
     // GBC
     bool hblank = false;
