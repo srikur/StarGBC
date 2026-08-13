@@ -1,0 +1,25 @@
+src/GPU.cpp
+  s_495a566b9c1a66::t_38ad5072f09c8b 26
+  s_495a566b9c1a66::t_1515aeb4d6da13 290-292
+  s_495a566b9c1a66::t_731a3b06d99ee2 255-259
+  s_495a566b9c1a66::t_c6b5c652561252 430-431,434
+  s_495a566b9c1a66::t_5489b3cce73d19 245-254,260-269,272-281,284,289,294-295,300-305
+includes/GPU.h
+  s_495a566b9c1a66::t_6e531698de1e93 114-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d6c92c3f29161361ec5ea40c40a23e3da7f9e81a",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@endeavorai.com>"
+    }
+  }
+}
