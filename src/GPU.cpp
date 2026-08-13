@@ -266,20 +266,28 @@ void GPU::TickMode3() {
             }
             return;
         }
-        // A background push that is ready on the takeover tick runs first, so the
-        // FIFO has pixels for the dot where the sprite fetch completes
-        if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
-            Fetcher_StepBackgroundFetch();
+        // Clearing OBJ enable cancels a sprite fetch that has not yet taken over
+        // the fetcher: the sprite is dropped outright and background output
+        // resumes this very dot. The check sees the raw written LCDC value one
+        // dot before it reaches the fetcher and mixer
+        if (!Bit<LCDC_OBJ_ENABLE>(lcdcWriteStage > 0 ? lcdcPending : lcdc)) {
+            spriteFetchQueue.pop_front();
+        } else {
+            // A background push that is ready on the takeover tick runs first, so the
+            // FIFO has pixels for the dot where the sprite fetch completes
+            if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
+                Fetcher_StepBackgroundFetch();
+            }
+            savedBgFetcherState_ = fetcherState_;
+            savedBgFetcherDelay_ = fetcherDelay_;
+            savedBgTileNum_ = fetcherTileNum_;
+            savedBgTileDataLow_ = fetcherTileDataLow_;
+            savedBgTileDataHigh_ = fetcherTileDataHigh_;
+            savedBgLastAddress_ = lastAddress_;
+            spriteFetchActive_ = true;
+            fetcherState_ = FetcherState::GetTile;
+            fetcherDelay_ = 0;
         }
-        savedBgFetcherState_ = fetcherState_;
-        savedBgFetcherDelay_ = fetcherDelay_;
-        savedBgTileNum_ = fetcherTileNum_;
-        savedBgTileDataLow_ = fetcherTileDataLow_;
-        savedBgTileDataHigh_ = fetcherTileDataHigh_;
-        savedBgLastAddress_ = lastAddress_;
-        spriteFetchActive_ = true;
-        fetcherState_ = FetcherState::GetTile;
-        fetcherDelay_ = 0;
     }
     if (spriteFetchActive_) {
         Fetcher_StepSpriteFetch();
