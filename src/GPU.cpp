@@ -30,6 +30,8 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     windowMatchLatch_ = false;
     windowWasActiveThisLine_ = false;
     windowEndPending_ = false;
+    windowEndStage_ = 0;
+    windowActivatePending_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -76,6 +78,11 @@ void GPU::Update() {
     if (scyWriteStage > 0) {
         scyWriteStage--;
         if (scyWriteStage == 0) scyJustApplied_ = true;
+    }
+
+    if (windowEndStage_ > 0) {
+        windowEndStage_--;
+        if (windowEndStage_ == 0) windowEndPending_ = true;
     }
 
     // DMG: OBP0/OBP1 mode-3 writes share BGP's latency, glitch dot included
@@ -423,13 +430,21 @@ void GPU::CheckForSpriteTrigger() {
 void GPU::CheckForWindowTrigger() {
     const bool matched = windowMatchLatch_;
     windowMatchLatch_ = pixelsDrawn + 7 == windowX;
-    // After a mid-line shutoff, the window only re-activates when WX matches
-    // a pixel that has not been drawn yet — the comparator is equality-based
-    // on re-activation, and the next window row is drawn
-    const bool windowMatch = windowWasActiveThisLine_
-                                 ? pixelsDrawn + 7 == windowX
-                                 : pixelsDrawn + 7 >= windowX;
-    if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && windowMatch) {
+    // The comparator is equality-based: a match missed while WIN_EN was off
+    // never re-fires. Only the left-edge warmup case (WX <= 7) activates by
+    // level, handled through the dot-based gate below
+    const bool windowMatch = (windowX <= 7 && pixelsDrawn == 0) || pixelsDrawn + 7 == windowX;
+    // The comparator sees a WIN_EN change one dot after the write, in both
+    // directions. An activation whose enable is just arriving via the pending
+    // value takes effect one dot later still
+    const bool winEnabled = lcdcWriteStage == 1 ? Bit<LCDC_WINDOW_ENABLE>(lcdcPending)
+                                                : Bit<LCDC_WINDOW_ENABLE>(lcdc);
+    if (windowActivatePending_ || (winEnabled && !isFetchingWindow_ && windowTriggeredThisFrame && windowMatch)) {
+        if (!windowActivatePending_ && lcdcWriteStage == 1 && !Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
+            windowActivatePending_ = true;
+            return;
+        }
+        windowActivatePending_ = false;
         // The WX comparator runs on an internal counter that starts 7 dots
         // before pixel 0 (dot 85), so a window with WX <= 7 triggers at dot
         // 85 + WX, mid-warmup — one dot later still when WX = 0 with a fine
@@ -448,15 +463,15 @@ void GPU::CheckForWindowTrigger() {
         fetcherDelay_ = 0;
         fetcherTileX_ = 0;
         if (pixelsDrawn == 0) initialScrollXDiscard_ += 7 - windowX;
-    } else if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && isFetchingWindow_ && windowTriggeredThisFrame &&
+    } else if (windowTriggeredThisFrame && pixelsDrawn != 0 &&
                windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
                fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
-        // WX re-match while the window is already active: when the match dot
-        // coincides with the window fetcher's tile-number read (the dot our
-        // model refills the FIFO), a single color-0 glitch pixel is emitted
-        // ahead of the pending push and the rest of the line shifts right by
-        // one dot. Priority sprites show through it since it mixes as
-        // background color 0
+        // A WX re-match that does not activate the window — because it is
+        // already active, or WIN_EN is currently off — emits a single color-0
+        // glitch pixel when the match dot coincides with the fetcher's
+        // tile-number read (the dot our model refills the FIFO), and the rest
+        // of the line shifts right by one dot. Priority sprites show through
+        // it since it mixes as background color 0
         backgroundQueue.push_front(Pixel{
             .color = 0,
             .dmgPalette = backgroundPalette ? obp1Palette : obp0Palette,
@@ -805,14 +820,6 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
 
 void GPU::ApplyLCDC(const uint8_t value) {
     const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
-    // Disabling the window mid-line ends it at the current tile: the fetch
-    // already in flight completes and its pixels are drawn, then the fetcher
-    // moves on to background tiles. The window may re-activate later the same
-    // line if WX matches a pixel that has not been drawn yet
-    if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && isFetchingWindow_ &&
-        Bit<LCDC_WINDOW_ENABLE>(lcdc) && !Bit<LCDC_WINDOW_ENABLE>(value)) {
-        windowEndPending_ = true;
-    }
     lcdc = value;
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
@@ -842,6 +849,18 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                     spriteFetchActive_ && spriteFetchQueue.front().x < 0 &&
                     !(fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0)) {
                     spriteFetchAbort_ = true;
+                }
+                // Disabling the window reaches the window logic one dot after
+                // the write: the fetch in flight completes and its pixels are
+                // drawn, then the fetcher moves on to background tiles.
+                // Re-enabling cancels a pending, unconsumed end
+                if (!Bit<LCDC_WINDOW_ENABLE>(value)) {
+                    windowEndStage_ = 2;
+                } else {
+                    windowEndStage_ = 0;
+                    // A pending end on an active window is already committed
+                    // to finish its tile; only an unconsumed stale end clears
+                    if (!isFetchingWindow_) windowEndPending_ = false;
                 }
                 if (lcdcWriteStage > 0) ApplyLCDC(lcdcPending);
                 lcdcPending = value;
