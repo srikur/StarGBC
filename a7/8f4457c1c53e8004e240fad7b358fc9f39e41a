@@ -1,0 +1,19 @@
+src/GPU.cpp
+  s_495a566b9c1a66::t_a72761bca8e8dc 463-466,474-477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a78f4457c1c53e8004e240fad7b358fc9f39e41a",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
