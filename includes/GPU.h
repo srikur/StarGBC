@@ -128,6 +128,8 @@ public:
     bool windowMatchLatch_{false};
     bool windowWasActiveThisLine_{false};
     bool windowEndPending_{false};
+    uint8_t windowEndStage_{0};
+    bool windowActivatePending_{false};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};

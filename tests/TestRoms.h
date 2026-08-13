@@ -152,6 +152,7 @@ static const std::vector<Case> romTestcases = {
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_scy_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_scy_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -251,6 +252,7 @@ ROM_TEST(69, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_change.gb")
 ROM_TEST(70, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb")
 ROM_TEST(71, "roms/mealybug-tearoom-tests/ppu/m3_scy_change.gb")
 ROM_TEST(72, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb")
+ROM_TEST(73, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
