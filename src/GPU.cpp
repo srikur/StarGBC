@@ -356,14 +356,19 @@ void GPU::TickMode3() {
             fetcherTileDataLow_ = savedBgTileDataLow_;
             fetcherTileDataHigh_ = savedBgTileDataHigh_;
             lastAddress_ = savedBgLastAddress_;
-            // A pixel-0 window activation deferred by this sprite fetch can
-            // begin its tile-number read on the merge dot itself when the
-            // fetcher's 2-dot cadence allows it
-            if ((scanlineCounter & 1) == 0 && pixelsDrawn == 0 && !isFetchingWindow_ &&
-                Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7 &&
-                backgroundQueue.empty()) {
-                CheckForWindowTrigger();
-                if (isFetchingWindow_) Fetcher_StepBackgroundFetch();
+            // A tile-number read pending on the resumed fetch — including one
+            // belonging to a window activation deferred by this sprite — can
+            // execute on the merge dot itself when the fetcher's 2-dot
+            // cadence allows it
+            if ((scanlineCounter & 1) == 0) {
+                if (pixelsDrawn == 0 && !isFetchingWindow_ &&
+                    Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7 &&
+                    backgroundQueue.empty()) {
+                    CheckForWindowTrigger();
+                }
+                if (fetcherState_ == FetcherState::GetTile && fetcherDelay_ == 0) {
+                    Fetcher_StepBackgroundFetch();
+                }
             }
             OutputPixel();
         }
@@ -375,15 +380,21 @@ void GPU::TickMode3() {
 
 void GPU::CheckForSpriteTrigger() {
     if (!Bit<LCDC_OBJ_ENABLE>(lcdc) || spriteFetchActive_ || !spriteFetchQueue.empty()) return;
-    // Pixel-0 triggers hold until the first background push is ready; earlier, the
-    // fetcher warmup would absorb the stall the sprite fetch is supposed to cause
-    if (pixelsDrawn == 0 && !(fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0)) return;
+    // Pixel-0 triggers for on-screen sprites hold until the first background
+    // push is ready; earlier, the fetcher warmup would absorb the stall the
+    // sprite fetch is supposed to cause. Left-clipped sprites instead take
+    // over the moment pixel output would begin (dot 92), even if a window
+    // restart has claimed the fetcher
+    const bool pushReady = fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0;
     for (auto &sprite: spriteBuffer) {
-        // Sprites clipped by the left edge (x < 0) trigger at pixel 0
-        if (!sprite.processed && pixelsDrawn == (sprite.x < 0 ? 0 : sprite.x)) {
-            sprite.processed = true;
-            spriteFetchQueue.push_back(sprite);
+        if (sprite.processed) continue;
+        if (sprite.x < 0) {
+            if (pixelsDrawn != 0 || scanlineCounter < 92) continue;
+        } else if (pixelsDrawn != sprite.x || (sprite.x == 0 && !pushReady)) {
+            continue;
         }
+        sprite.processed = true;
+        spriteFetchQueue.push_back(sprite);
     }
     if (!spriteFetchQueue.empty()) {
         // The fetch begins once the background fetcher reaches its high-byte read:
