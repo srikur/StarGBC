@@ -114,6 +114,7 @@ public:
     // Dots until a pending sprite fetch may take over the fetcher, and the
     // interrupted background fetch context to resume from afterwards
     uint8_t spriteFetchWait_{0};
+    bool spriteFetchAbort_{false};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};

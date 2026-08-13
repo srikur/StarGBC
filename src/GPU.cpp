@@ -24,6 +24,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     fetcherDelay_ = 0;
     spriteFetchQueue.clear();
     spriteFetchWait_ = 0;
+    spriteFetchAbort_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -218,8 +219,10 @@ void GPU::OutputPixel() {
     }
     spriteArray[spriteArray.size() - 1] = {.isSprite = true, .isPlaceholder = true};
 
-    bool backgroundWins = spritePixel.color == 0;
-    if (spritePixel.color != 0) {
+    // OBJ enable gates sprite pixels at mix time: pixels already in the FIFO
+    // keep shifting while disabled, but display as background
+    bool backgroundWins = spritePixel.color == 0 || !Bit<LCDC_OBJ_ENABLE>(lcdc);
+    if (!backgroundWins) {
         if (hardware == Hardware::CGB && !Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
             backgroundWins = false;
         } else if (bgPixel.priority) {
@@ -439,7 +442,7 @@ void GPU::Fetcher_StepSpriteFetch() {
 
             const auto xPos = sprite.x;
             const int clip = xPos < 0 ? -xPos : 0; // leftmost tile pixels lost off the screen edge
-            for (int i = 0; i < 8 - clip; i++) {
+            for (int i = 0; !spriteFetchAbort_ && i < 8 - clip; i++) {
                 const bool hasHigherPriority = hardware == Hardware::CGB && sprite.spriteNum <= spriteArray[0].spriteNum;
                 if (!hasHigherPriority && spriteArray[i].color != 0 && !spriteArray[i].isPlaceholder) continue;
                 const auto pixelIndex = attrs.xflip ? i + clip : 7 - (i + clip);
@@ -459,6 +462,7 @@ void GPU::Fetcher_StepSpriteFetch() {
             }
             spriteFetchQueue.pop_front();
             if (spriteFetchQueue.empty()) spriteFetchActive_ = false;
+            spriteFetchAbort_ = false;
             fetcherState_ = GetTile;
             fetcherDelay_ = 0;
             break;
@@ -650,6 +654,13 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     switch (address) {
         case 0xFF40: {
             if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                // Clearing OBJ enable while a left-clipped sprite's fetch is in flight aborts the fetch — its pixels never reach the FIFO
+                // A fetch already on its load tick completes; an on-screen sprite's fetch is never aborted
+                if (!Bit<LCDC_OBJ_ENABLE>(value) && Bit<LCDC_OBJ_ENABLE>(lcdc) &&
+                    spriteFetchActive_ && spriteFetchQueue.front().x < 0 &&
+                    !(fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0)) {
+                    spriteFetchAbort_ = true;
+                }
                 if (lcdcWriteStage > 0) ApplyLCDC(lcdcPending);
                 lcdcPending = value;
                 lcdcWriteStage = 3;
