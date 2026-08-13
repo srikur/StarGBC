@@ -172,6 +172,9 @@ public:
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
     uint8_t scxWriteStage{0};
+    uint8_t scyFetcherOld{0};
+    uint8_t scyWriteStage{0};
+    bool scyJustApplied_{false};
     uint8_t obp0Pending{0};
     uint8_t obp0WriteStage{0};
     uint8_t obp1Pending{0};

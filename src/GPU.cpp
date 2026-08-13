@@ -66,9 +66,15 @@ void GPU::Update() {
         if (wxWriteStage == 0) windowX = wxPending;
     }
 
-    // DMG: a mode-3 SCX write reaches the fetcher's tile-map read two dots
-    // late, same latency class as BGP
+    // DMG: mode-3 SCX/SCY writes reach the fetcher's reads two dots late,
+    // same latency class as BGP. The warmup fetch's reads run just ahead of
+    // the apply point, so a value landing on the read dot is still seen old
     if (scxWriteStage > 0) scxWriteStage--;
+    scyJustApplied_ = false;
+    if (scyWriteStage > 0) {
+        scyWriteStage--;
+        if (scyWriteStage == 0) scyJustApplied_ = true;
+    }
 
     // DMG: OBP0/OBP1 mode-3 writes share BGP's latency, glitch dot included
     if (obp0WriteStage > 0) {
@@ -622,14 +628,18 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
         const uint8_t scxForFetch = scxWriteStage > 0 ? scxFetcherOld : scrollX;
-        const uint8_t tileRow = ((scrollY + currentLine & 0xFF) >> 3) & 0x1F;
+        const bool scyOld = scyWriteStage > 0 || (scyJustApplied_ && scanlineCounter < 92);
+        const uint8_t scyForFetch = scyOld ? scyFetcherOld : scrollY;
+        const uint8_t tileRow = ((scyForFetch + currentLine & 0xFF) >> 3) & 0x1F;
         const uint8_t tileCol = (fetcherTileX_ + (scxForFetch / 8)) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
 }
 
 uint16_t GPU::CalculateTileDataAddress() {
-    uint8_t lineInTile = isFetchingWindow_ ? windowLineCounter_ % 8 : ((currentLine + scrollY) % 8);
+    const bool scyOld = scyWriteStage > 0 || (scyJustApplied_ && scanlineCounter < 92);
+    const uint8_t scyForFetch = scyOld ? scyFetcherOld : scrollY;
+    uint8_t lineInTile = isFetchingWindow_ ? windowLineCounter_ % 8 : ((currentLine + scyForFetch) % 8);
     lineInTile = backgroundTileAttributes_.yflip ? 7 - (lineInTile & 7) : (lineInTile & 7);
     if (Bit<LCDC_BG_AND_WINDOW_TILE_DATA>(lcdc)) {
         const uint16_t address = 0x8000 + fetcherTileNum_ * 16 + lineInTile * 2;
@@ -823,7 +833,13 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             stat.enableM1Interrupt = value & 0x10;
             stat.enableM0Interrupt = value & 0x08;
             break;
-        case 0xFF42: scrollY = value;
+        case 0xFF42:
+            // Like SCX, a mode-3 SCY write reaches the fetcher two dots late
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (scyWriteStage == 0) scyFetcherOld = scrollY;
+                scyWriteStage = 3;
+            }
+            scrollY = value;
             break;
         case 0xFF43:
             // The fine-scroll consumers see an SCX write immediately, but the
