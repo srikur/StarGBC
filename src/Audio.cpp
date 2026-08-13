@@ -646,7 +646,7 @@ void Audio::InitBandLimitedTable() {
         double sum = 0.0;
         for (int i = 0; i < BL_WIDTH; i++) {
             constexpr double lowpass = 0.9375;
-            const double x = static_cast<double>(i - BL_WIDTH / 2) +
+            const double x = static_cast<double>(i - BL_WIDTH / 2) -
                              static_cast<double>(phase) / BL_PHASES;
             const double angle = x * M_PI * lowpass;
 
