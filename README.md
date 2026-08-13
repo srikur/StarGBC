@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (160/272)
+Current Performance: (184/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -291,28 +291,28 @@ Current Performance: (160/272)
 | cpp/rtc-invalid-banks-test.gb                                         | :white_check_mark: |
 | cpp/latch-rtc-test.gb                                                 | :white_check_mark: |
 | cpp/ramg-mbc3-test.gb                                                 | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb (DMG)                  | :x:                |
-| mealybug-tearoom-tests/ppu/m3_bgp_change.gb (DMG)                     | :x:                |
-| mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb (DMG)             | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb (DMG)              | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb (DMG)             | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb (DMG)             | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb (DMG)     | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb (DMG)           | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb (DMG)       | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_change.gb (DMG)           | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb (DMG)       | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_win_e_change_multiple.gb (DMG)     | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb (DMG) | :x:                |
-| mealybug-tearoom-tests/ppu/m3_lcdc_win_map_change.gb (DMG)            | :x:                |
-| mealybug-tearoom-tests/ppu/m3_obp0_change_gb (DMG)                    | :x:                |
-| mealybug-tearoom-tests/ppu/m3_scx_high_5_bits.gb (DMG)                | :x:                |
-| mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb (DMG)                 | :x:                |
-| mealybug-tearoom-tests/ppu/m3_scy_change.gb (DMG)                     | :x:                |
-| mealybug-tearoom-tests/ppu/m3_window_timing.gb (DMG)                  | :x:                |
-| mealybug-tearoom-tests/ppu/m3_window_timing_wx_0.gb (DMG)             | :x:                |
-| mealybug-tearoom-tests/ppu/m3_wx_4_change.gb (DMG)                    | :x:                |
-| mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb (DMG)            | :x:                |
-| mealybug-tearoom-tests/ppu/m3_wx_5_change.gb (DMG)                    | :x:                |
-| mealybug-tearoom-tests/ppu/m3_x_6_change.gb (DMG)                     | :x:                |
+| mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb (DMG)                  | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_bgp_change.gb (DMG)                     | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb (DMG)             | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb (DMG)              | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb (DMG)             | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb (DMG)             | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb (DMG)     | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb (DMG)           | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb (DMG)       | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_change.gb (DMG)           | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb (DMG)       | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_e_change_multiple.gb (DMG)     | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb (DMG) | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_map_change.gb (DMG)            | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_obp0_change_gb (DMG)                    | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_scx_high_5_bits.gb (DMG)                | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb (DMG)                 | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_scy_change.gb (DMG)                     | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_window_timing.gb (DMG)                  | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_window_timing_wx_0.gb (DMG)             | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_wx_4_change.gb (DMG)                    | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb (DMG)            | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_wx_5_change.gb (DMG)                    | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_x_6_change.gb (DMG)                     | :white_check_mark: |
 | mbc3-tester/mbc3-tester.gb                                            | :white_check_mark: |
