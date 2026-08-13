@@ -59,6 +59,13 @@ void GPU::Update() {
         if (lcdcWriteStage == 0) ApplyLCDC(lcdcPending);
     }
 
+    // DMG: a mode-3 WX write reaches the window comparator with the same
+    // latency, so a trigger racing the write still sees the old value
+    if (wxWriteStage > 0) {
+        wxWriteStage--;
+        if (wxWriteStage == 0) windowX = wxPending;
+    }
+
     if (LCDDisabled()) {
         return;
     }
@@ -342,10 +349,17 @@ void GPU::CheckForWindowTrigger() {
     const bool matched = windowMatchLatch_;
     windowMatchLatch_ = pixelsDrawn + 7 == windowX;
     if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
+        // The WX comparator runs on an internal counter that starts 7 dots
+        // before pixel 0 (dot 85), so a window with WX <= 7 triggers at dot
+        // 85 + WX, mid-warmup. Its first 7 - WX pixels then pop into the
+        // offscreen dots, left-clipping the first window tile
+        if (windowX <= 7 && pixelsDrawn == 0 && scanlineCounter < 85u + windowX) return;
         isFetchingWindow_ = true;
         backgroundQueue.clear();
         fetcherState_ = FetcherState::GetTile;
+        fetcherDelay_ = 0;
         fetcherTileX_ = 0;
+        if (windowX < 7 && pixelsDrawn == 0) initialScrollXDiscard_ = 7 - windowX;
     } else if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && isFetchingWindow_ && windowTriggeredThisFrame &&
                windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
                fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
@@ -376,12 +390,7 @@ void GPU::Fetcher_StepBackgroundFetch() {
     switch (fetcherState_) {
         case GetTile: {
             if (!initialSCXSet) {
-                // A window that starts the line with WX < 7 has its first tile
-                // left-clipped by 7 - WX pixels, mirroring the SCX fine-scroll
-                // discard for the background
-                initialScrollXDiscard_ = isFetchingWindow_
-                                             ? (windowX < 7 ? 7 - windowX : 0)
-                                             : scrollX & 0x07;
+                initialScrollXDiscard_ = isFetchingWindow_ ? 0 : scrollX & 0x07;
                 initialSCXSet = true;
             }
             const auto tileMapAddress = CalculateBGTileMapAddress();
@@ -659,7 +668,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
         case 0xFF48: return obp0Palette;
         case 0xFF49: return obp1Palette;
         case 0xFF4A: return windowY;
-        case 0xFF4B: return windowX;
+        case 0xFF4B: return wxWriteStage > 0 ? wxPending : windowX;
         case 0xFF4F: return hardware == Hardware::CGB ? (0xFE | vramBank) : 0xFF;
         case 0xFF68: return ReadGpi(bgpi);
         case 0xFF69: {
@@ -754,7 +763,14 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF4A: windowY = value;
             break;
-        case 0xFF4B: windowX = value;
+        case 0xFF4B:
+            if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                if (wxWriteStage > 0) windowX = wxPending;
+                wxPending = value;
+                wxWriteStage = 6;
+            } else {
+                windowX = value;
+            }
             break;
         case 0xFF4F: vramBank = value & 0x01;
             break;

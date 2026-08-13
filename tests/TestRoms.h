@@ -143,6 +143,7 @@ static const std::vector<Case> romTestcases = {
     {"roms/mealybug-tearoom-tests/ppu/m3_wx_4_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_wx_4_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mealybug-tearoom-tests/ppu/m3_wx_5_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_wx_5_change.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mealybug-tearoom-tests/ppu/m3_window_timing.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_window_timing.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -233,6 +234,7 @@ ROM_TEST(60, "roms/mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb")
 ROM_TEST(61, "roms/mealybug-tearoom-tests/ppu/m3_wx_4_change.gb")
 ROM_TEST(62, "roms/mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb")
 ROM_TEST(63, "roms/mealybug-tearoom-tests/ppu/m3_wx_5_change.gb")
+ROM_TEST(64, "roms/mealybug-tearoom-tests/ppu/m3_window_timing.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
