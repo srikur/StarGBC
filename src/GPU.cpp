@@ -130,6 +130,11 @@ void GPU::Update() {
             vblank = true;
             hblank = false;
             interrupts_.Set(InterruptType::VBlank, true);
+            // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT condition
+            if (stat.enableM2Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, true);
+                statTriggered = true;
+            }
         } else if (currentLine < 144) {
             hblank = false;
             stat.mode = GPUMode::MODE_2;
