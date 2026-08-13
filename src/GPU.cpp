@@ -23,6 +23,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     pixelsDrawn = 0;
     fetcherDelay_ = 0;
     spriteFetchQueue.clear();
+    spriteFetchWait_ = 0;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -241,24 +242,66 @@ void GPU::OutputPixel() {
 
 void GPU::TickMode3() {
     CheckForSpriteTrigger();
-    if (!spriteFetchActive_) CheckForWindowTrigger();
+    const bool spritePending = !spriteFetchActive_ && !spriteFetchQueue.empty();
+    if (!spriteFetchActive_ && !spritePending) CheckForWindowTrigger();
+    if (spritePending) {
+        if (spriteFetchWait_ > 0) {
+            // Pixel output pauses while the background fetcher catches up to its
+            // high-byte read; only then does the sprite fetch take over
+            spriteFetchWait_--;
+            Fetcher_StepBackgroundFetch();
+            return;
+        }
+        // A background push that is ready on the takeover tick runs first, so the
+        // FIFO has pixels for the dot where the sprite fetch completes
+        if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
+            Fetcher_StepBackgroundFetch();
+        }
+        savedBgFetcherState_ = fetcherState_;
+        savedBgFetcherDelay_ = fetcherDelay_;
+        savedBgTileNum_ = fetcherTileNum_;
+        savedBgTileDataLow_ = fetcherTileDataLow_;
+        savedBgTileDataHigh_ = fetcherTileDataHigh_;
+        savedBgLastAddress_ = lastAddress_;
+        spriteFetchActive_ = true;
+        fetcherState_ = FetcherState::GetTile;
+        fetcherDelay_ = 0;
+    }
     if (spriteFetchActive_) {
         Fetcher_StepSpriteFetch();
+        if (!spriteFetchActive_) {
+            // Sprite fetch finished — resume the interrupted background fetch in place
+            fetcherState_ = savedBgFetcherState_;
+            fetcherDelay_ = savedBgFetcherDelay_;
+            fetcherTileNum_ = savedBgTileNum_;
+            fetcherTileDataLow_ = savedBgTileDataLow_;
+            fetcherTileDataHigh_ = savedBgTileDataHigh_;
+            lastAddress_ = savedBgLastAddress_;
+            OutputPixel();
+        }
     } else {
         Fetcher_StepBackgroundFetch();
+        OutputPixel();
     }
-    if (!spriteFetchActive_) OutputPixel();
 }
 
 void GPU::CheckForSpriteTrigger() {
-    if (!Bit<LCDC_OBJ_ENABLE>(lcdc) || spriteFetchActive_) return;
+    if (!Bit<LCDC_OBJ_ENABLE>(lcdc) || spriteFetchActive_ || !spriteFetchQueue.empty()) return;
+    // Pixel-0 triggers hold until the first background push is ready; earlier, the
+    // fetcher warmup would absorb the stall the sprite fetch is supposed to cause
+    if (pixelsDrawn == 0 && !(fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0)) return;
     for (auto &sprite: spriteBuffer) {
-        if (!sprite.processed && pixelsDrawn == sprite.x) {
+        // Sprites clipped by the left edge (x < 0) trigger at pixel 0
+        if (!sprite.processed && pixelsDrawn == (sprite.x < 0 ? 0 : sprite.x)) {
             sprite.processed = true;
-            spriteFetchActive_ = true;
             spriteFetchQueue.push_back(sprite);
-            fetcherState_ = FetcherState::GetTile;
         }
+    }
+    if (!spriteFetchQueue.empty()) {
+        // The fetch begins once the background fetcher reaches its high-byte read:
+        // max(0, 5 - phase) dots, where its phase within the tile is (x + SCX) mod 8
+        const int phase = (spriteFetchQueue.front().x + scrollX) & 7;
+        spriteFetchWait_ = static_cast<uint8_t>(phase < 5 ? 5 - phase : 0);
     }
 }
 
@@ -384,10 +427,11 @@ void GPU::Fetcher_StepSpriteFetch() {
             const uint8_t paletteRegister = attrs.paletteNumberDMG ? obp1Palette : obp0Palette;
 
             const auto xPos = sprite.x;
-            for (int i = xPos < 0 ? 8 + xPos : 0; i < 8; i++) {
+            const int clip = xPos < 0 ? -xPos : 0; // leftmost tile pixels lost off the screen edge
+            for (int i = 0; i < 8 - clip; i++) {
                 const bool hasHigherPriority = hardware == Hardware::CGB && sprite.spriteNum <= spriteArray[0].spriteNum;
                 if (!hasHigherPriority && spriteArray[i].color != 0 && !spriteArray[i].isPlaceholder) continue;
-                const auto pixelIndex = attrs.xflip ? i : 7 - i;
+                const auto pixelIndex = attrs.xflip ? i + clip : 7 - (i + clip);
                 const uint8_t bitLow = (fetcherTileDataLow_ >> pixelIndex) & 1;
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
                 const uint8_t color = (bitHigh << 1) | bitLow;

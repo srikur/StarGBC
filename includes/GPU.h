@@ -111,6 +111,16 @@ public:
     uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
     uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
 
+    // Dots until a pending sprite fetch may take over the fetcher, and the
+    // interrupted background fetch context to resume from afterwards
+    uint8_t spriteFetchWait_{0};
+    FetcherState savedBgFetcherState_{FetcherState::GetTile};
+    uint8_t savedBgFetcherDelay_{0};
+    uint8_t savedBgTileNum_{0};
+    uint8_t savedBgTileDataLow_{0};
+    uint8_t savedBgTileDataHigh_{0};
+    uint16_t savedBgLastAddress_{0};
+
     uint8_t windowLineCounter_{0x00};
 
     std::vector<Sprite> spriteBuffer{10};
