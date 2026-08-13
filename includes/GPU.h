@@ -202,7 +202,7 @@ public:
 
     void TickMode3();
 
-    void OutputPixel();
+    void OutputPixel(bool lcdcAhead = false);
 
     void ResetScanlineState(bool clearBuffer);
 

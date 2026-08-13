@@ -249,7 +249,7 @@ void GPU::TickOAMScan() {
     }
 }
 
-void GPU::OutputPixel() {
+void GPU::OutputPixel(const bool lcdcAhead) {
     if (backgroundQueue.empty()) return;
 
     if (initialScrollXDiscard_ > 0) {
@@ -268,10 +268,14 @@ void GPU::OutputPixel() {
     spriteArray[spriteArray.size() - 1] = {.isSprite = true, .isPlaceholder = true};
 
     // OBJ enable gates sprite pixels at mix time: pixels already in the FIFO
-    // keep shifting while disabled, but display as background
+    // keep shifting while disabled, but display as background. A pixel shipped
+    // on a sprite-merge dot samples LCDC one dot ahead of the applied value
+    const bool bgWinEnable = lcdcAhead && lcdcWriteStage == 1
+                                 ? Bit<LCDC_BG_WINDOW_ENABLE>(lcdcPending)
+                                 : Bit<LCDC_BG_WINDOW_ENABLE>(lcdc);
     bool backgroundWins = spritePixel.color == 0 || !Bit<LCDC_OBJ_ENABLE>(lcdc);
     if (!backgroundWins) {
-        if (hardware == Hardware::CGB && !Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
+        if (hardware == Hardware::CGB && !bgWinEnable) {
             backgroundWins = false;
         } else if (bgPixel.priority) {
             backgroundWins = bgPixel.color != 0;
@@ -282,9 +286,9 @@ void GPU::OutputPixel() {
 
     Pixel finalPixel = spritePixel;
     if (backgroundWins) {
-        if (Bit<LCDC_BG_WINDOW_ENABLE>(lcdc) || hardware == Hardware::CGB) {
+        if (bgWinEnable || hardware == Hardware::CGB) {
             finalPixel = bgPixel;
-        } else if (!Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)) {
+        } else {
             finalPixel = Pixel{.color = 0};
         }
     }
@@ -392,7 +396,7 @@ void GPU::TickMode3() {
                     Fetcher_StepBackgroundFetch();
                 }
             }
-            OutputPixel();
+            OutputPixel(true);
         }
     } else {
         Fetcher_StepBackgroundFetch();
