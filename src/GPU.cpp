@@ -329,6 +329,12 @@ void GPU::TickMode3() {
                 !windowPendingAtStart) {
                 Fetcher_StepBackgroundFetch();
             }
+            // The takeover lands exactly when the background fetcher reaches
+            // its high-byte read; that read still executes on this dot rather
+            // than being deferred until after the sprite fetch
+            if (fetcherState_ == FetcherState::GetTileDataHigh && fetcherDelay_ == 0) {
+                Fetcher_StepBackgroundFetch();
+            }
             savedBgFetcherState_ = fetcherState_;
             savedBgFetcherDelay_ = fetcherDelay_;
             savedBgTileNum_ = fetcherTileNum_;
@@ -465,9 +471,13 @@ void GPU::Fetcher_StepBackgroundFetch() {
             break;
         }
         case GetTileDataHigh: {
+            // TILE_SEL (and the scroll row) are sampled again for the high
+            // bitplane read, so a change between the two data reads mixes
+            // bitplanes from two different tile patterns
+            const auto tileDataAddress = CalculateTileDataAddress();
             const bool bank1 = (hardware == Hardware::CGB) && backgroundTileAttributes_.vramBank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
-            fetcherTileDataHigh_ = vram[(lastAddress_ + 1) - base];
+            fetcherTileDataHigh_ = vram[(tileDataAddress + 1) - base];
             fetcherState_ = PushToFIFO;
             fetcherDelay_ = 1;
             if (firstScanlineDataHigh) {
