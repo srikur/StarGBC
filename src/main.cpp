@@ -15,7 +15,6 @@ constexpr int GB_SCREEN_H = 144;
 constexpr int WINDOW_SCALE = 3;
 constexpr int WINDOW_W = GB_SCREEN_W * WINDOW_SCALE;
 constexpr int WINDOW_H = GB_SCREEN_H * WINDOW_SCALE;
-constexpr int AUDIO_BUFFER_FRAMES = 512;
 constexpr int MAX_AUDIO_QUEUE_BYTES = AUDIO_SAMPLE_RATE * 2 * sizeof(float) / 15;
 
 static SDL_Window *window = nullptr;
@@ -25,7 +24,7 @@ static SDL_AudioStream *audioStream = nullptr;
 static std::unique_ptr<Gameboy> gameboy = nullptr;
 static bool useNearest = true;
 static bool audioEnabled = true;
-static std::vector<float> audioBuffer(AUDIO_BUFFER_FRAMES * 2);
+static std::vector<float> audioBuffer(AUDIO_BUFFER_SIZE * 2);
 
 SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
     SDL_SetAppMetadata("StarGBC", "0.0.1", "com.srikur.stargbc");
@@ -243,21 +242,13 @@ SDL_AppResult SDL_AppIterate(void *) {
     }
 
     if (audioEnabled && audioStream) {
-        const int queuedBytes = SDL_GetAudioStreamQueued(audioStream);
-        const size_t samplesAvailable = gameboy->GetAudioSamplesAvailable();
-
-        if (samplesAvailable > 0) {
-            if (queuedBytes > MAX_AUDIO_QUEUE_BYTES) {
-                gameboy->ReadAudioSamples(audioBuffer.data(),
-                    std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES)));
-            } else {
-                const size_t samplesToRead = std::min(samplesAvailable, static_cast<size_t>(AUDIO_BUFFER_FRAMES));
-                const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), samplesToRead);
-                if (samplesRead > 0) {
-                    SDL_PutAudioStreamData(audioStream, audioBuffer.data(),
-                                           static_cast<int>(samplesRead * 2 * sizeof(float)));
-                }
-            }
+        // Drain the emulator's ring buffer completely every frame: a throttled frame yields
+        // ~804 sample frames, and anything left behind overflows the ring and gets dropped
+        if (const size_t samplesRead = gameboy->ReadAudioSamples(audioBuffer.data(), AUDIO_BUFFER_SIZE);
+            samplesRead > 0 && SDL_GetAudioStreamQueued(audioStream) <= MAX_AUDIO_QUEUE_BYTES) {
+            // When the queue is backed up (unthrottled/4x speed), samples are consumed but dropped
+            SDL_PutAudioStreamData(audioStream, audioBuffer.data(),
+                                   static_cast<int>(samplesRead * 2 * sizeof(float)));
         }
     }
 
