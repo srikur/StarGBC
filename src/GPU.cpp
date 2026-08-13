@@ -283,9 +283,22 @@ void GPU::OutputPixel() {
 }
 
 void GPU::TickMode3() {
+    // The window comparator is evaluated before the sprite one: an activation
+    // resets the fetcher, deferring a pixel-0 sprite to the window's own push.
+    // Sprites near the left edge (OAM X <= 2) claim the fetcher first instead —
+    // their fetch is already in flight when the window match lands — so the
+    // window activation waits until the sprite fetch completes
+    if (!spriteFetchActive_ && spriteFetchQueue.empty()) {
+        bool spriteClaimsFetcher = false;
+        if (pixelsDrawn == 0 && !isFetchingWindow_) {
+            for (const auto &sprite: spriteBuffer) {
+                if (!sprite.processed && sprite.x <= -6) spriteClaimsFetcher = true;
+            }
+        }
+        if (!spriteClaimsFetcher) CheckForWindowTrigger();
+    }
     CheckForSpriteTrigger();
     const bool spritePending = !spriteFetchActive_ && !spriteFetchQueue.empty();
-    if (!spriteFetchActive_ && !spritePending) CheckForWindowTrigger();
     if (spritePending) {
         if (spriteFetchWait_ > 0) {
             // Pixel output pauses until the sprite fetch may take over. Sprites
@@ -306,8 +319,14 @@ void GPU::TickMode3() {
             spriteFetchQueue.pop_front();
         } else {
             // A background push that is ready on the takeover tick runs first, so the
-            // FIFO has pixels for the dot where the sprite fetch completes
-            if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
+            // FIFO has pixels for the dot where the sprite fetch completes — unless a
+            // window trigger is pending at pixel 0, whose restart discards that push
+            // so no background pixel ships before the window claims the line
+            const bool windowPendingAtStart = pixelsDrawn == 0 && !isFetchingWindow_ &&
+                                              Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame &&
+                                              windowX <= 7;
+            if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty() &&
+                !windowPendingAtStart) {
                 Fetcher_StepBackgroundFetch();
             }
             savedBgFetcherState_ = fetcherState_;
@@ -331,6 +350,15 @@ void GPU::TickMode3() {
             fetcherTileDataLow_ = savedBgTileDataLow_;
             fetcherTileDataHigh_ = savedBgTileDataHigh_;
             lastAddress_ = savedBgLastAddress_;
+            // A pixel-0 window activation deferred by this sprite fetch can
+            // begin its tile-number read on the merge dot itself when the
+            // fetcher's 2-dot cadence allows it
+            if ((scanlineCounter & 1) == 0 && pixelsDrawn == 0 && !isFetchingWindow_ &&
+                Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7 &&
+                backgroundQueue.empty()) {
+                CheckForWindowTrigger();
+                if (isFetchingWindow_) Fetcher_StepBackgroundFetch();
+            }
             OutputPixel();
         }
     } else {
