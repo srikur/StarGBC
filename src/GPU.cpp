@@ -26,7 +26,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     spriteFetchWait_ = 0;
     spriteMergeDelay_ = 0;
     spriteFetchAbort_ = false;
-    offscreenSpriteFetched_ = false;
+    spriteFetchedThisLine_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -323,11 +323,9 @@ void GPU::CheckForSpriteTrigger() {
     }
     if (!spriteFetchQueue.empty()) {
         // The fetch begins once the background fetcher reaches its high-byte read:
-        // max(0, 5 - phase) dots, where its phase within the tile is (x + SCX) mod 8.
-        // A fully offscreen sprite (OAM X=0) leaves the fetcher one dot behind that
-        // law for the rest of the line
+        // max(0, 5 - phase) dots, where its phase within the tile is (x + SCX) mod 8
         const int phase = (spriteFetchQueue.front().x + scrollX) & 7;
-        spriteFetchWait_ = static_cast<uint8_t>((phase < 5 ? 5 - phase : 0) + (offscreenSpriteFetched_ ? 1 : 0));
+        spriteFetchWait_ = static_cast<uint8_t>(phase < 5 ? 5 - phase : 0);
         // Left-edge-clipped sprites take over immediately — their VRAM reads run
         // ahead of the alignment wait — but the merge into the FIFO still waits
         // out the alignment dots, so the total stall and the abort window are
@@ -335,7 +333,6 @@ void GPU::CheckForSpriteTrigger() {
         if (spriteFetchQueue.front().x < 0) {
             spriteMergeDelay_ = spriteFetchWait_;
             spriteFetchWait_ = 0;
-            if (spriteFetchQueue.front().x <= -8) offscreenSpriteFetched_ = true;
         }
     }
 }
@@ -430,14 +427,18 @@ void GPU::Fetcher_StepSpriteFetch() {
     using enum FetcherState;
     switch (fetcherState_) {
         case GetTile: {
-            // The tile number comes from the OAM buffer, not VRAM, so this step
-            // overlaps the tail of the background fetch: the VRAM reads land at
-            // takeover+1 (low) and takeover+3 (high). Each read samples the OBJ
-            // size bit independently, so an LCDC write between them mixes rows
-            // from two different tiles
+            // The tile number comes from the OAM buffer, not VRAM. On the line's
+            // first sprite fetch this step overlaps the tail of the background
+            // fetch, so the VRAM reads land at takeover+1 (low) and takeover+3
+            // (high); later fetches on the same line read one dot later, at
+            // takeover+2 and takeover+4, with the merge dot unchanged. Each read
+            // samples the OBJ size bit independently, so an LCDC write between
+            // them mixes rows from two different tiles
             fetcherTileNum_ = sprite.tileIndex;
             fetcherState_ = GetTileDataLow;
-            fetcherDelay_ = 0;
+            spriteFetchIsFirst_ = !spriteFetchedThisLine_;
+            spriteFetchedThisLine_ = true;
+            fetcherDelay_ = spriteFetchIsFirst_ ? 0 : 1;
             break;
         }
         case GetTileDataLow: {
@@ -454,7 +455,7 @@ void GPU::Fetcher_StepSpriteFetch() {
             const bool bank1 = (hardware == Hardware::CGB) && sprite.attributes.vramBank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
             fetcherTileDataHigh_ = vram[(tileAddress + 1) - base];
-            fetcherDelay_ = 2 + spriteMergeDelay_;
+            fetcherDelay_ = (spriteFetchIsFirst_ ? 2 : 1) + spriteMergeDelay_;
             spriteMergeDelay_ = 0;
             fetcherState_ = PushToFIFO;
             break;
