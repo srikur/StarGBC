@@ -1,0 +1,27 @@
+src/GPU.cpp
+  s_495a566b9c1a66::t_b13c1220a55e7b 133-137
+src/Interrupts.cpp
+  s_495a566b9c1a66::t_f39881c177d347 5-7,9-10
+  h_83b6cee88cb5ab 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2b55e8416096983499b54c5d7174dba7eef2b88e",
+  "prompts": {},
+  "humans": {
+    "h_83b6cee88cb5ab": {
+      "author": "srikur <srikur@endeavorai.com>"
+    }
+  },
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@endeavorai.com>"
+    }
+  }
+}
