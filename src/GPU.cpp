@@ -24,7 +24,9 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     fetcherDelay_ = 0;
     spriteFetchQueue.clear();
     spriteFetchWait_ = 0;
+    spriteMergeDelay_ = 0;
     spriteFetchAbort_ = false;
+    offscreenSpriteFetched_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -321,9 +323,20 @@ void GPU::CheckForSpriteTrigger() {
     }
     if (!spriteFetchQueue.empty()) {
         // The fetch begins once the background fetcher reaches its high-byte read:
-        // max(0, 5 - phase) dots, where its phase within the tile is (x + SCX) mod 8
+        // max(0, 5 - phase) dots, where its phase within the tile is (x + SCX) mod 8.
+        // A fully offscreen sprite (OAM X=0) leaves the fetcher one dot behind that
+        // law for the rest of the line
         const int phase = (spriteFetchQueue.front().x + scrollX) & 7;
-        spriteFetchWait_ = static_cast<uint8_t>(phase < 5 ? 5 - phase : 0);
+        spriteFetchWait_ = static_cast<uint8_t>((phase < 5 ? 5 - phase : 0) + (offscreenSpriteFetched_ ? 1 : 0));
+        // Left-edge-clipped sprites take over immediately — their VRAM reads run
+        // ahead of the alignment wait — but the merge into the FIFO still waits
+        // out the alignment dots, so the total stall and the abort window are
+        // unchanged
+        if (spriteFetchQueue.front().x < 0) {
+            spriteMergeDelay_ = spriteFetchWait_;
+            spriteFetchWait_ = 0;
+            if (spriteFetchQueue.front().x <= -8) offscreenSpriteFetched_ = true;
+        }
     }
 }
 
@@ -417,9 +430,14 @@ void GPU::Fetcher_StepSpriteFetch() {
     using enum FetcherState;
     switch (fetcherState_) {
         case GetTile: {
+            // The tile number comes from the OAM buffer, not VRAM, so this step
+            // overlaps the tail of the background fetch: the VRAM reads land at
+            // takeover+1 (low) and takeover+3 (high). Each read samples the OBJ
+            // size bit independently, so an LCDC write between them mixes rows
+            // from two different tiles
             fetcherTileNum_ = sprite.tileIndex;
             fetcherState_ = GetTileDataLow;
-            fetcherDelay_ = 1;
+            fetcherDelay_ = 0;
             break;
         }
         case GetTileDataLow: {
@@ -432,10 +450,12 @@ void GPU::Fetcher_StepSpriteFetch() {
             break;
         }
         case GetTileDataHigh: {
+            const auto tileAddress = CalculateSpriteDataAddress(sprite);
             const bool bank1 = (hardware == Hardware::CGB) && sprite.attributes.vramBank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
-            fetcherTileDataHigh_ = vram[(lastAddress_ + 1) - base];
-            fetcherDelay_ = 1;
+            fetcherTileDataHigh_ = vram[(tileAddress + 1) - base];
+            fetcherDelay_ = 2 + spriteMergeDelay_;
+            spriteMergeDelay_ = 0;
             fetcherState_ = PushToFIFO;
             break;
         }
@@ -509,14 +529,16 @@ uint16_t GPU::CalculateTileDataAddress() {
 }
 
 uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
-    const uint8_t spriteHeight = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
-    if (Bit<LCDC_OBJ_SIZE>(lcdc)) fetcherTileNum_ &= 0xFE;
-    const bool yFlip = sprite.attributes.yflip;
-    const uint8_t yPos = sprite.y;
-    const uint8_t tileY = yFlip
-                              ? spriteHeight - 1 - (currentLine - yPos)
-                              : currentLine - yPos;
-    const uint16_t address = 0x8000 + fetcherTileNum_ * 16 + tileY * 2;
+    // The fetcher sees LCDC writes raw (one dot before they reach the mixer),
+    // and the size bit shapes the address at each read: 8x16 replaces tile bit 0
+    // with row bit 3, 8x8 ignores row bit 3 entirely
+    const uint8_t effLcdc = lcdcWriteStage > 0 ? lcdcPending : lcdc;
+    const uint8_t spriteHeight = Bit<LCDC_OBJ_SIZE>(effLcdc) ? 16 : 8;
+    uint8_t tile = sprite.tileIndex;
+    if (spriteHeight == 16) tile &= 0xFE;
+    const auto row = static_cast<uint8_t>((currentLine - sprite.y) & (spriteHeight - 1));
+    const uint8_t tileY = sprite.attributes.yflip ? spriteHeight - 1 - row : row;
+    const uint16_t address = 0x8000 + tile * 16 + tileY * 2;
     lastAddress_ = address;
     return address;
 }

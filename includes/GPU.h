@@ -112,9 +112,13 @@ public:
     uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
 
     // Dots until a pending sprite fetch may take over the fetcher, and the
-    // interrupted background fetch context to resume from afterwards
+    // interrupted background fetch context to resume from afterwards. Sprites
+    // clipped by the left edge fetch immediately; the alignment wait is served
+    // between their high-byte read and the merge into the FIFO
     uint8_t spriteFetchWait_{0};
+    uint8_t spriteMergeDelay_{0};
     bool spriteFetchAbort_{false};
+    bool offscreenSpriteFetched_{false};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};
