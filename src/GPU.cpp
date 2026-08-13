@@ -351,15 +351,20 @@ void GPU::CheckForWindowTrigger() {
     if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
         // The WX comparator runs on an internal counter that starts 7 dots
         // before pixel 0 (dot 85), so a window with WX <= 7 triggers at dot
-        // 85 + WX, mid-warmup. Its first 7 - WX pixels then pop into the
-        // offscreen dots, left-clipping the first window tile
-        if (windowX <= 7 && pixelsDrawn == 0 && scanlineCounter < 85u + windowX) return;
+        // 85 + WX, mid-warmup — one dot later still when WX = 0 with a fine
+        // scroll pending. Its first 7 - WX pixels then pop into the offscreen
+        // dots, left-clipping the first window tile, and any unconsumed SCX
+        // fine-scroll discards stack on top
+        if (windowX <= 7 && pixelsDrawn == 0 &&
+            scanlineCounter < 85u + windowX + (windowX == 0 && (scrollX & 7) != 0 ? 1 : 0)) {
+            return;
+        }
         isFetchingWindow_ = true;
         backgroundQueue.clear();
         fetcherState_ = FetcherState::GetTile;
         fetcherDelay_ = 0;
         fetcherTileX_ = 0;
-        if (windowX < 7 && pixelsDrawn == 0) initialScrollXDiscard_ = 7 - windowX;
+        if (pixelsDrawn == 0) initialScrollXDiscard_ += 7 - windowX;
     } else if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && isFetchingWindow_ && windowTriggeredThisFrame &&
                windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
                fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
