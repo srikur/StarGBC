@@ -169,6 +169,9 @@ public:
     bool vblank = false;
     bool statTriggered{false};
     bool m2IrqRaisedEarly{false};
+    // First line after LCD enable: starts in mode 0, skips OAM scan, and
+    // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
+    bool lcdEnableLine0_{false};
     uint8_t bgpPending{0};
     uint8_t bgpWriteStage{0};
     uint8_t lcdcPending{0};

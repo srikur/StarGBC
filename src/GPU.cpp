@@ -172,7 +172,11 @@ void GPU::Update() {
         interrupts_.Set(InterruptType::LCDStat, false);
         m2IrqRaisedEarly = true;
     }
-    if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
+    if (lcdEnableLine0_ && scanlineCounter == 82 && stat.mode == GPUMode::MODE_0) {
+        stat.mode = GPUMode::MODE_3;
+        pixelsDrawn = 0;
+        ResetScanlineState(false);
+    } else if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         stat.mode = GPUMode::MODE_3;
         pixelsDrawn = 0;
         if (hardware != Hardware::CGB || objectPriority) {
@@ -185,6 +189,7 @@ void GPU::Update() {
         ResetScanlineState(false);
     } else if (scanlineCounter == scanlineDuration) {
         shortenScanline = false;
+        lcdEnableLine0_ = false;
         scanlineCounter = 0;
         currentLine++;
         statTriggered = m2IrqRaisedEarly;
@@ -854,7 +859,11 @@ void GPU::ApplyLCDC(const uint8_t value) {
         hdma.singleBlockTransfer = false;
         hdma.hblankBlockFinished = false;
         shortenScanline = true;
-        stat.mode = GPUMode::MODE_2;
+        // Line 0 after enabling reads as mode 0 and never runs an OAM scan;
+        // OAM and VRAM stay accessible until mode 3 begins
+        stat.mode = GPUMode::MODE_0;
+        lcdEnableLine0_ = true;
+        ResetScanlineState(true);
         hblank = false;
         vblank = false;
     }
