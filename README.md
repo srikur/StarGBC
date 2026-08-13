@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (189/272)
+Current Performance: (190/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -217,7 +217,7 @@ Current Performance: (189/272)
 | mooneye/misc/boot_hwio-C.gb                                           | :x:                |
 | mooneye/misc/boot_regs-A.gb                                           | :x:                |
 | mooneye/misc/bits/unused_hwio-C.gb                                    | :x:                |
-| mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :x:                |
+| mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align_cpu.gb                        | :x:                |
 | samesuite/apu/channel_1/channel_1_delay.gb                            | :x:                |

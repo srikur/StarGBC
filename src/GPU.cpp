@@ -231,9 +231,11 @@ void GPU::Update() {
             vblank = true;
             hblank = false;
             interrupts_.Set(InterruptType::VBlank, true);
-            // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT condition
+            // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT
+            // condition — on DMG together with the vblank IF, on CGB one M-cycle
+            // ahead of it (mooneye vblank_stat_intr-GS / -C)
             if (stat.enableM2Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+                interrupts_.Set(InterruptType::LCDStat, hardware != Hardware::CGB);
                 statTriggered = true;
             }
             // The mode 1 STAT condition asserts on the line boundary itself, one
