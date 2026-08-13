@@ -126,6 +126,8 @@ public:
     // on a fresh transition into the match state, not on the match that keeps
     // holding while pixel output is stalled after a window activation
     bool windowMatchLatch_{false};
+    bool windowWasActiveThisLine_{false};
+    bool windowEndPending_{false};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};

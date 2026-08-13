@@ -28,6 +28,8 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     spriteFetchAbort_ = false;
     spriteFetchedThisLine_ = false;
     windowMatchLatch_ = false;
+    windowWasActiveThisLine_ = false;
+    windowEndPending_ = false;
 }
 
 uint8_t GPU::GetOAMScanRow() const {
@@ -177,7 +179,7 @@ void GPU::Update() {
         statTriggered = m2IrqRaisedEarly;
         m2IrqRaisedEarly = false;
 
-        if (isFetchingWindow_) {
+        if (isFetchingWindow_ || windowWasActiveThisLine_) {
             windowLineCounter_++;
         }
 
@@ -421,7 +423,13 @@ void GPU::CheckForSpriteTrigger() {
 void GPU::CheckForWindowTrigger() {
     const bool matched = windowMatchLatch_;
     windowMatchLatch_ = pixelsDrawn + 7 == windowX;
-    if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && pixelsDrawn + 7 >= windowX) {
+    // After a mid-line shutoff, the window only re-activates when WX matches
+    // a pixel that has not been drawn yet — the comparator is equality-based
+    // on re-activation, and the next window row is drawn
+    const bool windowMatch = windowWasActiveThisLine_
+                                 ? pixelsDrawn + 7 == windowX
+                                 : pixelsDrawn + 7 >= windowX;
+    if (Bit<LCDC_WINDOW_ENABLE>(lcdc) && !isFetchingWindow_ && windowTriggeredThisFrame && windowMatch) {
         // The WX comparator runs on an internal counter that starts 7 dots
         // before pixel 0 (dot 85), so a window with WX <= 7 triggers at dot
         // 85 + WX, mid-warmup — one dot later still when WX = 0 with a fine
@@ -432,6 +440,8 @@ void GPU::CheckForWindowTrigger() {
             scanlineCounter < 85u + windowX + (windowX == 0 && (scrollX & 7) != 0 ? 1 : 0)) {
             return;
         }
+        if (windowWasActiveThisLine_) windowLineCounter_++;
+        windowWasActiveThisLine_ = true;
         isFetchingWindow_ = true;
         backgroundQueue.clear();
         fetcherState_ = FetcherState::GetTile;
@@ -527,6 +537,12 @@ void GPU::Fetcher_StepBackgroundFetch() {
             fetcherTileX_++;
             fetcherState_ = GetTile;
             fetcherDelay_ = 0;
+            if (isFetchingWindow_ && windowEndPending_) {
+                // The tile in flight when WIN_EN was cleared has now been
+                // pushed; background fetching resumes from here
+                isFetchingWindow_ = false;
+                windowEndPending_ = false;
+            }
             break;
         }
     }
@@ -789,6 +805,14 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
 
 void GPU::ApplyLCDC(const uint8_t value) {
     const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+    // Disabling the window mid-line ends it at the current tile: the fetch
+    // already in flight completes and its pixels are drawn, then the fetcher
+    // moves on to background tiles. The window may re-activate later the same
+    // line if WX matches a pixel that has not been drawn yet
+    if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && isFetchingWindow_ &&
+        Bit<LCDC_WINDOW_ENABLE>(lcdc) && !Bit<LCDC_WINDOW_ENABLE>(value)) {
+        windowEndPending_ = true;
+    }
     lcdc = value;
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
