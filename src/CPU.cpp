@@ -60,7 +60,6 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
 
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdmaActive) {
-    if (!AdvanceTCycle()) return;
     if (hdmaActive) return;
     if (!instrRunning) {
         if (ProcessInterrupts()) return;
@@ -79,15 +78,6 @@ void CPU<BusT>::BeginMCycle() {
         bus_.bootromRunning = false;
     }
     instrRunning = true;
-}
-
-template<BusLike BusT>
-bool CPU<BusT>::AdvanceTCycle() {
-    if (++tCycleCounter % 4 != 0) {
-        return false;
-    }
-    tCycleCounter = 0;
-    return true;
 }
 
 template<BusLike BusT>

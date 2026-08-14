@@ -70,7 +70,9 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         bus_.UpdateDMA();
         gpu_.Update();
         bus_.RunHDMA();
-        cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+        if ((++cpuTickPhase_ & 3) == 0) {
+            cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+        }
         const uint32_t consumed = bus_.speed == Speed::Regular && !cpu_.stopped() && maxCycles >= 2 ? 2 : 1;
         masterCycles += consumed;
         return consumed;
@@ -87,7 +89,9 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         gpu_.Update();
         bus_.RunHDMA();
     }
-    cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+    if ((++cpuTickPhase_ & 3) == 0) {
+        cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+    }
     masterCycles++;
     return 1;
 }

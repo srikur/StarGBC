@@ -108,6 +108,7 @@ private:
     Instructions<CPU<Bus> > instructions_;
 
     uint32_t masterCycles{0x00000000};
+    uint8_t cpuTickPhase_{0x00};
     int speedMultiplier_{1};
     bool throttleSpeed_{true};
     bool paused_{false};
