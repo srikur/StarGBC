@@ -1,0 +1,27 @@
+src/Gameboy.cpp
+  s_16b3fee8bf3b08::t_d0bc62fb26a3bb 51,58,61-90,92
+  s_16b3fee8bf3b08::t_3e7d976416b72f 105-107
+includes/Gameboy.h
+  s_16b3fee8bf3b08::t_dfcfe4d6734530 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6273a28703a5af476958f6ae7ded895307668660",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_16b3fee8bf3b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44642401-a992-4a54-aec3-029ea0e325f2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
