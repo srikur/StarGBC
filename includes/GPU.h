@@ -167,6 +167,7 @@ public:
     bool shortenScanline{};
 
     bool vblank = false;
+    bool frameReady = true;
     bool statTriggered{false};
     bool m2IrqRaisedEarly{false};
     // First line after LCD enable: starts in mode 0, skips OAM scan, and

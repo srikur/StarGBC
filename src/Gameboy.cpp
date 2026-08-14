@@ -7,10 +7,8 @@
 static constexpr uint32_t kFrameCyclesDMG = 70224;
 static constexpr uint32_t kFrameCyclesCGB = kFrameCyclesDMG * 2;
 
-bool Gameboy::ShouldRender() const {
-    // const bool value = bus->gpu_->vblank;
-    // bus->gpu_->vblank = false;
-    return true;
+bool Gameboy::ConsumeFrame() {
+    return std::exchange(gpu_.frameReady, false);
 }
 
 void Gameboy::Save() const {

@@ -229,6 +229,7 @@ void GPU::Update() {
         } else if (currentLine == 144) {
             stat.mode = GPUMode::MODE_1;
             vblank = true;
+            frameReady = true;
             hblank = false;
             interrupts_.Set(InterruptType::VBlank, true);
             // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT
@@ -869,6 +870,7 @@ void GPU::ApplyLCDC(const uint8_t value) {
         scanlineCounter = currentLine = 0;
         stat.mode = GPUMode::MODE_0;
         screenData.fill(0);
+        frameReady = true;
         hblank = true;
         hdma.hblankBlockFinished = false;
         vblank = false;

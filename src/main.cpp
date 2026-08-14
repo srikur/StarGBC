@@ -121,6 +121,11 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
         case SDL_EVENT_QUIT:
             return SDL_APP_SUCCESS;
 
+        case SDL_EVENT_WINDOW_EXPOSED:
+            SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+            SDL_RenderPresent(renderer);
+            break;
+
         case SDL_EVENT_KEY_DOWN: {
             switch (event->key.key) {
                 case SDLK_ESCAPE: return SDL_APP_SUCCESS;
@@ -228,7 +233,7 @@ SDL_AppResult SDL_AppEvent(void *, SDL_Event *event) {
 SDL_AppResult SDL_AppIterate(void *) {
     gameboy->UpdateEmulator();
 
-    if (gameboy->ShouldRender()) {
+    if (gameboy->ConsumeFrame()) {
         SDL_UpdateTexture(texture,
                           nullptr,
                           gameboy->GetScreenData(),
