@@ -25,12 +25,11 @@ public:
                                                         biosPath_(std::move(settings.biosPath)),
                                                         rtc_(settings.realRTC),
                                                         cartridge_(romPath_, rtc_),
-                                                        joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
+                                                        joypad_(interrupts_), timer_(audio_, interrupts_), serial_(interrupts_), gpu_(interrupts_),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
                                                         cpu_(settings.mode, biosPath_, settings.noBootrom, bus_, interrupts_, registers_),
                                                         instructions_(registers_, interrupts_),
                                                         throttleSpeed_(!settings.unthrottled),
-                                                        timer_(audio_, interrupts_),
                                                         paused_(settings.debugStart) {
     }
 
