@@ -1,0 +1,35 @@
+src/main.cpp
+  s_16b3fee8bf3b08::t_fa17fe4b5fdfe0 80
+src/Cartridge.cpp
+  s_16b3fee8bf3b08::t_cce8c1b860db3b 445
+  s_16b3fee8bf3b08::t_15ce48db7bb09b 448
+includes/Audio.h
+  s_16b3fee8bf3b08::t_526926e3c69cce 42-43
+includes/Gameboy.h
+  s_16b3fee8bf3b08::t_f1e875f53db404 28
+CMakeLists.txt
+  s_16b3fee8bf3b08::t_a1483417e5b3d6 10-14
+  h_3d40ba63c7880a 15
+  s_16b3fee8bf3b08::t_8a9271ccc375c4 36-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a6292e0b5849477fb4ac86b29483725439266953",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_16b3fee8bf3b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44642401-a992-4a54-aec3-029ea0e325f2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
