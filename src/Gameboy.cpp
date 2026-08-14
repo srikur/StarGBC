@@ -48,26 +48,52 @@ void Gameboy::SaveScreen() const {
     }
 }
 
-void Gameboy::AdvanceFrame() {
-    const uint32_t speedDivider = bus_.speed == Speed::Regular ? 2 : 1;
+uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
     if (cpu_.stopped()) {
         if (bus_.joypad_.KeyPressed()) {
             cpu_.stopped() = false;
         } else {
             masterCycles++;
-            return;
+            return 1;
         }
     }
-    if (masterCycles % speedDivider == 0) timer_.Tick(bus_.speed);
-    if (masterCycles % RTC_CLOCK_DIVIDER == 0) rtc_.Update();
-    if (masterCycles % AUDIO_CLOCK_DIVIDER == 0) audio_.Tick();
-    if (masterCycles % speedDivider == 0) serial_.Update();
-    if (masterCycles % speedDivider == 0) bus_.UpdateDMA();
-    if (masterCycles % GRAPHICS_CLOCK_DIVIDER == 0) gpu_.Update();
-    if (masterCycles % 2 == 0) bus_.RunHDMA();
-    if (masterCycles % speedDivider == 0) cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+    if (bus_.speed == Speed::Regular) {
+        if (masterCycles % 2 != 0) {
+            masterCycles++;
+            return 1;
+        }
+        timer_.Tick(bus_.speed);
+        rtc_.Update();
+        audio_.Tick();
+        serial_.Update();
+        bus_.UpdateDMA();
+        gpu_.Update();
+        bus_.RunHDMA();
+        if ((++cpuTickPhase_ & 3) == 0) {
+            cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+        }
+        const uint32_t consumed = bus_.speed == Speed::Regular && !cpu_.stopped() && maxCycles >= 2 ? 2 : 1;
+        masterCycles += consumed;
+        return consumed;
+    }
+    const bool evenCycle = masterCycles % 2 == 0;
+    timer_.Tick(bus_.speed);
+    if (evenCycle) {
+        rtc_.Update();
+        audio_.Tick();
+    }
+    serial_.Update();
+    bus_.UpdateDMA();
+    if (evenCycle) {
+        gpu_.Update();
+        bus_.RunHDMA();
+    }
+    if ((++cpuTickPhase_ & 3) == 0) {
+        cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+    }
     masterCycles++;
+    return 1;
 }
 
 void Gameboy::UpdateEmulator() {
@@ -80,8 +106,9 @@ void Gameboy::UpdateEmulator() {
         kFrameCyclesDMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND
     };
 
-    for (uint32_t i = 0; i < kFrameCyclesCGB; i++) {
-        AdvanceFrame();
+    uint32_t remaining = kFrameCyclesCGB;
+    while (remaining > 0) {
+        remaining -= AdvanceCycles(remaining);
     }
 
     if (throttleSpeed_) {

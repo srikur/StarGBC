@@ -39,8 +39,8 @@ struct Frequency {
     uint16_t value{0}; // Only 11 bits used
 
     void Write(const uint16_t v) { value = v & 0x7FF; }
-    void WriteLow(const uint8_t lower) { value = value & 0x700 | lower; }
-    void WriteHigh(const uint8_t higher) { value = value & 0x00FF | higher << 8; }
+    void WriteLow(const uint8_t lower) { value = (value & 0x700) | lower; }
+    void WriteHigh(const uint8_t higher) { value = (value & 0x00FF) | higher << 8; }
     [[nodiscard]] uint16_t Value() const { return value & 0x7FF; }
     [[nodiscard]] uint8_t ReadLow() const { return static_cast<uint8_t>(value & 0xFF) | 0xFF; }
     [[nodiscard]] uint8_t ReadHigh() const { return static_cast<uint8_t>(value >> 8) | 0xBF; }
@@ -263,7 +263,6 @@ struct Channel4 final : Channel {
 class Audio {
     bool audioEnabled{false};
     bool dmg{false};
-    int32_t cycleCounter{0};
     uint8_t frameSeqStep{0};
     bool skipNextFrameSeqTick{false};
     uint32_t tickCounter{0};

@@ -11,6 +11,15 @@ bool GPU::LCDDisabled() const {
     return !Bit<LCDC_ENABLE_BIT>(lcdc);
 }
 
+bool GPU::StatLineHigh() const {
+    // The DMG early OAM assert counts as the next line's mode 2 condition
+    // already being high
+    return (stat.enableLYInterrupt && stat.coincidenceFlag) ||
+           (stat.enableM0Interrupt && stat.mode == GPUMode::MODE_0) ||
+           (stat.enableM1Interrupt && stat.mode == GPUMode::MODE_1) ||
+           (stat.enableM2Interrupt && (stat.mode == GPUMode::MODE_2 || m2IrqRaisedEarly));
+}
+
 void GPU::ResetScanlineState(const bool clearBuffer) {
     backgroundQueue.clear();
     spriteArray.fill({.isPlaceholder = true});
@@ -126,8 +135,11 @@ void GPU::Update() {
             }
             break;
         case GPUMode::MODE_1:
+            // The mode 1 STAT condition asserts as soon as vblank starts; the
+            // halt-wake dispatch penalty accounts for the extra cycle mooneye's
+            // intr_1_2_timing observes, so no delayed set here
             if (stat.enableM1Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+                interrupts_.Set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
             break;
@@ -155,21 +167,32 @@ void GPU::Update() {
         break;
         default: break;
     }
+    // The STAT IRQ line is the OR of every enabled condition; latch its level
+    // here, after this dot's mode/coincidence updates but before the boundary
+    // transitions below, so next dot's raise sites fire only on a rising edge.
+    // A condition that stays true across a boundary (hblank into a new line,
+    // LYC held while modes cycle) never re-fires
+    statTriggered = StatLineHigh();
+
     scanlineCounter++;
 
     const uint16_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
     // DMG: the mode 2 (OAM) STAT interrupt for lines 1-143 asserts ~4 dots before
     // the line starts (line 0's asserts at line start instead, handled in the mode 2
     // case above). Blocked only if the STAT line is currently high from another
-    // enabled condition, not by this line's statTriggered latch — the current line's
-    // mode 2 condition deasserted back at mode 3 entry
+    // enabled condition — the current line's mode 2 condition deasserted back at
+    // mode 3 entry
     if (hardware != Hardware::CGB && scanlineCounter == scanlineDuration - 3 &&
         currentLine < 143 && stat.mode == GPUMode::MODE_0 && stat.enableM2Interrupt &&
-        !stat.enableM0Interrupt && !(stat.enableLYInterrupt && currentLine == lyc)) {
+        !statTriggered) {
         interrupts_.Set(InterruptType::LCDStat, false);
         m2IrqRaisedEarly = true;
     }
-    if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
+    if (lcdEnableLine0_ && scanlineCounter == 82 && stat.mode == GPUMode::MODE_0) {
+        stat.mode = GPUMode::MODE_3;
+        pixelsDrawn = 0;
+        ResetScanlineState(false);
+    } else if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         stat.mode = GPUMode::MODE_3;
         pixelsDrawn = 0;
         if (hardware != Hardware::CGB || objectPriority) {
@@ -182,9 +205,9 @@ void GPU::Update() {
         ResetScanlineState(false);
     } else if (scanlineCounter == scanlineDuration) {
         shortenScanline = false;
+        lcdEnableLine0_ = false;
         scanlineCounter = 0;
         currentLine++;
-        statTriggered = m2IrqRaisedEarly;
         m2IrqRaisedEarly = false;
 
         if (isFetchingWindow_ || windowWasActiveThisLine_) {
@@ -208,9 +231,17 @@ void GPU::Update() {
             vblank = true;
             hblank = false;
             interrupts_.Set(InterruptType::VBlank, true);
-            // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT condition
+            // Hardware quirk: entering vblank also asserts the mode 2 (OAM) STAT
+            // condition — on DMG together with the vblank IF, on CGB one M-cycle
+            // ahead of it (mooneye vblank_stat_intr-GS / -C)
             if (stat.enableM2Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+                interrupts_.Set(InterruptType::LCDStat, hardware != Hardware::CGB);
+                statTriggered = true;
+            }
+            // The mode 1 STAT condition asserts on the line boundary itself, one
+            // M-cycle ahead of the vblank IF (mooneye intr_1_2_timing)
+            if (stat.enableM1Interrupt && !statTriggered) {
+                interrupts_.Set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
         } else if (currentLine < 144) {
@@ -845,7 +876,11 @@ void GPU::ApplyLCDC(const uint8_t value) {
         hdma.singleBlockTransfer = false;
         hdma.hblankBlockFinished = false;
         shortenScanline = true;
-        stat.mode = GPUMode::MODE_2;
+        // Line 0 after enabling reads as mode 0 and never runs an OAM scan;
+        // OAM and VRAM stay accessible until mode 3 begins
+        stat.mode = GPUMode::MODE_0;
+        lcdEnableLine0_ = true;
+        ResetScanlineState(true);
         hblank = false;
         vblank = false;
     }
@@ -882,12 +917,18 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         }
-        case 0xFF41:
+        case 0xFF41: {
             stat.enableLYInterrupt = value & 0x40;
             stat.enableM2Interrupt = value & 0x20;
             stat.enableM1Interrupt = value & 0x10;
             stat.enableM0Interrupt = value & 0x08;
+            // A write that leaves every enabled condition false drops the line
+            // and re-arms the edge detector, so the next condition fires an IRQ
+            // even if one was already taken this scanline. A write that raises
+            // the line fires through the per-dot condition sites instead
+            if (!LCDDisabled() && !StatLineHigh()) statTriggered = false;
             break;
+        }
         case 0xFF42:
             // Like SCX, a mode-3 SCY write reaches the fetcher two dots late
             if (hardware != Hardware::CGB && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {

@@ -77,10 +77,7 @@ SDL_AppResult SDL_AppInit(void ** /*appstate*/, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    constexpr int winW = GB_SCREEN_W * WINDOW_SCALE;
-    constexpr int winH = GB_SCREEN_H * WINDOW_SCALE;
-
-    if (!SDL_CreateWindowAndRenderer("StarGBC", winW, winH,
+    if (!SDL_CreateWindowAndRenderer("StarGBC", WINDOW_W, WINDOW_H,
                                      SDL_WINDOW_RESIZABLE,
                                      &window, &renderer)) {
         SDL_Log("CreateWindowAndRenderer: %s", SDL_GetError());

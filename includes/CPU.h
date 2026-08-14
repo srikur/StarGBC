@@ -119,8 +119,6 @@ private:
 
     void BeginMCycle();
 
-    bool AdvanceTCycle();
-
     void RunPostCompletion(Instructions<Self> &);
 
     Interrupts &interrupts_;
@@ -138,7 +136,6 @@ private:
     bool stopped_{false};
 
     InterruptState interruptState{InterruptState::M1};
-    uint8_t tCycleCounter{0x00};
     uint8_t interruptBit{0x00};
     uint8_t interruptMask{0x00};
     bool instrRunning{false};

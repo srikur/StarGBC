@@ -1,6 +1,6 @@
 #pragma once
 
-#include <functional>
+#include <stdexcept>
 
 #include "Common.h"
 #include "GPU.h"
@@ -57,14 +57,12 @@ public:
     explicit Instructions(Registers &regs, Interrupts &interrupts) : regs_(regs), interrupts_(interrupts) {
     }
 
-    template<typename... Args>
-    bool prefixedInstr(const uint8_t opcode, Args &&... args) {
-        return prefixedTable[opcode](std::forward<Args>(args)...);
+    bool prefixedInstr(const uint8_t opcode, CPUType &cpu) {
+        return prefixedTable[opcode](*this, cpu);
     }
 
-    template<typename... Args>
-    bool nonPrefixedInstr(const uint8_t opcode, Args &&... args) {
-        return nonPrefixedTable[opcode](std::forward<Args>(args)...);
+    bool nonPrefixedInstr(const uint8_t opcode, CPUType &cpu) {
+        return nonPrefixedTable[opcode](*this, cpu);
     }
 
     void ResetState() {
@@ -87,7 +85,11 @@ private:
     uint16_t word2{0};
     bool jumpCondition{false};
 
-    using WrappedFunction = std::function<bool(CPUType &cpu)>;
+    using WrappedFunction = bool (*)(Instructions &instr, CPUType &cpu);
+
+    static bool IllegalOpcode(Instructions &, CPUType &) {
+        throw std::runtime_error("Illegal opcode executed");
+    }
 
     template<Register source>
     static constexpr auto GetRegisterPtr() {
@@ -1921,516 +1923,523 @@ private:
         return false;
     }
 
-    const std::array<WrappedFunction, 256> prefixedTable = [this] {
-        std::array<WrappedFunction, 256> table{};
-        table[0x00] = [this](CPUType &cpu) -> bool { return this->RLC<Register::B>(cpu); };
-        table[0x01] = [this](CPUType &cpu) -> bool { return this->RLC<Register::C>(cpu); };
-        table[0x02] = [this](CPUType &cpu) -> bool { return this->RLC<Register::D>(cpu); };
-        table[0x03] = [this](CPUType &cpu) -> bool { return this->RLC<Register::E>(cpu); };
-        table[0x04] = [this](CPUType &cpu) -> bool { return this->RLC<Register::H>(cpu); };
-        table[0x05] = [this](CPUType &cpu) -> bool { return this->RLC<Register::L>(cpu); };
-        table[0x06] = [this](CPUType &cpu) -> bool { return this->RLCAddr(cpu); };
-        table[0x07] = [this](CPUType &cpu) -> bool { return this->RLC<Register::A>(cpu); };
-        table[0x08] = [this](CPUType &cpu) -> bool { return this->RRC<Register::B>(cpu); };
-        table[0x09] = [this](CPUType &cpu) -> bool { return this->RRC<Register::C>(cpu); };
-        table[0x0A] = [this](CPUType &cpu) -> bool { return this->RRC<Register::D>(cpu); };
-        table[0x0B] = [this](CPUType &cpu) -> bool { return this->RRC<Register::E>(cpu); };
-        table[0x0C] = [this](CPUType &cpu) -> bool { return this->RRC<Register::H>(cpu); };
-        table[0x0D] = [this](CPUType &cpu) -> bool { return this->RRC<Register::L>(cpu); };
-        table[0x0E] = [this](CPUType &cpu) -> bool { return this->RRCAddr(cpu); };
-        table[0x0F] = [this](CPUType &cpu) -> bool { return this->RRC<Register::A>(cpu); };
-        table[0x10] = [this](CPUType &cpu) -> bool { return this->RL<Register::B>(cpu); };
-        table[0x11] = [this](CPUType &cpu) -> bool { return this->RL<Register::C>(cpu); };
-        table[0x12] = [this](CPUType &cpu) -> bool { return this->RL<Register::D>(cpu); };
-        table[0x13] = [this](CPUType &cpu) -> bool { return this->RL<Register::E>(cpu); };
-        table[0x14] = [this](CPUType &cpu) -> bool { return this->RL<Register::H>(cpu); };
-        table[0x15] = [this](CPUType &cpu) -> bool { return this->RL<Register::L>(cpu); };
-        table[0x16] = [this](CPUType &cpu) -> bool { return this->RLAddr(cpu); };
-        table[0x17] = [this](CPUType &cpu) -> bool { return this->RL<Register::A>(cpu); };
-        table[0x18] = [this](CPUType &cpu) -> bool { return this->RR<Register::B>(cpu); };
-        table[0x19] = [this](CPUType &cpu) -> bool { return this->RR<Register::C>(cpu); };
-        table[0x1A] = [this](CPUType &cpu) -> bool { return this->RR<Register::D>(cpu); };
-        table[0x1B] = [this](CPUType &cpu) -> bool { return this->RR<Register::E>(cpu); };
-        table[0x1C] = [this](CPUType &cpu) -> bool { return this->RR<Register::H>(cpu); };
-        table[0x1D] = [this](CPUType &cpu) -> bool { return this->RR<Register::L>(cpu); };
-        table[0x1E] = [this](CPUType &cpu) -> bool { return this->RRAddr(cpu); };
-        table[0x1F] = [this](CPUType &cpu) -> bool { return this->RR<Register::A>(cpu); };
-        table[0x20] = [this](CPUType &cpu) -> bool { return this->SLA<Register::B>(cpu); };
-        table[0x21] = [this](CPUType &cpu) -> bool { return this->SLA<Register::C>(cpu); };
-        table[0x22] = [this](CPUType &cpu) -> bool { return this->SLA<Register::D>(cpu); };
-        table[0x23] = [this](CPUType &cpu) -> bool { return this->SLA<Register::E>(cpu); };
-        table[0x24] = [this](CPUType &cpu) -> bool { return this->SLA<Register::H>(cpu); };
-        table[0x25] = [this](CPUType &cpu) -> bool { return this->SLA<Register::L>(cpu); };
-        table[0x26] = [this](CPUType &cpu) -> bool { return this->SLAAddr(cpu); };
-        table[0x27] = [this](CPUType &cpu) -> bool { return this->SLA<Register::A>(cpu); };
-        table[0x28] = [this](CPUType &cpu) -> bool { return this->SRA<Register::B>(cpu); };
-        table[0x29] = [this](CPUType &cpu) -> bool { return this->SRA<Register::C>(cpu); };
-        table[0x2A] = [this](CPUType &cpu) -> bool { return this->SRA<Register::D>(cpu); };
-        table[0x2B] = [this](CPUType &cpu) -> bool { return this->SRA<Register::E>(cpu); };
-        table[0x2C] = [this](CPUType &cpu) -> bool { return this->SRA<Register::H>(cpu); };
-        table[0x2D] = [this](CPUType &cpu) -> bool { return this->SRA<Register::L>(cpu); };
-        table[0x2E] = [this](CPUType &cpu) -> bool { return this->SRAAddr(cpu); };
-        table[0x2F] = [this](CPUType &cpu) -> bool { return this->SRA<Register::A>(cpu); };
-        table[0x30] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::B>(cpu); };
-        table[0x31] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::C>(cpu); };
-        table[0x32] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::D>(cpu); };
-        table[0x33] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::E>(cpu); };
-        table[0x34] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::H>(cpu); };
-        table[0x35] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::L>(cpu); };
-        table[0x36] = [this](CPUType &cpu) -> bool { return this->SWAPAddr(cpu); };
-        table[0x37] = [this](CPUType &cpu) -> bool { return this->SWAP<Register::A>(cpu); };
-        table[0x38] = [this](CPUType &cpu) -> bool { return this->SRL<Register::B>(cpu); };
-        table[0x39] = [this](CPUType &cpu) -> bool { return this->SRL<Register::C>(cpu); };
-        table[0x3A] = [this](CPUType &cpu) -> bool { return this->SRL<Register::D>(cpu); };
-        table[0x3B] = [this](CPUType &cpu) -> bool { return this->SRL<Register::E>(cpu); };
-        table[0x3C] = [this](CPUType &cpu) -> bool { return this->SRL<Register::H>(cpu); };
-        table[0x3D] = [this](CPUType &cpu) -> bool { return this->SRL<Register::L>(cpu); };
-        table[0x3E] = [this](CPUType &cpu) -> bool { return this->SRLAddr(cpu); };
-        table[0x3F] = [this](CPUType &cpu) -> bool { return this->SRL<Register::A>(cpu); };
-        table[0x40] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 0>(cpu); };
-        table[0x41] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 0>(cpu); };
-        table[0x42] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 0>(cpu); };
-        table[0x43] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 0>(cpu); };
-        table[0x44] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 0>(cpu); };
-        table[0x45] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 0>(cpu); };
-        table[0x46] = [this](CPUType &cpu) -> bool { return this->BITAddr<0>(cpu); };
-        table[0x47] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 0>(cpu); };
-        table[0x48] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 1>(cpu); };
-        table[0x49] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 1>(cpu); };
-        table[0x4A] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 1>(cpu); };
-        table[0x4B] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 1>(cpu); };
-        table[0x4C] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 1>(cpu); };
-        table[0x4D] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 1>(cpu); };
-        table[0x4E] = [this](CPUType &cpu) -> bool { return this->BITAddr<1>(cpu); };
-        table[0x4F] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 1>(cpu); };
-        table[0x50] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 2>(cpu); };
-        table[0x51] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 2>(cpu); };
-        table[0x52] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 2>(cpu); };
-        table[0x53] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 2>(cpu); };
-        table[0x54] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 2>(cpu); };
-        table[0x55] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 2>(cpu); };
-        table[0x56] = [this](CPUType &cpu) -> bool { return this->BITAddr<2>(cpu); };
-        table[0x57] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 2>(cpu); };
-        table[0x58] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 3>(cpu); };
-        table[0x59] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 3>(cpu); };
-        table[0x5A] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 3>(cpu); };
-        table[0x5B] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 3>(cpu); };
-        table[0x5C] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 3>(cpu); };
-        table[0x5D] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 3>(cpu); };
-        table[0x5E] = [this](CPUType &cpu) -> bool { return this->BITAddr<3>(cpu); };
-        table[0x5F] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 3>(cpu); };
-        table[0x60] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 4>(cpu); };
-        table[0x61] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 4>(cpu); };
-        table[0x62] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 4>(cpu); };
-        table[0x63] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 4>(cpu); };
-        table[0x64] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 4>(cpu); };
-        table[0x65] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 4>(cpu); };
-        table[0x66] = [this](CPUType &cpu) -> bool { return this->BITAddr<4>(cpu); };
-        table[0x67] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 4>(cpu); };
-        table[0x68] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 5>(cpu); };
-        table[0x69] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 5>(cpu); };
-        table[0x6A] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 5>(cpu); };
-        table[0x6B] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 5>(cpu); };
-        table[0x6C] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 5>(cpu); };
-        table[0x6D] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 5>(cpu); };
-        table[0x6E] = [this](CPUType &cpu) -> bool { return this->BITAddr<5>(cpu); };
-        table[0x6F] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 5>(cpu); };
-        table[0x70] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 6>(cpu); };
-        table[0x71] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 6>(cpu); };
-        table[0x72] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 6>(cpu); };
-        table[0x73] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 6>(cpu); };
-        table[0x74] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 6>(cpu); };
-        table[0x75] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 6>(cpu); };
-        table[0x76] = [this](CPUType &cpu) -> bool { return this->BITAddr<6>(cpu); };
-        table[0x77] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 6>(cpu); };
-        table[0x78] = [this](CPUType &cpu) -> bool { return this->BIT<Register::B, 7>(cpu); };
-        table[0x79] = [this](CPUType &cpu) -> bool { return this->BIT<Register::C, 7>(cpu); };
-        table[0x7A] = [this](CPUType &cpu) -> bool { return this->BIT<Register::D, 7>(cpu); };
-        table[0x7B] = [this](CPUType &cpu) -> bool { return this->BIT<Register::E, 7>(cpu); };
-        table[0x7C] = [this](CPUType &cpu) -> bool { return this->BIT<Register::H, 7>(cpu); };
-        table[0x7D] = [this](CPUType &cpu) -> bool { return this->BIT<Register::L, 7>(cpu); };
-        table[0x7E] = [this](CPUType &cpu) -> bool { return this->BITAddr<7>(cpu); };
-        table[0x7F] = [this](CPUType &cpu) -> bool { return this->BIT<Register::A, 7>(cpu); };
-        table[0x80] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 0>(cpu); };
-        table[0x81] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 0>(cpu); };
-        table[0x82] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 0>(cpu); };
-        table[0x83] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 0>(cpu); };
-        table[0x84] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 0>(cpu); };
-        table[0x85] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 0>(cpu); };
-        table[0x86] = [this](CPUType &cpu) -> bool { return this->RESAddr<0>(cpu); };
-        table[0x87] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 0>(cpu); };
-        table[0x88] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 1>(cpu); };
-        table[0x89] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 1>(cpu); };
-        table[0x8A] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 1>(cpu); };
-        table[0x8B] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 1>(cpu); };
-        table[0x8C] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 1>(cpu); };
-        table[0x8D] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 1>(cpu); };
-        table[0x8E] = [this](CPUType &cpu) -> bool { return this->RESAddr<1>(cpu); };
-        table[0x8F] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 1>(cpu); };
-        table[0x90] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 2>(cpu); };
-        table[0x91] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 2>(cpu); };
-        table[0x92] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 2>(cpu); };
-        table[0x93] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 2>(cpu); };
-        table[0x94] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 2>(cpu); };
-        table[0x95] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 2>(cpu); };
-        table[0x96] = [this](CPUType &cpu) -> bool { return this->RESAddr<2>(cpu); };
-        table[0x97] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 2>(cpu); };
-        table[0x98] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 3>(cpu); };
-        table[0x99] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 3>(cpu); };
-        table[0x9A] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 3>(cpu); };
-        table[0x9B] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 3>(cpu); };
-        table[0x9C] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 3>(cpu); };
-        table[0x9D] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 3>(cpu); };
-        table[0x9E] = [this](CPUType &cpu) -> bool { return this->RESAddr<3>(cpu); };
-        table[0x9F] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 3>(cpu); };
-        table[0xA0] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 4>(cpu); };
-        table[0xA1] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 4>(cpu); };
-        table[0xA2] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 4>(cpu); };
-        table[0xA3] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 4>(cpu); };
-        table[0xA4] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 4>(cpu); };
-        table[0xA5] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 4>(cpu); };
-        table[0xA6] = [this](CPUType &cpu) -> bool { return this->RESAddr<4>(cpu); };
-        table[0xA7] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 4>(cpu); };
-        table[0xA8] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 5>(cpu); };
-        table[0xA9] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 5>(cpu); };
-        table[0xAA] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 5>(cpu); };
-        table[0xAB] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 5>(cpu); };
-        table[0xAC] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 5>(cpu); };
-        table[0xAD] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 5>(cpu); };
-        table[0xAE] = [this](CPUType &cpu) -> bool { return this->RESAddr<5>(cpu); };
-        table[0xAF] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 5>(cpu); };
-        table[0xB0] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 6>(cpu); };
-        table[0xB1] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 6>(cpu); };
-        table[0xB2] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 6>(cpu); };
-        table[0xB3] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 6>(cpu); };
-        table[0xB4] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 6>(cpu); };
-        table[0xB5] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 6>(cpu); };
-        table[0xB6] = [this](CPUType &cpu) -> bool { return this->RESAddr<6>(cpu); };
-        table[0xB7] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 6>(cpu); };
-        table[0xB8] = [this](CPUType &cpu) -> bool { return this->RES<Register::B, 7>(cpu); };
-        table[0xB9] = [this](CPUType &cpu) -> bool { return this->RES<Register::C, 7>(cpu); };
-        table[0xBA] = [this](CPUType &cpu) -> bool { return this->RES<Register::D, 7>(cpu); };
-        table[0xBB] = [this](CPUType &cpu) -> bool { return this->RES<Register::E, 7>(cpu); };
-        table[0xBC] = [this](CPUType &cpu) -> bool { return this->RES<Register::H, 7>(cpu); };
-        table[0xBD] = [this](CPUType &cpu) -> bool { return this->RES<Register::L, 7>(cpu); };
-        table[0xBE] = [this](CPUType &cpu) -> bool { return this->RESAddr<7>(cpu); };
-        table[0xBF] = [this](CPUType &cpu) -> bool { return this->RES<Register::A, 7>(cpu); };
-        table[0xC0] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 0>(cpu); };
-        table[0xC1] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 0>(cpu); };
-        table[0xC2] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 0>(cpu); };
-        table[0xC3] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 0>(cpu); };
-        table[0xC4] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 0>(cpu); };
-        table[0xC5] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 0>(cpu); };
-        table[0xC6] = [this](CPUType &cpu) -> bool { return this->SETAddr<0>(cpu); };
-        table[0xC7] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 0>(cpu); };
-        table[0xC8] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 1>(cpu); };
-        table[0xC9] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 1>(cpu); };
-        table[0xCA] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 1>(cpu); };
-        table[0xCB] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 1>(cpu); };
-        table[0xCC] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 1>(cpu); };
-        table[0xCD] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 1>(cpu); };
-        table[0xCE] = [this](CPUType &cpu) -> bool { return this->SETAddr<1>(cpu); };
-        table[0xCF] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 1>(cpu); };
-        table[0xD0] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 2>(cpu); };
-        table[0xD1] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 2>(cpu); };
-        table[0xD2] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 2>(cpu); };
-        table[0xD3] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 2>(cpu); };
-        table[0xD4] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 2>(cpu); };
-        table[0xD5] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 2>(cpu); };
-        table[0xD6] = [this](CPUType &cpu) -> bool { return this->SETAddr<2>(cpu); };
-        table[0xD7] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 2>(cpu); };
-        table[0xD8] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 3>(cpu); };
-        table[0xD9] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 3>(cpu); };
-        table[0xDA] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 3>(cpu); };
-        table[0xDB] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 3>(cpu); };
-        table[0xDC] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 3>(cpu); };
-        table[0xDD] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 3>(cpu); };
-        table[0xDE] = [this](CPUType &cpu) -> bool { return this->SETAddr<3>(cpu); };
-        table[0xDF] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 3>(cpu); };
-        table[0xE0] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 4>(cpu); };
-        table[0xE1] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 4>(cpu); };
-        table[0xE2] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 4>(cpu); };
-        table[0xE3] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 4>(cpu); };
-        table[0xE4] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 4>(cpu); };
-        table[0xE5] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 4>(cpu); };
-        table[0xE6] = [this](CPUType &cpu) -> bool { return this->SETAddr<4>(cpu); };
-        table[0xE7] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 4>(cpu); };
-        table[0xE8] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 5>(cpu); };
-        table[0xE9] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 5>(cpu); };
-        table[0xEA] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 5>(cpu); };
-        table[0xEB] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 5>(cpu); };
-        table[0xEC] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 5>(cpu); };
-        table[0xED] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 5>(cpu); };
-        table[0xEE] = [this](CPUType &cpu) -> bool { return this->SETAddr<5>(cpu); };
-        table[0xEF] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 5>(cpu); };
-        table[0xF0] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 6>(cpu); };
-        table[0xF1] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 6>(cpu); };
-        table[0xF2] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 6>(cpu); };
-        table[0xF3] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 6>(cpu); };
-        table[0xF4] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 6>(cpu); };
-        table[0xF5] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 6>(cpu); };
-        table[0xF6] = [this](CPUType &cpu) -> bool { return this->SETAddr<6>(cpu); };
-        table[0xF7] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 6>(cpu); };
-        table[0xF8] = [this](CPUType &cpu) -> bool { return this->SET<Register::B, 7>(cpu); };
-        table[0xF9] = [this](CPUType &cpu) -> bool { return this->SET<Register::C, 7>(cpu); };
-        table[0xFA] = [this](CPUType &cpu) -> bool { return this->SET<Register::D, 7>(cpu); };
-        table[0xFB] = [this](CPUType &cpu) -> bool { return this->SET<Register::E, 7>(cpu); };
-        table[0xFC] = [this](CPUType &cpu) -> bool { return this->SET<Register::H, 7>(cpu); };
-        table[0xFD] = [this](CPUType &cpu) -> bool { return this->SET<Register::L, 7>(cpu); };
-        table[0xFE] = [this](CPUType &cpu) -> bool { return this->SETAddr<7>(cpu); };
-        table[0xFF] = [this](CPUType &cpu) -> bool { return this->SET<Register::A, 7>(cpu); };
-        return table;
-    }();
+    static constexpr std::array<WrappedFunction, 256> prefixedTable = {{
+        /* 0x00 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::B>(cpu); },
+        /* 0x01 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::C>(cpu); },
+        /* 0x02 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::D>(cpu); },
+        /* 0x03 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::E>(cpu); },
+        /* 0x04 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::H>(cpu); },
+        /* 0x05 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::L>(cpu); },
+        /* 0x06 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLCAddr(cpu); },
+        /* 0x07 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLC<Register::A>(cpu); },
+        /* 0x08 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::B>(cpu); },
+        /* 0x09 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::C>(cpu); },
+        /* 0x0A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::D>(cpu); },
+        /* 0x0B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::E>(cpu); },
+        /* 0x0C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::H>(cpu); },
+        /* 0x0D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::L>(cpu); },
+        /* 0x0E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRCAddr(cpu); },
+        /* 0x0F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRC<Register::A>(cpu); },
+        /* 0x10 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::B>(cpu); },
+        /* 0x11 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::C>(cpu); },
+        /* 0x12 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::D>(cpu); },
+        /* 0x13 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::E>(cpu); },
+        /* 0x14 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::H>(cpu); },
+        /* 0x15 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::L>(cpu); },
+        /* 0x16 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLAddr(cpu); },
+        /* 0x17 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RL<Register::A>(cpu); },
+        /* 0x18 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::B>(cpu); },
+        /* 0x19 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::C>(cpu); },
+        /* 0x1A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::D>(cpu); },
+        /* 0x1B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::E>(cpu); },
+        /* 0x1C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::H>(cpu); },
+        /* 0x1D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::L>(cpu); },
+        /* 0x1E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRAddr(cpu); },
+        /* 0x1F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RR<Register::A>(cpu); },
+        /* 0x20 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::B>(cpu); },
+        /* 0x21 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::C>(cpu); },
+        /* 0x22 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::D>(cpu); },
+        /* 0x23 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::E>(cpu); },
+        /* 0x24 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::H>(cpu); },
+        /* 0x25 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::L>(cpu); },
+        /* 0x26 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLAAddr(cpu); },
+        /* 0x27 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SLA<Register::A>(cpu); },
+        /* 0x28 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::B>(cpu); },
+        /* 0x29 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::C>(cpu); },
+        /* 0x2A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::D>(cpu); },
+        /* 0x2B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::E>(cpu); },
+        /* 0x2C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::H>(cpu); },
+        /* 0x2D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::L>(cpu); },
+        /* 0x2E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRAAddr(cpu); },
+        /* 0x2F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRA<Register::A>(cpu); },
+        /* 0x30 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::B>(cpu); },
+        /* 0x31 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::C>(cpu); },
+        /* 0x32 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::D>(cpu); },
+        /* 0x33 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::E>(cpu); },
+        /* 0x34 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::H>(cpu); },
+        /* 0x35 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::L>(cpu); },
+        /* 0x36 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAPAddr(cpu); },
+        /* 0x37 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SWAP<Register::A>(cpu); },
+        /* 0x38 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::B>(cpu); },
+        /* 0x39 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::C>(cpu); },
+        /* 0x3A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::D>(cpu); },
+        /* 0x3B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::E>(cpu); },
+        /* 0x3C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::H>(cpu); },
+        /* 0x3D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::L>(cpu); },
+        /* 0x3E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRLAddr(cpu); },
+        /* 0x3F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SRL<Register::A>(cpu); },
+        /* 0x40 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 0>(cpu); },
+        /* 0x41 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 0>(cpu); },
+        /* 0x42 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 0>(cpu); },
+        /* 0x43 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 0>(cpu); },
+        /* 0x44 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 0>(cpu); },
+        /* 0x45 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 0>(cpu); },
+        /* 0x46 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<0>(cpu); },
+        /* 0x47 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 0>(cpu); },
+        /* 0x48 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 1>(cpu); },
+        /* 0x49 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 1>(cpu); },
+        /* 0x4A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 1>(cpu); },
+        /* 0x4B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 1>(cpu); },
+        /* 0x4C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 1>(cpu); },
+        /* 0x4D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 1>(cpu); },
+        /* 0x4E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<1>(cpu); },
+        /* 0x4F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 1>(cpu); },
+        /* 0x50 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 2>(cpu); },
+        /* 0x51 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 2>(cpu); },
+        /* 0x52 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 2>(cpu); },
+        /* 0x53 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 2>(cpu); },
+        /* 0x54 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 2>(cpu); },
+        /* 0x55 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 2>(cpu); },
+        /* 0x56 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<2>(cpu); },
+        /* 0x57 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 2>(cpu); },
+        /* 0x58 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 3>(cpu); },
+        /* 0x59 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 3>(cpu); },
+        /* 0x5A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 3>(cpu); },
+        /* 0x5B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 3>(cpu); },
+        /* 0x5C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 3>(cpu); },
+        /* 0x5D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 3>(cpu); },
+        /* 0x5E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<3>(cpu); },
+        /* 0x5F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 3>(cpu); },
+        /* 0x60 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 4>(cpu); },
+        /* 0x61 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 4>(cpu); },
+        /* 0x62 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 4>(cpu); },
+        /* 0x63 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 4>(cpu); },
+        /* 0x64 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 4>(cpu); },
+        /* 0x65 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 4>(cpu); },
+        /* 0x66 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<4>(cpu); },
+        /* 0x67 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 4>(cpu); },
+        /* 0x68 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 5>(cpu); },
+        /* 0x69 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 5>(cpu); },
+        /* 0x6A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 5>(cpu); },
+        /* 0x6B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 5>(cpu); },
+        /* 0x6C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 5>(cpu); },
+        /* 0x6D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 5>(cpu); },
+        /* 0x6E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<5>(cpu); },
+        /* 0x6F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 5>(cpu); },
+        /* 0x70 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 6>(cpu); },
+        /* 0x71 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 6>(cpu); },
+        /* 0x72 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 6>(cpu); },
+        /* 0x73 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 6>(cpu); },
+        /* 0x74 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 6>(cpu); },
+        /* 0x75 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 6>(cpu); },
+        /* 0x76 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<6>(cpu); },
+        /* 0x77 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 6>(cpu); },
+        /* 0x78 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::B, 7>(cpu); },
+        /* 0x79 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::C, 7>(cpu); },
+        /* 0x7A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::D, 7>(cpu); },
+        /* 0x7B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::E, 7>(cpu); },
+        /* 0x7C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::H, 7>(cpu); },
+        /* 0x7D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::L, 7>(cpu); },
+        /* 0x7E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BITAddr<7>(cpu); },
+        /* 0x7F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.BIT<Register::A, 7>(cpu); },
+        /* 0x80 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 0>(cpu); },
+        /* 0x81 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 0>(cpu); },
+        /* 0x82 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 0>(cpu); },
+        /* 0x83 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 0>(cpu); },
+        /* 0x84 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 0>(cpu); },
+        /* 0x85 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 0>(cpu); },
+        /* 0x86 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<0>(cpu); },
+        /* 0x87 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 0>(cpu); },
+        /* 0x88 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 1>(cpu); },
+        /* 0x89 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 1>(cpu); },
+        /* 0x8A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 1>(cpu); },
+        /* 0x8B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 1>(cpu); },
+        /* 0x8C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 1>(cpu); },
+        /* 0x8D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 1>(cpu); },
+        /* 0x8E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<1>(cpu); },
+        /* 0x8F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 1>(cpu); },
+        /* 0x90 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 2>(cpu); },
+        /* 0x91 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 2>(cpu); },
+        /* 0x92 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 2>(cpu); },
+        /* 0x93 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 2>(cpu); },
+        /* 0x94 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 2>(cpu); },
+        /* 0x95 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 2>(cpu); },
+        /* 0x96 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<2>(cpu); },
+        /* 0x97 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 2>(cpu); },
+        /* 0x98 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 3>(cpu); },
+        /* 0x99 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 3>(cpu); },
+        /* 0x9A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 3>(cpu); },
+        /* 0x9B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 3>(cpu); },
+        /* 0x9C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 3>(cpu); },
+        /* 0x9D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 3>(cpu); },
+        /* 0x9E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<3>(cpu); },
+        /* 0x9F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 3>(cpu); },
+        /* 0xA0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 4>(cpu); },
+        /* 0xA1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 4>(cpu); },
+        /* 0xA2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 4>(cpu); },
+        /* 0xA3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 4>(cpu); },
+        /* 0xA4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 4>(cpu); },
+        /* 0xA5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 4>(cpu); },
+        /* 0xA6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<4>(cpu); },
+        /* 0xA7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 4>(cpu); },
+        /* 0xA8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 5>(cpu); },
+        /* 0xA9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 5>(cpu); },
+        /* 0xAA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 5>(cpu); },
+        /* 0xAB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 5>(cpu); },
+        /* 0xAC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 5>(cpu); },
+        /* 0xAD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 5>(cpu); },
+        /* 0xAE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<5>(cpu); },
+        /* 0xAF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 5>(cpu); },
+        /* 0xB0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 6>(cpu); },
+        /* 0xB1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 6>(cpu); },
+        /* 0xB2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 6>(cpu); },
+        /* 0xB3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 6>(cpu); },
+        /* 0xB4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 6>(cpu); },
+        /* 0xB5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 6>(cpu); },
+        /* 0xB6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<6>(cpu); },
+        /* 0xB7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 6>(cpu); },
+        /* 0xB8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::B, 7>(cpu); },
+        /* 0xB9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::C, 7>(cpu); },
+        /* 0xBA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::D, 7>(cpu); },
+        /* 0xBB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::E, 7>(cpu); },
+        /* 0xBC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::H, 7>(cpu); },
+        /* 0xBD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::L, 7>(cpu); },
+        /* 0xBE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RESAddr<7>(cpu); },
+        /* 0xBF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RES<Register::A, 7>(cpu); },
+        /* 0xC0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 0>(cpu); },
+        /* 0xC1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 0>(cpu); },
+        /* 0xC2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 0>(cpu); },
+        /* 0xC3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 0>(cpu); },
+        /* 0xC4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 0>(cpu); },
+        /* 0xC5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 0>(cpu); },
+        /* 0xC6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<0>(cpu); },
+        /* 0xC7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 0>(cpu); },
+        /* 0xC8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 1>(cpu); },
+        /* 0xC9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 1>(cpu); },
+        /* 0xCA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 1>(cpu); },
+        /* 0xCB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 1>(cpu); },
+        /* 0xCC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 1>(cpu); },
+        /* 0xCD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 1>(cpu); },
+        /* 0xCE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<1>(cpu); },
+        /* 0xCF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 1>(cpu); },
+        /* 0xD0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 2>(cpu); },
+        /* 0xD1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 2>(cpu); },
+        /* 0xD2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 2>(cpu); },
+        /* 0xD3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 2>(cpu); },
+        /* 0xD4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 2>(cpu); },
+        /* 0xD5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 2>(cpu); },
+        /* 0xD6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<2>(cpu); },
+        /* 0xD7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 2>(cpu); },
+        /* 0xD8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 3>(cpu); },
+        /* 0xD9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 3>(cpu); },
+        /* 0xDA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 3>(cpu); },
+        /* 0xDB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 3>(cpu); },
+        /* 0xDC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 3>(cpu); },
+        /* 0xDD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 3>(cpu); },
+        /* 0xDE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<3>(cpu); },
+        /* 0xDF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 3>(cpu); },
+        /* 0xE0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 4>(cpu); },
+        /* 0xE1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 4>(cpu); },
+        /* 0xE2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 4>(cpu); },
+        /* 0xE3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 4>(cpu); },
+        /* 0xE4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 4>(cpu); },
+        /* 0xE5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 4>(cpu); },
+        /* 0xE6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<4>(cpu); },
+        /* 0xE7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 4>(cpu); },
+        /* 0xE8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 5>(cpu); },
+        /* 0xE9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 5>(cpu); },
+        /* 0xEA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 5>(cpu); },
+        /* 0xEB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 5>(cpu); },
+        /* 0xEC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 5>(cpu); },
+        /* 0xED */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 5>(cpu); },
+        /* 0xEE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<5>(cpu); },
+        /* 0xEF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 5>(cpu); },
+        /* 0xF0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 6>(cpu); },
+        /* 0xF1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 6>(cpu); },
+        /* 0xF2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 6>(cpu); },
+        /* 0xF3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 6>(cpu); },
+        /* 0xF4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 6>(cpu); },
+        /* 0xF5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 6>(cpu); },
+        /* 0xF6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<6>(cpu); },
+        /* 0xF7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 6>(cpu); },
+        /* 0xF8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::B, 7>(cpu); },
+        /* 0xF9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::C, 7>(cpu); },
+        /* 0xFA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::D, 7>(cpu); },
+        /* 0xFB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::E, 7>(cpu); },
+        /* 0xFC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::H, 7>(cpu); },
+        /* 0xFD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::L, 7>(cpu); },
+        /* 0xFE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SETAddr<7>(cpu); },
+        /* 0xFF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SET<Register::A, 7>(cpu); },
+    }};
 
-    const std::array<WrappedFunction, 256> nonPrefixedTable = [this] {
-        std::array<WrappedFunction, 256> table{};
-        table[0x00] = [this](CPUType &cpu) -> bool { return this->NOP(cpu); };
-        table[0x01] = [this](CPUType &cpu) -> bool { return this->LD16Register<LoadWordTarget::BC>(cpu); };
-        table[0x02] = [this](CPUType &cpu) -> bool { return this->LDFromAccBC(cpu); };
-        table[0x03] = [this](CPUType &cpu) -> bool { return this->INC16<Arithmetic16Target::BC>(cpu); };
-        table[0x04] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::B>(cpu); };
-        table[0x05] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::B>(cpu); };
-        table[0x06] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::B>(cpu); };
-        table[0x07] = [this](CPUType &cpu) -> bool { return this->RLCA(cpu); };
-        table[0x08] = [this](CPUType &cpu) -> bool { return this->LD16FromStack(cpu); };
-        table[0x09] = [this](CPUType &cpu) -> bool { return this->ADD16<Arithmetic16Target::BC>(cpu); };
-        table[0x10] = [this](CPUType &cpu) -> bool { return this->STOP(cpu); };
-        table[0x0A] = [this](CPUType &cpu) -> bool { return this->LDAccumulatorBC(cpu); };
-        table[0x0B] = [this](CPUType &cpu) -> bool { return this->DEC16<Arithmetic16Target::BC>(cpu); };
-        table[0x0C] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::C>(cpu); };
-        table[0x0D] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::C>(cpu); };
-        table[0x0E] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::C>(cpu); };
-        table[0x0F] = [this](CPUType &cpu) -> bool { return this->RRCA(cpu); };
-        table[0x11] = [this](CPUType &cpu) -> bool { return this->LD16Register<LoadWordTarget::DE>(cpu); };
-        table[0x12] = [this](CPUType &cpu) -> bool { return this->LDFromAccDE(cpu); };
-        table[0x13] = [this](CPUType &cpu) -> bool { return this->INC16<Arithmetic16Target::DE>(cpu); };
-        table[0x14] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::D>(cpu); };
-        table[0x15] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::D>(cpu); };
-        table[0x16] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::D>(cpu); };
-        table[0x17] = [this](CPUType &cpu) -> bool { return this->RLA(cpu); };
-        table[0x18] = [this](CPUType &cpu) -> bool { return this->JRUnconditional(cpu); };
-        table[0x19] = [this](CPUType &cpu) -> bool { return this->ADD16<Arithmetic16Target::DE>(cpu); };
-        table[0x1A] = [this](CPUType &cpu) -> bool { return this->LDAccumulatorDE(cpu); };
-        table[0x1B] = [this](CPUType &cpu) -> bool { return this->DEC16<Arithmetic16Target::DE>(cpu); };
-        table[0x1C] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::E>(cpu); };
-        table[0x1D] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::E>(cpu); };
-        table[0x1E] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::E>(cpu); };
-        table[0x1F] = [this](CPUType &cpu) -> bool { return this->RRA(cpu); };
-        table[0x20] = [this](CPUType &cpu) -> bool { return this->JR<JumpTest::NotZero>(cpu); };
-        table[0x21] = [this](CPUType &cpu) -> bool { return this->LD16Register<LoadWordTarget::HL>(cpu); };
-        table[0x22] = [this](CPUType &cpu) -> bool { return this->LDFromAccumulatorIndirectInc(cpu); };
-        table[0x23] = [this](CPUType &cpu) -> bool { return this->INC16<Arithmetic16Target::HL>(cpu); };
-        table[0x24] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::H>(cpu); };
-        table[0x25] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::H>(cpu); };
-        table[0x26] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::H>(cpu); };
-        table[0x27] = [this](CPUType &cpu) -> bool { return this->DAA(cpu); };
-        table[0x28] = [this](CPUType &cpu) -> bool { return this->JR<JumpTest::Zero>(cpu); };
-        table[0x29] = [this](CPUType &cpu) -> bool { return this->ADD16<Arithmetic16Target::HL>(cpu); };
-        table[0x2A] = [this](CPUType &cpu) -> bool { return this->LDAccumulatorIndirectInc(cpu); };
-        table[0x2B] = [this](CPUType &cpu) -> bool { return this->DEC16<Arithmetic16Target::HL>(cpu); };
-        table[0x2C] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::L>(cpu); };
-        table[0x2D] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::L>(cpu); };
-        table[0x2E] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::L>(cpu); };
-        table[0x2F] = [this](CPUType &cpu) -> bool { return this->CPL(cpu); };
-        table[0x30] = [this](CPUType &cpu) -> bool { return this->JR<JumpTest::NotCarry>(cpu); };
-        table[0x31] = [this](CPUType &cpu) -> bool { return this->LD16Register<LoadWordTarget::SP>(cpu); };
-        table[0x32] = [this](CPUType &cpu) -> bool { return this->LDFromAccumulatorIndirectDec(cpu); };
-        table[0x33] = [this](CPUType &cpu) -> bool { return this->INC16<Arithmetic16Target::SP>(cpu); };
-        table[0x34] = [this](CPUType &cpu) -> bool { return this->INCIndirect(cpu); };
-        table[0x35] = [this](CPUType &cpu) -> bool { return this->DECIndirect(cpu); };
-        table[0x36] = [this](CPUType &cpu) -> bool { return this->LDAddrImmediate(cpu); };
-        table[0x37] = [this](CPUType &cpu) -> bool { return this->SCF(cpu); };
-        table[0x38] = [this](CPUType &cpu) -> bool { return this->JR<JumpTest::Carry>(cpu); };
-        table[0x39] = [this](CPUType &cpu) -> bool { return this->ADD16<Arithmetic16Target::SP>(cpu); };
-        table[0x3A] = [this](CPUType &cpu) -> bool { return this->LDAccumulatorIndirectDec(cpu); };
-        table[0x3B] = [this](CPUType &cpu) -> bool { return this->DEC16<Arithmetic16Target::SP>(cpu); };
-        table[0x3C] = [this](CPUType &cpu) -> bool { return this->INCRegister<Register::A>(cpu); };
-        table[0x3D] = [this](CPUType &cpu) -> bool { return this->DECRegister<Register::A>(cpu); };
-        table[0x3E] = [this](CPUType &cpu) -> bool { return this->LDRegisterImmediate<Register::A>(cpu); };
-        table[0x3F] = [this](CPUType &cpu) -> bool { return this->CCF(cpu); };
-        table[0x40] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::B>(cpu); };
-        table[0x41] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::C>(cpu); };
-        table[0x42] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::D>(cpu); };
-        table[0x43] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::E>(cpu); };
-        table[0x44] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::H>(cpu); };
-        table[0x45] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::L>(cpu); };
-        table[0x46] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::B>(cpu); };
-        table[0x47] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::B, Register::A>(cpu); };
-        table[0x48] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::B>(cpu); };
-        table[0x49] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::C>(cpu); };
-        table[0x4A] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::D>(cpu); };
-        table[0x4B] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::E>(cpu); };
-        table[0x4C] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::H>(cpu); };
-        table[0x4D] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::L>(cpu); };
-        table[0x4E] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::C>(cpu); };
-        table[0x4F] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::C, Register::A>(cpu); };
-        table[0x50] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::B>(cpu); };
-        table[0x51] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::C>(cpu); };
-        table[0x52] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::D>(cpu); };
-        table[0x53] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::E>(cpu); };
-        table[0x54] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::H>(cpu); };
-        table[0x55] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::L>(cpu); };
-        table[0x56] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::D>(cpu); };
-        table[0x57] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::D, Register::A>(cpu); };
-        table[0x58] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::B>(cpu); };
-        table[0x59] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::C>(cpu); };
-        table[0x5A] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::D>(cpu); };
-        table[0x5B] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::E>(cpu); };
-        table[0x5C] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::H>(cpu); };
-        table[0x5D] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::L>(cpu); };
-        table[0x5E] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::E>(cpu); };
-        table[0x5F] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::E, Register::A>(cpu); };
-        table[0x60] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::B>(cpu); };
-        table[0x61] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::C>(cpu); };
-        table[0x62] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::D>(cpu); };
-        table[0x63] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::E>(cpu); };
-        table[0x64] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::H>(cpu); };
-        table[0x65] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::L>(cpu); };
-        table[0x66] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::H>(cpu); };
-        table[0x67] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::H, Register::A>(cpu); };
-        table[0x68] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::B>(cpu); };
-        table[0x69] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::C>(cpu); };
-        table[0x6A] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::D>(cpu); };
-        table[0x6B] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::E>(cpu); };
-        table[0x6C] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::H>(cpu); };
-        table[0x6D] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::L>(cpu); };
-        table[0x6E] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::L>(cpu); };
-        table[0x6F] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::L, Register::A>(cpu); };
-        table[0x70] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::B>(cpu); };
-        table[0x71] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::C>(cpu); };
-        table[0x72] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::D>(cpu); };
-        table[0x73] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::E>(cpu); };
-        table[0x74] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::H>(cpu); };
-        table[0x75] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::L>(cpu); };
-        table[0x76] = [this](CPUType &cpu) -> bool { return this->HALT(cpu); };
-        table[0x77] = [this](CPUType &cpu) -> bool { return this->LDAddrRegister<Register::A>(cpu); };
-        table[0x78] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::B>(cpu); };
-        table[0x79] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::C>(cpu); };
-        table[0x7A] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::D>(cpu); };
-        table[0x7B] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::E>(cpu); };
-        table[0x7C] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::H>(cpu); };
-        table[0x7D] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::L>(cpu); };
-        table[0x7E] = [this](CPUType &cpu) -> bool { return this->LDRegisterIndirect<Register::A>(cpu); };
-        table[0x7F] = [this](CPUType &cpu) -> bool { return this->LDRegister<Register::A, Register::A>(cpu); };
-        table[0x80] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::B>(cpu); };
-        table[0x81] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::C>(cpu); };
-        table[0x82] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::D>(cpu); };
-        table[0x83] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::E>(cpu); };
-        table[0x84] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::H>(cpu); };
-        table[0x85] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::L>(cpu); };
-        table[0x86] = [this](CPUType &cpu) -> bool { return this->ADDIndirect(cpu); };
-        table[0x87] = [this](CPUType &cpu) -> bool { return this->ADDRegister<Register::A>(cpu); };
-        table[0x88] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::B>(cpu); };
-        table[0x89] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::C>(cpu); };
-        table[0x8A] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::D>(cpu); };
-        table[0x8B] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::E>(cpu); };
-        table[0x8C] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::H>(cpu); };
-        table[0x8D] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::L>(cpu); };
-        table[0x8E] = [this](CPUType &cpu) -> bool { return this->ADCIndirect(cpu); };
-        table[0x8F] = [this](CPUType &cpu) -> bool { return this->ADCRegister<Register::A>(cpu); };
-        table[0x90] = [this](CPUType &cpu) -> bool { return this->SUB<Register::B>(cpu); };
-        table[0x91] = [this](CPUType &cpu) -> bool { return this->SUB<Register::C>(cpu); };
-        table[0x92] = [this](CPUType &cpu) -> bool { return this->SUB<Register::D>(cpu); };
-        table[0x93] = [this](CPUType &cpu) -> bool { return this->SUB<Register::E>(cpu); };
-        table[0x94] = [this](CPUType &cpu) -> bool { return this->SUB<Register::H>(cpu); };
-        table[0x95] = [this](CPUType &cpu) -> bool { return this->SUB<Register::L>(cpu); };
-        table[0x96] = [this](CPUType &cpu) -> bool { return this->SUBIndirect(cpu); };
-        table[0x97] = [this](CPUType &cpu) -> bool { return this->SUB<Register::A>(cpu); };
-        table[0x98] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::B>(cpu); };
-        table[0x99] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::C>(cpu); };
-        table[0x9A] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::D>(cpu); };
-        table[0x9B] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::E>(cpu); };
-        table[0x9C] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::H>(cpu); };
-        table[0x9D] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::L>(cpu); };
-        table[0x9E] = [this](CPUType &cpu) -> bool { return this->SBCIndirect(cpu); };
-        table[0x9F] = [this](CPUType &cpu) -> bool { return this->SBCRegister<Register::A>(cpu); };
-        table[0xA0] = [this](CPUType &cpu) -> bool { return this->AND<Register::B>(cpu); };
-        table[0xA1] = [this](CPUType &cpu) -> bool { return this->AND<Register::C>(cpu); };
-        table[0xA2] = [this](CPUType &cpu) -> bool { return this->AND<Register::D>(cpu); };
-        table[0xA3] = [this](CPUType &cpu) -> bool { return this->AND<Register::E>(cpu); };
-        table[0xA4] = [this](CPUType &cpu) -> bool { return this->AND<Register::H>(cpu); };
-        table[0xA5] = [this](CPUType &cpu) -> bool { return this->AND<Register::L>(cpu); };
-        table[0xA6] = [this](CPUType &cpu) -> bool { return this->ANDIndirect(cpu); };
-        table[0xA7] = [this](CPUType &cpu) -> bool { return this->AND<Register::A>(cpu); };
-        table[0xA8] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::B>(cpu); };
-        table[0xA9] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::C>(cpu); };
-        table[0xAA] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::D>(cpu); };
-        table[0xAB] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::E>(cpu); };
-        table[0xAC] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::H>(cpu); };
-        table[0xAD] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::L>(cpu); };
-        table[0xAE] = [this](CPUType &cpu) -> bool { return this->XORIndirect(cpu); };
-        table[0xAF] = [this](CPUType &cpu) -> bool { return this->XORRegister<Register::A>(cpu); };
-        table[0xB0] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::B>(cpu); };
-        table[0xB1] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::C>(cpu); };
-        table[0xB2] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::D>(cpu); };
-        table[0xB3] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::E>(cpu); };
-        table[0xB4] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::H>(cpu); };
-        table[0xB5] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::L>(cpu); };
-        table[0xB6] = [this](CPUType &cpu) -> bool { return this->ORIndirect(cpu); };
-        table[0xB7] = [this](CPUType &cpu) -> bool { return this->ORRegister<Register::A>(cpu); };
-        table[0xB8] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::B>(cpu); };
-        table[0xB9] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::C>(cpu); };
-        table[0xBA] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::D>(cpu); };
-        table[0xBB] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::E>(cpu); };
-        table[0xBC] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::H>(cpu); };
-        table[0xBD] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::L>(cpu); };
-        table[0xBE] = [this](CPUType &cpu) -> bool { return this->CPIndirect(cpu); };
-        table[0xBF] = [this](CPUType &cpu) -> bool { return this->CPRegister<Register::A>(cpu); };
-        table[0xC0] = [this](CPUType &cpu) -> bool { return this->RETConditional<JumpTest::NotZero>(cpu); };
-        table[0xC1] = [this](CPUType &cpu) -> bool { return this->POP<StackTarget::BC>(cpu); };
-        table[0xC2] = [this](CPUType &cpu) -> bool { return this->JP<JumpTest::NotZero>(cpu); };
-        table[0xC3] = [this](CPUType &cpu) -> bool { return this->JPUnconditional(cpu); };
-        table[0xC4] = [this](CPUType &cpu) -> bool { return this->CALL<JumpTest::NotZero>(cpu); };
-        table[0xC5] = [this](CPUType &cpu) -> bool { return this->PUSH<StackTarget::BC>(cpu); };
-        table[0xC6] = [this](CPUType &cpu) -> bool { return this->ADDImmediate(cpu); };
-        table[0xC7] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H00>(cpu); };
-        table[0xC8] = [this](CPUType &cpu) -> bool { return this->RETConditional<JumpTest::Zero>(cpu); };
-        table[0xC9] = [this](CPUType &cpu) -> bool { return this->RETUnconditional(cpu); };
-        table[0xCA] = [this](CPUType &cpu) -> bool { return this->JP<JumpTest::Zero>(cpu); };
-        table[0xCB] = [this](CPUType &cpu) -> bool { return this->PREFIX(cpu); };
-        table[0xCC] = [this](CPUType &cpu) -> bool { return this->CALL<JumpTest::Zero>(cpu); };
-        table[0xCD] = [this](CPUType &cpu) -> bool { return this->CALLUnconditional(cpu); };
-        table[0xCE] = [this](CPUType &cpu) -> bool { return this->ADCImmediate(cpu); };
-        table[0xCF] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H08>(cpu); };
-        table[0xD0] = [this](CPUType &cpu) -> bool { return this->RETConditional<JumpTest::NotCarry>(cpu); };
-        table[0xD1] = [this](CPUType &cpu) -> bool { return this->POP<StackTarget::DE>(cpu); };
-        table[0xD2] = [this](CPUType &cpu) -> bool { return this->JP<JumpTest::NotCarry>(cpu); };
-        table[0xD4] = [this](CPUType &cpu) -> bool { return this->CALL<JumpTest::NotCarry>(cpu); };
-        table[0xD5] = [this](CPUType &cpu) -> bool { return this->PUSH<StackTarget::DE>(cpu); };
-        table[0xD6] = [this](CPUType &cpu) -> bool { return this->SUBImmediate(cpu); };
-        table[0xD7] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H10>(cpu); };
-        table[0xD8] = [this](CPUType &cpu) -> bool { return this->RETConditional<JumpTest::Carry>(cpu); };
-        table[0xD9] = [this](CPUType &cpu) -> bool { return this->RETI(cpu); };
-        table[0xDA] = [this](CPUType &cpu) -> bool { return this->JP<JumpTest::Carry>(cpu); };
-        table[0xDC] = [this](CPUType &cpu) -> bool { return this->CALL<JumpTest::Carry>(cpu); };
-        table[0xDE] = [this](CPUType &cpu) -> bool { return this->SBCImmediate(cpu); };
-        table[0xDF] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H18>(cpu); };
-        table[0xE0] = [this](CPUType &cpu) -> bool { return this->LoadFromAccumulatorDirectA(cpu); };
-        table[0xE1] = [this](CPUType &cpu) -> bool { return this->POP<StackTarget::HL>(cpu); };
-        table[0xE2] = [this](CPUType &cpu) -> bool { return this->LoadFromAccumulatorIndirectC(cpu); };
-        table[0xE5] = [this](CPUType &cpu) -> bool { return this->PUSH<StackTarget::HL>(cpu); };
-        table[0xE6] = [this](CPUType &cpu) -> bool { return this->ANDImmediate(cpu); };
-        table[0xE7] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H20>(cpu); };
-        table[0xE8] = [this](CPUType &cpu) -> bool { return this->ADDSigned(cpu); };
-        table[0xE9] = [this](CPUType &cpu) -> bool { return this->JPHL(cpu); };
-        table[0xEA] = [this](CPUType &cpu) -> bool { return this->LDFromAccumulatorDirect(cpu); };
-        table[0xEE] = [this](CPUType &cpu) -> bool { return this->XORImmediate(cpu); };
-        table[0xEF] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H28>(cpu); };
-        table[0xF0] = [this](CPUType &cpu) -> bool { return this->LoadAccumulatorA(cpu); };
-        table[0xF1] = [this](CPUType &cpu) -> bool { return this->POP<StackTarget::AF>(cpu); };
-        table[0xF2] = [this](CPUType &cpu) -> bool { return this->LoadAccumulatorIndirectC(cpu); };
-        table[0xF3] = [this](CPUType &cpu) -> bool { return this->DI(cpu); };
-        table[0xF5] = [this](CPUType &cpu) -> bool { return this->PUSH<StackTarget::AF>(cpu); };
-        table[0xF6] = [this](CPUType &cpu) -> bool { return this->ORImmediate(cpu); };
-        table[0xF7] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H30>(cpu); };
-        table[0xF8] = [this](CPUType &cpu) -> bool { return this->LD16StackAdjusted(cpu); };
-        table[0xF9] = [this](CPUType &cpu) -> bool { return this->LD16Stack(cpu); };
-        table[0xFA] = [this](CPUType &cpu) -> bool { return this->LDAccumulatorDirect(cpu); };
-        table[0xFB] = [this](CPUType &cpu) -> bool { return this->EI(cpu); };
-        table[0xFE] = [this](CPUType &cpu) -> bool { return this->CPImmediate(cpu); };
-        table[0xFF] = [this](CPUType &cpu) -> bool { return this->RST<RSTTarget::H38>(cpu); };
-        return table;
-    }();
+    static constexpr std::array<WrappedFunction, 256> nonPrefixedTable = {{
+        /* 0x00 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.NOP(cpu); },
+        /* 0x01 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16Register<LoadWordTarget::BC>(cpu); },
+        /* 0x02 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDFromAccBC(cpu); },
+        /* 0x03 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INC16<Arithmetic16Target::BC>(cpu); },
+        /* 0x04 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::B>(cpu); },
+        /* 0x05 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::B>(cpu); },
+        /* 0x06 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::B>(cpu); },
+        /* 0x07 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLCA(cpu); },
+        /* 0x08 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16FromStack(cpu); },
+        /* 0x09 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADD16<Arithmetic16Target::BC>(cpu); },
+        /* 0x0A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAccumulatorBC(cpu); },
+        /* 0x0B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DEC16<Arithmetic16Target::BC>(cpu); },
+        /* 0x0C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::C>(cpu); },
+        /* 0x0D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::C>(cpu); },
+        /* 0x0E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::C>(cpu); },
+        /* 0x0F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRCA(cpu); },
+        /* 0x10 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.STOP(cpu); },
+        /* 0x11 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16Register<LoadWordTarget::DE>(cpu); },
+        /* 0x12 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDFromAccDE(cpu); },
+        /* 0x13 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INC16<Arithmetic16Target::DE>(cpu); },
+        /* 0x14 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::D>(cpu); },
+        /* 0x15 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::D>(cpu); },
+        /* 0x16 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::D>(cpu); },
+        /* 0x17 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RLA(cpu); },
+        /* 0x18 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JRUnconditional(cpu); },
+        /* 0x19 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADD16<Arithmetic16Target::DE>(cpu); },
+        /* 0x1A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAccumulatorDE(cpu); },
+        /* 0x1B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DEC16<Arithmetic16Target::DE>(cpu); },
+        /* 0x1C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::E>(cpu); },
+        /* 0x1D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::E>(cpu); },
+        /* 0x1E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::E>(cpu); },
+        /* 0x1F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RRA(cpu); },
+        /* 0x20 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JR<JumpTest::NotZero>(cpu); },
+        /* 0x21 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16Register<LoadWordTarget::HL>(cpu); },
+        /* 0x22 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDFromAccumulatorIndirectInc(cpu); },
+        /* 0x23 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INC16<Arithmetic16Target::HL>(cpu); },
+        /* 0x24 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::H>(cpu); },
+        /* 0x25 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::H>(cpu); },
+        /* 0x26 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::H>(cpu); },
+        /* 0x27 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DAA(cpu); },
+        /* 0x28 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JR<JumpTest::Zero>(cpu); },
+        /* 0x29 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADD16<Arithmetic16Target::HL>(cpu); },
+        /* 0x2A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAccumulatorIndirectInc(cpu); },
+        /* 0x2B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DEC16<Arithmetic16Target::HL>(cpu); },
+        /* 0x2C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::L>(cpu); },
+        /* 0x2D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::L>(cpu); },
+        /* 0x2E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::L>(cpu); },
+        /* 0x2F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPL(cpu); },
+        /* 0x30 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JR<JumpTest::NotCarry>(cpu); },
+        /* 0x31 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16Register<LoadWordTarget::SP>(cpu); },
+        /* 0x32 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDFromAccumulatorIndirectDec(cpu); },
+        /* 0x33 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INC16<Arithmetic16Target::SP>(cpu); },
+        /* 0x34 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCIndirect(cpu); },
+        /* 0x35 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECIndirect(cpu); },
+        /* 0x36 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrImmediate(cpu); },
+        /* 0x37 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SCF(cpu); },
+        /* 0x38 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JR<JumpTest::Carry>(cpu); },
+        /* 0x39 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADD16<Arithmetic16Target::SP>(cpu); },
+        /* 0x3A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAccumulatorIndirectDec(cpu); },
+        /* 0x3B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DEC16<Arithmetic16Target::SP>(cpu); },
+        /* 0x3C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.INCRegister<Register::A>(cpu); },
+        /* 0x3D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DECRegister<Register::A>(cpu); },
+        /* 0x3E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterImmediate<Register::A>(cpu); },
+        /* 0x3F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CCF(cpu); },
+        /* 0x40 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::B>(cpu); },
+        /* 0x41 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::C>(cpu); },
+        /* 0x42 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::D>(cpu); },
+        /* 0x43 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::E>(cpu); },
+        /* 0x44 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::H>(cpu); },
+        /* 0x45 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::L>(cpu); },
+        /* 0x46 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::B>(cpu); },
+        /* 0x47 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::B, Register::A>(cpu); },
+        /* 0x48 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::B>(cpu); },
+        /* 0x49 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::C>(cpu); },
+        /* 0x4A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::D>(cpu); },
+        /* 0x4B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::E>(cpu); },
+        /* 0x4C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::H>(cpu); },
+        /* 0x4D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::L>(cpu); },
+        /* 0x4E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::C>(cpu); },
+        /* 0x4F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::C, Register::A>(cpu); },
+        /* 0x50 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::B>(cpu); },
+        /* 0x51 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::C>(cpu); },
+        /* 0x52 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::D>(cpu); },
+        /* 0x53 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::E>(cpu); },
+        /* 0x54 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::H>(cpu); },
+        /* 0x55 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::L>(cpu); },
+        /* 0x56 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::D>(cpu); },
+        /* 0x57 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::D, Register::A>(cpu); },
+        /* 0x58 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::B>(cpu); },
+        /* 0x59 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::C>(cpu); },
+        /* 0x5A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::D>(cpu); },
+        /* 0x5B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::E>(cpu); },
+        /* 0x5C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::H>(cpu); },
+        /* 0x5D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::L>(cpu); },
+        /* 0x5E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::E>(cpu); },
+        /* 0x5F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::E, Register::A>(cpu); },
+        /* 0x60 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::B>(cpu); },
+        /* 0x61 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::C>(cpu); },
+        /* 0x62 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::D>(cpu); },
+        /* 0x63 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::E>(cpu); },
+        /* 0x64 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::H>(cpu); },
+        /* 0x65 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::L>(cpu); },
+        /* 0x66 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::H>(cpu); },
+        /* 0x67 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::H, Register::A>(cpu); },
+        /* 0x68 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::B>(cpu); },
+        /* 0x69 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::C>(cpu); },
+        /* 0x6A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::D>(cpu); },
+        /* 0x6B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::E>(cpu); },
+        /* 0x6C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::H>(cpu); },
+        /* 0x6D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::L>(cpu); },
+        /* 0x6E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::L>(cpu); },
+        /* 0x6F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::L, Register::A>(cpu); },
+        /* 0x70 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::B>(cpu); },
+        /* 0x71 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::C>(cpu); },
+        /* 0x72 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::D>(cpu); },
+        /* 0x73 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::E>(cpu); },
+        /* 0x74 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::H>(cpu); },
+        /* 0x75 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::L>(cpu); },
+        /* 0x76 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.HALT(cpu); },
+        /* 0x77 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAddrRegister<Register::A>(cpu); },
+        /* 0x78 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::B>(cpu); },
+        /* 0x79 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::C>(cpu); },
+        /* 0x7A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::D>(cpu); },
+        /* 0x7B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::E>(cpu); },
+        /* 0x7C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::H>(cpu); },
+        /* 0x7D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::L>(cpu); },
+        /* 0x7E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegisterIndirect<Register::A>(cpu); },
+        /* 0x7F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDRegister<Register::A, Register::A>(cpu); },
+        /* 0x80 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::B>(cpu); },
+        /* 0x81 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::C>(cpu); },
+        /* 0x82 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::D>(cpu); },
+        /* 0x83 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::E>(cpu); },
+        /* 0x84 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::H>(cpu); },
+        /* 0x85 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::L>(cpu); },
+        /* 0x86 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDIndirect(cpu); },
+        /* 0x87 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDRegister<Register::A>(cpu); },
+        /* 0x88 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::B>(cpu); },
+        /* 0x89 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::C>(cpu); },
+        /* 0x8A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::D>(cpu); },
+        /* 0x8B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::E>(cpu); },
+        /* 0x8C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::H>(cpu); },
+        /* 0x8D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::L>(cpu); },
+        /* 0x8E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCIndirect(cpu); },
+        /* 0x8F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCRegister<Register::A>(cpu); },
+        /* 0x90 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::B>(cpu); },
+        /* 0x91 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::C>(cpu); },
+        /* 0x92 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::D>(cpu); },
+        /* 0x93 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::E>(cpu); },
+        /* 0x94 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::H>(cpu); },
+        /* 0x95 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::L>(cpu); },
+        /* 0x96 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUBIndirect(cpu); },
+        /* 0x97 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUB<Register::A>(cpu); },
+        /* 0x98 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::B>(cpu); },
+        /* 0x99 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::C>(cpu); },
+        /* 0x9A */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::D>(cpu); },
+        /* 0x9B */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::E>(cpu); },
+        /* 0x9C */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::H>(cpu); },
+        /* 0x9D */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::L>(cpu); },
+        /* 0x9E */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCIndirect(cpu); },
+        /* 0x9F */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCRegister<Register::A>(cpu); },
+        /* 0xA0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::B>(cpu); },
+        /* 0xA1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::C>(cpu); },
+        /* 0xA2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::D>(cpu); },
+        /* 0xA3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::E>(cpu); },
+        /* 0xA4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::H>(cpu); },
+        /* 0xA5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::L>(cpu); },
+        /* 0xA6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ANDIndirect(cpu); },
+        /* 0xA7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.AND<Register::A>(cpu); },
+        /* 0xA8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::B>(cpu); },
+        /* 0xA9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::C>(cpu); },
+        /* 0xAA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::D>(cpu); },
+        /* 0xAB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::E>(cpu); },
+        /* 0xAC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::H>(cpu); },
+        /* 0xAD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::L>(cpu); },
+        /* 0xAE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORIndirect(cpu); },
+        /* 0xAF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORRegister<Register::A>(cpu); },
+        /* 0xB0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::B>(cpu); },
+        /* 0xB1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::C>(cpu); },
+        /* 0xB2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::D>(cpu); },
+        /* 0xB3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::E>(cpu); },
+        /* 0xB4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::H>(cpu); },
+        /* 0xB5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::L>(cpu); },
+        /* 0xB6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORIndirect(cpu); },
+        /* 0xB7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORRegister<Register::A>(cpu); },
+        /* 0xB8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::B>(cpu); },
+        /* 0xB9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::C>(cpu); },
+        /* 0xBA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::D>(cpu); },
+        /* 0xBB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::E>(cpu); },
+        /* 0xBC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::H>(cpu); },
+        /* 0xBD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::L>(cpu); },
+        /* 0xBE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPIndirect(cpu); },
+        /* 0xBF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPRegister<Register::A>(cpu); },
+        /* 0xC0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RETConditional<JumpTest::NotZero>(cpu); },
+        /* 0xC1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.POP<StackTarget::BC>(cpu); },
+        /* 0xC2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JP<JumpTest::NotZero>(cpu); },
+        /* 0xC3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JPUnconditional(cpu); },
+        /* 0xC4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CALL<JumpTest::NotZero>(cpu); },
+        /* 0xC5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.PUSH<StackTarget::BC>(cpu); },
+        /* 0xC6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDImmediate(cpu); },
+        /* 0xC7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H00>(cpu); },
+        /* 0xC8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RETConditional<JumpTest::Zero>(cpu); },
+        /* 0xC9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RETUnconditional(cpu); },
+        /* 0xCA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JP<JumpTest::Zero>(cpu); },
+        /* 0xCB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.PREFIX(cpu); },
+        /* 0xCC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CALL<JumpTest::Zero>(cpu); },
+        /* 0xCD */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CALLUnconditional(cpu); },
+        /* 0xCE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADCImmediate(cpu); },
+        /* 0xCF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H08>(cpu); },
+        /* 0xD0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RETConditional<JumpTest::NotCarry>(cpu); },
+        /* 0xD1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.POP<StackTarget::DE>(cpu); },
+        /* 0xD2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JP<JumpTest::NotCarry>(cpu); },
+        /* 0xD3 */ &Instructions::IllegalOpcode,
+        /* 0xD4 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CALL<JumpTest::NotCarry>(cpu); },
+        /* 0xD5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.PUSH<StackTarget::DE>(cpu); },
+        /* 0xD6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SUBImmediate(cpu); },
+        /* 0xD7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H10>(cpu); },
+        /* 0xD8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RETConditional<JumpTest::Carry>(cpu); },
+        /* 0xD9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RETI(cpu); },
+        /* 0xDA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JP<JumpTest::Carry>(cpu); },
+        /* 0xDB */ &Instructions::IllegalOpcode,
+        /* 0xDC */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CALL<JumpTest::Carry>(cpu); },
+        /* 0xDD */ &Instructions::IllegalOpcode,
+        /* 0xDE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.SBCImmediate(cpu); },
+        /* 0xDF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H18>(cpu); },
+        /* 0xE0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LoadFromAccumulatorDirectA(cpu); },
+        /* 0xE1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.POP<StackTarget::HL>(cpu); },
+        /* 0xE2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LoadFromAccumulatorIndirectC(cpu); },
+        /* 0xE3 */ &Instructions::IllegalOpcode,
+        /* 0xE4 */ &Instructions::IllegalOpcode,
+        /* 0xE5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.PUSH<StackTarget::HL>(cpu); },
+        /* 0xE6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ANDImmediate(cpu); },
+        /* 0xE7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H20>(cpu); },
+        /* 0xE8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ADDSigned(cpu); },
+        /* 0xE9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.JPHL(cpu); },
+        /* 0xEA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDFromAccumulatorDirect(cpu); },
+        /* 0xEB */ &Instructions::IllegalOpcode,
+        /* 0xEC */ &Instructions::IllegalOpcode,
+        /* 0xED */ &Instructions::IllegalOpcode,
+        /* 0xEE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.XORImmediate(cpu); },
+        /* 0xEF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H28>(cpu); },
+        /* 0xF0 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LoadAccumulatorA(cpu); },
+        /* 0xF1 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.POP<StackTarget::AF>(cpu); },
+        /* 0xF2 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LoadAccumulatorIndirectC(cpu); },
+        /* 0xF3 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.DI(cpu); },
+        /* 0xF4 */ &Instructions::IllegalOpcode,
+        /* 0xF5 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.PUSH<StackTarget::AF>(cpu); },
+        /* 0xF6 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.ORImmediate(cpu); },
+        /* 0xF7 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H30>(cpu); },
+        /* 0xF8 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16StackAdjusted(cpu); },
+        /* 0xF9 */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LD16Stack(cpu); },
+        /* 0xFA */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.LDAccumulatorDirect(cpu); },
+        /* 0xFB */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.EI(cpu); },
+        /* 0xFC */ &Instructions::IllegalOpcode,
+        /* 0xFD */ &Instructions::IllegalOpcode,
+        /* 0xFE */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.CPImmediate(cpu); },
+        /* 0xFF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H38>(cpu); },
+    }};
 
     const std::array<std::string, 256> prefixedInstructions = {
         "RLC B", "RLC C", "RLC D", "RLC E", "RLC H", "RLC L", "RLC (HL)", "RLC A", "RRC B", "RRC C", "RRC D", "RRC E",

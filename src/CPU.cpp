@@ -60,7 +60,6 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
 
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdmaActive) {
-    if (!AdvanceTCycle()) return;
     if (hdmaActive) return;
     if (!instrRunning) {
         if (ProcessInterrupts()) return;
@@ -79,15 +78,6 @@ void CPU<BusT>::BeginMCycle() {
         bus_.bootromRunning = false;
     }
     instrRunning = true;
-}
-
-template<BusLike BusT>
-bool CPU<BusT>::AdvanceTCycle() {
-    if (++tCycleCounter % 4 != 0) {
-        return false;
-    }
-    tCycleCounter = 0;
-    return true;
 }
 
 template<BusLike BusT>
@@ -146,8 +136,14 @@ bool CPU<BusT>::ProcessInterrupts() {
                 return false;
             }
 
+            // Waking from HALT into a dispatch costs one extra M-cycle before
+            // the normal 5-cycle interrupt sequence begins
+            if (halted_) {
+                halted_ = false;
+                return true;
+            }
+
             interruptState = M2;
-            halted_ = false;
             interrupts_.interruptMasterEnable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));

@@ -25,12 +25,11 @@ public:
                                                         biosPath_(std::move(settings.biosPath)),
                                                         rtc_(settings.realRTC),
                                                         cartridge_(romPath_, rtc_),
-                                                        joypad_(interrupts_), serial_(interrupts_), gpu_(interrupts_),
+                                                        joypad_(interrupts_), timer_(audio_, interrupts_), serial_(interrupts_), gpu_(interrupts_),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
                                                         cpu_(settings.mode, biosPath_, settings.noBootrom, bus_, interrupts_, registers_),
                                                         instructions_(registers_, interrupts_),
                                                         throttleSpeed_(!settings.unthrottled),
-                                                        timer_(audio_, interrupts_),
                                                         paused_(settings.debugStart) {
     }
 
@@ -89,9 +88,6 @@ public:
 private:
     static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194304;
     static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
-    static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
-    static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
-    static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
 
     std::string romPath_;
     std::string biosPath_;
@@ -112,10 +108,11 @@ private:
     Instructions<CPU<Bus> > instructions_;
 
     uint32_t masterCycles{0x00000000};
+    uint8_t cpuTickPhase_{0x00};
     int speedMultiplier_{1};
     bool throttleSpeed_{true};
     bool paused_{false};
     std::chrono::steady_clock::time_point nextFrameTime_{};
 
-    void AdvanceFrame();
+    uint32_t AdvanceCycles(uint32_t maxCycles);
 };

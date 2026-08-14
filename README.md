@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (184/272)
+Current Performance: (190/272)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -148,18 +148,18 @@ Current Performance: (184/272)
 | mooneye/acceptance/oma_dma_start.gb                                   | :white_check_mark: |
 | mooneye/acceptance/oam_dma_timing.gb                                  | :white_check_mark: |
 | mooneye/acceptance/pop_timing.gb                                      | :white_check_mark: |
-| mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb                     | :x:                |
+| mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb                     | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_1_2_timing-GS.gb                          | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_0_timing.gb                             | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_mode0_timing.gb                         | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb                 | :x:                |
 | mooneye/acceptance/ppu/intr_2_mode3_timing.gb                         | :white_check_mark: |
-| mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb                        | :x:                |
+| mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb                        | :white_check_mark: |
 | mooneye/acceptance/ppu/lcdon_timing-GS.gb                             | :x:                |
 | mooneye/acceptance/ppu/lcdon_write_timing-GS.gb                       | :x:                |
-| mooneye/acceptance/ppu/stat_irq_blocking.gb                           | :x:                |
-| mooneye/acceptance/ppu/stat_lyc_onoff.gb                              | :x:                |
-| mooneye/acceptance/ppu/vblank_stat_intr-GS.gb                         | :x:                |
+| mooneye/acceptance/ppu/stat_irq_blocking.gb                           | :white_check_mark: |
+| mooneye/acceptance/ppu/stat_lyc_onoff.gb                              | :white_check_mark: |
+| mooneye/acceptance/ppu/vblank_stat_intr-GS.gb                         | :white_check_mark: |
 | mooneye/acceptance/push_timing.gb                                     | :white_check_mark: |
 | mooneye/acceptance/rapid_di_ei.gb                                     | :white_check_mark: |
 | mooneye/acceptance/reti_intr_timing.gb                                | :white_check_mark: |
@@ -217,7 +217,7 @@ Current Performance: (184/272)
 | mooneye/misc/boot_hwio-C.gb                                           | :x:                |
 | mooneye/misc/boot_regs-A.gb                                           | :x:                |
 | mooneye/misc/bits/unused_hwio-C.gb                                    | :x:                |
-| mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :x:                |
+| mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align_cpu.gb                        | :x:                |
 | samesuite/apu/channel_1/channel_1_delay.gb                            | :x:                |
