@@ -88,9 +88,6 @@ public:
 private:
     static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194304;
     static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
-    static constexpr uint32_t RTC_CLOCK_DIVIDER = 2;
-    static constexpr uint32_t AUDIO_CLOCK_DIVIDER = 2;
-    static constexpr uint32_t GRAPHICS_CLOCK_DIVIDER = 2;
 
     std::string romPath_;
     std::string biosPath_;
@@ -116,5 +113,5 @@ private:
     bool paused_{false};
     std::chrono::steady_clock::time_point nextFrameTime_{};
 
-    void AdvanceFrame();
+    uint32_t AdvanceCycles(uint32_t maxCycles);
 };
