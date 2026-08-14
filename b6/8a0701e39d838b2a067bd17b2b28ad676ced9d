@@ -1,0 +1,35 @@
+src/Gameboy.cpp
+  s_16b3fee8bf3b08::t_8a9980a600b9b8 10-11
+src/GPU.cpp
+  s_16b3fee8bf3b08::t_891e8493aaeb33 232
+  h_3d40ba63c7880a 873
+src/main.cpp
+  s_16b3fee8bf3b08::t_b0978a3670c145 124-128
+  s_16b3fee8bf3b08::t_e186c9bc00f526 236
+includes/Gameboy.h
+  s_16b3fee8bf3b08::t_768f294d43dc8c 55
+  h_3d40ba63c7880a 28-33
+includes/GPU.h
+  s_16b3fee8bf3b08::t_c96cab11eb841a 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b68a0701e39d838b2a067bd17b2b28ad676ced9d",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_16b3fee8bf3b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44642401-a992-4a54-aec3-029ea0e325f2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
