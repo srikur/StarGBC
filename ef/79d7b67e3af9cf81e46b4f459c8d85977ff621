@@ -1,0 +1,52 @@
+scripts/build-deps.sh
+  s_16b3fee8bf3b08::t_30c6fc3b9e04db 35
+  s_16b3fee8bf3b08::t_8044755327ad37 10-11
+  s_16b3fee8bf3b08::t_be9e94e467c7d6 42
+  s_16b3fee8bf3b08::t_a4dbfd493d9c36 36-38
+  s_16b3fee8bf3b08::t_16de8191cb0492 43-44
+  h_3d40ba63c7880a 15-24,28-32,39
+CMakeLists.txt
+  s_16b3fee8bf3b08::t_7e44e4b2238778 4
+  s_16b3fee8bf3b08::t_22d66b5b2cab8c 32-36,42
+  h_3d40ba63c7880a 2
+  s_16b3fee8bf3b08::t_b6ec74b04b34dc 37-41
+src/GPU.cpp
+  s_16b3fee8bf3b08::t_907bf58244f92c 298
+  s_16b3fee8bf3b08::t_c4fbd79f9a7935 1
+  s_16b3fee8bf3b08::t_f5e42dafb5f779 180
+  s_16b3fee8bf3b08::t_f32e4fca77f4f0 709
+src/CPU.cpp
+  s_16b3fee8bf3b08::t_6710bafc9e67c4 4
+src/CMakeLists.txt
+  s_16b3fee8bf3b08::t_200e2fafd1f726 2
+CMakePresets.json
+  s_16b3fee8bf3b08::t_4670224af18e54 15-16
+src/Audio.cpp
+  s_16b3fee8bf3b08::t_d34ae9ab99ead4 3
+src/Bus.cpp
+  s_16b3fee8bf3b08::t_b9a8a988bc0353 4
+  s_16b3fee8bf3b08::t_44c9c066ce284e 152-153
+tests/TestRoms.h
+  s_16b3fee8bf3b08::t_21c828c28d1643 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ef79d7b67e3af9cf81e46b4f459c8d85977ff621",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_16b3fee8bf3b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44642401-a992-4a54-aec3-029ea0e325f2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
