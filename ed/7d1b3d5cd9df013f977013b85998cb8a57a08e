@@ -1,0 +1,36 @@
+.gitignore
+  s_16b3fee8bf3b08::t_f62b987628075f 3-4
+tests/CMakeLists.txt
+  s_16b3fee8bf3b08::t_cc6cbad58bf097 5
+tests/TestRoms.h
+  s_16b3fee8bf3b08::t_93302a930a7110 13
+CMakeLists.txt
+  h_3d40ba63c7880a 16
+  s_16b3fee8bf3b08::t_a0fd54ef30b519 17-22,24-25
+scripts/build-deps.sh
+  s_16b3fee8bf3b08::t_989d929daa4f97 1-7,10-15,17-20,22-42
+  s_16b3fee8bf3b08::t_346507ad498993 8-9,16,21
+src/CMakeLists.txt
+  s_16b3fee8bf3b08::t_7f7b531f59b9ac 8,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ed7d1b3d5cd9df013f977013b85998cb8a57a08e",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_16b3fee8bf3b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44642401-a992-4a54-aec3-029ea0e325f2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
