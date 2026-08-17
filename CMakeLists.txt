@@ -13,26 +13,17 @@ if(NOT STARGBC_IPO_SUPPORTED)
     message(STATUS "IPO/LTO not supported: ${STARGBC_IPO_ERROR}")
 endif()
 
-option(STARGBC_UPDATE_SUBMODULES "Init/update git submodules during configure" ON)
-if(STARGBC_UPDATE_SUBMODULES AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    find_package(Git QUIET)
-    if(GIT_FOUND)
-        message(STATUS "Updating git submodules")
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-            RESULT_VARIABLE GIT_SUBMOD_RESULT)
-        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-            message(FATAL_ERROR "git submodule update --init --recursive failed (exit ${GIT_SUBMOD_RESULT}). Run it manually or pass -DSTARGBC_UPDATE_SUBMODULES=OFF to skip.")
-        endif()
-    endif()
+# Dependencies are prebuilt static libraries installed by scripts/build-deps.sh; the local prefix is prepended so it wins over any system/Homebrew installs.
+list(PREPEND CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/dependencies/install")
+find_package(SDL3 CONFIG QUIET)
+find_package(spdlog CONFIG QUIET)
+find_package(doctest CONFIG QUIET)
+if(NOT SDL3_FOUND OR NOT spdlog_FOUND OR NOT doctest_FOUND)
+    message(FATAL_ERROR "Missing dependencies (SDL3 found: ${SDL3_FOUND}, spdlog found: ${spdlog_FOUND}, doctest found: ${doctest_FOUND}). Run ./scripts/build-deps.sh once to build them into dependencies/install/, or point CMAKE_PREFIX_PATH at an install that provides them.")
 endif()
-
-if(NOT EXISTS "${PROJECT_SOURCE_DIR}/dependencies/SDL/CMakeLists.txt")
-    message(FATAL_ERROR "Submodules are missing. Run `git submodule update --init --recursive` or re-run CMake with -DSTARGBC_UPDATE_SUBMODULES=ON.")
+if(NOT TARGET SDL3::SDL3-static)
+    message(FATAL_ERROR "SDL3 was found at ${SDL3_DIR} but provides no static library. Run ./scripts/build-deps.sh to build the static SDL3 into dependencies/install/.")
 endif()
-
-add_subdirectory(dependencies EXCLUDE_FROM_ALL)
 
 if(STARGBC_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)

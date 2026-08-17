@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "doctest.h"
+#include <doctest/doctest.h>
 #include "ThreadContext.h"
 
 using namespace std::chrono_literals;
