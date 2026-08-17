@@ -1,6 +1,7 @@
 #include "Bus.h"
 
 #include <algorithm>
+#include <cstring>
 
 uint8_t Bus::ReadDMASource(const uint16_t src) {
     const uint8_t page = src >> 8;
@@ -148,7 +149,8 @@ void Bus::UpdateDMA() {
         ++dma_.ticks;
         if (dma_.ticks <= DMA::STARTUP_CYCLES) return; // OAM still accessible here
 
-        gpu_.oam[dma_.currentByte++] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+        gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+        ++dma_.currentByte;
         if (dma_.currentByte == DMA::TOTAL_BYTES) {
             dma_.transferComplete = true;
         }

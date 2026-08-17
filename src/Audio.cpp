@@ -1,5 +1,6 @@
 #include "Audio.h"
 #include <cmath>
+#include <cstring>
 #include <set>
 #include <string>
 

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 4.0.0)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
@@ -27,6 +28,17 @@ endif()
 
 if(STARGBC_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # C++26 reflection (experimental in GCC 16); static runtimes so the binary
+    # doesn't depend on Homebrew's libstdc++/libgcc dylibs
+    add_compile_options(-freflection)
+    add_link_options(-static-libstdc++ -static-libgcc)
+    if(APPLE)
+        # The macOS SDK's Annex K declarations (rsize_t/errno_t) are
+        # clang-only; SDL_stdinc.h requests them unless this is pre-defined to 0
+        add_compile_definitions(__STDC_WANT_LIB_EXT1__=0)
+    endif()
 endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Werror)

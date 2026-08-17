@@ -1,4 +1,5 @@
 file(GLOB_RECURSE SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(REMOVE_ITEM SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
 add_library(${PROJECT_NAME}_Core STATIC ${SRC_FILES})
 if(TARGET stargbc_bootroms)

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <list>
 
 #include "GPU.h"
@@ -176,7 +177,7 @@ void GPU::Update() {
 
     scanlineCounter++;
 
-    const uint16_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
+    const uint32_t scanlineDuration = 456 - (shortenScanline ? 4 : 0);
     // DMG: the mode 2 (OAM) STAT interrupt for lines 1-143 asserts ~4 dots before
     // the line starts (line 0's asserts at line start instead, handled in the mode 2
     // case above). Blocked only if the STAT line is currently high from another
@@ -294,7 +295,7 @@ void GPU::OutputPixel(const bool lcdcAhead) {
     backgroundQueue.pop_front();
 
     const auto spritePixel = spriteArray[0];
-    for (int i = 0; i < spriteArray.size() - 1; i++) {
+    for (size_t i = 0; i < spriteArray.size() - 1; i++) {
         spriteArray[i] = spriteArray[i + 1];
     }
     spriteArray[spriteArray.size() - 1] = {.isSprite = true, .isPlaceholder = true};
@@ -705,7 +706,7 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
         const uint8_t scxForFetch = scxWriteStage > 0 ? scxFetcherOld : scrollX;
         const bool scyOld = scyWriteStage > 0 || (scyJustApplied_ && scanlineCounter < 92);
         const uint8_t scyForFetch = scyOld ? scyFetcherOld : scrollY;
-        const uint8_t tileRow = ((scyForFetch + currentLine & 0xFF) >> 3) & 0x1F;
+        const uint8_t tileRow = (((scyForFetch + currentLine) & 0xFF) >> 3) & 0x1F;
         const uint8_t tileCol = (fetcherTileX_ + (scxForFetch / 8)) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }

@@ -27,7 +27,7 @@ struct Bootroms {
     std::string sgb2Bootrom = "roms/sgb2_boot.bin";
 };
 
-constexpr Bootroms bootroms{};
+const Bootroms bootroms{};
 
 static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     std::ifstream ifs(path, std::ios::binary);
