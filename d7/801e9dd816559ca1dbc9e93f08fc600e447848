@@ -1,0 +1,44 @@
+src/CMakeLists.txt
+  s_31b0a4a0bffaf5::t_249cfd9b3672a4 2-4
+  s_31b0a4a0bffaf5::t_9c9cb03ddcea8e 13
+src/Gameboy.cpp
+  s_31b0a4a0bffaf5::t_f1a981c6025a86 5
+  h_3d40ba63c7880a 27,31
+  s_31b0a4a0bffaf5::t_aa67fa832b2823 82
+  s_31b0a4a0bffaf5::t_2fae08e5889f99 3
+src/main.cpp
+  s_31b0a4a0bffaf5::t_e1f8d206d93e61 6,8-11,14-15,18-19,22-23
+includes/Gameboy.h
+  s_31b0a4a0bffaf5::t_82329713c76095 21-27,38
+  s_31b0a4a0bffaf5::t_9e953a5e6a2280 55
+tests/TestRoms.h
+  s_31b0a4a0bffaf5::t_c2372b3015f923 59
+src/Bus.cpp
+  s_31b0a4a0bffaf5::t_54cb3fcd08088a 324-326,331
+  s_31b0a4a0bffaf5::t_86dad6b7c10f44 320-321
+includes/SDLFrontend.h
+  s_31b0a4a0bffaf5::t_40086b39e99e20 1-63
+src/SDLFrontend.cpp
+  s_31b0a4a0bffaf5::t_a8c76bd116fcc1 1-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d7801e9dd816559ca1dbc9e93f08fc600e447848",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_31b0a4a0bffaf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81350565-0c79-468f-aaba-9a012b7cb2e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
