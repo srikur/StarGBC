@@ -53,13 +53,11 @@ static bool runRomTest(const std::string &rom,
             .biosPath = bios,
             .mode = mode,
         });
-        gameboy->SetThrottle(false);
 
         const auto start = std::chrono::steady_clock::now();
         while (std::chrono::steady_clock::now() - start < 10s) {
-            gameboy->UpdateEmulator();
+            gameboy->RunFrame();
         }
-        gameboy->SetPaused(true);
 
         if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expectedResult.size()), expectedResult)) {
             std::cerr << "Failed " << rom << std::endl;

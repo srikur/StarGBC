@@ -317,14 +317,18 @@ void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type
 bool Bus::SaveState(std::ofstream &stateFile) const { // NOLINT(*-convert-member-functions-to-static)
     try {
         template for (constexpr auto m: std::define_static_array(saveStateMembers<Bus>())) {
-            stateFile.write(reinterpret_cast<const char *>(this->[:m:]), sizeof(this->[:m:]));
+            const auto &member = this->[:m:];
+            stateFile.write(reinterpret_cast<const char *>(&member), sizeof(member));
         }
         template for (constexpr auto m: std::define_static_array(referenceMembers<Bus>())) {
-            this->[:m:].SaveState();
+            if constexpr (requires { this->[:m:].SaveState(stateFile); }) {
+                this->[:m:].SaveState(stateFile);
+            }
         }
     } catch ([[maybe_unused]] const std::exception &e) {
         return false;
     }
+    return true;
 }
 
 void Bus::LoadState(std::ifstream &stateFile) {

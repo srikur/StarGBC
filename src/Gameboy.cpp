@@ -1,11 +1,8 @@
 #include "Gameboy.h"
 
-#include <map>
-#include <thread>
-#include <chrono>
+#include <fstream>
 
-static constexpr uint32_t kFrameCyclesDMG = 70224;
-static constexpr uint32_t kFrameCyclesCGB = kFrameCyclesDMG * 2;
+static constexpr uint32_t kFrameCyclesCGB = Gameboy::FRAME_CYCLES_DMG * 2;
 
 bool Gameboy::ConsumeFrame() {
     return std::exchange(gpu_.frameReady, false);
@@ -27,30 +24,11 @@ const uint32_t *Gameboy::GetScreenData() const {
     return gpu_.GetScreenData();
 }
 
-void Gameboy::ToggleSpeed() {
-    speedMultiplier_ = speedMultiplier_ == 1 ? 4 : 1;
-}
-
-void Gameboy::SetThrottle(const bool throttle) {
-    throttleSpeed_ = throttle;
-}
-
-void Gameboy::SaveScreen() const {
-    try {
-        std::ofstream file(romPath_ + ".screen", std::ios::binary | std::ios::trunc);
-        if (!file.is_open()) throw std::runtime_error("Could not open " + romPath_ + ".screen");
-        file.write(reinterpret_cast<const char *>(GetScreenData()), 160 * 144 * 4);
-        std::fprintf(stderr, "Saved screen to %s.screen\n", romPath_.c_str());
-    } catch (const std::exception &e) {
-        std::fprintf(stderr, "Failed to save screen: %s\n", e.what());
-    }
-}
-
-void Gameboy::SaveState(uint8_t stateNumber) const {
+void Gameboy::SaveState(const uint8_t stateNumber) const {
     std::ofstream file(romPath_ + "");
 }
 
-void Gameboy::LoadState(uint8_t stateNumber) const {
+void Gameboy::LoadState(const uint8_t stateNumber) const {
 }
 
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
@@ -101,29 +79,9 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     return 1;
 }
 
-void Gameboy::UpdateEmulator() {
-    if (paused_) {
-        return;
-    }
-
-    using clock = std::chrono::steady_clock;
-    static constexpr auto kFramePeriod = std::chrono::nanoseconds{
-        kFrameCyclesDMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND
-    };
-
+void Gameboy::RunFrame() {
     uint32_t remaining = kFrameCyclesCGB;
     while (remaining > 0) {
         remaining -= AdvanceCycles(remaining);
-    }
-
-    if (throttleSpeed_) {
-        nextFrameTime_ += kFramePeriod / speedMultiplier_;
-        if (const auto now = clock::now(); nextFrameTime_ > now) {
-            std::this_thread::sleep_until(nextFrameTime_);
-        } else {
-            nextFrameTime_ = now; // fell behind; don't try to catch up in a burst
-        }
-    } else {
-        nextFrameTime_ = clock::now();
     }
 }

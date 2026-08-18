@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <fstream>
 #include <memory>
 #include <utility>
 
@@ -14,13 +13,18 @@ struct GameboySettings {
     std::string biosPath;
     Mode mode{Mode::None};
     bool noBootrom{false};
-    bool debugStart{false};
     bool realRTC{false};
-    bool unthrottled{false};
 };
 
 class Gameboy {
 public:
+    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194304;
+    static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
+    static constexpr uint32_t FRAME_CYCLES_DMG = 70224;
+    static constexpr std::chrono::nanoseconds FRAME_PERIOD{
+        FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND
+    };
+
     explicit Gameboy(const GameboySettings &settings) : romPath_(std::move(settings.romName)),
                                                         biosPath_(std::move(settings.biosPath)),
                                                         rtc_(settings.realRTC),
@@ -31,9 +35,7 @@ public:
                                                              audio_, interrupts_, gpu_),
                                                         cpu_(settings.mode, biosPath_, settings.noBootrom, bus_,
                                                              interrupts_, registers_),
-                                                        instructions_(registers_, interrupts_),
-                                                        throttleSpeed_(!settings.unthrottled),
-                                                        paused_(settings.debugStart) {
+                                                        instructions_(registers_, interrupts_) {
     }
 
     Gameboy(const Gameboy &other) = delete;
@@ -50,7 +52,7 @@ public:
         return std::make_unique<Gameboy>(settings);
     }
 
-    void UpdateEmulator();
+    void RunFrame();
 
     [[nodiscard]] bool ConsumeFrame();
 
@@ -62,23 +64,9 @@ public:
 
     [[nodiscard]] const uint32_t *GetScreenData() const;
 
-    void ToggleSpeed();
-
-    void SetThrottle(bool);
-
-    void SaveScreen() const;
-
     void SaveState(uint8_t) const;
 
     void LoadState(uint8_t) const;
-
-    void SetPaused(const bool val) {
-        paused_ = val;
-    }
-
-    [[nodiscard]] bool IsPaused() const {
-        return paused_;
-    }
 
     [[nodiscard]] size_t GetAudioSamplesAvailable() const {
         return audio_.GetSamplesAvailable();
@@ -93,9 +81,6 @@ public:
     }
 
 private:
-    static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194304;
-    static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
-
     std::string romPath_;
     std::string biosPath_;
 
@@ -116,10 +101,6 @@ private:
 
     uint32_t masterCycles{0x00000000};
     uint8_t cpuTickPhase_{0x00};
-    int speedMultiplier_{1};
-    bool throttleSpeed_{true};
-    bool paused_{false};
-    std::chrono::steady_clock::time_point nextFrameTime_{};
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 };
