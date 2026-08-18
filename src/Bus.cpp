@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cstring>
+#include <meta>
+#include <ranges>
+#include <vector>
 
 uint8_t Bus::ReadDMASource(const uint16_t src) {
     const uint8_t page = src >> 8;
@@ -31,7 +34,9 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
-    if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return dmaReadByte;
+    if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE))
+        return
+                dmaReadByte;
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
@@ -101,13 +106,15 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
-        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, gpu_.hardware == Hardware::CGB);
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double,
+                                                    gpu_.hardware == Hardware::CGB);
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value, speed);
             break;
         case 0xFF0F: interrupts_.interruptFlag = value;
             break;
-        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value, timer_.divCounter >> (speed == Speed::Double ? 5 : 4) & 0x10);
+        case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value,
+                                                 timer_.divCounter >> (speed == Speed::Double ? 5 : 4) & 0x10);
             break;
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {
@@ -115,7 +122,8 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
             } else { gpu_.WriteRegisters(address, value); }
             break;
         }
-        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), gpu_.stat.mode == GPUMode::MODE_0);
+        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(),
+                                                    gpu_.stat.mode == GPUMode::MODE_0);
             break;
         case 0xFF68 ... 0xFF6C: gpu_.WriteRegisters(address, value);
             break;
@@ -220,7 +228,7 @@ void Bus::RunHDMA() const {
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.singleBlockTransfer = false;
                     gpu_.hdma.hblankBlockFinished = true;
-                    gpu_.hdma.transferringBlock = false;  // Block complete, CPU can resume
+                    gpu_.hdma.transferringBlock = false; // Block complete, CPU can resume
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
                     gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
@@ -241,7 +249,9 @@ void Bus::ChangeSpeed() {
 }
 
 void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type) const {
-    if ((gpu_.hardware != Hardware::DMG) || (location < 0xFE00 || location > 0xFEFF) || gpu_.stat.mode != GPUMode::MODE_2) return;
+    if ((gpu_.hardware != Hardware::DMG) || (location < 0xFE00 || location > 0xFEFF) || gpu_.stat.mode !=
+        GPUMode::MODE_2)
+        return;
     if (gpu_.scanlineCounter >= 81) return;
     const int currentRowIndex = gpu_.GetOAMScanRow();
 
@@ -304,14 +314,14 @@ void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type
     }
 }
 
-bool Bus::SaveState(std::ofstream &stateFile) const {
+bool Bus::SaveState(std::ofstream &stateFile) const { // NOLINT(*-convert-member-functions-to-static)
     try {
-        stateFile.write(reinterpret_cast<const char *>(&speed), sizeof(speed));
-        stateFile.write(reinterpret_cast<const char *>(&prepareSpeedShift), sizeof(prepareSpeedShift));
-        stateFile.write(reinterpret_cast<const char *>(&bootromRunning), sizeof(bootromRunning));
-        return cartridge_.SaveState(stateFile) && gpu_.SaveState(stateFile) &&
-               joypad_.SaveState(stateFile) && memory_.SaveState(stateFile) &&
-               timer_.SaveState(stateFile) && serial_.SaveState(stateFile);
+        template for (constexpr auto m: std::define_static_array(saveStateMembers<Bus>())) {
+            stateFile.write(reinterpret_cast<const char *>(this->[:m:]), sizeof(this->[:m:]));
+        }
+        template for (constexpr auto m: std::define_static_array(referenceMembers<Bus>())) {
+            this->[:m:].SaveState();
+        }
     } catch ([[maybe_unused]] const std::exception &e) {
         return false;
     }

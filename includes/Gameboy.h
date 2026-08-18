@@ -56,17 +56,21 @@ public:
 
     void Save() const;
 
-    void KeyUp(Keys key);
+    void KeyUp(Keys);
 
-    void KeyDown(Keys key);
+    void KeyDown(Keys);
 
     [[nodiscard]] const uint32_t *GetScreenData() const;
 
     void ToggleSpeed();
 
-    void SetThrottle(bool throttle);
+    void SetThrottle(bool);
 
     void SaveScreen() const;
+
+    void SaveState(uint8_t) const;
+
+    void LoadState(uint8_t) const;
 
     void SetPaused(const bool val) {
         paused_ = val;

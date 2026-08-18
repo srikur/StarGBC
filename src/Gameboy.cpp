@@ -46,6 +46,13 @@ void Gameboy::SaveScreen() const {
     }
 }
 
+void Gameboy::SaveState(uint8_t stateNumber) const {
+    std::ofstream file(romPath_ + "");
+}
+
+void Gameboy::LoadState(uint8_t stateNumber) const {
+}
+
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
     if (cpu_.stopped()) {

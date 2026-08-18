@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <meta>
+#include <ranges>
 
 static constexpr uint8_t SCREEN_WIDTH = 160;
 static constexpr uint8_t SCREEN_HEIGHT = 144;
@@ -44,6 +46,30 @@ static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
 enum class Hardware {
     DMG, CGB, MGB, SGB, SGB2, GBA, GBS,
 };
+
+struct transient {
+};
+
+template<typename T, typename... Fs>
+static consteval std::vector<std::meta::info> saveStateMembers(Fs... extra) {
+    auto keep = [&](std::meta::info m) {
+        return std::meta::has_identifier(m) && !std::meta::is_reference_type(std::meta::type_of(m)) &&
+               std::meta::annotations_of(m).empty()
+               && (extra(m) && ...);
+    };
+    return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()) | std::views::filter(keep) |
+           std::ranges::to<std::vector>();
+}
+
+template<typename T, typename... Fs>
+static consteval std::vector<std::meta::info> referenceMembers(Fs... extra) {
+    auto keep = [&](std::meta::info m) {
+        return std::meta::has_identifier(m) && std::meta::is_reference_type(std::meta::type_of(m)) &&
+               std::meta::annotations_of(m).empty() && (extra(m) && ...);
+    };
+    return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()) |
+           std::views::filter(keep) | std::ranges::to<std::vector>();
+}
 
 template<uint8_t bit>
 static constexpr bool Bit(const uint8_t value) {

@@ -65,5 +65,5 @@ public:
     bool speedShiftActive{false};
     Speed speed{Speed::Regular};
     uint8_t dmaReadByte{};
-    std::vector<uint8_t> bootrom;
+    [[=^^transient]] std::vector<uint8_t> bootrom;
 };
