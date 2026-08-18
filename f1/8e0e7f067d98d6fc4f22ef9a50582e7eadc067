@@ -1,0 +1,26 @@
+includes/Bus.h
+  h_3d40ba63c7880a 68
+src/main.cpp
+  h_3d40ba63c7880a 170-196
+  h_3d40ba63c7880a 197
+includes/Gameboy.h
+  h_3d40ba63c7880a 59,61,67,71-74
+src/Gameboy.cpp
+  h_3d40ba63c7880a 49-55
+src/Bus.cpp
+  h_3d40ba63c7880a 5-7,317,319-324
+  h_3d40ba63c7880a 37-39,109-110,116-117,125-126,231,252-254
+includes/Common.h
+  h_3d40ba63c7880a 12-13,50-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f18e0e7f067d98d6fc4f22ef9a50582e7eadc067",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
