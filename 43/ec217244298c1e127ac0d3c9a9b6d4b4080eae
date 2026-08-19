@@ -1,0 +1,25 @@
+src/Bus.cpp
+  s_495a566b9c1a66::t_5e672a0970e19e 117
+src/Timer.cpp
+  s_495a566b9c1a66::t_4a8e3eccf50b48 58-60
+tests/TestRoms.h
+  s_495a566b9c1a66::t_57e33f83db9f32 204-211,362-369
+README.md
+  s_495a566b9c1a66::t_57e33f83db9f32 40,232,238,249,252,277-278,281-282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "43ec217244298c1e127ac0d3c9a9b6d4b4080eae",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
