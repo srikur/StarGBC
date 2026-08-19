@@ -70,8 +70,8 @@ private:
 
     RealTimeClock& rtc_;
 
-    std::string savepath_;
-    std::vector<uint8_t> gameRom_;
+    [[=NotStateAware]] std::string savepath_;
+    [[=NotStateAware]] std::vector<uint8_t> gameRom_;
     std::vector<uint8_t> gameRam_;
 
     MBC mbc{MBC::None};

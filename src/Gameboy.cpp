@@ -24,11 +24,7 @@ const uint32_t *Gameboy::GetScreenData() const {
     return gpu_.GetScreenData();
 }
 
-void Gameboy::SaveState(const uint8_t stateNumber) const {
-    std::ofstream file(romPath_ + "");
-}
-
-void Gameboy::LoadState(const uint8_t stateNumber) const {
+void Gameboy::LoadState() {
 }
 
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {

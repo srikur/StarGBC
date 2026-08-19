@@ -313,36 +313,3 @@ void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type
         std::memcpy(&gpu_.oam[currentRowAddr + 2], &gpu_.oam[prevRowAddr + 2], 6);
     }
 }
-
-bool Bus::SaveState(std::ofstream &stateFile) const { // NOLINT(*-convert-member-functions-to-static)
-    try {
-        template for (constexpr auto m: std::define_static_array(saveStateMembers<Bus>())) {
-            const auto &member = this->[:m:];
-            stateFile.write(reinterpret_cast<const char *>(&member), sizeof(member));
-        }
-        template for (constexpr auto m: std::define_static_array(referenceMembers<Bus>())) {
-            if constexpr (requires { this->[:m:].SaveState(stateFile); }) {
-                this->[:m:].SaveState(stateFile);
-            }
-        }
-    } catch ([[maybe_unused]] const std::exception &e) {
-        return false;
-    }
-    return true;
-}
-
-void Bus::LoadState(std::ifstream &stateFile) {
-    try {
-        stateFile.read(reinterpret_cast<char *>(&speed), sizeof(speed));
-        stateFile.read(reinterpret_cast<char *>(&prepareSpeedShift), sizeof(prepareSpeedShift));
-        stateFile.read(reinterpret_cast<char *>(&bootromRunning), sizeof(bootromRunning));
-
-        cartridge_.LoadState(stateFile);
-        gpu_.LoadState(stateFile);
-        joypad_.LoadState(stateFile);
-        memory_.LoadState(stateFile);
-        timer_.LoadState(stateFile);
-        serial_.LoadState(stateFile);
-    } catch ([[maybe_unused]] const std::exception &e) {
-    }
-}

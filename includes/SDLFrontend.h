@@ -47,6 +47,10 @@ private:
 
     void SaveScreenshot() const;
 
+    void SaveState(uint8_t) const;
+
+    void LoadState(uint8_t);
+
     SDL_Window *window_{nullptr};
     SDL_Renderer *renderer_{nullptr};
     SDL_Texture *texture_{nullptr};

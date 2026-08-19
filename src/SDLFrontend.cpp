@@ -188,8 +188,8 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
         case SDLK_6:
         case SDLK_7: {
             const auto slot = static_cast<uint8_t>(key.key - SDLK_1 + 1);
-            if (key.mod & SDL_KMOD_LSHIFT) gameboy_->SaveState(slot);
-            else if (key.mod & SDL_KMOD_LCTRL) gameboy_->LoadState(slot);
+            if (key.mod & SDL_KMOD_LSHIFT) SaveState(slot);
+            else if (key.mod & SDL_KMOD_LCTRL) LoadState(slot);
             break;
         }
         default: break;
@@ -282,4 +282,19 @@ void SDLFrontend::SaveScreenshot() const {
     } catch (const std::exception &e) {
         std::fprintf(stderr, "Failed to save screen: %s\n", e.what());
     }
+}
+
+void SDLFrontend::SaveState(const uint8_t slot) const {
+    try {
+        const std::string filename = std::format("{}.sv{}", romPath_, slot);
+        std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+        if (!file.is_open()) throw std::runtime_error("Failed to save: " + filename);
+        const auto saveBytes = gameboy_->SaveState();
+    } catch (const std::exception &e) {
+
+    }
+}
+
+void SDLFrontend::LoadState(const uint8_t slot) {
+
 }

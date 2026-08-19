@@ -3,6 +3,7 @@
 #include <chrono>
 #include <memory>
 #include <utility>
+#include <numeric>
 
 #include "Common.h"
 #include "CPU.h"
@@ -64,15 +65,15 @@ public:
 
     [[nodiscard]] const uint32_t *GetScreenData() const;
 
-    void SaveState(uint8_t) const;
+    [[nodiscard]] auto SaveState() const;
 
-    void LoadState(uint8_t) const;
+    void LoadState();
 
     [[nodiscard]] size_t GetAudioSamplesAvailable() const {
         return audio_.GetSamplesAvailable();
     }
 
-    size_t ReadAudioSamples(float *output, size_t numSamples) {
+    size_t ReadAudioSamples(float *output, const size_t numSamples) {
         return audio_.ReadSamples(output, numSamples);
     }
 
@@ -81,8 +82,8 @@ public:
     }
 
 private:
-    std::string romPath_;
-    std::string biosPath_;
+    [[=NotStateAware]] std::string romPath_;
+    [[=NotStateAware]] std::string biosPath_;
 
     RealTimeClock rtc_; // init in constructor
     Cartridge cartridge_; // init in constructor
@@ -104,3 +105,24 @@ private:
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 };
+
+template<class T>
+static constexpr void SerializeInto(const T &obj, std::byte *out) {
+    if constexpr (constexpr auto members = std::define_static_array(StateMembersOf(^^T)); members.empty()) {
+        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(T)> >(obj), out);
+    } else {
+        std::size_t offset = 0;
+        template for (constexpr auto m: members) {
+            SerializeInto(obj.[:m:], out + offset);
+            offset += StateSizeOf(std::meta::type_of(m));
+        }
+    }
+}
+
+inline constexpr std::size_t kGameboyStateSize = StateSizeOf(^^Gameboy);
+
+inline auto Gameboy::SaveState() const {
+    std::array<std::byte, kGameboyStateSize> out{};
+    SerializeInto(*this, out.data());
+    return out;
+}
