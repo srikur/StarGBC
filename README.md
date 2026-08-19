@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (239/277)
+Current Performance: (249/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -263,17 +263,17 @@ Current Performance: (239/277)
 | samesuite/apu/channel_3/channel_3_stop_div.gb                         | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb            | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_wave_ram_sync.gb                    | :white_check_mark:                |
-| samesuite/apu/channel_4/channel_4_align.gb                            | :x:                |
-| samesuite/apu/channel_4/channel_4_delay.gb                            | :x:                |
-| samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb           | :x:                |
-| samesuite/apu/channel_4/channel_4_frequency_alignment.gb              | :x:                |
-| samesuite/apu/channel_4/channel_4_freq_change.gb                      | :x:                |
+| samesuite/apu/channel_4/channel_4_align.gb                            | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_delay.gb                            | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb           | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_frequency_alignment.gb              | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_freq_change.gb                      | :white_check_mark:                |
 | samesuite/apu/channel_4/channel_4_lfsr.gb                             | :white_check_mark:                |
-| samesuite/apu/channel_4/channel_4_lfsr15.gb                           | :x:                |
-| samesuite/apu/channel_4/channel_4_lfsr_15_7.gb                        | :x:                |
-| samesuite/apu/channel_4/channel_4_lfsr_7_15.gb                        | :x:                |
-| samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :x:                |
-| samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :x:                |
+| samesuite/apu/channel_4/channel_4_lfsr15.gb                           | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_lfsr_15_7.gb                        | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_lfsr_7_15.gb                        | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :white_check_mark:                |
+| samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :white_check_mark:                |
 | samesuite/apu/channel_4/channel_4_volume_div.gb                       | :white_check_mark:                |
 | samesuite/apu/div_trigger_volume_10.gb                               | :white_check_mark: |
 | samesuite/apu/div_write_trigger.gb                                    | :white_check_mark:                |

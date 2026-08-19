@@ -214,6 +214,16 @@ static const std::vector<Case> romTestcases = {
     {"roms/samesuite/apu/channel_1/channel_1_sweep_restart.gb", "tests/expected/samesuite/apu/channel_1/channel_1_sweep_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb", "tests/expected/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb", "tests/expected/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_align.gb", "tests/expected/samesuite/apu/channel_4/channel_4_align.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_delay.gb", "tests/expected/samesuite/apu/channel_4/channel_4_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb", "tests/expected/samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_freq_change.gb", "tests/expected/samesuite/apu/channel_4/channel_4_freq_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_frequency_alignment.gb", "tests/expected/samesuite/apu/channel_4/channel_4_frequency_alignment.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_lfsr15.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr15.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_lfsr_15_7.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_15_7.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_lfsr_restart.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
 };
 
 static auto &romFutures() {
@@ -377,6 +387,16 @@ ROM_TEST(133, "roms/samesuite/apu/channel_1/channel_1_sweep.gb")
 ROM_TEST(134, "roms/samesuite/apu/channel_1/channel_1_sweep_restart.gb")
 ROM_TEST(135, "roms/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb")
 ROM_TEST(136, "roms/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb")
+ROM_TEST(137, "roms/samesuite/apu/channel_4/channel_4_align.gb")
+ROM_TEST(138, "roms/samesuite/apu/channel_4/channel_4_delay.gb")
+ROM_TEST(139, "roms/samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb")
+ROM_TEST(140, "roms/samesuite/apu/channel_4/channel_4_freq_change.gb")
+ROM_TEST(141, "roms/samesuite/apu/channel_4/channel_4_frequency_alignment.gb")
+ROM_TEST(142, "roms/samesuite/apu/channel_4/channel_4_lfsr15.gb")
+ROM_TEST(143, "roms/samesuite/apu/channel_4/channel_4_lfsr_15_7.gb")
+ROM_TEST(144, "roms/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb")
+ROM_TEST(145, "roms/samesuite/apu/channel_4/channel_4_lfsr_restart.gb")
+ROM_TEST(146, "roms/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

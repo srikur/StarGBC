@@ -275,22 +275,42 @@ struct Channel4 final : Channel {
     Envelope envelope{};
     Noise noise{};
 
-    int32_t freqTimer{0};
-    uint16_t lfsr{0xFFFF};
+    // SameBoy noise model: a free-running 14-bit counter clocked every
+    // (divisor) 2MHz ticks; the LFSR steps on rising edges of the counter
+    // bit selected by the NR43 shift. The counter keeps counting in the
+    // background while the channel is off
+    uint16_t counter{0};
+    uint8_t counterCountdown{0};
+    uint8_t alignment{0};
+    uint16_t lfsr{0};
+    bool narrow{false};
+    bool currentLfsrSample{false};
+    bool didStepCounter{false};
+    bool countdownReloaded{false};
+    bool counterActive{false};
+    bool backgroundCounterActive{false};
+    bool startedWithDacDisabled{false};
+    bool lfsrSteppedInNarrow{false};
+    bool lfsrBit7BeforeStep{false};
+    uint8_t dmgDelayedStart{0};
     float currentOutput{0.0f};
     uint8_t trigger{0};
-
-    void Trigger(uint8_t freqStep);
 
     void TickLength();
 
     void TickEnvelope();
 
-    void TickLfsr();
+    void StepLfsr();
 
-    void Tick();
+    void Tick2M(uint8_t freqStep, bool dmg);
 
-    void HandleNR44Write(uint8_t value, uint8_t freqStep);
+    void PrepareNoiseStart(bool dmg);
+
+    void DoTrigger(uint8_t freqStep, bool dmg);
+
+    void HandleNR43Write(uint8_t value);
+
+    void HandleNR44Write(uint8_t value, uint8_t freqStep, bool dmg);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 

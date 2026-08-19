@@ -67,9 +67,9 @@ void Audio::Tick() {
             ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
             ch1.Tick2M();
             ch2.Tick2M();
+            ch4.Tick2M(frameSeqStep, dmg);
         }
         ch3.Tick();
-        ch4.Tick();
     }
     GenerateSample();
 }
@@ -769,28 +769,6 @@ uint8_t Channel3::GetDigitalOutput() const {
     return sampleByte >> volumeShift;
 }
 
-void Channel4::Trigger(const uint8_t freqStep) {
-    if (dacEnabled) enabled = true;
-    dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
-
-    if (lengthTimer.lengthTimer == 64) {
-        lengthTimer.lengthTimer = 0;
-        if (lengthTimer.enabled && (freqStep % 2 != 0)) {
-            lengthTimer.lengthTimer++;
-        }
-    }
-
-    const int divisor = noise.clockDivider == 0 ? 8 : noise.clockDivider * 16;
-    freqTimer = divisor << noise.clockShift;
-
-    envelope.volumeCountdown = envelope.sweepPace;
-    envelope.currentVolume = envelope.initialVolume;
-    envelope.clock = false;
-    envelope.locked = false;
-
-    lfsr = 0xFFFF;
-}
-
 void Channel4::TickLength() {
     if (lengthTimer.enabled && lengthTimer.lengthTimer < 64) {
         lengthTimer.lengthTimer++;
@@ -804,35 +782,296 @@ void Channel4::TickEnvelope() {
     envelope.currentVolume = (envelope.currentVolume + (envelope.direction ? 1 : -1)) & 0xF;
 }
 
-void Channel4::TickLfsr() {
-    const uint8_t xor_result = (lfsr & 1) ^ ((lfsr >> 1) & 1);
+void Channel4::StepLfsr() {
+    lfsrBit7BeforeStep = lfsr & 0x80;
+    const uint16_t highBitMask = narrow ? 0x4040 : 0x4000;
+    const bool newHighBit = (lfsr ^ (lfsr >> 1) ^ 1) & 1;
     lfsr >>= 1;
-    lfsr |= (xor_result << 14);
-    if (noise.lfsrWidth) {
-        lfsr &= ~(1 << 6);
-        lfsr |= (xor_result << 6);
+    if (newHighBit) {
+        lfsr |= highBitMask;
+    } else {
+        // Not redundant: this matters when switching LFSR widths
+        lfsr &= ~highBitMask;
     }
+    currentLfsrSample = lfsr & 1;
+    if (dacEnabled) {
+        currentOutput = currentLfsrSample ? static_cast<float>(envelope.currentVolume) : 0.0f;
+    }
+    lfsrSteppedInNarrow = narrow;
 }
 
-void Channel4::Tick() {
-    if (!enabled) return;
-    freqTimer--;
-    if (lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
+void Channel4::Tick2M(const uint8_t freqStep, const bool dmg) {
+    if (enabled && lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
         enabled = false;
     }
-    if (freqTimer <= 0) {
-        const int divisor = (noise.clockDivider == 0) ? 8 : (noise.clockDivider * 16);
-        freqTimer = divisor << noise.clockShift;
-        TickLfsr();
-        if (dacEnabled && (~lfsr & 1)) {
-            currentOutput = envelope.currentVolume;
+    if (dmgDelayedStart > 0 && --dmgDelayedStart == 0) {
+        // The deferred start always fires; do not re-defer
+        DoTrigger(freqStep, false);
+    }
+    alignment++;
+    if (counterActive || backgroundCounterActive) {
+        unsigned divisor = noise.clockDivider << 2;
+        if (!divisor) divisor = 2;
+        if (counterCountdown == 0) counterCountdown = divisor;
+        if (counterCountdown == 1) {
+            counterCountdown = divisor;
+            const uint16_t mask = 1 << noise.clockShift;
+            const bool oldBit = counter & mask;
+            counter = (counter + 1) & 0x3FFF;
+            didStepCounter = true;
+            const bool newBit = counter & mask;
+            // The LFSR steps on rising edges of the selected counter bit
+            if (newBit && !oldBit && enabled) {
+                StepLfsr();
+            }
+            countdownReloaded = true;
         } else {
-            currentOutput = 0;
+            counterCountdown--;
+            countdownReloaded = false;
         }
     }
 }
 
-void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep) {
+void Channel4::PrepareNoiseStart(const bool dmg) {
+    counterActive = dacEnabled;
+    const bool wasStartedWithDacDisabled = startedWithDacDisabled;
+    startedWithDacDisabled = !counterActive;
+    unsigned divisor = noise.clockDivider;
+    const bool wasBackgroundCounting = backgroundCounterActive;
+    backgroundCounterActive = true;
+    bool instantStep = false;
+    bool div1Glitch = false;
+
+    if (divisor > 1 && counterCountdown == 1) {
+        counter = (counter + 1) & 0x3FFF;
+    } else if (counterCountdown == 2 && (alignment & 3) == 0 && enabled) {
+        if (divisor == 0) {
+            divisor = 8;
+        } else if (divisor == 1) {
+            if (!didStepCounter) {
+                div1Glitch = true;
+            }
+            const uint16_t mask = 1 << noise.clockShift;
+            const bool oldBit = counter & mask;
+            counter = (counter + 1) & 0x3FFF;
+            const bool newBit = counter & mask;
+            if (newBit && !oldBit) {
+                instantStep = true;
+            }
+        }
+    }
+    counterCountdown = divisor == 0 ? 6 : divisor * 4 + 6;
+    if (alignment & 1) {
+        if (!divisor) {
+            if (dmg) {
+                counterCountdown++;
+            } else if (wasBackgroundCounting) {
+                counterCountdown--;
+            } else {
+                counterCountdown++;
+            }
+        } else {
+            if (alignment & 2) {
+                if (divisor == 1 && !enabled) {
+                    counterCountdown++;
+                } else {
+                    counterCountdown -= 3;
+                }
+            } else {
+                counterCountdown--;
+                if (divisor == 1 && enabled) {
+                    counterCountdown -= 4;
+                }
+            }
+        }
+    } else {
+        if (divisor) {
+            if (alignment & 2) {
+                counterCountdown -= 2;
+            } else if (divisor > 1) {
+                counterCountdown -= 4;
+            } else if (divisor == 1 && enabled && !(noise.Value() & 0xF0)) {
+                counterCountdown -= 4;
+            }
+        }
+    }
+
+    // Background counting glitches
+    if (divisor > 1) {
+        if (!counterActive && !(alignment & 3)) {
+            counterCountdown += 4;
+        }
+    } else {
+        if (wasBackgroundCounting && !enabled && !(alignment & 3)) {
+            if (divisor == 0) {
+                if (wasStartedWithDacDisabled) {
+                    counterCountdown += 28;
+                }
+            } else {
+                counterCountdown -= 4;
+            }
+        }
+    }
+    if (div1Glitch) {
+        counterCountdown -= 4;
+    }
+
+    if (!divisor && enabled && (alignment & 3) == 3) {
+        lfsr = 0x0055;
+    } else {
+        lfsr = 0;
+    }
+    if (instantStep) {
+        StepLfsr();
+    }
+}
+
+void Channel4::DoTrigger(const uint8_t freqStep, const bool dmg) {
+    envelope.locked = false;
+    envelope.clock = false;
+    if (dmg && (alignment & 3) != 0 && dmgDelayedStart == 0) {
+        // DMG quirk: misaligned noise starts are deferred a few ticks
+        dmgDelayedStart = 6;
+        return;
+    }
+    lfsr = 0;
+    PrepareNoiseStart(dmg);
+
+    envelope.currentVolume = envelope.initialVolume;
+    currentLfsrSample = false;
+    envelope.volumeCountdown = envelope.sweepPace;
+    didStepCounter = (alignment & 3) == 2;
+    currentOutput = 0.0f;
+
+    if (dacEnabled) enabled = true;
+
+    if (lengthTimer.lengthTimer == 64) {
+        lengthTimer.lengthTimer = 0;
+        if (lengthTimer.enabled && (freqStep % 2 != 0)) {
+            lengthTimer.lengthTimer++;
+        }
+    }
+}
+
+void Channel4::HandleNR43Write(const uint8_t value) {
+    const uint8_t old = noise.Value();
+    const bool oldNarrow = narrow;
+    narrow = value & 8;
+    noise.Write(value);
+
+    if ((old & 0xF0) == (value & 0xF0)) return;
+
+    // NR43 writes glitch the LFSR through an intermediate register value
+    // (CGB-E deterministic variant)
+    const uint16_t effectiveCounter = counter;
+    const bool oldBit = (effectiveCounter >> (old >> 4)) & 1;
+    const uint8_t glitchValue = (old & 0x7F) | (value & 0x80);
+    const bool glitchBit = (effectiveCounter >> (glitchValue >> 4)) & 1;
+    const bool newBit = (effectiveCounter >> (value >> 4)) & 1;
+
+    if (oldBit == newBit && newBit != glitchBit) {
+        if (newBit) {
+            // Category 1
+            if (!(value & 0x80)) {
+                StepLfsr();
+            } else {
+                const uint8_t t1 = (old >> 4) & 7;
+                const uint8_t t2 = (value >> 4) & 7;
+                if ((t1 ^ 7) + t2 > 7 || ((t1 ^ 7) & t2)) {
+                    // Copy bit 8 to bit 7
+                    lfsr &= ~0x80;
+                    lfsr |= (lfsr >> 1) & 0x80;
+                    if ((t1 == 0 || t1 == 4) && t2 == 3) {
+                        lfsr &= (lfsr >> 1) | 0x545;
+                        currentLfsrSample = lfsr & 1;
+                    } else if (t1 == 2 && t2 == 3) {
+                        uint16_t mask = 0x555;
+                        if ((lfsr & 0xC) == 0xC) mask |= 8;
+                        if ((lfsr & 0xC00) == 0xC00) mask |= 0x800;
+                        lfsr &= (lfsr >> 1) | mask;
+                        currentLfsrSample = lfsr & 1;
+                    }
+                    if (!narrow && oldNarrow && lfsrSteppedInNarrow) {
+                        if (lfsrBit7BeforeStep) {
+                            lfsr |= 0x40;
+                        } else {
+                            lfsr &= ~0x40;
+                        }
+                    }
+                    lfsr |= narrow ? 0x4040 : 0x4000;
+                    lfsrSteppedInNarrow = narrow;
+                }
+            }
+        } else {
+            // Category 2
+            static constexpr uint8_t glitchMap[8 * 8] = {
+                0, 0, 4, 2, 2, 2, 0, 0,
+                0, 0, 2, 4, 2, 2, 0, 0,
+                1, 2, 0, 1, 5, 3, 0, 0,
+                0, 0, 0, 0, 2, 2, 0, 0,
+                0, 2, 2, 2, 0, 0, 0, 0,
+                6, 0, 2, 2, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+            };
+            const unsigned glitch = (value & 0x80) ? glitchMap[((old & 0x70) >> 1) | ((value & 0x70) >> 4)] : 0;
+            switch (glitch) {
+                case 1:
+                case 6:
+                    StepLfsr();
+                    if (glitch == 6) {
+                        if ((narrow && (lfsr & 0x71) == 0x20) || (lfsr & 0x71) == 0x61) {
+                            lfsr &= ~0x20;
+                        }
+                        if ((lfsr & 0x7001) == 0x2000 || (lfsr & 0x7001) == 0x6001) {
+                            lfsr &= ~0x2000;
+                        }
+                    }
+                    if ((lfsr & 0x3) == 2) {
+                        lfsr &= ~2;
+                    }
+                    break;
+                case 2: {
+                    const uint16_t prev = lfsr;
+                    StepLfsr();
+                    lfsr &= prev | 1;
+                    break;
+                }
+                case 5:
+                    if ((lfsr & 0x3) == 2) {
+                        lfsr &= narrow ? ~0x4040 : ~0x4000;
+                    }
+                    if ((lfsr & 0x19) == 8) {
+                        lfsr &= ~8;
+                    }
+                    [[fallthrough]];
+                case 3:
+                    lfsr &= ~1;
+                    lfsr |= (lfsr >> 1) & 1;
+                    currentLfsrSample = lfsr & 1;
+                    lfsrSteppedInNarrow = narrow;
+                    break;
+                case 4: {
+                    const uint16_t prev = lfsr;
+                    StepLfsr();
+                    lfsr &= prev | (narrow ? ~0x2022 : ~0x2002);
+                    break;
+                }
+                default:
+                    StepLfsr();
+                    break;
+            }
+        }
+    } else if (!oldBit && newBit) {
+        StepLfsr();
+    }
+    currentLfsrSample = lfsr & 1;
+    if (dacEnabled && enabled) {
+        currentOutput = currentLfsrSample ? static_cast<float>(envelope.currentVolume) : 0.0f;
+    }
+}
+
+void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep, const bool dmg) {
     trigger = value >> 7 & 0x01;
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
@@ -840,7 +1079,7 @@ void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep) {
         if (lengthTimer.lengthTimer != 64) lengthTimer.lengthTimer++;
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(freqStep);
+    if (value & 0x80) DoTrigger(freqStep, dmg);
 }
 
 [[nodiscard]] uint8_t Channel4::ReadByte(const uint16_t address) const {
@@ -861,8 +1100,16 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
             break;
         case 0x01:
             if ((value & 0xF8) == 0) {
+                // Disabling the DAC also stops the background counter
+                if (enabled && noise.clockDivider) {
+                    if (counterCountdown <= 2) {
+                        counter = (counter + 1) & 0x3FFF;
+                    }
+                    backgroundCounterActive = false;
+                }
                 dacEnabled = false;
                 enabled = false;
+                counterActive = false;
             } else {
                 if (enabled) {
                     envelope.NRx2Glitch(value, envelope.Value(), dmg);
@@ -871,9 +1118,22 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
             }
             envelope.Write(value);
             break;
-        case 0x02: noise.Write(value);
+        case 0x02:
+            // A write landing on the exact tick the countdown reloaded
+            // re-reloads it with the new divisor, offset by the alignment
+            if (countdownReloaded) {
+                unsigned divisor = (value & 0x07) << 2;
+                if (!divisor) divisor = 2;
+                static constexpr uint8_t offsetsCgb[4] = {2, 1, 0, 3};
+                static constexpr uint8_t offsetsDmg[4] = {2, 1, 4, 3};
+                counterCountdown = divisor + (divisor == 2 ? 0 : (dmg ? offsetsDmg : offsetsCgb)[alignment & 3]);
+            }
+            if (dmg) {
+                HandleNR43Write(0xFF);
+            }
+            HandleNR43Write(value);
             break;
-        case 0x03: HandleNR44Write(value, freqStep);
+        case 0x03: HandleNR44Write(value, freqStep, dmg);
             break;
         default: throw UnreachableCodeException("Channel4::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -881,7 +1141,7 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
 
 uint8_t Channel4::GetDigitalOutput() const {
     if (!enabled || !dacEnabled) return 0;
-    return (~lfsr & 1) ? envelope.currentVolume : 0;
+    return (lfsr & 1) ? envelope.currentVolume : 0;
 }
 
 void Audio::InitBandLimitedTable() {
