@@ -239,6 +239,14 @@ static const std::vector<Case> romTestcases = {
     {"roms/hacktix/strikethrough.gb", "tests/expected/hacktix/strikethrough.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/hacktix/bully.gb", "tests/expected/hacktix/bully.gb.dmg.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/hacktix/bully.gb", "tests/expected/hacktix/bully.gb.cgb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/boot_div-dmg0.gb", "tests/expected/mooneye/boot_div-dmg0.gb.screen", bootroms.dmg0Bootrom, Mode::DMG0},
+    {"roms/mooneye/acceptance/boot_hwio-dmg0.gb", "tests/expected/mooneye/boot_hwio-dmg0.gb.screen", bootroms.dmg0Bootrom, Mode::DMG0},
+    {"roms/mooneye/acceptance/boot_div-S.gb", "tests/expected/mooneye/boot_div-S.gb.screen", "", Mode::SGB},
+    {"roms/mooneye/acceptance/boot_div2-S.gb", "tests/expected/mooneye/boot_div2-S.gb.screen", "", Mode::SGB},
+    {"roms/mooneye/acceptance/boot_hwio-S.gb", "tests/expected/mooneye/boot_hwio-S.gb.screen", "", Mode::SGB},
+    {"roms/mooneye/misc/boot_div-A.gb", "tests/expected/mooneye/boot_div-A.gb.screen", bootroms.cgbAGBBootrom, Mode::AGB_GBC},
+    {"roms/mooneye/misc/boot_regs-A.gb", "tests/expected/mooneye/boot_regs-A.gb.screen", bootroms.cgbAGBBootrom, Mode::AGB_GBC},
+    {"roms/mooneye/misc/boot_div-cgb0.gb", "tests/expected/mooneye/boot_div-cgb0.gb.screen", bootroms.cgb0Bootrom, Mode::CGB0},
 };
 
 static auto &romFutures() {
@@ -427,6 +435,14 @@ ROM_TEST(158, "roms/daid/ppu_scanline_bgp.gb (GBC)")
 ROM_TEST(159, "roms/hacktix/strikethrough.gb")
 ROM_TEST(160, "roms/hacktix/bully.gb (DMG)")
 ROM_TEST(161, "roms/hacktix/bully.gb (GBC)")
+ROM_TEST(162, "roms/mooneye/acceptance/boot_div-dmg0.gb")
+ROM_TEST(163, "roms/mooneye/acceptance/boot_hwio-dmg0.gb")
+ROM_TEST(164, "roms/mooneye/acceptance/boot_div-S.gb")
+ROM_TEST(165, "roms/mooneye/acceptance/boot_div2-S.gb")
+ROM_TEST(166, "roms/mooneye/acceptance/boot_hwio-S.gb")
+ROM_TEST(167, "roms/mooneye/misc/boot_div-A.gb")
+ROM_TEST(168, "roms/mooneye/misc/boot_regs-A.gb")
+ROM_TEST(169, "roms/mooneye/misc/boot_div-cgb0.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

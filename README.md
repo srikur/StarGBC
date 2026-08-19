@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (263/277)
+Current Performance: (271/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -113,11 +113,11 @@ Current Performance: (263/277)
 | mooneye/acceptance/boot_div-dmgABCmgb.gb                              | :white_check_mark: |
 | mooneye/acceptance/boot_hwio-dmgABCmgb.gb                             | :white_check_mark: |
 | mooneye/acceptance/boot_regs-dmgABC.gb                                | :white_check_mark: |
-| mooneye/acceptance/boot_div-dmg0.gb                                   | :x:                |
-| mooneye/acceptance/boot_div-S.gb                                      | :x:                |
-| mooneye/acceptance/boot_div2-s.gb                                     | :x:                |
-| mooneye/acceptance/boot_hwio-dmg0.gb                                  | :x:                |
-| mooneye/acceptance/boot_hwio-S.gb                                     | :x:                |
+| mooneye/acceptance/boot_div-dmg0.gb                                   | :white_check_mark: |
+| mooneye/acceptance/boot_div-S.gb                                      | :white_check_mark: |
+| mooneye/acceptance/boot_div2-s.gb                                     | :white_check_mark: |
+| mooneye/acceptance/boot_hwio-dmg0.gb                                  | :white_check_mark: |
+| mooneye/acceptance/boot_hwio-S.gb                                     | :white_check_mark: |
 | mooneye/acceptance/boot_regs-dmg0.gb                                  | :white_check_mark: |
 | mooneye/acceptance/boot_regs-mgb.gb                                   | :white_check_mark: |
 | mooneye/acceptance/boot_regs-sgb.gb                                   | :white_check_mark: |
@@ -212,10 +212,10 @@ Current Performance: (263/277)
 | mooneye/manual-only/sprite_priority.gb                                | :white_check_mark: |
 | mooneye/misc/boot_div-cgbABCDE.gb                                     | :white_check_mark: |
 | mooneye/misc/boot_regs-cgb.gb                                         | :white_check_mark: |
-| mooneye/misc/boot_div-A.gb                                            | :x:                |
-| mooneye/misc/boot_div-cgb0.gb                                         | :x:                |
+| mooneye/misc/boot_div-A.gb                                            | :white_check_mark: |
+| mooneye/misc/boot_div-cgb0.gb                                         | :white_check_mark: |
 | mooneye/misc/boot_hwio-C.gb                                           | :white_check_mark: |
-| mooneye/misc/boot_regs-A.gb                                           | :x:                |
+| mooneye/misc/boot_regs-A.gb                                           | :white_check_mark: |
 | mooneye/misc/bits/unused_hwio-C.gb                                    | :white_check_mark: |
 | mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align.gb                            | :white_check_mark: |

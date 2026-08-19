@@ -19,35 +19,34 @@ public:
                                          interrupts_(interrupts),
                                          regs_(registers),
                                          mode_(mode) {
-        if (mode_ != Mode::None) {
-            bus.gpu_.hardware = mode == Mode::DMG ? Hardware::DMG : Hardware::CGB;
-            bus.audio_.SetDMG(bus.gpu_.hardware == Hardware::DMG);
-        } else if ((bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80) {
-            mode_ = Mode::CGB_GBC;
-            bus.gpu_.hardware = Hardware::CGB;
-            bus.audio_.SetDMG(false);
+        if (mode_ == Mode::None) {
+            mode_ = (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80 ? Mode::CGB_GBC : Mode::DMG;
         }
+        const Hardware hw = HardwareForMode(mode_);
+        bus.gpu_.hardware = hw;
+        bus.audio_.SetDMG(IsDmg(hw));
+        const bool sgbFamily = hw == Hardware::SGB || hw == Hardware::SGB2;
         if (!biosPath.empty()) {
             // CGB bootroms run in CGB mode; KEY0 writes can drop to DMG-compat
-            bus.cgbMode = bus.gpu_.hardware == Hardware::CGB;
+            bus.cgbMode = IsCgb(hw);
             bus.bootromRunning = true;
             // Power-on DIV phase, calibrated so the official bootroms hand off
             // with the DIV value and phase mooneye's boot_div tests verify
             bus.timer_.divCounter = 0x0008;
             InitializeBootrom(biosPath);
             pc_ = 0x0000;
-        } else if (!noBootrom) {
-            bus.cgbMode = bus.gpu_.hardware == Hardware::CGB;
+        } else if (!noBootrom && !sgbFamily) {
+            bus.cgbMode = IsCgb(hw);
             bus.bootromRunning = true;
             bus.timer_.divCounter = 0x0008;
-            InitializeEmbeddedBootrom(bus.gpu_.hardware == Hardware::CGB);
+            InitializeEmbeddedBootrom(IsCgb(hw));
             pc_ = 0x0000;
         } else {
-            bus.cgbMode = bus.gpu_.hardware == Hardware::CGB &&
+            bus.cgbMode = IsCgb(hw) &&
                           (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
-            bus.gpu_.dmgCompat = bus.gpu_.hardware == Hardware::CGB && !bus.cgbMode;
+            bus.gpu_.dmgCompat = IsCgb(hw) && !bus.cgbMode;
             pc_ = 0x100;
-            InitializeSystem(mode);
+            InitializeSystem(mode_);
         }
         currentInstruction = bus.ReadByte(pc_++, ComponentSource::CPU);
     }

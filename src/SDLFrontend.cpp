@@ -57,6 +57,28 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
             }
         } else if (args[i] == "--no-bootrom") {
             settings.noBootrom = true;
+        } else if (args[i] == "--model") {
+            if (i + 1 < args.size()) {
+                const std::string_view model = args[++i];
+                if (model == "dmg0") settings.mode = Mode::DMG0;
+                else if (model == "dmg") settings.mode = Mode::DMG;
+                else if (model == "mgb") settings.mode = Mode::MBG;
+                else if (model == "sgb") settings.mode = Mode::SGB;
+                else if (model == "sgb2") settings.mode = Mode::SGB2;
+                else if (model == "cgb0") settings.mode = Mode::CGB0;
+                else if (model == "cgb") settings.mode = Mode::CGB_GBC;
+                else if (model == "agb") settings.mode = Mode::AGB_GBC;
+                else if (model == "ags") settings.mode = Mode::AGS_GBC;
+                else {
+                    std::fprintf(stderr, "Error: unknown model '%.*s' "
+                                 "(dmg0|dmg|mgb|sgb|sgb2|cgb0|cgb|agb|ags)\n",
+                                 static_cast<int>(model.size()), model.data());
+                    return SDL_APP_FAILURE;
+                }
+            } else {
+                std::fprintf(stderr, "Error: --model requires an argument\n");
+                return SDL_APP_FAILURE;
+            }
         } else if (i == args.size() - 1 ||
                    args[i].ends_with(".gb") || args[i].ends_with(".gbc")) {
             settings.romName = args[i];
@@ -64,6 +86,7 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
             std::fprintf(stderr, "USAGE: StarGBC [options] romFile\n"
                          "Options:\n"
                          "  --gbc | --gb        force gbc/dmg mode\n"
+                         "  --model <name>      hardware model: dmg0|dmg|mgb|sgb|sgb2|cgb0|cgb|agb|ags\n"
                          "  --bios <path>       external BIOS ROM\n"
                          "  --no-bootrom        skip built-in bootrom; jump straight to cart\n"
                          "  --anti-aliasing     linear-filter pixels");
