@@ -93,9 +93,9 @@ static constexpr std::array<Registers, 12> DefaultValues = {
             .a = 0x01, .f = 0x00, .b = 0x00, .c = 0x14,
             .d = 0x00, .e = 0x00, .h = 0xC0, .l = 0x60
         },
-        /* SGB2 in DMG mode -- reusing SGB values since unknown */
+        /* SGB2 in DMG mode */
         {
-            .a = 0x01, .f = 0x00, .b = 0x00, .c = 0x14,
+            .a = 0xFF, .f = 0x00, .b = 0x00, .c = 0x14,
             .d = 0x00, .e = 0x00, .h = 0xC0, .l = 0x60
         },
         /* CGB in DMG mode */ {
