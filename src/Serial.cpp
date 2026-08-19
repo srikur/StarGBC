@@ -14,7 +14,7 @@ void Serial::WriteSerial(const uint16_t address, const uint8_t value, const bool
             data_ = value;
             break;
         case 0xFF02:
-            control_ = value | 0x7E;
+            control_ = value & 0x83;
             if ((control_ & 0x81) == 0x81) {
                 ticksPerBit_ = doubleSpeed ? 256 : 512;
                 if (gbc && control_ & 0x02) ticksPerBit_ /= 32;

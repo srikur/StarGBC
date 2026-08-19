@@ -548,6 +548,13 @@ private:
 
         if (speedSwitchRequested) {
             cpu.bus_.ChangeSpeed();
+            // The CPU stalls through the switch while the PPU and timers run.
+            // SameBoy uses 0x20008 T-cycles; the +0x14 recenters the window for
+            // this core's STOP micro-op timing (daid speed_switch_timing_ly/stat)
+            cpu.bus_.speedSwitchHalt = 0x2001C;
+            // The DIV reset takes effect 0x14 T-cycles into the switch, so the
+            // counter starts slightly negative (daid speed_switch_timing_div)
+            cpu.bus_.timer_.divCounter = static_cast<uint16_t>(-0x14);
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         } else {
             cpu.stopped(true);

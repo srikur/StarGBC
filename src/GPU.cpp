@@ -58,11 +58,12 @@ void GPU::Update() {
         }
     }
 
-    // DMG BGP write glitch: a mode-3 write reaches the pixel pipe late — one dot where the palette reads as old|new, then the new value
+    // DMG BGP write glitch: a mode-3 write reaches the pixel pipe late — one dot where the palette reads as old|new, then the new value.
+    // CGB (compat mode) has the same latency without the glitch dot
     if (bgpWriteStage > 0) {
         bgpWriteStage--;
         if (bgpWriteStage == 1) {
-            backgroundPalette |= bgpPending;
+            if (hardware != Hardware::CGB) backgroundPalette |= bgpPending;
         } else if (bgpWriteStage == 0) {
             backgroundPalette = bgpPending;
         }
@@ -118,7 +119,15 @@ void GPU::Update() {
         return;
     }
 
-    if (currentLine == lyc) {
+    // Line 153 quirk: LY flips to 0 early in the line, so the LYC comparison
+    // (and a LYC=0 interrupt) sees 0 during line 153, not at line 0's start.
+    // The flip dot is calibrated per hardware against daid's ppu_scanline_bgp
+    int lyCompare = currentLine;
+    if (currentLine == 153) {
+        const int flipDot = hardware == Hardware::CGB ? 4 : 0;
+        lyCompare = static_cast<int>(scanlineCounter) >= flipDot ? 0 : 153;
+    }
+    if (lyCompare == lyc) {
         stat.coincidenceFlag = true;
         if (stat.enableLYInterrupt && !statTriggered) {
             interrupts_.Set(InterruptType::LCDStat, true);
@@ -264,10 +273,18 @@ void GPU::TickOAMScan() {
     const uint8_t index = scanlineCounter / 2;
 
     const uint16_t base = index * 4;
-    const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(oam[base]) - 16);
-    const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(oam[base + 1]) - 8);
-    const uint8_t spriteTileIndex = oam[base + 2];
-    const Attributes attr = GetAttrsFrom(oam[base + 3]);
+    // An active OAM DMA blocks the scan's OAM reads: the y/x bus keeps its
+    // previous values, and tile/attr reads see the word the DMA is currently
+    // writing (hacktix strikethrough)
+    if (!oamDmaActive) {
+        mode2YBus_ = oam[base];
+        mode2XBus_ = oam[base + 1];
+    }
+    const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(mode2YBus_) - 16);
+    const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(mode2XBus_) - 8);
+    const bool dmaRedirect = oamDmaActive && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
+    const uint8_t spriteTileIndex = dmaRedirect ? oam[oamDmaDest_ & ~1] : oam[base + 2];
+    const Attributes attr = GetAttrsFrom(dmaRedirect ? oam[(oamDmaDest_ & ~1) | 1] : oam[base + 3]);
     const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
 
     // OAM scan checks only Y — off-screen X (0 or ≥168) still occupies a buffer
@@ -326,7 +343,7 @@ void GPU::OutputPixel(const bool lcdcAhead) {
         }
     }
 
-    const uint8_t palette = hardware == Hardware::CGB ? finalPixel.cgbPalette : finalPixel.dmgPalette;
+    const uint8_t palette = hardware == Hardware::CGB && !dmgCompat ? finalPixel.cgbPalette : finalPixel.dmgPalette;
     const uint32_t finalColor = finalPixel.isSprite
                                     ? GetSpriteColor(finalPixel.color, palette)
                                     : GetBackgroundColor(finalPixel.color, palette);
@@ -400,6 +417,12 @@ void GPU::TickMode3() {
             savedBgTileDataLow_ = fetcherTileDataLow_;
             savedBgTileDataHigh_ = fetcherTileDataHigh_;
             savedBgLastAddress_ = lastAddress_;
+            // Hardware reads the sprite's tile/attr from OAM at fetch time; an
+            // OAM DMA in flight redirects those reads to its current word
+            if (oamDmaActive && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0) {
+                spriteFetchQueue.front().tileIndex = oam[oamDmaDest_ & ~1];
+                spriteFetchQueue.front().attributes = GetAttrsFrom(oam[(oamDmaDest_ & ~1) | 1]);
+            }
             spriteFetchActive_ = true;
             fetcherState_ = FetcherState::GetTile;
             fetcherDelay_ = 0;
@@ -744,10 +767,15 @@ uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
     return address;
 }
 
-uint32_t GPU::GetSpriteColor(const uint8_t color, const uint8_t palette) const {
+uint32_t GPU::GetSpriteColor(uint8_t color, uint8_t palette) const {
     if (hardware != Hardware::CGB) {
         const uint8_t reg = palette ? obp1Palette : obp0Palette;
         return DMG_SHADE[(reg >> (color * 2)) & 0x03];
+    }
+    if (dmgCompat) {
+        // OBP0/OBP1 index into the two compatibility palettes
+        const uint8_t reg = palette ? obp1Palette : obp0Palette;
+        color = (reg >> (color * 2)) & 0x03;
     }
 
     const uint8_t red = obpd[palette][color][0];
@@ -773,8 +801,13 @@ uint32_t GPU::GetSpriteColor(const uint8_t color, const uint8_t palette) const {
     return rgba;
 }
 
-uint32_t GPU::GetBackgroundColor(const uint8_t color, const uint8_t palette) const {
+uint32_t GPU::GetBackgroundColor(uint8_t color, uint8_t palette) const {
     if (hardware != Hardware::CGB) return DMG_SHADE[(backgroundPalette >> (color * 2)) & 0x03];
+    if (dmgCompat) {
+        // BGP indexes into compatibility palette 0
+        color = (backgroundPalette >> (color * 2)) & 0x03;
+        palette = 0;
+    }
 
     const uint8_t red = bgpd[palette][color][0];
     const uint8_t green = bgpd[palette][color][1];
@@ -828,10 +861,26 @@ void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
 uint8_t GPU::ReadRegisters(const uint16_t address) const {
     switch (address) {
         case 0xFF40: return lcdc;
-        case 0xFF41: return stat.value();
+        case 0xFF41: {
+            uint8_t value = stat.value();
+            // CGB: the reported mode bits lag the line start by 4 dots — a
+            // fresh line reads mode 0 first, and OAM scan / mode 3 assert late
+            // (daid speed_switch_timing_stat)
+            if (hardware == Hardware::CGB && !LCDDisabled() && !lcdEnableLine0_) {
+                if (stat.mode == GPUMode::MODE_2 && scanlineCounter < 4) {
+                    value &= ~0x03;
+                } else if (stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && scanlineCounter < 84) {
+                    value = (value & ~0x03) | 0x02;
+                }
+            }
+            return value;
+        }
         case 0xFF42: return scrollY;
         case 0xFF43: return scrollX;
-        case 0xFF44: return currentLine;
+        case 0xFF44:
+            // Line 153 reports LY=0 after its first few dots
+            if (currentLine == 153 && scanlineCounter >= 6) return 0;
+            return currentLine;
         case 0xFF45: return lyc;
         case 0xFF47: return backgroundPalette;
         case 0xFF48: return obp0Palette;
@@ -839,8 +888,9 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
         case 0xFF4A: return windowY;
         case 0xFF4B: return wxWriteStage > 0 ? wxPending : windowX;
         case 0xFF4F: return hardware == Hardware::CGB ? (0xFE | vramBank) : 0xFF;
-        case 0xFF68: return ReadGpi(bgpi);
+        case 0xFF68: return hardware == Hardware::CGB ? ReadGpi(bgpi) : 0xFF;
         case 0xFF69: {
+            if (hardware != Hardware::CGB) return 0xFF;
             const uint8_t r = bgpi.index >> 3;
             const uint8_t c = (bgpi.index >> 1) & 3;
             if ((bgpi.index & 0x01) == 0) {
@@ -848,8 +898,9 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             }
             return (bgpd[r][c][1] >> 3) | (bgpd[r][c][2] << 2);
         }
-        case 0xFF6A: return ReadGpi(obpi);
+        case 0xFF6A: return hardware == Hardware::CGB ? ReadGpi(obpi) : 0xFF;
         case 0xFF6B: {
+            if (hardware != Hardware::CGB) return 0xFF;
             const uint8_t r = obpi.index >> 3;
             const uint8_t c = (obpi.index >> 1) & 3;
             if ((obpi.index & 0x01) == 0) {
@@ -857,7 +908,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             }
             return (obpd[r][c][1] >> 3) | (obpd[r][c][2] << 2);
         }
-        case 0xFF6C: return 0xFE | objectPriority;
+        case 0xFF6C: return hardware == Hardware::CGB ? (0xFE | objectPriority) : 0xFF;
         default:
             throw UnreachableCodeException("GPU::ReadRegisters unreachable code at address: " + std::to_string(address));
     }
@@ -958,6 +1009,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 if (bgpWriteStage > 0) backgroundPalette = bgpPending;
                 bgpPending = value;
                 bgpWriteStage = 3;
+            } else if (hardware == Hardware::CGB && dmgCompat && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+                // Compat-mode BGP reaches the pixel pipe two dots late, no glitch
+                if (bgpWriteStage > 0) backgroundPalette = bgpPending;
+                bgpPending = value;
+                bgpWriteStage = 2;
             } else {
                 backgroundPalette = value;
             }

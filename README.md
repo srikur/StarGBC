@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (249/277)
+Current Performance: (263/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -95,23 +95,23 @@ Current Performance: (249/277)
 | blargg/cgb_sound/10-wave trigger while on.gb                          | :white_check_mark: |
 | blargg/cgb_sound/11-regs after power.gb                               | :white_check_mark: |
 | blargg/cgb_sound/12-wave.gb                                           | :white_check_mark: |
-| daid/ppu_scanline_bgp.gb (DMG)                                        | :x:                |
-| daid/ppu_scanline_bgp.gb (GBC)                                        | :x:                |
+| daid/ppu_scanline_bgp.gb (DMG)                                        | :white_check_mark: |
+| daid/ppu_scanline_bgp.gb (GBC)                                        | :white_check_mark: |
 | daid/stop_instr.gb (DMG)                                              | :white_check_mark: |
 | daid/stop_instr.gb (GBC)                                              | :white_check_mark: |
 | daid/stop_instr_gbc_mode3.gb                                          | :white_check_mark: |
 | daid/speed_switch_timing_div.gbc                                      | :white_check_mark: |
-| daid/speed_switch_timing_ly.gbc                                       | :x:                |
-| daid/speed_switch_timing_stat.gbc                                     | :x:                |
+| daid/speed_switch_timing_ly.gbc                                       | :white_check_mark: |
+| daid/speed_switch_timing_stat.gbc                                     | :white_check_mark: |
 | ax6/rtc3test-1.gb                                                     | :white_check_mark: |
 | ax6/rtc3test-2.gb                                                     | :white_check_mark: |
 | ax6/rtc3test-3.gb                                                     | :white_check_mark: |
 | mooneye/acceptance/add_sp_e_timing.gb                                 | :white_check_mark: |
 | mooneye/acceptance/bits/mem_oam.gb                                    | :white_check_mark: |
 | mooneye/acceptance/bits/reg_f.gb                                      | :white_check_mark: |
-| mooneye/acceptance/bits/unused_hwio-GS.gb                             | :x:                |
-| mooneye/acceptance/boot_div-dmgABCmgb.gb                              | :x:                |
-| mooneye/acceptance/boot_hwio-dmgABCmgb.gb                             | :x:                |
+| mooneye/acceptance/bits/unused_hwio-GS.gb                             | :white_check_mark: |
+| mooneye/acceptance/boot_div-dmgABCmgb.gb                              | :white_check_mark: |
+| mooneye/acceptance/boot_hwio-dmgABCmgb.gb                             | :white_check_mark: |
 | mooneye/acceptance/boot_regs-dmgABC.gb                                | :white_check_mark: |
 | mooneye/acceptance/boot_div-dmg0.gb                                   | :x:                |
 | mooneye/acceptance/boot_div-S.gb                                      | :x:                |
@@ -210,13 +210,13 @@ Current Performance: (249/277)
 | mooneye/emulator-only/mbc5/rom_64Mb.gb                                | :white_check_mark: |
 | mooneye/emulator-only/mbc5/rom_8Mb.gb                                 | :white_check_mark: |
 | mooneye/manual-only/sprite_priority.gb                                | :white_check_mark: |
-| mooneye/misc/boot_div-cgbABCDE.gb                                     | :x:                |
+| mooneye/misc/boot_div-cgbABCDE.gb                                     | :white_check_mark: |
 | mooneye/misc/boot_regs-cgb.gb                                         | :white_check_mark: |
 | mooneye/misc/boot_div-A.gb                                            | :x:                |
 | mooneye/misc/boot_div-cgb0.gb                                         | :x:                |
-| mooneye/misc/boot_hwio-C.gb                                           | :x:                |
+| mooneye/misc/boot_hwio-C.gb                                           | :white_check_mark: |
 | mooneye/misc/boot_regs-A.gb                                           | :x:                |
-| mooneye/misc/bits/unused_hwio-C.gb                                    | :x:                |
+| mooneye/misc/bits/unused_hwio-C.gb                                    | :white_check_mark: |
 | mooneye/misc/ppu/vblank_stat_intr-C.gb                                | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_align_cpu.gb                        | :white_check_mark: |
@@ -284,12 +284,12 @@ Current Performance: (249/277)
 | samesuite/dma/gdma_addr_mask.gb                                       | :white_check_mark: |
 | samesuite/dma/hdma_lcd_off.gb                                         | :white_check_mark: |
 | samesuite/dma/hdma_mode0.gb                                           | :white_check_mark: |
-| samesuite/ppu/blocking_bgpi_increase.gb                               | :x:                |
+| samesuite/ppu/blocking_bgpi_increase.gb                               | :white_check_mark: |
 | samesuite/sgb/command_mit_req.gb                                      | :x:                |
 | samesuite/sgb/command_mit_req_1_incrementing.gb                       | :x:                |
-| hacktix/bully.gb (DMG)                                                | :x:                |
-| hacktix/bully.gb (GBC)                                                | :x:                |
-| hacktix/strikethrough.gb                                              | :x:                |
+| hacktix/bully.gb (DMG)                                                | :white_check_mark: |
+| hacktix/bully.gb (GBC)                                                | :white_check_mark: |
+| hacktix/strikethrough.gb                                              | :white_check_mark: |
 | cpp/rtc-invalid-banks-test.gb                                         | :white_check_mark: |
 | cpp/latch-rtc-test.gb                                                 | :white_check_mark: |
 | cpp/ramg-mbc3-test.gb                                                 | :white_check_mark: |

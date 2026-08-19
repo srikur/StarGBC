@@ -198,6 +198,15 @@ public:
 
     HDMA hdma{};
     Hardware hardware = Hardware::DMG;
+    // CGB hardware running a DMG cart: render through the DMG palette
+    // registers into the bootrom's compatibility palettes
+    bool dmgCompat{false};
+    // Mirrored from the DMA unit each tick: an active OAM DMA blocks the
+    // PPU's OAM scan (stale bus) and redirects tile/attr reads
+    bool oamDmaActive{false};
+    uint8_t oamDmaDest_{0};
+    uint8_t mode2YBus_{0xFF};
+    uint8_t mode2XBus_{0xFF};
 
     void Update();
 

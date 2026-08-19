@@ -28,14 +28,24 @@ public:
             bus.audio_.SetDMG(false);
         }
         if (!biosPath.empty()) {
+            // CGB bootroms run in CGB mode; KEY0 writes can drop to DMG-compat
+            bus.cgbMode = bus.gpu_.hardware == Hardware::CGB;
             bus.bootromRunning = true;
+            // Power-on DIV phase, calibrated so the official bootroms hand off
+            // with the DIV value and phase mooneye's boot_div tests verify
+            bus.timer_.divCounter = 0x0008;
             InitializeBootrom(biosPath);
             pc_ = 0x0000;
         } else if (!noBootrom) {
+            bus.cgbMode = bus.gpu_.hardware == Hardware::CGB;
             bus.bootromRunning = true;
+            bus.timer_.divCounter = 0x0008;
             InitializeEmbeddedBootrom(bus.gpu_.hardware == Hardware::CGB);
             pc_ = 0x0000;
         } else {
+            bus.cgbMode = bus.gpu_.hardware == Hardware::CGB &&
+                          (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
+            bus.gpu_.dmgCompat = bus.gpu_.hardware == Hardware::CGB && !bus.cgbMode;
             pc_ = 0x100;
             InitializeSystem(mode);
         }

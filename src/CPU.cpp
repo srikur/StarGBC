@@ -77,6 +77,12 @@ void CPU<BusT>::BeginMCycle() {
     ++mCycleCounter_;
     if (bus_.bootromRunning && pc_ == 0x100) {
         bus_.bootromRunning = false;
+        // A bootrom that never wrote KEY0 (e.g. the embedded one) hands off
+        // with the mode implied by the cart header
+        if (bus_.gpu_.hardware == Hardware::CGB && !bus_.key0Written) {
+            bus_.cgbMode = (bus_.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
+            bus_.gpu_.dmgCompat = !bus_.cgbMode;
+        }
     }
     instrRunning = true;
 }

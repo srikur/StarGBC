@@ -1,13 +1,13 @@
 #include "Joypad.h"
 
 uint8_t Joypad::GetJoypadState() const {
+    // Unselected key lines float high; selecting both rows ANDs them
+    uint8_t result = (select_ & 0x30) | 0x0F;
     if ((select_ & 0x10) == 0x00)
-        return static_cast<uint8_t>(select_ | (matrix_ & 0x0F));
-
+        result &= 0xF0 | (matrix_ & 0x0F);
     if ((select_ & 0x20) == 0x00)
-        return static_cast<uint8_t>(select_ | (matrix_ >> 4));
-
-    return select_;
+        result &= 0xF0 | (matrix_ >> 4);
+    return result;
 }
 
 void Joypad::SetJoypadState(const uint8_t value) {
