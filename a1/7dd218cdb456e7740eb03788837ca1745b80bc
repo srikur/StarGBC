@@ -1,0 +1,31 @@
+src/Audio.cpp
+  s_495a566b9c1a66::t_0ecd7eb72dec0c 211,260-276,279,288-304,306,308-331,333-354,358-370,453-458,460-463
+  s_495a566b9c1a66::t_2a824df0078f60 7,43-44,67
+  s_495a566b9c1a66::t_55f3a52afe8ae3 278
+README.md
+  s_495a566b9c1a66::t_8d6697e69801b6 40,234-236,264
+tests/TestRoms.h
+  s_495a566b9c1a66::t_8d6697e69801b6 213-216,376-379
+src/Timer.cpp
+  s_495a566b9c1a66::t_2a824df0078f60 62
+includes/Audio.h
+  s_495a566b9c1a66::t_9aecaabb5e5fce 166-167,179,183-187
+  s_495a566b9c1a66::t_2a824df0078f60 354-356
+  s_495a566b9c1a66::t_5492ca9465adab 54-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a17dd218cdb456e7740eb03788837ca1745b80bc",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
