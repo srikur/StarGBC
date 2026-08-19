@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (220/276)
+Current Performance: (223/276)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -225,7 +225,7 @@ Current Performance: (220/276)
 | samesuite/apu/channel_1/channel_1_duty_delay.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_freq_change.gb                      | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb        | :white_check_mark: |
-| samesuite/apu/channel_1/channel_1_nrx2_glitch.gb                      | :x:                |
+| samesuite/apu/channel_1/channel_1_nrx2_glitch.gb                      | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb                | :x:                |
 | samesuite/apu/channel_1/channel_1_restart.gb                          | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb              | :white_check_mark:                |
@@ -234,7 +234,7 @@ Current Performance: (220/276)
 | samesuite/apu/channel_1/channel_1_sweep.gb                            | :x:                |
 | samesuite/apu/channel_1/channel_1_sweep_restart.gb                    | :x:                | 
 | samesuite/apu/channel_1/channel_1_sweep_restart_2.gb                  | :x:                |
-| samesuite/apu/channel_1/channel_1_volume.gb                           | :x:                |
+| samesuite/apu/channel_1/channel_1_volume.gb                           | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_volume_div.gb                       | :x:                |
 | samesuite/apu/channel_2/channel_2_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_align_cpu.gb                        | :white_check_mark: |
@@ -242,7 +242,7 @@ Current Performance: (220/276)
 | samesuite/apu/channel_2/channel_2_duty.gb                             | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_duty_delay.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_freq_change.gb                      | :white_check_mark:                |
-| samesuite/apu/channel_2/channel_2_nrx2_glitch.gb                      | :x:                |
+| samesuite/apu/channel_2/channel_2_nrx2_glitch.gb                      | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb                | :x:                |
 | samesuite/apu/channel_2/channel_2_restart.gb                          | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb              | :white_check_mark:                |

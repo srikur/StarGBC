@@ -11,40 +11,45 @@ void Audio::TickFrameSequencer() {
         return;
     }
 
-    switch (frameSeqStep) {
-        case 0: ch1.TickLength();
-            ch2.TickLength();
-            ch3.TickLength();
-            ch4.TickLength();
-            break;
-        case 1: break;
-        case 2: ch1.TickLength();
-            ch1.TickSweep();
-            ch2.TickLength();
-            ch3.TickLength();
-            ch4.TickLength();
-            break;
-        case 3: break;
-        case 4: ch1.TickLength();
-            ch2.TickLength();
-            ch3.TickLength();
-            ch4.TickLength();
-            break;
-        case 5: break;
-        case 6: ch1.TickLength();
-            ch1.TickSweep();
-            ch2.TickLength();
-            ch3.TickLength();
-            ch4.TickLength();
-            break;
-        case 7: ch1.TickEnvelope();
-            ch2.TickEnvelope();
-            ch4.TickEnvelope();
-            break;
-        default: throw UnreachableCodeException("Audio::TickFrameSequencer unreachable code at step: " + std::to_string(frameSeqStep));
+    // 64Hz envelope step: the countdown runs freely while the clock is not
+    // latched (a latched clock pauses it until the tick consumes it)
+    if (frameSeqStep == 6) {
+        if (!ch1.envelope.clock) ch1.envelope.volumeCountdown = (ch1.envelope.volumeCountdown - 1) & 7;
+        if (!ch2.envelope.clock) ch2.envelope.volumeCountdown = (ch2.envelope.volumeCountdown - 1) & 7;
+        if (!ch4.envelope.clock) ch4.envelope.volumeCountdown = (ch4.envelope.volumeCountdown - 1) & 7;
+    }
+
+    // A clock latched by the previous secondary event ticks the volume on
+    // any DIV event, not just the 64Hz one
+    if (ch1.envelope.clock) ch1.TickEnvelope();
+    if (ch2.envelope.clock) ch2.TickEnvelope();
+    if (ch4.envelope.clock) ch4.TickEnvelope();
+
+    if ((frameSeqStep & 1) == 0) {
+        ch1.TickLength();
+        ch2.TickLength();
+        ch3.TickLength();
+        ch4.TickLength();
+    }
+
+    if (frameSeqStep == 2 || frameSeqStep == 6) {
+        ch1.TickSweep();
     }
 
     frameSeqStep = (frameSeqStep + 1) % 8;
+}
+
+void Audio::TickFrameSequencerSecondary() {
+    if (!audioEnabled) return;
+    const auto latch = [](auto &ch) {
+        if (ch.enabled && ch.envelope.volumeCountdown == 0) {
+            ch.envelope.volumeCountdown = ch.envelope.sweepPace;
+            ch.envelope.SetClock(ch.envelope.volumeCountdown != 0, ch.envelope.direction, ch.envelope.currentVolume);
+        }
+    };
+    latch(ch1);
+    latch(ch2);
+    latch(ch4);
 }
 
 void Audio::Tick() {
@@ -119,7 +124,7 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
             break;
         case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep, dmg);
             break;
-        case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled, frameSeqStep);
+        case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled, frameSeqStep, dmg);
             break;
         case 0xFF24: nr50 = value;
             break;
@@ -130,6 +135,59 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
         case 0xFF30 ... 0xFF3F: ch3.WriteWaveRam(address, value, dmg);
             break;
         default: break;
+    }
+}
+
+void Envelope::SetClock(const bool value, const bool dir, const uint8_t volume) {
+    if (clock == value) return;
+    if (value) {
+        clock = true;
+        shouldLock = (volume == 0xF && dir) || (volume == 0x0 && !dir);
+    } else {
+        clock = false;
+        locked |= shouldLock;
+    }
+}
+
+void Envelope::NRx2GlitchSingle(const uint8_t value, const uint8_t old) {
+    // "Zombie mode": writing NRx2 while the channel plays steps or inverts
+    // the volume depending on how the pace and direction bits change
+    if (clock) {
+        volumeCountdown = value & 7;
+    }
+    bool shouldTick = (value & 7) && !(old & 7) && !locked;
+    const bool shouldInvert = (value & 8) ^ (old & 8);
+
+    if ((value & 0xF) == 8 && (old & 0xF) == 8 && !locked) {
+        shouldTick = true;
+    }
+
+    if (shouldInvert) {
+        if (value & 8) {
+            if (!(old & 7) && !locked) {
+                currentVolume ^= 0xF;
+            } else {
+                currentVolume = (0xE - currentVolume) & 0xF;
+            }
+            shouldTick = false;
+        } else {
+            currentVolume = (0x10 - currentVolume) & 0xF;
+        }
+    }
+    if (shouldTick) {
+        currentVolume = (currentVolume + ((value & 8) ? 1 : -1)) & 0xF;
+    } else if (!(value & 7) && clock) {
+        SetClock(false, false, 0);
+    }
+}
+
+void Envelope::NRx2Glitch(const uint8_t value, const uint8_t old, const bool dmg) {
+    // Pre-CGB-D revisions pass through $FF as an intermediate value
+    if (dmg) {
+        NRx2GlitchSingle(0xFF, old);
+        NRx2GlitchSingle(value, 0xFF);
+    } else {
+        NRx2GlitchSingle(value, old);
     }
 }
 
@@ -179,8 +237,10 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
     }
     sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + trigDelay;
 
-    envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
+    envelope.volumeCountdown = envelope.sweepPace;
     envelope.currentVolume = envelope.initialVolume;
+    envelope.clock = false;
+    envelope.locked = false;
     if (enabled) UpdateOutput();
 
     if (dacEnabled && !enabled) {
@@ -228,18 +288,11 @@ void Channel1::TickSweep() {
 }
 
 void Channel1::TickEnvelope() {
-    if (envelope.sweepPace > 0) {
-        envelope.periodTimer--;
-        if (envelope.periodTimer == 0) {
-            envelope.periodTimer = envelope.sweepPace;
-            if (envelope.direction && envelope.currentVolume < 15) {
-                envelope.currentVolume++;
-            } else if (!envelope.direction && envelope.currentVolume > 0) {
-                envelope.currentVolume--;
-            }
-            if (enabled) UpdateOutput();
-        }
-    }
+    envelope.SetClock(false, false, 0);
+    if (envelope.locked) return;
+    if (!envelope.sweepPace) return;
+    envelope.currentVolume = (envelope.currentVolume + (envelope.direction ? 1 : -1)) & 0xF;
+    if (enabled) UpdateOutput();
 }
 
 uint16_t Channel1::CalculateSweep() {
@@ -331,9 +384,18 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
         break;
         case 0x01: lengthTimer.Write(value, audioEnabled);
             break;
-        case 0x02: envelope.Write(value);
-            dacEnabled = (value & 0xF8) != 0;
-            if (!dacEnabled) enabled = false;
+        case 0x02:
+            if ((value & 0xF8) == 0) {
+                dacEnabled = false;
+                enabled = false;
+            } else {
+                if (enabled) {
+                    envelope.NRx2Glitch(value, envelope.Value(), dmg);
+                    UpdateOutput();
+                }
+                dacEnabled = true;
+            }
+            envelope.Write(value);
             break;
         case 0x03: frequency.WriteLow(value);
             if (justReloaded) {
@@ -383,8 +445,10 @@ void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
     }
     sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + trigDelay;
 
-    envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
+    envelope.volumeCountdown = envelope.sweepPace;
     envelope.currentVolume = envelope.initialVolume;
+    envelope.clock = false;
+    envelope.locked = false;
     if (enabled) UpdateOutput();
 
     if (dacEnabled && !enabled) {
@@ -400,18 +464,11 @@ void Channel2::TickLength() {
 }
 
 void Channel2::TickEnvelope() {
-    if (envelope.sweepPace > 0) {
-        envelope.periodTimer--;
-        if (envelope.periodTimer == 0) {
-            envelope.periodTimer = envelope.sweepPace;
-            if (envelope.direction && envelope.currentVolume < 15) {
-                envelope.currentVolume++;
-            } else if (!envelope.direction && envelope.currentVolume > 0) {
-                envelope.currentVolume--;
-            }
-            if (enabled) UpdateOutput();
-        }
-    }
+    envelope.SetClock(false, false, 0);
+    if (envelope.locked) return;
+    if (!envelope.sweepPace) return;
+    envelope.currentVolume = (envelope.currentVolume + (envelope.direction ? 1 : -1)) & 0xF;
+    if (enabled) UpdateOutput();
 }
 
 void Channel2::UpdateOutput() {
@@ -478,9 +535,18 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
         case 0x05: break;
         case 0x06: lengthTimer.Write(value, audioEnabled);
             break;
-        case 0x07: envelope.Write(value);
-            dacEnabled = (value & 0xF8) != 0;
-            if (!dacEnabled) enabled = false;
+        case 0x07:
+            if ((value & 0xF8) == 0) {
+                dacEnabled = false;
+                enabled = false;
+            } else {
+                if (enabled) {
+                    envelope.NRx2Glitch(value, envelope.Value(), dmg);
+                    UpdateOutput();
+                }
+                dacEnabled = true;
+            }
+            envelope.Write(value);
             break;
         case 0x08: frequency.WriteLow(value);
             if (justReloaded) {
@@ -636,8 +702,10 @@ void Channel4::Trigger(const uint8_t freqStep) {
     const int divisor = noise.clockDivider == 0 ? 8 : noise.clockDivider * 16;
     freqTimer = divisor << noise.clockShift;
 
-    envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
+    envelope.volumeCountdown = envelope.sweepPace;
     envelope.currentVolume = envelope.initialVolume;
+    envelope.clock = false;
+    envelope.locked = false;
 
     lfsr = 0xFFFF;
 }
@@ -649,17 +717,10 @@ void Channel4::TickLength() {
 }
 
 void Channel4::TickEnvelope() {
-    if (envelope.sweepPace > 0) {
-        envelope.periodTimer--;
-        if (envelope.periodTimer == 0) {
-            envelope.periodTimer = envelope.sweepPace;
-            if (envelope.direction && envelope.currentVolume < 15) {
-                envelope.currentVolume++;
-            } else if (!envelope.direction && envelope.currentVolume > 0) {
-                envelope.currentVolume--;
-            }
-        }
-    }
+    envelope.SetClock(false, false, 0);
+    if (envelope.locked) return;
+    if (!envelope.sweepPace) return;
+    envelope.currentVolume = (envelope.currentVolume + (envelope.direction ? 1 : -1)) & 0xF;
 }
 
 void Channel4::TickLfsr() {
@@ -712,14 +773,22 @@ void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep) {
     }
 }
 
-void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep) {
+void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const bool dmg) {
     switch (address & 0xF) {
         case 0x0F: break;
         case 0x00: lengthTimer.Write(value, audioEnabled);
             break;
-        case 0x01: envelope.Write(value);
-            dacEnabled = (value & 0xF8) != 0;
-            if (!dacEnabled) enabled = false;
+        case 0x01:
+            if ((value & 0xF8) == 0) {
+                dacEnabled = false;
+                enabled = false;
+            } else {
+                if (enabled) {
+                    envelope.NRx2Glitch(value, envelope.Value(), dmg);
+                }
+                dacEnabled = true;
+            }
+            envelope.Write(value);
             break;
         case 0x02: noise.Write(value);
             break;

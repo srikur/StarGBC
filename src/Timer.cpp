@@ -25,10 +25,13 @@ void Timer::Tick(const Speed speed) {
         IncrementTIMA();
     }
 
-    // Check for a falling edge for the APU Frame Sequencer
+    // Falling edge of the DIV-APU bit fires the frame sequencer; the rising
+    // edge fires the secondary event that latches envelope clocks
     const bool newFrameSeqSignal = (divCounter & (1u << frameSeqBit));
     if (oldFrameSeqSignal && !newFrameSeqSignal) {
         audio_.TickFrameSequencer();
+    } else if (!oldFrameSeqSignal && newFrameSeqSignal) {
+        audio_.TickFrameSequencerSecondary();
     }
 }
 

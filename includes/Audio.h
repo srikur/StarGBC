@@ -71,8 +71,17 @@ struct Envelope {
     uint8_t initialVolume{0};
     bool direction{false};
     uint8_t sweepPace{0};
-    uint8_t periodTimer{0};
+    // Free-running 3-bit countdown, decremented at the 64Hz envelope step.
+    // When a DIV secondary event (rising edge of the DIV-APU bit) finds it at
+    // zero on an active channel it reloads to the pace and latches the clock;
+    // the volume tick then fires on the next DIV event
+    uint8_t volumeCountdown{0};
     uint8_t currentVolume{0};
+    bool clock{false};
+    bool shouldLock{false};
+    // A tick attempted from a saturated volume locks the envelope until the
+    // next trigger
+    bool locked{false};
 
     void Write(const uint8_t value) {
         initialVolume = value >> 4 & 0x0F;
@@ -83,6 +92,12 @@ struct Envelope {
     [[nodiscard]] uint8_t Value() const {
         return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace);
     }
+
+    void SetClock(bool value, bool dir, uint8_t volume);
+
+    void NRx2GlitchSingle(uint8_t value, uint8_t old);
+
+    void NRx2Glitch(uint8_t value, uint8_t old, bool dmg);
 };
 
 struct Length {
@@ -266,7 +281,7 @@ struct Channel4 final : Channel {
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, bool dmg);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -320,6 +335,10 @@ public:
 
     // DIV-APU
     void TickFrameSequencer();
+
+    // Rising edge of the DIV-APU bit: latches the envelope clocks for
+    // channels whose volume countdown has expired
+    void TickFrameSequencerSecondary();
 
     void Tick();
 
