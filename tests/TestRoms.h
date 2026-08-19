@@ -201,6 +201,14 @@ static const std::vector<Case> romTestcases = {
     {"roms/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb", "tests/expected/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb", "tests/expected/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/div_write_trigger.gb", "tests/expected/samesuite/apu/div_write_trigger.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_stop_div.gb", "tests/expected/samesuite/apu/channel_1/channel_1_stop_div.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_volume_div.gb", "tests/expected/samesuite/apu/channel_1/channel_1_volume_div.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_stop_div.gb", "tests/expected/samesuite/apu/channel_2/channel_2_stop_div.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_volume_div.gb", "tests/expected/samesuite/apu/channel_2/channel_2_volume_div.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_volume_div.gb", "tests/expected/samesuite/apu/channel_4/channel_4_volume_div.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/div_trigger_volume_10.gb", "tests/expected/samesuite/apu/div_trigger_volume_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/div_write_trigger_volume.gb", "tests/expected/samesuite/apu/div_write_trigger_volume.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/div_write_trigger_volume_10.gb", "tests/expected/samesuite/apu/div_write_trigger_volume_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
 };
 
 static auto &romFutures() {
@@ -351,6 +359,14 @@ ROM_TEST(120, "roms/samesuite/apu/channel_2/channel_2_nrx2_glitch.gb")
 ROM_TEST(121, "roms/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb")
 ROM_TEST(122, "roms/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb")
 ROM_TEST(123, "roms/samesuite/apu/div_write_trigger.gb")
+ROM_TEST(124, "roms/samesuite/apu/channel_1/channel_1_stop_div.gb")
+ROM_TEST(125, "roms/samesuite/apu/channel_1/channel_1_volume_div.gb")
+ROM_TEST(126, "roms/samesuite/apu/channel_2/channel_2_stop_div.gb")
+ROM_TEST(127, "roms/samesuite/apu/channel_2/channel_2_volume_div.gb")
+ROM_TEST(128, "roms/samesuite/apu/channel_4/channel_4_volume_div.gb")
+ROM_TEST(129, "roms/samesuite/apu/div_trigger_volume_10.gb")
+ROM_TEST(130, "roms/samesuite/apu/div_write_trigger_volume.gb")
+ROM_TEST(131, "roms/samesuite/apu/div_write_trigger_volume_10.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

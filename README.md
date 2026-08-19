@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (226/276)
+Current Performance: (234/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -229,13 +229,13 @@ Current Performance: (226/276)
 | samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb                | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_restart.gb                          | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb              | :white_check_mark:                |
-| samesuite/apu/channel_1/channel_1_stop_div.gb                         | :x:                |
+| samesuite/apu/channel_1/channel_1_stop_div.gb                         | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_stop_restart.gb                     | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_sweep.gb                            | :x:                |
 | samesuite/apu/channel_1/channel_1_sweep_restart.gb                    | :x:                | 
 | samesuite/apu/channel_1/channel_1_sweep_restart_2.gb                  | :x:                |
 | samesuite/apu/channel_1/channel_1_volume.gb                           | :white_check_mark:                |
-| samesuite/apu/channel_1/channel_1_volume_div.gb                       | :x:                |
+| samesuite/apu/channel_1/channel_1_volume_div.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_align.gb                            | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_align_cpu.gb                        | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_delay.gb                            | :white_check_mark:                |
@@ -246,10 +246,10 @@ Current Performance: (226/276)
 | samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb                | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_restart.gb                          | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb              | :white_check_mark:                |
-| samesuite/apu/channel_2/channel_2_stop_div.gb                         | :x:                |
+| samesuite/apu/channel_2/channel_2_stop_div.gb                         | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_stop_restart.gb                     | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_volume_.gb                          | :white_check_mark:                |
-| samesuite/apu/channel_2/channel_2_volume_div.gb                       | :x:                |
+| samesuite/apu/channel_2/channel_2_volume_div.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_and_glitch.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_delay.gb                            | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_first_sample.gb                     | :white_check_mark:                |
@@ -274,11 +274,12 @@ Current Performance: (226/276)
 | samesuite/apu/channel_4/channel_4_lfsr_7_15.gb                        | :x:                |
 | samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :x:                |
 | samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :x:                |
-| samesuite/apu/channel_4/channel_4_volume_div.gb                       | :x:                |
+| samesuite/apu/channel_4/channel_4_volume_div.gb                       | :white_check_mark:                |
+| samesuite/apu/div_trigger_volume_10.gb                               | :white_check_mark: |
 | samesuite/apu/div_write_trigger.gb                                    | :white_check_mark:                |
 | samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
-| samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
-| samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |
+| samesuite/apu/div_write_trigger_volume.gb                             | :white_check_mark:                |
+| samesuite/apu/div_write_trigger_volume_10.gb                          | :white_check_mark:                |
 | samesuite/dma/gbc_dma_cont.gb                                         | :white_check_mark: |
 | samesuite/dma/gdma_addr_mask.gb                                       | :white_check_mark: |
 | samesuite/dma/hdma_lcd_off.gb                                         | :white_check_mark: |

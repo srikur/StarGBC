@@ -55,7 +55,9 @@ void Timer::WriteDIV(const bool doubleSpeed) {
     const int bit = TimerBit(tac);
     const bool oldSignal = enabled && (divCounter & (1u << bit));
 
-    const uint8_t frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 4 : 5;
+    // Resetting DIV while the DIV-APU bit is high is a falling edge and
+    // fires the frame sequencer
+    const int frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 12 : 13;
     if (divCounter & (1u << frameSeqBit)) {
         audio_.TickFrameSequencer();
     }
