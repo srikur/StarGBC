@@ -46,10 +46,6 @@ public:
 
     void HandleOAMCorruption(uint16_t, CorruptionType) const;
 
-    bool SaveState(std::ofstream &) const;
-
-    void LoadState(std::ifstream &);
-
     Joypad &joypad_;
     Memory &memory_;
     Timer &timer_;
@@ -65,5 +61,5 @@ public:
     bool speedShiftActive{false};
     Speed speed{Speed::Regular};
     uint8_t dmaReadByte{};
-    std::vector<uint8_t> bootrom;
+    [[=NotStateAware]] std::vector<uint8_t> bootrom;
 };

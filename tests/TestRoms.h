@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "doctest.h"
+#include <doctest/doctest.h>
 #include "ThreadContext.h"
 
 using namespace std::chrono_literals;
@@ -27,7 +27,7 @@ struct Bootroms {
     std::string sgb2Bootrom = "roms/sgb2_boot.bin";
 };
 
-constexpr Bootroms bootroms{};
+const Bootroms bootroms{};
 
 static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     std::ifstream ifs(path, std::ios::binary);
@@ -53,13 +53,11 @@ static bool runRomTest(const std::string &rom,
             .biosPath = bios,
             .mode = mode,
         });
-        gameboy->SetThrottle(false);
 
         const auto start = std::chrono::steady_clock::now();
         while (std::chrono::steady_clock::now() - start < 10s) {
-            gameboy->UpdateEmulator();
+            gameboy->RunFrame();
         }
-        gameboy->SetPaused(true);
 
         if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expectedResult.size()), expectedResult)) {
             std::cerr << "Failed " << rom << std::endl;

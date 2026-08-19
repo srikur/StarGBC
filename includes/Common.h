@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Reflection.h"
+
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -9,6 +12,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <meta>
+#include <ranges>
 
 static constexpr uint8_t SCREEN_WIDTH = 160;
 static constexpr uint8_t SCREEN_HEIGHT = 144;

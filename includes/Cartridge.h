@@ -1,9 +1,13 @@
 #pragma once
+#include <array>
 #include <functional>
 #include "RealTimeClock.h"
 
 class Cartridge {
 public:
+    // Largest RAM any supported mapper addresses (MBC5: 16 banks x 8 KiB)
+    static constexpr uint32_t MAX_RAM_SIZE = 0x400 * 128;
+
     explicit Cartridge(const std::string &romLocation, RealTimeClock &rtc) : rtc_(rtc) {
         rtc_.RecalculateZeroTime();
         ReadFile(romLocation);
@@ -11,7 +15,7 @@ public:
         lowRomMask = std::bit_width(romBankCount) - 1;
         savepath_ = RemoveExtension(romLocation).append(".sav");
         DetermineMBC();
-        ramBankCount = gameRam_.size() / 0x2000;
+        ramBankCount = gameRamSize / 0x2000;
         multicart = IsLikelyMulticart();
     }
 
@@ -27,10 +31,18 @@ public:
 
     bool LoadState(std::ifstream &stateFile);
 
+    void MarkRamDirty() { ramDirty_ = true; }
+
+    [[nodiscard]] uint16_t GlobalChecksum() const {
+        return static_cast<uint16_t>(gameRom_[0x14E]) << 8 | gameRom_[0x14F];
+    }
+
+    [[nodiscard]] bool BankingStateValid() const { return ramBank <= 0x0F; }
+
 private:
     void ReadFile(const std::string &file);
 
-    void LoadRam(uint16_t size);
+    void LoadRam(uint32_t size);
 
     void DetermineMBC();
 
@@ -68,28 +80,29 @@ private:
         None, MBC1, MBC2, MBC3, MBC5
     };
 
-    RealTimeClock& rtc_;
+    RealTimeClock &rtc_;
 
-    std::string savepath_;
-    std::vector<uint8_t> gameRom_;
-    std::vector<uint8_t> gameRam_;
+    [[=NotStateAware]] std::string savepath_;
+    [[=NotStateAware]] std::vector<uint8_t> gameRom_;
+    std::array<uint8_t, MAX_RAM_SIZE> gameRam_{};
 
-    MBC mbc{MBC::None};
-    uint32_t gameRamSize{0x00};
-    uint32_t romBankCount{0x00};
-    uint32_t ramBankCount{0x00};
+    // Derived from the ROM header/contents in the constructor, never mutated
+    [[=NotStateAware]] MBC mbc{MBC::None};
+    [[=NotStateAware]] uint32_t gameRamSize{0x00};
+    [[=NotStateAware]] uint32_t romBankCount{0x00};
+    [[=NotStateAware]] uint32_t ramBankCount{0x00};
     uint8_t romBank{0x01};
     uint8_t ramBank{0x00};
     uint8_t bank1{0x01};
     uint8_t bank2{0x00};
-    uint8_t lowRomMask{0x00};
+    [[=NotStateAware]] uint8_t lowRomMask{0x00}; // derived from ROM size
     uint8_t mode{0x00};
 
     bool ramEnabled{false};
-    bool multicart{false};
-    bool ramDirty_{false};
+    [[=NotStateAware]] bool multicart{false}; // derived from ROM contents
+    [[=NotStateAware]] bool ramDirty_{false}; // host .sav flush bookkeeping
     bool prevRamEnable_{false};
-    bool hasRumble_{false};
+    [[=NotStateAware]] bool hasRumble_{false}; // derived from ROM header
     bool rumbleOn_{false};
-    std::function<void(bool)> rumbleCallback_;
+    [[=NotStateAware]] std::function<void(bool)> rumbleCallback_; // host callback
 };

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 4.0.0)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
@@ -13,29 +14,31 @@ if(NOT STARGBC_IPO_SUPPORTED)
     message(STATUS "IPO/LTO not supported: ${STARGBC_IPO_ERROR}")
 endif()
 
-option(STARGBC_UPDATE_SUBMODULES "Init/update git submodules during configure" ON)
-if(STARGBC_UPDATE_SUBMODULES AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    find_package(Git QUIET)
-    if(GIT_FOUND)
-        message(STATUS "Updating git submodules")
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-            RESULT_VARIABLE GIT_SUBMOD_RESULT)
-        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-            message(FATAL_ERROR "git submodule update --init --recursive failed (exit ${GIT_SUBMOD_RESULT}). Run it manually or pass -DSTARGBC_UPDATE_SUBMODULES=OFF to skip.")
-        endif()
-    endif()
+# Dependencies are prebuilt static libraries installed by scripts/build-deps.sh; the local prefix is prepended so it wins over any system/Homebrew installs.
+list(PREPEND CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/dependencies/install")
+find_package(SDL3 CONFIG QUIET)
+find_package(spdlog CONFIG QUIET)
+find_package(doctest CONFIG QUIET)
+if(NOT SDL3_FOUND OR NOT spdlog_FOUND OR NOT doctest_FOUND)
+    message(FATAL_ERROR "Missing dependencies (SDL3 found: ${SDL3_FOUND}, spdlog found: ${spdlog_FOUND}, doctest found: ${doctest_FOUND}). Run ./scripts/build-deps.sh once to build them into dependencies/install/, or point CMAKE_PREFIX_PATH at an install that provides them.")
 endif()
-
-if(NOT EXISTS "${PROJECT_SOURCE_DIR}/dependencies/SDL/CMakeLists.txt")
-    message(FATAL_ERROR "Submodules are missing. Run `git submodule update --init --recursive` or re-run CMake with -DSTARGBC_UPDATE_SUBMODULES=ON.")
+if(NOT TARGET SDL3::SDL3-static)
+    message(FATAL_ERROR "SDL3 was found at ${SDL3_DIR} but provides no static library. Run ./scripts/build-deps.sh to build the static SDL3 into dependencies/install/.")
 endif()
-
-add_subdirectory(dependencies EXCLUDE_FROM_ALL)
 
 if(STARGBC_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # C++26 reflection (experimental in GCC 16); static runtimes so the binary
+    # doesn't depend on Homebrew's libstdc++/libgcc dylibs
+    add_compile_options(-freflection)
+    add_link_options(-static-libstdc++ -static-libgcc)
+    if(APPLE)
+        # The macOS SDK's Annex K declarations (rsize_t/errno_t) are
+        # clang-only; SDL_stdinc.h requests them unless this is pre-defined to 0
+        add_compile_definitions(__STDC_WANT_LIB_EXT1__=0)
+    endif()
 endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Werror)

@@ -1,6 +1,7 @@
 #include "CPU.h"
 #include "EmbeddedBootroms.h"
 
+#include <iterator>
 #include <map>
 
 template<BusLike BusT>
