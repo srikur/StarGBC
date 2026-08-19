@@ -2441,7 +2441,7 @@ private:
         /* 0xFF */ [](Instructions &instr, CPUType &cpu) -> bool { return instr.RST<RSTTarget::H38>(cpu); },
     }};
 
-    const std::array<std::string, 256> prefixedInstructions = {
+    static inline const std::array<std::string, 256> prefixedInstructions = {
         "RLC B", "RLC C", "RLC D", "RLC E", "RLC H", "RLC L", "RLC (HL)", "RLC A", "RRC B", "RRC C", "RRC D", "RRC E",
         "RRC H", "RRC L", "RRC (HL)", "RRC A", "RL B", "RL C", "RL D", "RL E", "RL H", "RL L", "RL (HL)", "RL A",
         "RR B", "RR C", "RR D", "RR E", "RR H", "RR L", "RR (HL)", "RR A", "SLA B", "SLA C", "SLA D", "SLA E", "SLA H",
@@ -2470,7 +2470,7 @@ private:
         "SET 7,E", "SET 7,H", "SET 7,L", "SET 7,(HL)", "SET 7,A"
     };
 
-    const std::array<std::string, 256> nonPrefixedInstructions = {
+    static inline const std::array<std::string, 256> nonPrefixedInstructions = {
         "NOP", "LD BC,d16", "LD (BC),A", "INC BC", "INC B", "DEC B", "LD B,d8", "RLCA", "LD (a16),SP", "ADD HL,BC",
         "LD A,(BC)", "DEC BC", "INC C", "DEC C", "LD C,d8", "RRCA", "STOP", "LD DE,d16", "LD (DE),A", "INC DE", "INC D",
         "DEC D", "LD D,d8", "RLA", "JR r8", "ADD HL,DE", "LD A,(DE)", "DEC DE", "INC E", "DEC E", "LD E,d8", "RRA",

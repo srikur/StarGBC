@@ -116,6 +116,8 @@ struct Noise {
     }
 };
 
+// Deliberately non-virtual: channels are only ever used as their concrete
+// types, and a vptr must stay out of the serialized object representation
 struct Channel {
     bool enabled{false};
     bool dacEnabled{false};
@@ -126,13 +128,6 @@ struct Channel {
         {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
         {0, 1, 1, 1, 1, 1, 1, 0} // 75%
     };
-
-    virtual ~Channel() = default;
-
-    virtual void TickLength() = 0;
-
-    virtual void TickEnvelope() {
-    }
 };
 
 struct Channel1 final : Channel {
@@ -149,11 +144,11 @@ struct Channel1 final : Channel {
 
     void Trigger(uint8_t freqStep, uint32_t tickCounter);
 
-    void TickLength() override;
+    void TickLength();
 
     void TickSweep();
 
-    void TickEnvelope() override;
+    void TickEnvelope();
 
     uint16_t CalculateSweep();
 
@@ -178,9 +173,9 @@ struct Channel2 final : Channel {
 
     void Trigger(uint8_t freqStep, uint32_t tickCounter);
 
-    void TickLength() override;
+    void TickLength();
 
-    void TickEnvelope() override;
+    void TickEnvelope();
 
     void Tick();
 
@@ -218,7 +213,7 @@ struct Channel3 final : Channel {
 
     void Trigger(uint8_t freqStep, bool dmg);
 
-    void TickLength() override;
+    void TickLength();
 
     void Tick();
 
@@ -243,9 +238,9 @@ struct Channel4 final : Channel {
 
     void Trigger(uint8_t freqStep);
 
-    void TickLength() override;
+    void TickLength();
 
-    void TickEnvelope() override;
+    void TickEnvelope();
 
     void TickLfsr();
 
@@ -267,17 +262,20 @@ class Audio {
     bool skipNextFrameSeqTick{false};
     uint32_t tickCounter{0};
 
-    std::vector<float> sampleBuffer{};
-    size_t bufferWritePos{0};
-    size_t bufferReadPos{0};
-    size_t samplesAvailable{0};
-    double sampleCounter{0.0};
+    // Host-side output machinery, not APU hardware state: the sample ring
+    // buffer refills after a load, the resampler/highpass state is transient,
+    // and blSteps/highpassRate are constants rebuilt by the constructor
+    [[=NotStateAware]] std::vector<float> sampleBuffer{};
+    [[=NotStateAware]] size_t bufferWritePos{0};
+    [[=NotStateAware]] size_t bufferReadPos{0};
+    [[=NotStateAware]] size_t samplesAvailable{0};
+    [[=NotStateAware]] double sampleCounter{0.0};
 
-    std::array<BandLimited, 4> bandLimited{};
-    std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
-    double highpassLeft{0.0};
-    double highpassRight{0.0};
-    double highpassRate{0.0};
+    [[=NotStateAware]] std::array<BandLimited, 4> bandLimited{};
+    [[=NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
+    [[=NotStateAware]] double highpassLeft{0.0};
+    [[=NotStateAware]] double highpassRight{0.0};
+    [[=NotStateAware]] double highpassRate{0.0};
 
     void InitBandLimitedTable();
 

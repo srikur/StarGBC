@@ -1,7 +1,6 @@
 #pragma once
-#include <deque>
-
 #include "Common.h"
+#include "FixedContainers.h"
 #include "HDMA.h"
 #include "Interrupts.h"
 
@@ -91,8 +90,8 @@ public:
         0xFF000000u // 00 00 00 FF
     };
 
-    std::deque<Pixel> backgroundQueue;
-    std::deque<Sprite> spriteFetchQueue;
+    FixedDeque<Pixel, 16> backgroundQueue;
+    FixedDeque<Sprite, 10> spriteFetchQueue;
     std::array<Pixel, 8> spriteArray;
 
     bool windowTriggeredThisFrame{false};
@@ -140,15 +139,15 @@ public:
 
     uint8_t windowLineCounter_{0x00};
 
-    std::vector<Sprite> spriteBuffer{10};
+    FixedVector<Sprite, 10> spriteBuffer;
     uint8_t initialScrollXDiscard_{0x00};
     uint8_t pixelsDrawn{0x00};
     bool objectPriority{false};
     bool initialSCXSet{false};
 
-    std::vector<uint8_t> vram = std::vector<uint8_t>(VRAM_SIZE);
-    std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
-    std::vector<uint8_t> oam = std::vector<uint8_t>(0xA0);
+    std::array<uint8_t, VRAM_SIZE> vram{};
+    [[=NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
+    std::array<uint8_t, 0xA0> oam{};
     uint8_t lyc = 0; // 0xFF45
 
     std::pair<bool, uint8_t> priority_[160];
@@ -167,7 +166,7 @@ public:
     bool shortenScanline{};
 
     bool vblank = false;
-    bool frameReady = true;
+    [[=NotStateAware]] bool frameReady = true;
     bool statTriggered{false};
     bool m2IrqRaisedEarly{false};
     // First line after LCD enable: starts in mode 0, skips OAM scan, and

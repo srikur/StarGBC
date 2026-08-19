@@ -20,22 +20,21 @@ std::string Cartridge::RemoveExtension(const std::string &filename) {
     return lastdot == std::string::npos ? filename : filename.substr(0, lastdot);
 }
 
-void Cartridge::LoadRam(const uint16_t size) {
+void Cartridge::LoadRam(const uint32_t size) {
     std::ifstream ifs(savepath_, std::ios::binary);
     if (!ifs.is_open()) {
-        gameRam_.resize(size, 0);
+        std::fill_n(gameRam_.begin(), size, 0);
         return;
     }
     rtc_.Load(ifs);
-    std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(ifs), {});
-    gameRam_ = std::move(buffer);
+    ifs.read(reinterpret_cast<char *>(gameRam_.data()), size);
     ifs.close();
 }
 
 void Cartridge::DetermineMBC() {
-    auto provisionRam = [&](const uint16_t sz, const bool load) {
+    auto provisionRam = [&](const uint32_t sz, const bool load) {
         gameRamSize = sz;
-        if (load && gameRamSize) { LoadRam(sz); } else { gameRam_.assign(sz, 0); }
+        if (load && gameRamSize) { LoadRam(sz); } else { std::fill_n(gameRam_.begin(), sz, 0); }
     };
 
     mbc = [&]() -> MBC {
@@ -108,22 +107,21 @@ void Cartridge::DetermineMBC() {
             break;
         case 0x02: {
             mbc = MBC::MBC1;
-            const uint16_t ramSize = GetRamSize(gameRom_[0x149]);
+            const uint32_t ramSize = GetRamSize(gameRom_[0x149]);
             gameRamSize = ramSize;
-            gameRam_ = std::vector<uint8_t>(ramSize);
+            std::fill_n(gameRam_.begin(), ramSize, 0);
         }
         case 0x03: {
             mbc = MBC::MBC1;
-            const uint16_t ramSize = GetRamSize(gameRom_[0x149]);
+            const uint32_t ramSize = GetRamSize(gameRom_[0x149]);
             gameRamSize = ramSize;
-            gameRam_.reserve(ramSize);
             LoadRam(ramSize);
             break;
         }
         case 0x05:
             mbc = MBC::MBC2;
             gameRamSize = 0x200;
-            gameRam_ = std::vector<uint8_t>(0x200);
+            std::fill_n(gameRam_.begin(), 0x200, 0);
             break;
         case 0x06:
             mbc = MBC::MBC2;
@@ -137,16 +135,16 @@ void Cartridge::DetermineMBC() {
         case 0x10:
         case 0x13: {
             mbc = MBC::MBC3;
-            const uint16_t ramSize = GetRamSize(gameRom_[0x149]);
+            const uint32_t ramSize = GetRamSize(gameRom_[0x149]);
             gameRamSize = ramSize;
             LoadRam(ramSize);
             break;
         }
         case 0x12: {
             mbc = MBC::MBC3;
-            const uint16_t ramSize = GetRamSize(gameRom_[0x149]);
+            const uint32_t ramSize = GetRamSize(gameRom_[0x149]);
             gameRamSize = ramSize;
-            gameRam_ = std::vector<uint8_t>(ramSize);
+            std::fill_n(gameRam_.begin(), ramSize, 0);
             break;
         }
 
@@ -156,14 +154,14 @@ void Cartridge::DetermineMBC() {
             break;
         case 0x1A: {
             mbc = MBC::MBC5;
-            const uint16_t ramSize = GetRamSize(gameRom_[0x149]);
+            const uint32_t ramSize = GetRamSize(gameRom_[0x149]);
             gameRamSize = ramSize;
-            gameRam_ = std::vector<uint8_t>(ramSize);
+            std::fill_n(gameRam_.begin(), ramSize, 0);
             break;
         }
         case 0x1B: {
             mbc = MBC::MBC5;
-            const uint16_t ramSize = GetRamSize(gameRom_[0x149]);
+            const uint32_t ramSize = GetRamSize(gameRom_[0x149]);
             gameRamSize = ramSize;
             LoadRam(ramSize);
             break;
@@ -298,7 +296,7 @@ uint8_t Cartridge::ReadByteMBC2(const uint16_t address) const {
             return gameRom_[(bank1 & 0xF & BankBitmask()) * 0x4000ULL | (address & 0x3FFF)];
         case 0xA000 ... 0xBFFF: {
             if (!ramEnabled || gameRamSize == 0) return 0xFF;
-            const uint8_t lower = gameRam_[(address - 0xA000) % gameRam_.size()] & 0x0F;
+            const uint8_t lower = gameRam_[(address - 0xA000) % gameRamSize] & 0x0F;
             return 0xF0 | lower;
         }
         default: return 0xFF;
@@ -392,7 +390,7 @@ void Cartridge::WriteByteMBC2(const uint16_t address, const uint8_t value) {
         }
         case 0xA000 ... 0xBFFF: {
             if (ramEnabled && gameRamSize > 0) {
-                gameRam_[(address - 0xA000) % gameRam_.size()] = value & 0xF;
+                gameRam_[(address - 0xA000) % gameRamSize] = value & 0xF;
                 ramDirty_ = true;
             }
         }

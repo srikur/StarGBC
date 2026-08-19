@@ -290,8 +290,10 @@ void SDLFrontend::SaveState(const uint8_t slot) const {
         std::ofstream file(filename, std::ios::binary | std::ios::trunc);
         if (!file.is_open()) throw std::runtime_error("Failed to save: " + filename);
         const auto saveBytes = gameboy_->SaveState();
+        file.write(reinterpret_cast<const char *>(saveBytes.data()), saveBytes.size());
+        std::fprintf(stderr, "Saved state %u to %s\n", slot, filename.c_str());
     } catch (const std::exception &e) {
-
+        std::fprintf(stderr, "Failed to save state: %s\n", e.what());
     }
 }
 

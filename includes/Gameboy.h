@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <numeric>
 
@@ -108,13 +109,29 @@ private:
 
 template<class T>
 static constexpr void SerializeInto(const T &obj, std::byte *out) {
-    if constexpr (constexpr auto members = std::define_static_array(StateMembersOf(^^T)); members.empty()) {
-        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(T)> >(obj), out);
-    } else {
+    if constexpr (std::is_array_v<T>) {
+        constexpr std::size_t elementSize = StateSizeOf(^^std::remove_extent_t<T>);
         std::size_t offset = 0;
-        template for (constexpr auto m: members) {
-            SerializeInto(obj.[:m:], out + offset);
-            offset += StateSizeOf(std::meta::type_of(m));
+        for (const auto &element: obj) {
+            SerializeInto(element, out + offset);
+            offset += elementSize;
+        }
+    } else {
+        static constexpr auto bases = std::define_static_array(StateBasesOf(^^T));
+        static constexpr auto members = std::define_static_array(StateMembersOf(^^T));
+        if constexpr (bases.empty() && members.empty()) {
+            std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(T)> >(obj), out);
+        } else {
+            std::size_t offset = 0;
+            template for (constexpr auto base: bases) {
+                using BaseT = [:base:];
+                SerializeInto(static_cast<const BaseT &>(obj), out + offset);
+                offset += StateSizeOf(base);
+            }
+            template for (constexpr auto m: members) {
+                SerializeInto(obj.[:m:], out + offset);
+                offset += StateSizeOf(std::meta::type_of(m));
+            }
         }
     }
 }
