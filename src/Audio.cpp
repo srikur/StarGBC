@@ -6,14 +6,21 @@
 
 void Audio::TickFrameSequencer() {
     if (!audioEnabled) return;
-    if (skipNextFrameSeqTick) {
-        skipNextFrameSeqTick = false;
+    // Powering the APU on while the DIV-APU bit is high skips the first
+    // event; the second event then runs without incrementing the divider
+    if (skipState == SkipState::Skip) {
+        skipState = SkipState::Skipped;
         return;
+    }
+    if (skipState == SkipState::Skipped) {
+        skipState = SkipState::Inactive;
+    } else {
+        frameSeqStep++;
     }
 
     // 64Hz envelope step: the countdown runs freely while the clock is not
     // latched (a latched clock pauses it until the tick consumes it)
-    if (frameSeqStep == 6) {
+    if ((frameSeqStep & 7) == 7) {
         if (!ch1.envelope.clock) ch1.envelope.volumeCountdown = (ch1.envelope.volumeCountdown - 1) & 7;
         if (!ch2.envelope.clock) ch2.envelope.volumeCountdown = (ch2.envelope.volumeCountdown - 1) & 7;
         if (!ch4.envelope.clock) ch4.envelope.volumeCountdown = (ch4.envelope.volumeCountdown - 1) & 7;
@@ -25,18 +32,16 @@ void Audio::TickFrameSequencer() {
     if (ch2.envelope.clock) ch2.TickEnvelope();
     if (ch4.envelope.clock) ch4.TickEnvelope();
 
-    if ((frameSeqStep & 1) == 0) {
+    if (frameSeqStep & 1) {
         ch1.TickLength();
         ch2.TickLength();
         ch3.TickLength();
         ch4.TickLength();
     }
 
-    if (frameSeqStep == 2 || frameSeqStep == 6) {
+    if ((frameSeqStep & 3) == 3) {
         ch1.TickSweep();
     }
-
-    frameSeqStep = (frameSeqStep + 1) % 8;
 }
 
 void Audio::TickFrameSequencerSecondary() {
@@ -80,14 +85,15 @@ void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
         ch4 = {};
         nr50 = 0;
         nr51 = 0;
-        skipNextFrameSeqTick = false;
+        skipState = SkipState::Inactive;
     } else if (!wasEnabled && audioEnabled) {
-        // Turning APU on resets frame sequencer
-        frameSeqStep = 0;
         // Reset tick counter for phase tracking
         tickCounter = 0;
-        // If DIV bit 4 is high when APU is enabled, skip the first DIV-APU event
-        skipNextFrameSeqTick = divBit4High;
+        // If the DIV-APU bit is high at power-on the first event is skipped
+        // and the divider starts at 1, so a length-enabling NRx4 write lands
+        // on an odd divider right away
+        frameSeqStep = divBit4High ? 1 : 0;
+        skipState = divBit4High ? SkipState::Skip : SkipState::Inactive;
     }
 }
 

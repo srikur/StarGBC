@@ -287,10 +287,15 @@ struct Channel4 final : Channel {
 };
 
 class Audio {
+    enum class SkipState : uint8_t { Inactive, Skip, Skipped };
+
     bool audioEnabled{false};
     bool dmg{false};
+    // Free-running DIV event counter (SameBoy's div_divider): incremented
+    // before dispatch, so odd values clock the lengths, &3==3 the sweep and
+    // &7==7 the envelope countdowns
     uint8_t frameSeqStep{0};
-    bool skipNextFrameSeqTick{false};
+    SkipState skipState{SkipState::Inactive};
     uint32_t tickCounter{0};
 
     // Host-side output machinery, not APU hardware state: the sample ring

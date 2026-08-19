@@ -209,6 +209,7 @@ static const std::vector<Case> romTestcases = {
     {"roms/samesuite/apu/div_trigger_volume_10.gb", "tests/expected/samesuite/apu/div_trigger_volume_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/div_write_trigger_volume.gb", "tests/expected/samesuite/apu/div_write_trigger_volume.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/div_write_trigger_volume_10.gb", "tests/expected/samesuite/apu/div_write_trigger_volume_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/div_write_trigger_10.gb", "tests/expected/samesuite/apu/div_write_trigger_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
 };
 
 static auto &romFutures() {
@@ -367,6 +368,7 @@ ROM_TEST(128, "roms/samesuite/apu/channel_4/channel_4_volume_div.gb")
 ROM_TEST(129, "roms/samesuite/apu/div_trigger_volume_10.gb")
 ROM_TEST(130, "roms/samesuite/apu/div_write_trigger_volume.gb")
 ROM_TEST(131, "roms/samesuite/apu/div_write_trigger_volume_10.gb")
+ROM_TEST(132, "roms/samesuite/apu/div_write_trigger_10.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (234/277)
+Current Performance: (235/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -277,7 +277,7 @@ Current Performance: (234/277)
 | samesuite/apu/channel_4/channel_4_volume_div.gb                       | :white_check_mark:                |
 | samesuite/apu/div_trigger_volume_10.gb                               | :white_check_mark: |
 | samesuite/apu/div_write_trigger.gb                                    | :white_check_mark:                |
-| samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
+| samesuite/apu/div_write_trigger_10.gb                                 | :white_check_mark:                |
 | samesuite/apu/div_write_trigger_volume.gb                             | :white_check_mark:                |
 | samesuite/apu/div_write_trigger_volume_10.gb                          | :white_check_mark:                |
 | samesuite/dma/gbc_dma_cont.gb                                         | :white_check_mark: |
