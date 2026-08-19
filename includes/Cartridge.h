@@ -31,6 +31,14 @@ public:
 
     bool LoadState(std::ifstream &stateFile);
 
+    void MarkRamDirty() { ramDirty_ = true; }
+
+    [[nodiscard]] uint16_t GlobalChecksum() const {
+        return static_cast<uint16_t>(gameRom_[0x14E]) << 8 | gameRom_[0x14F];
+    }
+
+    [[nodiscard]] bool BankingStateValid() const { return ramBank <= 0x0F; }
+
 private:
     void ReadFile(const std::string &file);
 
@@ -72,12 +80,10 @@ private:
         None, MBC1, MBC2, MBC3, MBC5
     };
 
-    RealTimeClock& rtc_;
+    RealTimeClock &rtc_;
 
     [[=NotStateAware]] std::string savepath_;
     [[=NotStateAware]] std::vector<uint8_t> gameRom_;
-    // Battery RAM at the largest supported size; gameRamSize is how much the
-    // loaded cart actually maps
     std::array<uint8_t, MAX_RAM_SIZE> gameRam_{};
 
     // Derived from the ROM header/contents in the constructor, never mutated

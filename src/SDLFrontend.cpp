@@ -284,12 +284,35 @@ void SDLFrontend::SaveScreenshot() const {
     }
 }
 
+struct SaveStateHeader {
+    std::array<char, 8> magic;
+    uint64_t stateSize;
+    uint32_t version;
+    uint16_t cartChecksum;
+    uint8_t hardware;
+    uint8_t reserved;
+};
+
+static_assert(sizeof(SaveStateHeader) == 24 && std::has_unique_object_representations_v<SaveStateHeader>);
+
+static constexpr std::array kStateMagic = {'S', 'T', 'A', 'R', 'G', 'B', 'C', '\0'};
+static constexpr uint32_t kStateVersion = 1;
+
 void SDLFrontend::SaveState(const uint8_t slot) const {
     try {
         const std::string filename = std::format("{}.sv{}", romPath_, slot);
         std::ofstream file(filename, std::ios::binary | std::ios::trunc);
         if (!file.is_open()) throw std::runtime_error("Failed to save: " + filename);
+        const SaveStateHeader header{
+            .magic = kStateMagic,
+            .stateSize = kGameboyStateSize,
+            .version = kStateVersion,
+            .cartChecksum = gameboy_->CartChecksum(),
+            .hardware = static_cast<uint8_t>(gameboy_->GetHardware()),
+            .reserved = 0,
+        };
         const auto saveBytes = gameboy_->SaveState();
+        file.write(reinterpret_cast<const char *>(&header), sizeof(header));
         file.write(reinterpret_cast<const char *>(saveBytes.data()), saveBytes.size());
         std::fprintf(stderr, "Saved state %u to %s\n", slot, filename.c_str());
     } catch (const std::exception &e) {
@@ -298,5 +321,40 @@ void SDLFrontend::SaveState(const uint8_t slot) const {
 }
 
 void SDLFrontend::LoadState(const uint8_t slot) {
-
+    try {
+        const std::string filename = std::format("{}.sv{}", romPath_, slot);
+        std::ifstream file(filename, std::ios::binary);
+        if (!file.is_open()) {
+            std::fprintf(stderr, "No save state in slot %u (%s)\n", slot, filename.c_str());
+            return;
+        }
+        SaveStateHeader header{};
+        file.read(reinterpret_cast<char *>(&header), sizeof(header));
+        if (file.gcount() != static_cast<std::streamsize>(sizeof(header)) || header.magic != kStateMagic) {
+            throw std::runtime_error("not a StarGBC save state");
+        }
+        if (header.version != kStateVersion || header.stateSize != kGameboyStateSize) {
+            throw std::runtime_error("save state from an incompatible emulator version");
+        }
+        if (header.cartChecksum != gameboy_->CartChecksum()) {
+            throw std::runtime_error("save state belongs to a different ROM");
+        }
+        if (header.hardware != static_cast<uint8_t>(gameboy_->GetHardware())) {
+            throw std::runtime_error("save state uses a different hardware mode");
+        }
+        std::vector<std::byte> state(kGameboyStateSize);
+        file.read(reinterpret_cast<char *>(state.data()), static_cast<std::streamsize>(state.size()));
+        if (file.gcount() != static_cast<std::streamsize>(state.size())) {
+            throw std::runtime_error("save state file is truncated");
+        }
+        if (!gameboy_->LoadState(state)) {
+            throw std::runtime_error("save state failed validation");
+        }
+        if (audioStream_) {
+            SDL_ClearAudioStream(audioStream_);
+        }
+        std::fprintf(stderr, "Loaded state %u from %s\n", slot, filename.c_str());
+    } catch (const std::exception &e) {
+        std::fprintf(stderr, "Failed to load state %u: %s\n", slot, e.what());
+    }
 }

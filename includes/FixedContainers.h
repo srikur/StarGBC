@@ -49,6 +49,9 @@ public:
         --count_;
     }
 
+    // A raw-restored deque is safe to use iff these hold
+    [[nodiscard]] constexpr bool valid() const { return head_ < Capacity && count_ <= Capacity; }
+
 private:
     std::array<T, Capacity> data_{};
     uint8_t head_{0};
@@ -72,6 +75,8 @@ public:
     constexpr T *end() { return data_.data() + count_; }
     constexpr const T *begin() const { return data_.data(); }
     constexpr const T *end() const { return data_.data() + count_; }
+
+    [[nodiscard]] constexpr bool valid() const { return count_ <= Capacity; }
 
 private:
     std::array<T, Capacity> data_{};

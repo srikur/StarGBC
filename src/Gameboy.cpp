@@ -24,7 +24,16 @@ const uint32_t *Gameboy::GetScreenData() const {
     return gpu_.GetScreenData();
 }
 
-void Gameboy::LoadState() {
+bool Gameboy::LoadedStateValid() const {
+    return gpu_.backgroundQueue.valid()
+           && gpu_.spriteFetchQueue.valid()
+           && gpu_.spriteBuffer.valid()
+           && gpu_.vramBank <= 1
+           && gpu_.currentLine <= 153
+           && gpu_.pixelsDrawn <= SCREEN_WIDTH
+           && memory_.wramBank_ <= 7
+           && cartridge_.BankingStateValid()
+           && (!bus_.bootromRunning || !bus_.bootrom.empty());
 }
 
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {

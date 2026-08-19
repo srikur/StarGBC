@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <memory>
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <numeric>
@@ -68,7 +69,15 @@ public:
 
     [[nodiscard]] auto SaveState() const;
 
-    void LoadState();
+    [[nodiscard]] bool LoadState(std::span<const std::byte> state);
+
+    [[nodiscard]] uint16_t CartChecksum() const {
+        return cartridge_.GlobalChecksum();
+    }
+
+    [[nodiscard]] Hardware GetHardware() const {
+        return gpu_.hardware;
+    }
 
     [[nodiscard]] size_t GetAudioSamplesAvailable() const {
         return audio_.GetSamplesAvailable();
@@ -105,35 +114,61 @@ private:
     uint8_t cpuTickPhase_{0x00};
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
+
+    [[nodiscard]] bool LoadedStateValid() const;
 };
 
-template<class T>
-static constexpr void SerializeInto(const T &obj, std::byte *out) {
-    if constexpr (std::is_array_v<T>) {
-        constexpr std::size_t elementSize = StateSizeOf(^^std::remove_extent_t<T>);
-        std::size_t offset = 0;
-        for (const auto &element: obj) {
-            SerializeInto(element, out + offset);
-            offset += elementSize;
+template<class Base, class T>
+static constexpr auto &StateBaseCast(T &obj) {
+    if constexpr (std::is_const_v<T>) {
+        return static_cast<const Base &>(obj);
+    } else {
+        return static_cast<Base &>(obj);
+    }
+}
+
+template<class T, class Visitor>
+static constexpr std::size_t ForEachStateLeaf(T &obj, Visitor &&visit, std::size_t offset = 0) {
+    using U = std::remove_const_t<T>;
+    if constexpr (std::is_array_v<U>) {
+        for (auto &element: obj) {
+            offset = ForEachStateLeaf(element, visit, offset);
         }
     } else {
-        static constexpr auto bases = std::define_static_array(StateBasesOf(^^T));
-        static constexpr auto members = std::define_static_array(StateMembersOf(^^T));
+        static constexpr auto bases = std::define_static_array(StateBasesOf(^^U));
+        static constexpr auto members = std::define_static_array(StateMembersOf(^^U));
         if constexpr (bases.empty() && members.empty()) {
-            std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(T)> >(obj), out);
+            visit(obj, offset);
+            offset += sizeof(U);
         } else {
-            std::size_t offset = 0;
             template for (constexpr auto base: bases) {
                 using BaseT = [:base:];
-                SerializeInto(static_cast<const BaseT &>(obj), out + offset);
-                offset += StateSizeOf(base);
+                offset = ForEachStateLeaf(StateBaseCast<BaseT>(obj), visit, offset);
             }
             template for (constexpr auto m: members) {
-                SerializeInto(obj.[:m:], out + offset);
-                offset += StateSizeOf(std::meta::type_of(m));
+                offset = ForEachStateLeaf(obj.[:m:], visit, offset);
             }
         }
     }
+    return offset;
+}
+
+template<class T>
+static constexpr void SerializeInto(const T &obj, std::byte *out) {
+    ForEachStateLeaf(obj, [out](const auto &leaf, const std::size_t offset) {
+        using Leaf = std::remove_cvref_t<decltype(leaf)>;
+        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(Leaf)> >(leaf), out + offset);
+    });
+}
+
+template<class T>
+static constexpr void DeserializeFrom(T &obj, const std::byte *in) {
+    ForEachStateLeaf(obj, [in](auto &leaf, const std::size_t offset) {
+        using Leaf = std::remove_cvref_t<decltype(leaf)>;
+        std::array<std::byte, sizeof(Leaf)> bytes;
+        std::copy_n(in + offset, sizeof(Leaf), bytes.begin());
+        leaf = std::bit_cast<Leaf>(bytes);
+    });
 }
 
 inline constexpr std::size_t kGameboyStateSize = StateSizeOf(^^Gameboy);
@@ -142,4 +177,20 @@ inline auto Gameboy::SaveState() const {
     std::array<std::byte, kGameboyStateSize> out{};
     SerializeInto(*this, out.data());
     return out;
+}
+
+inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
+    if (state.size() != kGameboyStateSize) return false;
+    const auto backup = SaveState();
+    DeserializeFrom(*this, state.data());
+    if (!LoadedStateValid()) {
+        DeserializeFrom(*this, backup.data());
+        return false;
+    }
+    // Fix up some [[=NotStateAware]] members
+    rtc_.RecalculateZeroTime();
+    cartridge_.MarkRamDirty();
+    audio_.ClearBuffer();
+    gpu_.frameReady = false;
+    return true;
 }
