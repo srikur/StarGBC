@@ -51,8 +51,11 @@ void Audio::Tick() {
     tickCounter++;
     if (audioEnabled) {
         ch3.alternateRead = false;
-        ch1.Tick();
-        ch2.Tick();
+        // Square channels run on the 2MHz APU tick grid
+        if ((tickCounter & 1) == 0) {
+            ch1.Tick2M();
+            ch2.Tick2M();
+        }
         ch3.Tick();
         ch4.Tick();
     }
@@ -108,10 +111,11 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
     if (!audioEnabled && address != 0xFF26 && (!dmg || !allowedAddresses.contains(address))) {
         return;
     }
+    const uint8_t lfDiv = (tickCounter & 2) ? 0 : 1;
     switch (address) {
-        case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep, tickCounter);
+        case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep, lfDiv, dmg);
             break;
-        case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep, tickCounter);
+        case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep, lfDiv, dmg);
             break;
         case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep, dmg);
             break;
@@ -137,9 +141,9 @@ uint8_t Audio::ReadPCM34() const {
     return (ch4.GetDigitalOutput() << 4) | (ch3.GetDigitalOutput() & 0x0F);
 }
 
-void Channel1::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
-    if (dacEnabled) enabled = true;
+void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
+    didTick = false;
 
     if (lengthTimer.lengthTimer == 64) {
         lengthTimer.lengthTimer = 0;
@@ -148,21 +152,41 @@ void Channel1::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
         }
     }
 
-    if (freqTimer == 0) {
-        dutyStep = (dutyStep + 1) & 7;
+    // The duty position is never reset by a trigger, only by APU power-off.
+    // A fresh start keeps the old PCM value suppressed until the first duty
+    // advance, (2048-freq)+2 1MHz ticks later; a restart while active keeps
+    // the current sample playing and restarts one tick sooner. On CGB D/E a
+    // phantom duty step occurs when bit 10 of both the countdown and the new
+    // frequency are clear
+    bool forceUnsurpressed = false;
+    if (!enabled) {
+        if (!dmg && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
+            dutyStep = (dutyStep + 1) & 7;
+            forceUnsurpressed = true;
+        }
+        trigDelay = 6 - lfDiv;
+    } else {
+        uint8_t extraDelay = 0;
+        if (!dmg) {
+            if (!justReloaded && !(value & 4) && !(((sampleCountdown - 1 - trigDelay) / 2) & 0x400)) {
+                dutyStep = (dutyStep + 1) & 7;
+                sampleSurpressed = false;
+            } else if (frequency.Value() == 0x7FF && oldFreq != 0x7FF && sampleSurpressed) {
+                extraDelay += 2;
+            }
+        }
+        trigDelay = 4 - lfDiv + extraDelay;
     }
-
-    // Samesuite -- Channel 1 align
-    const int32_t phaseDelay = (tickCounter & 2) ? 14 : 12;
-    freqTimer = (2048 - frequency.Value()) * 4 + phaseDelay;
-
-    // Samesuite -- Channel 1 delay
-    // It takes (sample_length + 2) ticks before PCM12 reflects channel output
-    pcmUpdateDelay = (2048 - frequency.Value()) + 2;
-    pcmOutput = 0;
+    sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + trigDelay;
 
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
+    if (enabled) UpdateOutput();
+
+    if (dacEnabled && !enabled) {
+        enabled = true;
+        sampleSurpressed = !forceUnsurpressed;
+    }
 
     sweep.enabled = sweep.pace > 0 || sweep.step > 0;
     sweep.shadowFreq = frequency.Value();
@@ -193,7 +217,6 @@ void Channel1::TickSweep() {
             if (sweep.step > 0) {
                 frequency.Write(newFreq);
                 sweep.shadowFreq = newFreq;
-                freqTimer = (2048 - frequency.Value()) * 4;
             }
             if (CalculateSweep() > 2047) {
                 enabled = false;
@@ -214,6 +237,7 @@ void Channel1::TickEnvelope() {
             } else if (!envelope.direction && envelope.currentVolume > 0) {
                 envelope.currentVolume--;
             }
+            if (enabled) UpdateOutput();
         }
     }
 }
@@ -229,23 +253,30 @@ uint16_t Channel1::CalculateSweep() {
     return newFreq;
 }
 
-void Channel1::Tick() {
+void Channel1::UpdateOutput() {
+    // A freshly triggered channel keeps its previous PCM value until the
+    // first duty advance
+    if (sampleSurpressed) return;
+    sampleOut = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+    currentOutput = static_cast<float>(sampleOut);
+}
+
+void Channel1::Tick2M() {
     if (!enabled) return;
-    freqTimer--;
-    if (pcmUpdateDelay > 0) pcmUpdateDelay--;
+    if (trigDelay > 0) trigDelay--;
     if (lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
         enabled = false;
     }
-    if (freqTimer <= 0) {
-        freqTimer = (2048 - frequency.Value()) * 4;
-        dutyStep = (dutyStep + 1) % 8;
-        // Only update PCM output after the delay has expired
-        if (pcmUpdateDelay == 0) {
-            pcmOutput = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
-        }
-        if (dacEnabled) {
-            currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) * static_cast<float>(envelope.currentVolume);
-        }
+    if (sampleCountdown == 0) {
+        sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
+        dutyStep = (dutyStep + 1) & 7;
+        sampleSurpressed = false;
+        didTick = true;
+        justReloaded = true;
+        UpdateOutput();
+    } else {
+        sampleCountdown--;
+        justReloaded = false;
     }
 }
 
@@ -260,8 +291,25 @@ void Channel1::Tick() {
     }
 }
 
-void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, const uint32_t tickCounter) {
+void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+    const uint16_t oldFreq = frequency.Value();
+    // Quirk: lowering the frequency high bits from 7 while the countdown was
+    // reloaded from the matching length steps the duty position back once
+    // (SameBoy's ≥$700 to <$700 hack; on DMG only on an odd countdown phase)
+    if (!(value & 0x80) && enabled && (oldFreq >> 8) == 7 && (value & 7) != 7) {
+        if (!dmg || (sampleCountdown & 1)) {
+            if (didTick && (sampleCountdown >> 1) == (oldFreq ^ 0x7FF)) {
+                dutyStep = (dutyStep - 1) & 7;
+                sampleSurpressed = false;
+            }
+        }
+    }
     frequency.WriteHigh(value);
+    // A write landing on the exact tick the countdown reloaded re-reloads it
+    // with the new frequency
+    if (justReloaded) {
+        sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
+    }
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
     if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
@@ -270,10 +318,10 @@ void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, cons
         }
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(freqStep, tickCounter);
+    if (value & 0x80) Trigger(value, oldFreq, freqStep, lfDiv, dmg);
 }
 
-void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint32_t tickCounter) {
+void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
     switch (address & 0xF) {
         case 0x00: {
             const bool oldDirection = sweep.direction;
@@ -288,8 +336,11 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
             if (!dacEnabled) enabled = false;
             break;
         case 0x03: frequency.WriteLow(value);
+            if (justReloaded) {
+                sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
+            }
             break;
-        case 0x04: HandleNR14Write(value, freqStep, tickCounter);
+        case 0x04: HandleNR14Write(value, freqStep, lfDiv, dmg);
             break;
         default: throw UnreachableCodeException("Channel1::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -297,12 +348,12 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
 
 uint8_t Channel1::GetDigitalOutput() const {
     if (!enabled || !dacEnabled) return 0;
-    return pcmOutput;
+    return sampleOut;
 }
 
-void Channel2::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
-    if (dacEnabled) enabled = true;
+void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
+    didTick = false;
 
     if (lengthTimer.lengthTimer == 64) {
         lengthTimer.lengthTimer = 0;
@@ -311,16 +362,35 @@ void Channel2::Trigger(const uint8_t freqStep, const uint32_t tickCounter) {
         }
     }
 
-    if (freqTimer == 0) {
-        dutyStep = (dutyStep + 1) & 7;
+    bool forceUnsurpressed = false;
+    if (!enabled) {
+        if (!dmg && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
+            dutyStep = (dutyStep + 1) & 7;
+            forceUnsurpressed = true;
+        }
+        trigDelay = 6 - lfDiv;
+    } else {
+        uint8_t extraDelay = 0;
+        if (!dmg) {
+            if (!justReloaded && !(value & 4) && !(((sampleCountdown - 1 - trigDelay) / 2) & 0x400)) {
+                dutyStep = (dutyStep + 1) & 7;
+                sampleSurpressed = false;
+            } else if (frequency.Value() == 0x7FF && oldFreq != 0x7FF && sampleSurpressed) {
+                extraDelay += 2;
+            }
+        }
+        trigDelay = 4 - lfDiv + extraDelay;
     }
-
-    // Samesuite -- Channel 3 align
-    const int32_t phaseDelay = (tickCounter & 2) ? 14 : 12;
-    freqTimer = (2048 - frequency.Value()) * 4 + phaseDelay;
+    sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + trigDelay;
 
     envelope.periodTimer = envelope.sweepPace ? envelope.sweepPace : 8;
     envelope.currentVolume = envelope.initialVolume;
+    if (enabled) UpdateOutput();
+
+    if (dacEnabled && !enabled) {
+        enabled = true;
+        sampleSurpressed = !forceUnsurpressed;
+    }
 }
 
 void Channel2::TickLength() {
@@ -339,34 +409,57 @@ void Channel2::TickEnvelope() {
             } else if (!envelope.direction && envelope.currentVolume > 0) {
                 envelope.currentVolume--;
             }
+            if (enabled) UpdateOutput();
         }
     }
 }
 
-void Channel2::Tick() {
+void Channel2::UpdateOutput() {
+    if (sampleSurpressed) return;
+    sampleOut = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+    currentOutput = static_cast<float>(sampleOut);
+}
+
+void Channel2::Tick2M() {
     if (!enabled) return;
-    freqTimer--;
+    if (trigDelay > 0) trigDelay--;
     if (lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
         enabled = false;
     }
-    if (freqTimer <= 0) {
-        freqTimer = (2048 - frequency.Value()) * 4;
-        dutyStep = (dutyStep + 1) % 8;
-        if (dacEnabled) {
-            currentOutput = static_cast<float>(DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep]) * static_cast<float>(envelope.currentVolume);
-        }
+    if (sampleCountdown == 0) {
+        sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
+        dutyStep = (dutyStep + 1) & 7;
+        sampleSurpressed = false;
+        didTick = true;
+        justReloaded = true;
+        UpdateOutput();
+    } else {
+        sampleCountdown--;
+        justReloaded = false;
     }
 }
 
-void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, const uint32_t tickCounter) {
+void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+    const uint16_t oldFreq = frequency.Value();
+    if (!(value & 0x80) && enabled && (oldFreq >> 8) == 7 && (value & 7) != 7) {
+        if (!dmg || (sampleCountdown & 1)) {
+            if (didTick && (sampleCountdown >> 1) == (oldFreq ^ 0x7FF)) {
+                dutyStep = (dutyStep - 1) & 7;
+                sampleSurpressed = false;
+            }
+        }
+    }
     frequency.WriteHigh(value);
+    if (justReloaded) {
+        sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
+    }
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
     if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
         if (lengthTimer.lengthTimer < 64) lengthTimer.lengthTimer++;
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(freqStep, tickCounter);
+    if (value & 0x80) Trigger(value, oldFreq, freqStep, lfDiv, dmg);
 }
 
 [[nodiscard]] uint8_t Channel2::ReadByte(const uint16_t address) const {
@@ -380,7 +473,7 @@ void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, cons
     }
 }
 
-void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint32_t tickCounter) {
+void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
     switch (address & 0xF) {
         case 0x05: break;
         case 0x06: lengthTimer.Write(value, audioEnabled);
@@ -390,8 +483,11 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
             if (!dacEnabled) enabled = false;
             break;
         case 0x08: frequency.WriteLow(value);
+            if (justReloaded) {
+                sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
+            }
             break;
-        case 0x09: HandleNR24Write(value, freqStep, tickCounter);
+        case 0x09: HandleNR24Write(value, freqStep, lfDiv, dmg);
             break;
         default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -399,7 +495,7 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
 
 uint8_t Channel2::GetDigitalOutput() const {
     if (!enabled || !dacEnabled) return 0;
-    return DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+    return sampleOut;
 }
 
 

@@ -162,6 +162,39 @@ static const std::vector<Case> romTestcases = {
     {"roms/mooneye/acceptance/ppu/stat_lyc_onoff.gb", "tests/expected/mooneye/ppu/stat_lyc_onoff.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mooneye/acceptance/ppu/stat_irq_blocking.gb", "tests/expected/mooneye/ppu/stat_irq_blocking.gb.screen", bootroms.dmgBootrom, Mode::DMG},
     {"roms/mooneye/misc/ppu/vblank_stat_intr-C.gb", "tests/expected/mooneye/ppu/vblank_stat_intr-C.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_align.gb", "tests/expected/samesuite/apu/channel_1/channel_1_align.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_align_cpu.gb", "tests/expected/samesuite/apu/channel_1/channel_1_align_cpu.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_delay.gb", "tests/expected/samesuite/apu/channel_1/channel_1_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_duty.gb", "tests/expected/samesuite/apu/channel_1/channel_1_duty.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_duty_delay.gb", "tests/expected/samesuite/apu/channel_1/channel_1_duty_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_freq_change.gb", "tests/expected/samesuite/apu/channel_1/channel_1_freq_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb", "tests/expected/samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_restart.gb", "tests/expected/samesuite/apu/channel_1/channel_1_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb", "tests/expected/samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_stop_restart.gb", "tests/expected/samesuite/apu/channel_1/channel_1_stop_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_align.gb", "tests/expected/samesuite/apu/channel_2/channel_2_align.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_align_cpu.gb", "tests/expected/samesuite/apu/channel_2/channel_2_align_cpu.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_delay.gb", "tests/expected/samesuite/apu/channel_2/channel_2_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_duty.gb", "tests/expected/samesuite/apu/channel_2/channel_2_duty.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_duty_delay.gb", "tests/expected/samesuite/apu/channel_2/channel_2_duty_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_freq_change.gb", "tests/expected/samesuite/apu/channel_2/channel_2_freq_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_restart.gb", "tests/expected/samesuite/apu/channel_2/channel_2_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb", "tests/expected/samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_stop_restart.gb", "tests/expected/samesuite/apu/channel_2/channel_2_stop_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_volume.gb", "tests/expected/samesuite/apu/channel_2/channel_2_volume.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_and_glitch.gb", "tests/expected/samesuite/apu/channel_3/channel_3_and_glitch.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_first_sample.gb", "tests/expected/samesuite/apu/channel_3/channel_3_first_sample.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_freq_change_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_freq_change_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_restart_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_restart_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_restart_during_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_restart_during_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_restart_stop_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_restart_stop_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_shift_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_shift_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_shift_skip_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_shift_skip_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_stop_delay.gb", "tests/expected/samesuite/apu/channel_3/channel_3_stop_delay.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_stop_div.gb", "tests/expected/samesuite/apu/channel_3/channel_3_stop_div.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_wave_ram_sync.gb", "tests/expected/samesuite/apu/channel_3/channel_3_wave_ram_sync.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_4/channel_4_lfsr.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
 };
 
 static auto &romFutures() {
@@ -273,6 +306,39 @@ ROM_TEST(81, "roms/mooneye/acceptance/ppu/intr_2_0_timing.gb")
 ROM_TEST(82, "roms/mooneye/acceptance/ppu/stat_lyc_onoff.gb")
 ROM_TEST(83, "roms/mooneye/acceptance/ppu/stat_irq_blocking.gb")
 ROM_TEST(84, "roms/mooneye/misc/ppu/vblank_stat_intr-C.gb")
+ROM_TEST(85, "roms/samesuite/apu/channel_1/channel_1_align.gb")
+ROM_TEST(86, "roms/samesuite/apu/channel_1/channel_1_align_cpu.gb")
+ROM_TEST(87, "roms/samesuite/apu/channel_1/channel_1_delay.gb")
+ROM_TEST(88, "roms/samesuite/apu/channel_1/channel_1_duty.gb")
+ROM_TEST(89, "roms/samesuite/apu/channel_1/channel_1_duty_delay.gb")
+ROM_TEST(90, "roms/samesuite/apu/channel_1/channel_1_freq_change.gb")
+ROM_TEST(91, "roms/samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb")
+ROM_TEST(92, "roms/samesuite/apu/channel_1/channel_1_restart.gb")
+ROM_TEST(93, "roms/samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb")
+ROM_TEST(94, "roms/samesuite/apu/channel_1/channel_1_stop_restart.gb")
+ROM_TEST(95, "roms/samesuite/apu/channel_2/channel_2_align.gb")
+ROM_TEST(96, "roms/samesuite/apu/channel_2/channel_2_align_cpu.gb")
+ROM_TEST(97, "roms/samesuite/apu/channel_2/channel_2_delay.gb")
+ROM_TEST(98, "roms/samesuite/apu/channel_2/channel_2_duty.gb")
+ROM_TEST(99, "roms/samesuite/apu/channel_2/channel_2_duty_delay.gb")
+ROM_TEST(100, "roms/samesuite/apu/channel_2/channel_2_freq_change.gb")
+ROM_TEST(101, "roms/samesuite/apu/channel_2/channel_2_restart.gb")
+ROM_TEST(102, "roms/samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb")
+ROM_TEST(103, "roms/samesuite/apu/channel_2/channel_2_stop_restart.gb")
+ROM_TEST(104, "roms/samesuite/apu/channel_2/channel_2_volume.gb")
+ROM_TEST(105, "roms/samesuite/apu/channel_3/channel_3_and_glitch.gb")
+ROM_TEST(106, "roms/samesuite/apu/channel_3/channel_3_delay.gb")
+ROM_TEST(107, "roms/samesuite/apu/channel_3/channel_3_first_sample.gb")
+ROM_TEST(108, "roms/samesuite/apu/channel_3/channel_3_freq_change_delay.gb")
+ROM_TEST(109, "roms/samesuite/apu/channel_3/channel_3_restart_delay.gb")
+ROM_TEST(110, "roms/samesuite/apu/channel_3/channel_3_restart_during_delay.gb")
+ROM_TEST(111, "roms/samesuite/apu/channel_3/channel_3_restart_stop_delay.gb")
+ROM_TEST(112, "roms/samesuite/apu/channel_3/channel_3_shift_delay.gb")
+ROM_TEST(113, "roms/samesuite/apu/channel_3/channel_3_shift_skip_delay.gb")
+ROM_TEST(114, "roms/samesuite/apu/channel_3/channel_3_stop_delay.gb")
+ROM_TEST(115, "roms/samesuite/apu/channel_3/channel_3_stop_div.gb")
+ROM_TEST(116, "roms/samesuite/apu/channel_3/channel_3_wave_ram_sync.gb")
+ROM_TEST(117, "roms/samesuite/apu/channel_4/channel_4_lfsr.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

@@ -136,13 +136,19 @@ struct Channel1 final : Channel {
     Envelope envelope{};
     Frequency frequency{};
 
-    int32_t freqTimer{0};
-    int32_t pcmUpdateDelay{0};
+    // Square channel timing runs in 2MHz APU ticks (SameBoy model): the
+    // countdown reload consumes (2048-freq)*2 ticks per duty step, and the
+    // trigger delay depends on the 1MHz phase (lfDiv) at the write
+    uint16_t sampleCountdown{0xFFFF};
+    uint8_t trigDelay{0};
+    bool sampleSurpressed{false};
+    bool didTick{false};
+    bool justReloaded{false};
+    uint8_t sampleOut{0};
     uint8_t dutyStep{0};
-    uint8_t pcmOutput{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t freqStep, uint32_t tickCounter);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     void TickLength();
 
@@ -152,13 +158,15 @@ struct Channel1 final : Channel {
 
     uint16_t CalculateSweep();
 
-    void Tick();
+    void Tick2M();
+
+    void UpdateOutput();
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint32_t tickCounter);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint32_t tickCounter);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -167,23 +175,31 @@ struct Channel2 final : Channel {
     Length lengthTimer{};
     Envelope envelope{};
     Frequency frequency{};
-    int32_t freqTimer{0};
+
+    uint16_t sampleCountdown{0xFFFF};
+    uint8_t trigDelay{0};
+    bool sampleSurpressed{false};
+    bool didTick{false};
+    bool justReloaded{false};
+    uint8_t sampleOut{0};
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t freqStep, uint32_t tickCounter);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     void TickLength();
 
     void TickEnvelope();
 
-    void Tick();
+    void Tick2M();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint32_t tickCounter);
+    void UpdateOutput();
+
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint32_t tickCounter);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
