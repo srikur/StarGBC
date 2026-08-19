@@ -1,0 +1,63 @@
+includes/Gameboy.h
+  s_a55596d3116fe0::t_e6a3671925a3c0 5
+  s_a55596d3116fe0::t_539774283e06c4 112-113,115-119,122-126,128-134
+  s_a55596d3116fe0::t_0084ee24d2bbdc 120-121
+  h_3d40ba63c7880a 127
+includes/Audio.h
+  s_a55596d3116fe0::t_37b45fabefd132 147,151,176,178,216,241,243
+  s_a55596d3116fe0::t_71fa731f567f76 265-278
+  s_a55596d3116fe0::t_71a8bf2f8f4c06 119-120
+includes/Cartridge.h
+  s_a55596d3116fe0::t_07542a67673fd1 37
+  s_a55596d3116fe0::t_8df088451f3fd2 79-87,92,96-97,99,101
+  s_a55596d3116fe0::t_004602a704b1ef 2,8-10,18
+includes/FixedContainers.h
+  s_a55596d3116fe0::t_6d20e3f5d52db7 1-9,11-79
+  h_3d40ba63c7880a 10
+src/Cartridge.cpp
+  s_a55596d3116fe0::t_a15aad164f55ce 110,112,116,124
+  s_a55596d3116fe0::t_fa9fbcc22676b0 23,26,30
+  s_a55596d3116fe0::t_4a78254578e790 299
+  s_a55596d3116fe0::t_c5178e04af8e43 393
+  s_a55596d3116fe0::t_427f1909bfec41 35,37
+  s_a55596d3116fe0::t_fd6f4048a09231 138,145,147
+  s_a55596d3116fe0::t_8e80ac85493778 157,159,164
+includes/GPU.h
+  s_a55596d3116fe0::t_7e48ba9dc5c0f2 93-94
+  s_a55596d3116fe0::t_0723c67740f01b 169
+  s_a55596d3116fe0::t_045ef5aaf0e3f9 3
+  s_a55596d3116fe0::t_0f2d42f8bd0cea 142
+  s_a55596d3116fe0::t_e715347b18efa6 148-150
+src/SDLFrontend.cpp
+  s_a55596d3116fe0::t_f7d0380702430a 293-294,296
+includes/Instructions.h
+  s_a55596d3116fe0::t_c0aff757cb3ade 2444
+  s_a55596d3116fe0::t_72637af4cf37b2 2473
+includes/Reflection.h
+  s_a55596d3116fe0::t_71a910f84fab15 4,29,37-49,54-58,60-63,69,72
+  h_3d40ba63c7880a 70-71
+includes/RealTimeClock.h
+  s_a55596d3116fe0::t_22fb20cd65a797 17-18
+  s_a55596d3116fe0::t_57c5efb391955c 52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "03dfcba925735e035c7b128f1d0f0cef4d2aae7d",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_a55596d3116fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db8bd86d-d239-4cc3-99b5-43ccb9f6e37d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
