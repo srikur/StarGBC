@@ -1,0 +1,21 @@
+README.md
+  s_495a566b9c1a66::t_1c4a6a32fb1012 40,229,246,278
+tests/TestRoms.h
+  s_495a566b9c1a66::t_1c4a6a32fb1012 201-203,351-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "57d82f33412e73b0c53c6185f54f7d2486bcea42",
+  "prompts": {},
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
