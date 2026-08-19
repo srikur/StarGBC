@@ -1,0 +1,29 @@
+tests/TestRoms.h
+  s_495a566b9c1a66::t_4854f1a8805c61 448-449
+  s_495a566b9c1a66::t_3cb20a9906c21f 250-251
+  s_495a566b9c1a66::t_2b1cf8c6814d25 244-246
+includes/Registers.h
+  h_3d40ba63c7880a 96
+  s_495a566b9c1a66::t_029e369072b8cd 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "97a3a496eea92c06afe7222591f374da8021a30f",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
