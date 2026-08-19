@@ -1,0 +1,15 @@
+includes/Reflection.h
+  h_3d40ba63c7880a 19,22-24,28-29,37-39,42
+  h_3d40ba63c7880a 20-21,30-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d75475292967016d3e6b0a272c999b1a282806b1",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
