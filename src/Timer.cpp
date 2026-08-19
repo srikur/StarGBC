@@ -25,10 +25,13 @@ void Timer::Tick(const Speed speed) {
         IncrementTIMA();
     }
 
-    // Check for a falling edge for the APU Frame Sequencer
+    // Falling edge of the DIV-APU bit fires the frame sequencer; the rising
+    // edge fires the secondary event that latches envelope clocks
     const bool newFrameSeqSignal = (divCounter & (1u << frameSeqBit));
     if (oldFrameSeqSignal && !newFrameSeqSignal) {
         audio_.TickFrameSequencer();
+    } else if (!oldFrameSeqSignal && newFrameSeqSignal) {
+        audio_.TickFrameSequencerSecondary();
     }
 }
 
@@ -52,9 +55,11 @@ void Timer::WriteDIV(const bool doubleSpeed) {
     const int bit = TimerBit(tac);
     const bool oldSignal = enabled && (divCounter & (1u << bit));
 
-    const uint8_t frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 4 : 5;
+    // Resetting DIV while the DIV-APU bit is high is a falling edge and
+    // fires the frame sequencer
+    const int frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 12 : 13;
     if (divCounter & (1u << frameSeqBit)) {
-        audio_.TickFrameSequencer();
+        audio_.TickFrameSequencer(!doubleSpeed);
     }
 
     divCounter = 0;

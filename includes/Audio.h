@@ -51,10 +51,17 @@ struct Sweep {
     bool direction{false};
     uint8_t step{0};
 
-    uint8_t timer{0};
-    bool enabled{false};
-    uint16_t shadowFreq{0};
-    bool subtractionCalculationMade{false};
+    // SameBoy's addend model: the 128Hz countdown applies the previously
+    // computed addend to the frequency, then schedules a recalculation
+    // (and overflow check) a few 1MHz ticks later
+    uint8_t countdown{0}; // 128Hz counter, triggers at 7
+    uint8_t calcCountdown{0}; // 1MHz delay until the recalculation
+    uint8_t calcReloadTimer{0}; // 1MHz delay before calcCountdown may run
+    uint16_t lengthAddend{0};
+    uint16_t shadowLength{0};
+    uint16_t completedAddend{0};
+    bool unshifted{false};
+    bool instantCalcDone{false};
 
     void Write(const uint8_t v) {
         pace = v >> 4 & 0x07;
@@ -71,8 +78,17 @@ struct Envelope {
     uint8_t initialVolume{0};
     bool direction{false};
     uint8_t sweepPace{0};
-    uint8_t periodTimer{0};
+    // Free-running 3-bit countdown, decremented at the 64Hz envelope step.
+    // When a DIV secondary event (rising edge of the DIV-APU bit) finds it at
+    // zero on an active channel it reloads to the pace and latches the clock;
+    // the volume tick then fires on the next DIV event
+    uint8_t volumeCountdown{0};
     uint8_t currentVolume{0};
+    bool clock{false};
+    bool shouldLock{false};
+    // A tick attempted from a saturated volume locks the envelope until the
+    // next trigger
+    bool locked{false};
 
     void Write(const uint8_t value) {
         initialVolume = value >> 4 & 0x0F;
@@ -83,6 +99,12 @@ struct Envelope {
     [[nodiscard]] uint8_t Value() const {
         return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace);
     }
+
+    void SetClock(bool value, bool dir, uint8_t volume);
+
+    void NRx2GlitchSingle(uint8_t value, uint8_t old);
+
+    void NRx2Glitch(uint8_t value, uint8_t old, bool dmg);
 };
 
 struct Length {
@@ -136,29 +158,43 @@ struct Channel1 final : Channel {
     Envelope envelope{};
     Frequency frequency{};
 
-    int32_t freqTimer{0};
-    int32_t pcmUpdateDelay{0};
+    // Square channel timing runs in 2MHz APU ticks (SameBoy model): the
+    // countdown reload consumes (2048-freq)*2 ticks per duty step, and the
+    // trigger delay depends on the 1MHz phase (lfDiv) at the write
+    uint16_t sampleCountdown{0xFFFF};
+    uint8_t trigDelay{0};
+    // Blocks sweep shadow/addend updates right after a trigger (2MHz ticks)
+    uint8_t restartHold{0};
+    bool sampleSurpressed{false};
+    bool didTick{false};
+    bool justReloaded{false};
+    uint8_t sampleOut{0};
     uint8_t dutyStep{0};
-    uint8_t pcmOutput{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t freqStep, uint32_t tickCounter);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     void TickLength();
 
-    void TickSweep();
+    void TickSweep128(uint8_t lfDiv, bool fromDivWrite);
 
     void TickEnvelope();
 
-    uint16_t CalculateSweep();
+    void TickSweepUnit(uint8_t lfDiv);
 
-    void Tick();
+    void SweepCalculationDone();
+
+    void Nr10WriteGlitch(uint8_t value, uint8_t lfDiv, bool dmg);
+
+    void Tick2M();
+
+    void UpdateOutput();
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint32_t tickCounter);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint32_t tickCounter);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -167,23 +203,31 @@ struct Channel2 final : Channel {
     Length lengthTimer{};
     Envelope envelope{};
     Frequency frequency{};
-    int32_t freqTimer{0};
+
+    uint16_t sampleCountdown{0xFFFF};
+    uint8_t trigDelay{0};
+    bool sampleSurpressed{false};
+    bool didTick{false};
+    bool justReloaded{false};
+    uint8_t sampleOut{0};
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t freqStep, uint32_t tickCounter);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     void TickLength();
 
     void TickEnvelope();
 
-    void Tick();
+    void Tick2M();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint32_t tickCounter);
+    void UpdateOutput();
+
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint32_t tickCounter);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, bool dmg);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -231,35 +275,60 @@ struct Channel4 final : Channel {
     Envelope envelope{};
     Noise noise{};
 
-    int32_t freqTimer{0};
-    uint16_t lfsr{0xFFFF};
+    // SameBoy noise model: a free-running 14-bit counter clocked every
+    // (divisor) 2MHz ticks; the LFSR steps on rising edges of the counter
+    // bit selected by the NR43 shift. The counter keeps counting in the
+    // background while the channel is off
+    uint16_t counter{0};
+    uint8_t counterCountdown{0};
+    uint8_t alignment{0};
+    uint16_t lfsr{0};
+    bool narrow{false};
+    bool currentLfsrSample{false};
+    bool didStepCounter{false};
+    bool countdownReloaded{false};
+    bool counterActive{false};
+    bool backgroundCounterActive{false};
+    bool startedWithDacDisabled{false};
+    bool lfsrSteppedInNarrow{false};
+    bool lfsrBit7BeforeStep{false};
+    uint8_t dmgDelayedStart{0};
     float currentOutput{0.0f};
     uint8_t trigger{0};
-
-    void Trigger(uint8_t freqStep);
 
     void TickLength();
 
     void TickEnvelope();
 
-    void TickLfsr();
+    void StepLfsr();
 
-    void Tick();
+    void Tick2M(uint8_t freqStep, bool dmg);
 
-    void HandleNR44Write(uint8_t value, uint8_t freqStep);
+    void PrepareNoiseStart(bool dmg);
+
+    void DoTrigger(uint8_t freqStep, bool dmg);
+
+    void HandleNR43Write(uint8_t value);
+
+    void HandleNR44Write(uint8_t value, uint8_t freqStep, bool dmg);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, bool dmg);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
 class Audio {
+    enum class SkipState : uint8_t { Inactive, Skip, Skipped };
+
     bool audioEnabled{false};
     bool dmg{false};
+    // Free-running DIV event counter (SameBoy's div_divider): incremented
+    // before dispatch, so odd values clock the lengths, &3==3 the sweep and
+    // &7==7 the envelope countdowns
     uint8_t frameSeqStep{0};
-    bool skipNextFrameSeqTick{false};
+    SkipState skipState{SkipState::Inactive};
     uint32_t tickCounter{0};
 
     // Host-side output machinery, not APU hardware state: the sample ring
@@ -302,8 +371,13 @@ public:
     [[nodiscard]] bool IsDMG() const { return dmg; }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
 
-    // DIV-APU
-    void TickFrameSequencer();
+    // DIV-APU. divWriteSingleSpeed marks an event caused by a DIV write in
+    // single speed, which shortens the sweep recalculation reload
+    void TickFrameSequencer(bool divWriteSingleSpeed = false);
+
+    // Rising edge of the DIV-APU bit: latches the envelope clocks for
+    // channels whose volume countdown has expired
+    void TickFrameSequencerSecondary();
 
     void Tick();
 
