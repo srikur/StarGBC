@@ -1,0 +1,14 @@
+README.md
+  h_3d40ba63c7880a 223-238,241-282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6631f07da6d7398d205830d038ba00d72956eb96",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
