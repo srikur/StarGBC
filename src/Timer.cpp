@@ -59,7 +59,7 @@ void Timer::WriteDIV(const bool doubleSpeed) {
     // fires the frame sequencer
     const int frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 12 : 13;
     if (divCounter & (1u << frameSeqBit)) {
-        audio_.TickFrameSequencer();
+        audio_.TickFrameSequencer(!doubleSpeed);
     }
 
     divCounter = 0;

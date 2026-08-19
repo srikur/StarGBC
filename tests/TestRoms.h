@@ -210,6 +210,10 @@ static const std::vector<Case> romTestcases = {
     {"roms/samesuite/apu/div_write_trigger_volume.gb", "tests/expected/samesuite/apu/div_write_trigger_volume.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/div_write_trigger_volume_10.gb", "tests/expected/samesuite/apu/div_write_trigger_volume_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/div_write_trigger_10.gb", "tests/expected/samesuite/apu/div_write_trigger_10.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_sweep.gb", "tests/expected/samesuite/apu/channel_1/channel_1_sweep.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_sweep_restart.gb", "tests/expected/samesuite/apu/channel_1/channel_1_sweep_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb", "tests/expected/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb", "tests/expected/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
 };
 
 static auto &romFutures() {
@@ -369,6 +373,10 @@ ROM_TEST(129, "roms/samesuite/apu/div_trigger_volume_10.gb")
 ROM_TEST(130, "roms/samesuite/apu/div_write_trigger_volume.gb")
 ROM_TEST(131, "roms/samesuite/apu/div_write_trigger_volume_10.gb")
 ROM_TEST(132, "roms/samesuite/apu/div_write_trigger_10.gb")
+ROM_TEST(133, "roms/samesuite/apu/channel_1/channel_1_sweep.gb")
+ROM_TEST(134, "roms/samesuite/apu/channel_1/channel_1_sweep_restart.gb")
+ROM_TEST(135, "roms/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb")
+ROM_TEST(136, "roms/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

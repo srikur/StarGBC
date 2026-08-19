@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 
-void Audio::TickFrameSequencer() {
+void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
     if (!audioEnabled) return;
     // Powering the APU on while the DIV-APU bit is high skips the first
     // event; the second event then runs without incrementing the divider
@@ -40,7 +40,8 @@ void Audio::TickFrameSequencer() {
     }
 
     if ((frameSeqStep & 3) == 3) {
-        ch1.TickSweep();
+        ch1.sweep.countdown = (ch1.sweep.countdown + 1) & 7;
+        ch1.TickSweep128((tickCounter & 2) ? 0 : 1, divWriteSingleSpeed);
     }
 }
 
@@ -63,6 +64,7 @@ void Audio::Tick() {
         ch3.alternateRead = false;
         // Square channels run on the 2MHz APU tick grid
         if ((tickCounter & 1) == 0) {
+            ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
             ch1.Tick2M();
             ch2.Tick2M();
         }
@@ -206,6 +208,7 @@ uint8_t Audio::ReadPCM34() const {
 }
 
 void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+    const bool wasActive = enabled;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
     didTick = false;
 
@@ -254,13 +257,26 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
         sampleSurpressed = !forceUnsurpressed;
     }
 
-    sweep.enabled = sweep.pace > 0 || sweep.step > 0;
-    sweep.shadowFreq = frequency.Value();
-    sweep.timer = sweep.pace ? sweep.pace : 8;
-    sweep.subtractionCalculationMade = false;
-    if (sweep.step > 0 && CalculateSweep() > 2047) {
-        enabled = false;
+    sweep.instantCalcDone = false;
+    sweep.shadowLength = 0;
+    sweep.completedAddend = 0;
+    if (sweep.step) {
+        // APU bug: with a nonzero shift the overflow check also runs on
+        // trigger, after a short delay
+        sweep.calcCountdown = sweep.step;
+        if (dmg) {
+            sweep.calcReloadTimer = (lfDiv ^ 1) ? 3 : 2;
+        } else {
+            sweep.calcReloadTimer = 2;
+        }
+        if (!wasActive) sweep.calcReloadTimer++;
+        sweep.unshifted = false;
+        sweep.lengthAddend = frequency.Value() >> sweep.step;
+    } else {
+        sweep.lengthAddend = 0;
     }
+    restartHold = 2 - lfDiv + (dmg ? 0 : 3);
+    sweep.countdown = sweep.pace ^ 7;
 }
 
 void Channel1::TickLength() {
@@ -269,27 +285,89 @@ void Channel1::TickLength() {
     }
 }
 
-void Channel1::TickSweep() {
-    if (!sweep.enabled || !enabled) return;
-    if (--sweep.timer > 0) {
-        return;
+void Channel1::TickSweep128(const uint8_t lfDiv, const bool fromDivWrite) {
+    // 128Hz sweep event: apply the previously computed addend to the
+    // frequency, then schedule the recalculation and overflow check
+    if (sweep.pace && sweep.countdown == 7) {
+        if (sweep.step) {
+            frequency.Write((sweep.lengthAddend + sweep.shadowLength + (sweep.direction ? 1 : 0)) & 0x7FF);
+        }
+        if (restartHold == 0) {
+            sweep.lengthAddend = frequency.Value() >> sweep.step;
+        }
+        sweep.calcCountdown = sweep.step;
+        sweep.calcReloadTimer = fromDivWrite ? 1 : 1 + lfDiv;
+        sweep.unshifted = sweep.step == 0;
+        sweep.countdown = sweep.pace ^ 7;
+        if (sweep.calcCountdown == 0) {
+            sweep.instantCalcDone = true;
+        }
     }
+}
 
-    if (sweep.pace != 0) {
-        sweep.timer = sweep.pace;
-        if (const uint16_t newFreq = CalculateSweep(); newFreq > 2047) {
-            enabled = false;
-        } else {
-            if (sweep.step > 0) {
-                frequency.Write(newFreq);
-                sweep.shadowFreq = newFreq;
+void Channel1::SweepCalculationDone() {
+    // APU bug: the overflow check happens after adding the sweep delta twice
+    if (restartHold == 0) {
+        sweep.shadowLength = frequency.Value();
+    }
+    if (sweep.direction) {
+        sweep.lengthAddend ^= 0x7FF;
+    }
+    if (sweep.shadowLength + sweep.lengthAddend > 0x7FF && !sweep.direction) {
+        enabled = false;
+    }
+    sweep.completedAddend = sweep.lengthAddend;
+}
+
+void Channel1::TickSweepUnit(const uint8_t lfDiv) {
+    // The recalculation countdown runs at 1MHz on a fixed phase
+    if (lfDiv == 0) {
+        if (sweep.calcReloadTimer > 0) {
+            sweep.calcReloadTimer--;
+            if (sweep.calcReloadTimer == 0) {
+                if (!sweep.calcCountdown && sweep.instantCalcDone) {
+                    SweepCalculationDone();
+                }
+                sweep.instantCalcDone = false;
             }
-            if (CalculateSweep() > 2047) {
-                enabled = false;
+        } else if (sweep.calcCountdown && (sweep.step != 0 || sweep.unshifted)) {
+            if (sweep.calcCountdown > 1) {
+                sweep.calcCountdown--;
+            } else {
+                sweep.calcCountdown = 0;
+                SweepCalculationDone();
+            }
+        }
+    }
+    if (restartHold > 0) restartHold--;
+}
+
+void Channel1::Nr10WriteGlitch(const uint8_t value, const uint8_t lfDiv, const bool dmg) {
+    if (dmg) {
+        if (sweep.calcReloadTimer <= 1 && sweep.calcCountdown) {
+            // Zombie step when the old shift bits are clear
+            if (!sweep.step && lfDiv) {
+                sweep.calcCountdown--;
+                if (sweep.calcCountdown <= 1) {
+                    sweep.calcCountdown = 0;
+                    SweepCalculationDone();
+                }
             }
         }
     } else {
-        sweep.timer = 8;
+        if (sweep.calcReloadTimer == 2) {
+            // Countdown just reloaded, re-reload it
+            sweep.calcCountdown = value & 0x7;
+            if (!sweep.calcCountdown) {
+                sweep.calcReloadTimer = 0;
+            }
+        }
+        if ((value & 7) && !sweep.step && !lfDiv && sweep.calcCountdown > 1) {
+            sweep.calcCountdown--;
+            if (!sweep.calcCountdown) {
+                SweepCalculationDone();
+            }
+        }
     }
 }
 
@@ -299,17 +377,6 @@ void Channel1::TickEnvelope() {
     if (!envelope.sweepPace) return;
     envelope.currentVolume = (envelope.currentVolume + (envelope.direction ? 1 : -1)) & 0xF;
     if (enabled) UpdateOutput();
-}
-
-uint16_t Channel1::CalculateSweep() {
-    uint16_t newFreq = sweep.shadowFreq >> sweep.step;
-    if (sweep.direction) {
-        newFreq = sweep.shadowFreq - newFreq;
-        sweep.subtractionCalculationMade = true;
-    } else {
-        newFreq = sweep.shadowFreq + newFreq;
-    }
-    return newFreq;
 }
 
 void Channel1::UpdateOutput() {
@@ -383,9 +450,17 @@ void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, cons
 void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
     switch (address & 0xF) {
         case 0x00: {
-            const bool oldDirection = sweep.direction;
+            if (sweep.calcCountdown || sweep.calcReloadTimer) {
+                Nr10WriteGlitch(value, lfDiv, dmg);
+            }
+            // Leaving negate mode after a subtraction calculation disables
+            // the channel (pre-CGB-D always behaves as if negate was on)
+            const bool oldNegate = dmg ? true : sweep.direction;
             sweep.Write(value);
-            if (oldDirection && !sweep.direction && sweep.subtractionCalculationMade) enabled = false;
+            if (sweep.shadowLength + sweep.completedAddend + (oldNegate ? 1 : 0) > 0x7FF && !(value & 8)) {
+                enabled = false;
+            }
+            TickSweep128(lfDiv, false);
         }
         break;
         case 0x01: lengthTimer.Write(value, audioEnabled);

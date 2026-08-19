@@ -51,10 +51,17 @@ struct Sweep {
     bool direction{false};
     uint8_t step{0};
 
-    uint8_t timer{0};
-    bool enabled{false};
-    uint16_t shadowFreq{0};
-    bool subtractionCalculationMade{false};
+    // SameBoy's addend model: the 128Hz countdown applies the previously
+    // computed addend to the frequency, then schedules a recalculation
+    // (and overflow check) a few 1MHz ticks later
+    uint8_t countdown{0}; // 128Hz counter, triggers at 7
+    uint8_t calcCountdown{0}; // 1MHz delay until the recalculation
+    uint8_t calcReloadTimer{0}; // 1MHz delay before calcCountdown may run
+    uint16_t lengthAddend{0};
+    uint16_t shadowLength{0};
+    uint16_t completedAddend{0};
+    bool unshifted{false};
+    bool instantCalcDone{false};
 
     void Write(const uint8_t v) {
         pace = v >> 4 & 0x07;
@@ -156,6 +163,8 @@ struct Channel1 final : Channel {
     // trigger delay depends on the 1MHz phase (lfDiv) at the write
     uint16_t sampleCountdown{0xFFFF};
     uint8_t trigDelay{0};
+    // Blocks sweep shadow/addend updates right after a trigger (2MHz ticks)
+    uint8_t restartHold{0};
     bool sampleSurpressed{false};
     bool didTick{false};
     bool justReloaded{false};
@@ -167,11 +176,15 @@ struct Channel1 final : Channel {
 
     void TickLength();
 
-    void TickSweep();
+    void TickSweep128(uint8_t lfDiv, bool fromDivWrite);
 
     void TickEnvelope();
 
-    uint16_t CalculateSweep();
+    void TickSweepUnit(uint8_t lfDiv);
+
+    void SweepCalculationDone();
+
+    void Nr10WriteGlitch(uint8_t value, uint8_t lfDiv, bool dmg);
 
     void Tick2M();
 
@@ -338,8 +351,9 @@ public:
     [[nodiscard]] bool IsDMG() const { return dmg; }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
 
-    // DIV-APU
-    void TickFrameSequencer();
+    // DIV-APU. divWriteSingleSpeed marks an event caused by a DIV write in
+    // single speed, which shortens the sweep recalculation reload
+    void TickFrameSequencer(bool divWriteSingleSpeed = false);
 
     // Rising edge of the DIV-APU bit: latches the envelope clocks for
     // channels whose volume countdown has expired

@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (235/277)
+Current Performance: (239/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -231,9 +231,9 @@ Current Performance: (235/277)
 | samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb              | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_stop_div.gb                         | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_stop_restart.gb                     | :white_check_mark:                |
-| samesuite/apu/channel_1/channel_1_sweep.gb                            | :x:                |
-| samesuite/apu/channel_1/channel_1_sweep_restart.gb                    | :x:                | 
-| samesuite/apu/channel_1/channel_1_sweep_restart_2.gb                  | :x:                |
+| samesuite/apu/channel_1/channel_1_sweep.gb                            | :white_check_mark:                |
+| samesuite/apu/channel_1/channel_1_sweep_restart.gb                    | :white_check_mark:                | 
+| samesuite/apu/channel_1/channel_1_sweep_restart_2.gb                  | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_volume.gb                           | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_volume_div.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_align.gb                            | :white_check_mark: |
@@ -261,7 +261,7 @@ Current Performance: (235/277)
 | samesuite/apu/channel_3/channel_3_shift_skip_delay.gb                 | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_stop_delay.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_stop_div.gb                         | :white_check_mark:                |
-| samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb            | :x:                |
+| samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb            | :white_check_mark:                |
 | samesuite/apu/channel_3/channel_3_wave_ram_sync.gb                    | :white_check_mark:                |
 | samesuite/apu/channel_4/channel_4_align.gb                            | :x:                |
 | samesuite/apu/channel_4/channel_4_delay.gb                            | :x:                |
