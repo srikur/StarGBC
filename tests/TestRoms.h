@@ -198,6 +198,9 @@ static const std::vector<Case> romTestcases = {
     {"roms/samesuite/apu/channel_1/channel_1_nrx2_glitch.gb", "tests/expected/samesuite/apu/channel_1/channel_1_nrx2_glitch.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_1/channel_1_volume.gb", "tests/expected/samesuite/apu/channel_1/channel_1_volume.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_2/channel_2_nrx2_glitch.gb", "tests/expected/samesuite/apu/channel_2/channel_2_nrx2_glitch.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb", "tests/expected/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb", "tests/expected/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/apu/div_write_trigger.gb", "tests/expected/samesuite/apu/div_write_trigger.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
 };
 
 static auto &romFutures() {
@@ -345,6 +348,9 @@ ROM_TEST(117, "roms/samesuite/apu/channel_4/channel_4_lfsr.gb")
 ROM_TEST(118, "roms/samesuite/apu/channel_1/channel_1_nrx2_glitch.gb")
 ROM_TEST(119, "roms/samesuite/apu/channel_1/channel_1_volume.gb")
 ROM_TEST(120, "roms/samesuite/apu/channel_2/channel_2_nrx2_glitch.gb")
+ROM_TEST(121, "roms/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb")
+ROM_TEST(122, "roms/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb")
+ROM_TEST(123, "roms/samesuite/apu/div_write_trigger.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

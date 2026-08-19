@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (223/276)
+Current Performance: (226/276)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -226,7 +226,7 @@ Current Performance: (223/276)
 | samesuite/apu/channel_1/channel_1_freq_change.gb                      | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb        | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_nrx2_glitch.gb                      | :white_check_mark:                |
-| samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb                | :x:                |
+| samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb                | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_restart.gb                          | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb              | :white_check_mark:                |
 | samesuite/apu/channel_1/channel_1_stop_div.gb                         | :x:                |
@@ -243,7 +243,7 @@ Current Performance: (223/276)
 | samesuite/apu/channel_2/channel_2_duty_delay.gb                       | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_freq_change.gb                      | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_nrx2_glitch.gb                      | :white_check_mark:                |
-| samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb                | :x:                |
+| samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb                | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_restart.gb                          | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb              | :white_check_mark:                |
 | samesuite/apu/channel_2/channel_2_stop_div.gb                         | :x:                |
@@ -275,7 +275,7 @@ Current Performance: (223/276)
 | samesuite/apu/channel_4/channel_4_lfsr_restart.gb                     | :x:                |
 | samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb                | :x:                |
 | samesuite/apu/channel_4/channel_4_volume_div.gb                       | :x:                |
-| samesuite/apu/div_write_trigger.gb                                    | :x:                |
+| samesuite/apu/div_write_trigger.gb                                    | :white_check_mark:                |
 | samesuite/apu/div_write_trigger_10.gb                                 | :x:                |
 | samesuite/apu/div_write_trigger_volume.gb                             | :x:                |
 | samesuite/apu/div_write_trigger_volume_10.gb                          | :x:                |
