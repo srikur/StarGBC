@@ -1,0 +1,43 @@
+src/Gameboy.cpp
+  s_a55596d3116fe0::t_a91f9689bab1fa 27-36
+includes/Gameboy.h
+  s_a55596d3116fe0::t_b75677ba3c8649 130-135,138-139,141-142,149,153-171
+  s_a55596d3116fe0::t_1be7b2ad252f1f 72-80
+  s_a55596d3116fe0::t_80ee375c701181 181-189,191-196
+  s_a55596d3116fe0::t_95371ab786c8d9 117-118
+  s_a55596d3116fe0::t_8e726dcbac291b 5
+  h_3d40ba63c7880a 190
+  s_a55596d3116fe0::t_80987141e6c887 121-129
+  s_a55596d3116fe0::t_4f93696437adb2 146
+src/SDLFrontend.cpp
+  h_3d40ba63c7880a 333,335-336,338-339,341-342,344,347,349-350,352-353,355
+  s_a55596d3116fe0::t_4da1250f698369 287-300,306-313,315,324-332,334,337,340,343,345-346,348,351,354,356-359
+  s_a55596d3116fe0::t_2cd823fb56922e 360
+includes/Cartridge.h
+  s_a55596d3116fe0::t_65553b14e764e8 34-41
+  h_3d40ba63c7880a 83
+includes/FixedContainers.h
+  s_a55596d3116fe0::t_97352e86e9dc72 79-80
+  s_a55596d3116fe0::t_e3066da7b14288 52-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "feeb2fc9529405ceed7527faeb233c500629c727",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_a55596d3116fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db8bd86d-d239-4cc3-99b5-43ccb9f6e37d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
