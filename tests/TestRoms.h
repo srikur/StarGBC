@@ -224,6 +224,31 @@ static const std::vector<Case> romTestcases = {
     {"roms/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_4/channel_4_lfsr_restart.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_restart.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
     {"roms/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb", "tests/expected/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/bits/unused_hwio-GS.gb", "tests/expected/mooneye/bits/unused_hwio-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/misc/bits/unused_hwio-C.gb", "tests/expected/mooneye/bits/unused_hwio-C.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/boot_div-dmgABCmgb.gb", "tests/expected/mooneye/boot_div-dmgABCmgb.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/misc/boot_div-cgbABCDE.gb", "tests/expected/mooneye/boot_div-cgbABCDE.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/boot_hwio-dmgABCmgb.gb", "tests/expected/mooneye/boot_hwio-dmgABCmgb.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/misc/boot_hwio-C.gb", "tests/expected/mooneye/boot_hwio-C.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/ppu/blocking_bgpi_increase.gb", "tests/expected/samesuite/ppu/blocking_bgpi_increase.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/daid/speed_switch_timing_div.gbc", "tests/expected/daid/speed_switch_timing_div.gbc.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/daid/speed_switch_timing_ly.gbc", "tests/expected/daid/speed_switch_timing_ly.gbc.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/daid/speed_switch_timing_stat.gbc", "tests/expected/daid/speed_switch_timing_stat.gbc.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/daid/ppu_scanline_bgp.gb", "tests/expected/daid/ppu_scanline_bgp.gb.dmg.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/daid/ppu_scanline_bgp.gb", "tests/expected/daid/ppu_scanline_bgp.gb.cgb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/hacktix/strikethrough.gb", "tests/expected/hacktix/strikethrough.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/hacktix/bully.gb", "tests/expected/hacktix/bully.gb.dmg.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/hacktix/bully.gb", "tests/expected/hacktix/bully.gb.cgb.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/boot_div-dmg0.gb", "tests/expected/mooneye/boot_div-dmg0.gb.screen", bootroms.dmg0Bootrom, Mode::DMG0},
+    {"roms/mooneye/acceptance/boot_hwio-dmg0.gb", "tests/expected/mooneye/boot_hwio-dmg0.gb.screen", bootroms.dmg0Bootrom, Mode::DMG0},
+    {"roms/mooneye/acceptance/boot_div-S.gb", "tests/expected/mooneye/boot_div-S.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/mooneye/acceptance/boot_div2-S.gb", "tests/expected/mooneye/boot_div2-S.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/mooneye/acceptance/boot_hwio-S.gb", "tests/expected/mooneye/boot_hwio-S.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/mooneye/misc/boot_div-A.gb", "tests/expected/mooneye/boot_div-A.gb.screen", bootroms.cgbAGBBootrom, Mode::AGB_GBC},
+    {"roms/mooneye/misc/boot_regs-A.gb", "tests/expected/mooneye/boot_regs-A.gb.screen", bootroms.cgbAGBBootrom, Mode::AGB_GBC},
+    {"roms/mooneye/misc/boot_div-cgb0.gb", "tests/expected/mooneye/boot_div-cgb0.gb.screen", bootroms.cgb0Bootrom, Mode::CGB0},
+    {"roms/mooneye/acceptance/boot_regs-sgb.gb", "tests/expected/mooneye/boot_regs-sgb.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/mooneye/acceptance/boot_regs-sgb2.gb", "tests/expected/mooneye/boot_regs-sgb2.gb.screen", bootroms.sgb2Bootrom, Mode::SGB2},
 };
 
 static auto &romFutures() {
@@ -397,6 +422,31 @@ ROM_TEST(143, "roms/samesuite/apu/channel_4/channel_4_lfsr_15_7.gb")
 ROM_TEST(144, "roms/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb")
 ROM_TEST(145, "roms/samesuite/apu/channel_4/channel_4_lfsr_restart.gb")
 ROM_TEST(146, "roms/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb")
+ROM_TEST(147, "roms/mooneye/acceptance/bits/unused_hwio-GS.gb")
+ROM_TEST(148, "roms/mooneye/misc/bits/unused_hwio-C.gb")
+ROM_TEST(149, "roms/mooneye/acceptance/boot_div-dmgABCmgb.gb")
+ROM_TEST(150, "roms/mooneye/misc/boot_div-cgbABCDE.gb")
+ROM_TEST(151, "roms/mooneye/acceptance/boot_hwio-dmgABCmgb.gb")
+ROM_TEST(152, "roms/mooneye/misc/boot_hwio-C.gb")
+ROM_TEST(153, "roms/samesuite/ppu/blocking_bgpi_increase.gb")
+ROM_TEST(154, "roms/daid/speed_switch_timing_div.gbc")
+ROM_TEST(155, "roms/daid/speed_switch_timing_ly.gbc")
+ROM_TEST(156, "roms/daid/speed_switch_timing_stat.gbc")
+ROM_TEST(157, "roms/daid/ppu_scanline_bgp.gb (DMG)")
+ROM_TEST(158, "roms/daid/ppu_scanline_bgp.gb (GBC)")
+ROM_TEST(159, "roms/hacktix/strikethrough.gb")
+ROM_TEST(160, "roms/hacktix/bully.gb (DMG)")
+ROM_TEST(161, "roms/hacktix/bully.gb (GBC)")
+ROM_TEST(162, "roms/mooneye/acceptance/boot_div-dmg0.gb")
+ROM_TEST(163, "roms/mooneye/acceptance/boot_hwio-dmg0.gb")
+ROM_TEST(164, "roms/mooneye/acceptance/boot_div-S.gb")
+ROM_TEST(165, "roms/mooneye/acceptance/boot_div2-S.gb")
+ROM_TEST(166, "roms/mooneye/acceptance/boot_hwio-S.gb")
+ROM_TEST(167, "roms/mooneye/misc/boot_div-A.gb")
+ROM_TEST(168, "roms/mooneye/misc/boot_regs-A.gb")
+ROM_TEST(169, "roms/mooneye/misc/boot_div-cgb0.gb")
+ROM_TEST(170, "roms/mooneye/acceptance/boot_regs-sgb.gb")
+ROM_TEST(171, "roms/mooneye/acceptance/boot_regs-sgb2.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

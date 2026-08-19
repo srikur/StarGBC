@@ -55,11 +55,14 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         rtc_.Update();
         audio_.Tick();
         serial_.Update();
+        gpu_.oamDmaActive = dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES;
+        gpu_.oamDmaDest_ = dma_.currentByte;
         bus_.UpdateDMA();
         gpu_.Update();
         bus_.RunHDMA();
+        if (bus_.speedSwitchHalt > 0) --bus_.speedSwitchHalt;
         if ((++cpuTickPhase_ & 3) == 0) {
-            cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+            cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
         }
         const uint32_t consumed = bus_.speed == Speed::Regular && !cpu_.stopped() && maxCycles >= 2 ? 2 : 1;
         masterCycles += consumed;
@@ -72,13 +75,18 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         audio_.Tick();
     }
     serial_.Update();
+    if (evenCycle) {
+        gpu_.oamDmaActive = dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES;
+        gpu_.oamDmaDest_ = dma_.currentByte;
+    }
     bus_.UpdateDMA();
     if (evenCycle) {
         gpu_.Update();
         bus_.RunHDMA();
     }
+    if (bus_.speedSwitchHalt > 0) --bus_.speedSwitchHalt;
     if ((++cpuTickPhase_ & 3) == 0) {
-        cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU());
+        cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
     }
     masterCycles++;
     return 1;

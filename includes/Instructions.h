@@ -548,11 +548,18 @@ private:
 
         if (speedSwitchRequested) {
             cpu.bus_.ChangeSpeed();
+            // The CPU stalls through the switch while the PPU and timers run.
+            // SameBoy uses 0x20008 T-cycles; the +0x14 recenters the window for
+            // this core's STOP micro-op timing (daid speed_switch_timing_ly/stat)
+            cpu.bus_.speedSwitchHalt = 0x2001C;
+            // The DIV reset takes effect 0x14 T-cycles into the switch, so the
+            // counter starts slightly negative (daid speed_switch_timing_div)
+            cpu.bus_.timer_.divCounter = static_cast<uint16_t>(-0x14);
             cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         } else {
             cpu.stopped(true);
             // On DMG -- blank out the screen white, on CGB -- blank out the screen black, unless GPU is in Mode 3
-            if (cpu.hardware() == Hardware::DMG) {
+            if (IsDmg(cpu.hardware())) {
                 std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), 0xFFFFFFFF);
             } else if (cpu.bus_.gpu_.stat.mode != GPUMode::MODE_3) {
                 std::fill(cpu.bus_.gpu_.screenData.begin(), cpu.bus_.gpu_.screenData.end(), 0x00000000);

@@ -6,13 +6,31 @@
 #include <ranges>
 #include <vector>
 
+int Bus::DmaBusFor(const uint16_t address) const {
+    if (address >= 0x8000 && address <= 0x9FFF) return 1; // VRAM bus
+    if (address >= 0xC000 && address <= 0xFDFF) {
+        // CGB WRAM sits on its own bus; DMG WRAM shares the external bus
+        return IsCgb(gpu_.hardware) ? 2 : 0;
+    }
+    return 0; // ROM / cart RAM / everything else on the external bus
+}
+
 uint8_t Bus::ReadDMASource(const uint16_t src) {
     const uint8_t page = src >> 8;
-    uint8_t returnValue{};
-    if (page <= 0x7F) returnValue = cartridge_.ReadByte(src);
-    if (page <= 0x9F) returnValue = gpu_.ReadVRAM(src);
-    if (page <= 0xBF) returnValue = cartridge_.ReadByte(src);
-    if (page <= 0xFF) returnValue = memory_.wram_[src & 0x1FFF];
+    uint8_t returnValue;
+    if (page <= 0x7F) {
+        returnValue = cartridge_.ReadByte(src);
+    } else if (page <= 0x9F) {
+        // The DMA unit reads VRAM on its own bus, regardless of PPU mode
+        returnValue = gpu_.vram[gpu_.vramBank * 0x2000 + (src - 0x8000)];
+    } else if (page <= 0xBF) {
+        returnValue = cartridge_.ReadByte(src);
+    } else {
+        const uint16_t offset = src & 0x1FFF; // C000-DFFF and echo
+        returnValue = offset < 0x1000
+                          ? memory_.wram_[offset]
+                          : memory_.wram_[(offset & 0x0FFF) + 0x1000 * memory_.wramBank_];
+    }
     dmaReadByte = returnValue;
     return returnValue;
 }
@@ -34,17 +52,22 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return 0xFF;
-    if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE))
-        return
-                dmaReadByte;
+    // A CPU access on the bus the DMA unit is reading sees the DMA's current
+    // byte — only while bytes are actually moving, not during the startup
+    // delay or after the last byte (hacktix bully)
+    if (source == ComponentSource::CPU && dma_.transferActive &&
+        dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete &&
+        address <= 0xFDFF && DmaBusFor(address) == DmaBusFor(dma_.startAddress)) {
+        return dmaReadByte;
+    }
     switch (address) {
         case 0x0000 ... 0x7FFF: {
             if (bootromRunning) {
-                if (gpu_.hardware == Hardware::CGB && (address < 0x100 || address > 0x1FF)) {
+                if (IsCgb(gpu_.hardware) && (address < 0x100 || address > 0x1FF)) {
                     return bootrom[address];
                 }
 
-                if (gpu_.hardware == Hardware::DMG && address < 0x100) {
+                if (IsDmg(gpu_.hardware) && address < 0x100) {
                     return bootrom[address];
                 }
             }
@@ -58,13 +81,18 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
         case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? ReadOAM(address) : 0xFF;
         case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
-        case 0xFF01 ... 0xFF02: return serial_.ReadSerial(address);
+        case 0xFF01 ... 0xFF02: {
+            uint8_t value = serial_.ReadSerial(address);
+            // The clock-speed bit only exists in CGB mode; it reads 1 otherwise
+            if (address == 0xFF02 && !cgbMode) value |= 0x02;
+            return value;
+        }
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
         case 0xFF0F: return interrupts_.interruptFlag | 0xE0;
         case 0xFF10 ... 0xFF3F: return audio_.ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
-                if (gpu_.hardware == Hardware::DMG) return 0xFF;
+                if (!cgbMode) return 0xFF;
                 const uint8_t first = speed == Speed::Double ? 0x80 : 0x00;
                 const uint8_t second = prepareSpeedShift ? 0x01 : 0x00;
                 return first | second | 0x7E;
@@ -73,11 +101,23 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
             if (address == 0xFF4C || address == 0xFF4E) { return 0xFF; }
             return gpu_.ReadRegisters(address);
         }
-        case 0xFF50 ... 0xFF55: return gpu_.hdma.ReadHDMA(address, gpu_.hardware == Hardware::CGB);
-        case 0xFF68 ... 0xFF6C: return gpu_.ReadRegisters(address);
-        case 0xFF70: return gpu_.hardware == Hardware::CGB ? memory_.wramBank_ : 0xFF;
-        case 0xFF76: return gpu_.hardware == Hardware::CGB ? audio_.ReadPCM12() : 0xFF;
-        case 0xFF77: return gpu_.hardware == Hardware::CGB ? audio_.ReadPCM34() : 0xFF;
+        case 0xFF50 ... 0xFF55: return gpu_.hdma.ReadHDMA(address, cgbMode);
+        case 0xFF56: return cgbMode ? ((rp & 0xC1) | 0x2E) : 0xFF;
+        case 0xFF69:
+        case 0xFF6B:
+            // Palette data is unmapped in DMG-compat mode once the bootrom hands off
+            if (!cgbMode && !bootromRunning) return 0xFF;
+            return gpu_.ReadRegisters(address);
+        case 0xFF68:
+        case 0xFF6A:
+        case 0xFF6C: return gpu_.ReadRegisters(address);
+        case 0xFF70: return cgbMode ? svbkReg : 0xFF;
+        case 0xFF72: return IsCgb(gpu_.hardware) ? psw72 : 0xFF;
+        case 0xFF73: return IsCgb(gpu_.hardware) ? psw73 : 0xFF;
+        case 0xFF74: return cgbMode ? psw74 : 0xFF;
+        case 0xFF75: return IsCgb(gpu_.hardware) ? (pgb75 | 0x8F) : 0xFF;
+        case 0xFF76: return IsCgb(gpu_.hardware) ? audio_.ReadPCM12() : 0xFF;
+        case 0xFF77: return IsCgb(gpu_.hardware) ? audio_.ReadPCM34() : 0xFF;
         case 0xFF80 ... 0xFFFE: return memory_.hram_[address - 0xFF80];
         case 0xFFFF: return interrupts_.interruptEnable;
         default: return 0xFF;
@@ -86,7 +126,10 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFE9F && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES) return;
-    if (source == ComponentSource::CPU && dma_.transferActive && (address < 0xFF80 || address > 0xFFFE)) return;
+    if (source == ComponentSource::CPU && dma_.transferActive &&
+        dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete &&
+        address <= 0xFDFF && DmaBusFor(address) == DmaBusFor(dma_.startAddress))
+        return;
     switch (address) {
         case 0x0000 ... 0x7FFF: cartridge_.WriteByte(address, value);
             break;
@@ -106,8 +149,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
-        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double,
-                                                    gpu_.hardware == Hardware::CGB);
+        case 0xFF01 ... 0xFF02: serial_.WriteSerial(address, value, speed == Speed::Double, cgbMode);
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value, speed);
             break;
@@ -117,17 +159,57 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
                                                  timer_.divCounter & (speed == Speed::Double ? 0x2000 : 0x1000));
             break;
         case 0xFF40 ... 0xFF4F: {
-            if (address == 0xFF46) { dma_.Set(value); } else if (address == 0xFF4D) {
-                prepareSpeedShift = (value & 0x01) == 0x01;
+            if (address == 0xFF46) {
+                dma_.Set(value);
+            } else if (address == 0xFF4C) {
+                // KEY0: the CGB bootrom writes $04 here for DMG-compat carts;
+                // locked once the bootrom hands off
+                if (IsCgb(gpu_.hardware) && bootromRunning) {
+                    key0Written = true;
+                    cgbMode = (value & 0x0C) == 0;
+                    gpu_.dmgCompat = !cgbMode;
+                }
+            } else if (address == 0xFF4D) {
+                if (cgbMode) prepareSpeedShift = (value & 0x01) == 0x01;
+            } else if (address == 0xFF4F) {
+                if (cgbMode) gpu_.WriteRegisters(address, value);
             } else { gpu_.WriteRegisters(address, value); }
             break;
         }
-        case 0xFF51 ... 0xFF55: gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(),
-                                                    gpu_.stat.mode == GPUMode::MODE_0);
+        case 0xFF51 ... 0xFF55:
+            if (cgbMode) {
+                gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(),
+                                    gpu_.stat.mode == GPUMode::MODE_0);
+            }
             break;
-        case 0xFF68 ... 0xFF6C: gpu_.WriteRegisters(address, value);
+        case 0xFF56: if (IsCgb(gpu_.hardware)) rp = value;
             break;
-        case 0xFF70: memory_.wramBank_ = (value & 0x07) ? value : 1;
+        case 0xFF68:
+        case 0xFF6A:
+            if (IsCgb(gpu_.hardware)) gpu_.WriteRegisters(address, value);
+            break;
+        case 0xFF69:
+        case 0xFF6B:
+            // Palette data writes are ignored in DMG-compat mode after boot
+            if (cgbMode || bootromRunning) gpu_.WriteRegisters(address, value);
+            break;
+        case 0xFF6C:
+            // OPRI is only writable while the bootrom runs
+            if (IsCgb(gpu_.hardware) && bootromRunning) gpu_.WriteRegisters(address, value);
+            break;
+        case 0xFF70:
+            if (cgbMode || (IsCgb(gpu_.hardware) && bootromRunning)) {
+                memory_.wramBank_ = (value & 0x07) ? (value & 0x07) : 1;
+                svbkReg = value | 0xF8;
+            }
+            break;
+        case 0xFF72: if (IsCgb(gpu_.hardware)) psw72 = value;
+            break;
+        case 0xFF73: if (IsCgb(gpu_.hardware)) psw73 = value;
+            break;
+        case 0xFF74: if (IsCgb(gpu_.hardware)) psw74 = value;
+            break;
+        case 0xFF75: if (IsCgb(gpu_.hardware)) pgb75 = value & 0x70;
             break;
         case 0xFF80 ... 0xFFFE: memory_.hram_[address - 0xFF80] = value;
             break;
@@ -166,7 +248,7 @@ void Bus::UpdateDMA() {
 }
 
 void Bus::RunHDMA() const {
-    if (!gpu_.hdma.hdmaActive || gpu_.hardware == Hardware::DMG) {
+    if (!gpu_.hdma.hdmaActive || IsDmg(gpu_.hardware)) {
         return;
     }
 
@@ -249,7 +331,7 @@ void Bus::ChangeSpeed() {
 }
 
 void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type) const {
-    if ((gpu_.hardware != Hardware::DMG) || (location < 0xFE00 || location > 0xFEFF) || gpu_.stat.mode !=
+    if ((IsCgb(gpu_.hardware)) || (location < 0xFE00 || location > 0xFEFF) || gpu_.stat.mode !=
         GPUMode::MODE_2)
         return;
     if (gpu_.scanlineCounter >= 81) return;
