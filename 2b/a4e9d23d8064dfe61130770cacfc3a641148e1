@@ -1,0 +1,99 @@
+includes/Instructions.h
+  s_495a566b9c1a66::t_314c54bdd3f970 551-554
+  s_495a566b9c1a66::t_6df34945fc912c 555-557
+tests/TestRoms.h
+  s_495a566b9c1a66::t_7abd04d99347c4 417-418
+  s_495a566b9c1a66::t_263ffaa4f2a90a 233
+  s_495a566b9c1a66::t_4de9eae9290bd1 422-424
+  s_495a566b9c1a66::t_4c154ce7a4677f 421
+  s_495a566b9c1a66::t_5a9e7858ed2a20 425-426
+  s_495a566b9c1a66::t_8fc6d13a89a4d4 237-238
+  s_495a566b9c1a66::t_a0225eabb2c252 419-420
+  s_495a566b9c1a66::t_15e52a9b1fd3f9 427-429
+  s_495a566b9c1a66::t_60e7c2b93a90d3 227-228,415-416
+  s_495a566b9c1a66::t_7be8a605fc3c82 234-236
+  s_495a566b9c1a66::t_3e8236822665a9 229-230
+  s_495a566b9c1a66::t_6923cbe82798ed 239-241
+  s_495a566b9c1a66::t_9379f3a29372b0 231-232
+includes/CPU.h
+  s_495a566b9c1a66::t_8fc24125b1e223 48
+  s_495a566b9c1a66::t_60e7c2b93a90d3 31-32,40,46-47
+  s_495a566b9c1a66::t_d82baa5acbf08d 34-35
+  s_495a566b9c1a66::t_4ccb01b9ac1dc8 36,42
+src/Bus.cpp
+  s_495a566b9c1a66::t_3719ea210a0420 58-59
+  s_495a566b9c1a66::t_8e810fa091c39b 131
+  s_495a566b9c1a66::t_11db962c5b9385 170
+  s_495a566b9c1a66::t_897053a6f402cb 55-57,60
+  s_495a566b9c1a66::t_18fdbc4e9495dc 61-62
+  s_495a566b9c1a66::t_f0fb8c52d7e894 20-33
+  s_495a566b9c1a66::t_40a469bc8ef653 84-89
+  s_495a566b9c1a66::t_60e7c2b93a90d3 95,104-118,152,162-169,171-175,179-208,210,212
+  s_495a566b9c1a66::t_62138b2e17675e 9-17
+  s_495a566b9c1a66::t_2b618e39c11932 129-130,132
+includes/Bus.h
+  s_495a566b9c1a66::t_60e7c2b93a90d3 69-79
+  s_495a566b9c1a66::t_a3494101ec5b75 64-66
+  s_495a566b9c1a66::t_584af87d4eecbc 31-32
+src/CPU.cpp
+  s_495a566b9c1a66::t_60e7c2b93a90d3 80-83,85
+  s_495a566b9c1a66::t_edbaf024cfeaf2 84
+README.md
+  s_495a566b9c1a66::t_dff8a93486976f 40
+  s_495a566b9c1a66::t_f9a66262cfca7f 98-99,104-105,112-114,213,217,219,287,290-292
+src/Serial.cpp
+  s_495a566b9c1a66::t_7932d24ed345c1 17
+includes/GPU.h
+  s_495a566b9c1a66::t_cdee52caa6332c 204-209
+  s_495a566b9c1a66::t_f2b7777b318c18 201-203
+src/Joypad.cpp
+  s_495a566b9c1a66::t_72ab9ea1078a13 4-5,7,9-10
+src/Gameboy.cpp
+  s_495a566b9c1a66::t_e7e884f6387d63 58-59
+  s_495a566b9c1a66::t_3424ba70965c6a 79-80
+  s_495a566b9c1a66::t_ed615b67489b6a 87,89
+  s_495a566b9c1a66::t_b1c032df5d3945 63,65
+  s_495a566b9c1a66::t_80c0721878a376 81
+  s_495a566b9c1a66::t_f6ff25cac860d6 78
+src/GPU.cpp
+  s_495a566b9c1a66::t_99f7af01340e10 122
+  s_495a566b9c1a66::t_1f1828545e6988 285-287
+  s_495a566b9c1a66::t_629b2941b10942 779,804,806-810
+  s_495a566b9c1a66::t_60e7c2b93a90d3 891,893,901,903,911
+  s_495a566b9c1a66::t_e3b3c675ed96fb 770,775-778
+  s_495a566b9c1a66::t_303bd49ff2b133 864-877
+  s_495a566b9c1a66::t_ca81226e348f5b 130
+  s_495a566b9c1a66::t_f2f86dbe13f276 1012-1016
+  s_495a566b9c1a66::t_ae8be3bba2c68a 125-126,128-129
+  s_495a566b9c1a66::t_607969ff5d1dd6 420-425
+  s_495a566b9c1a66::t_277d0c27ccf806 61-62,66
+  s_495a566b9c1a66::t_128357d9cc746b 880-883
+  s_495a566b9c1a66::t_40af2aef2422d7 276-284
+  s_495a566b9c1a66::t_3477d3a1665e25 123-124,127
+  s_495a566b9c1a66::t_03cdd2b47de9d4 346
+tests/expected/daid/ppu_scanline_bgp.gb.cgb.screen
+  s_495a566b9c1a66::t_089eaf86b9d0c4 1
+tests/expected/hacktix/strikethrough.gb.screen
+  s_495a566b9c1a66::t_cbf19f10704778 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2ba4e9d23d8064dfe61130770cacfc3a641148e1",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_495a566b9c1a66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99da6f06-455a-4e8d-9a37-68d535af99b8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
