@@ -1,0 +1,30 @@
+includes/Gameboy.h
+  h_3d40ba63c7880a 6,68,76,85-86,108-128
+  h_3d40ba63c7880a 70
+includes/Reflection.h
+  h_3d40ba63c7880a 1-40
+includes/SDLFrontend.h
+  h_3d40ba63c7880a 50-53
+includes/Common.h
+  h_3d40ba63c7880a 2-4
+src/SDLFrontend.cpp
+  h_3d40ba63c7880a 286-300
+  h_3d40ba63c7880a 191-192
+includes/Bus.h
+  h_3d40ba63c7880a 64
+includes/Cartridge.h
+  h_3d40ba63c7880a 73-74
+src/Gameboy.cpp
+  h_3d40ba63c7880a 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "acb2dda6349d8541c9e9027fec337a9f4d5a83aa",
+  "prompts": {},
+  "humans": {
+    "h_3d40ba63c7880a": {
+      "author": "srikur <srikur@users.noreply.github.com>"
+    }
+  }
+}
