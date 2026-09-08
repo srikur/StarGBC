@@ -37,7 +37,7 @@
 
 ## Test ROM Performance
 
-Current Performance: (271/277)
+Current Performance: (275/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
@@ -155,8 +155,8 @@ Current Performance: (271/277)
 | mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb                 | :x:                |
 | mooneye/acceptance/ppu/intr_2_mode3_timing.gb                         | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb                        | :white_check_mark: |
-| mooneye/acceptance/ppu/lcdon_timing-GS.gb                             | :x:                |
-| mooneye/acceptance/ppu/lcdon_write_timing-GS.gb                       | :x:                |
+| mooneye/acceptance/ppu/lcdon_timing-GS.gb                             | :white_check_mark: |
+| mooneye/acceptance/ppu/lcdon_write_timing-GS.gb                       | :white_check_mark: |
 | mooneye/acceptance/ppu/stat_irq_blocking.gb                           | :white_check_mark: |
 | mooneye/acceptance/ppu/stat_lyc_onoff.gb                              | :white_check_mark: |
 | mooneye/acceptance/ppu/vblank_stat_intr-GS.gb                         | :white_check_mark: |
@@ -285,8 +285,8 @@ Current Performance: (271/277)
 | samesuite/dma/hdma_lcd_off.gb                                         | :white_check_mark: |
 | samesuite/dma/hdma_mode0.gb                                           | :white_check_mark: |
 | samesuite/ppu/blocking_bgpi_increase.gb                               | :white_check_mark: |
-| samesuite/sgb/command_mit_req.gb                                      | :x:                |
-| samesuite/sgb/command_mit_req_1_incrementing.gb                       | :x:                |
+| samesuite/sgb/command_mlt_req.gb                                      | :white_check_mark: |
+| samesuite/sgb/command_mlt_req_1_incrementing.gb                       | :white_check_mark: |
 | hacktix/bully.gb (DMG)                                                | :white_check_mark: |
 | hacktix/bully.gb (GBC)                                                | :white_check_mark: |
 | hacktix/strikethrough.gb                                              | :white_check_mark: |

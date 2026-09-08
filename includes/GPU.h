@@ -163,7 +163,6 @@ public:
     uint8_t scrollX{}; // 0xFF43
     uint8_t scrollY{}; // 0xFF42
     uint32_t scanlineCounter = 0; // current dot in scanline
-    bool shortenScanline{};
 
     bool vblank = false;
     [[=NotStateAware]] bool frameReady = true;
@@ -223,6 +222,16 @@ public:
     [[nodiscard]] uint8_t ReadVRAM(uint16_t address) const;
 
     void WriteVRAM(uint16_t address, uint8_t value);
+
+    // CPU-side accessibility gates. DMG asserts/releases them offset from the
+    // internal mode transitions; other bus masters keep the plain mode-3 rule
+    [[nodiscard]] bool CpuOamReadBlocked() const;
+
+    [[nodiscard]] bool CpuOamWriteBlocked() const;
+
+    [[nodiscard]] bool CpuVramReadBlocked() const;
+
+    [[nodiscard]] bool CpuVramWriteBlocked() const;
 
     [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
 

@@ -180,7 +180,15 @@ bool CPU<BusT>::ProcessInterrupts() {
                 interrupts_.interruptMasterEnable = true;
                 icount_ = 0;
             }
-            const uint8_t pending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+            // DMG: HALT's wake logic watches the incoming STAT line, so a
+            // delayed STAT set landing on the next dot already lifts the halt —
+            // while an actual dispatch only acts on the committed IF (mooneye
+            // hblank_ly_scx_timing-GS vs intr_2_0_timing)
+            uint8_t effectiveFlag = interrupts_.interruptFlag;
+            if (halted_ && !IsCgb(bus_.gpu_.hardware) && interrupts_.interruptSetDelay == 1) {
+                effectiveFlag |= interrupts_.interruptFlagDelayed & 0x02;
+            }
+            const uint8_t pending = interrupts_.interruptEnable & effectiveFlag & 0x1F;
             if (pending == 0) {
                 return false;
             }

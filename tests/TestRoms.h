@@ -249,6 +249,10 @@ static const std::vector<Case> romTestcases = {
     {"roms/mooneye/misc/boot_div-cgb0.gb", "tests/expected/mooneye/boot_div-cgb0.gb.screen", bootroms.cgb0Bootrom, Mode::CGB0},
     {"roms/mooneye/acceptance/boot_regs-sgb.gb", "tests/expected/mooneye/boot_regs-sgb.gb.screen", bootroms.sgbBootrom, Mode::SGB},
     {"roms/mooneye/acceptance/boot_regs-sgb2.gb", "tests/expected/mooneye/boot_regs-sgb2.gb.screen", bootroms.sgb2Bootrom, Mode::SGB2},
+    {"roms/samesuite/sgb/command_mlt_req.gb", "tests/expected/samesuite/sgb/command_mlt_req.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/samesuite/sgb/command_mlt_req_1_incrementing.gb", "tests/expected/samesuite/sgb/command_mlt_req_1_incrementing.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/mooneye/acceptance/ppu/lcdon_timing-GS.gb", "tests/expected/mooneye/lcdon_timing-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/lcdon_write_timing-GS.gb", "tests/expected/mooneye/lcdon_write_timing-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -447,6 +451,10 @@ ROM_TEST(168, "roms/mooneye/misc/boot_regs-A.gb")
 ROM_TEST(169, "roms/mooneye/misc/boot_div-cgb0.gb")
 ROM_TEST(170, "roms/mooneye/acceptance/boot_regs-sgb.gb")
 ROM_TEST(171, "roms/mooneye/acceptance/boot_regs-sgb2.gb")
+ROM_TEST(172, "roms/samesuite/sgb/command_mlt_req.gb")
+ROM_TEST(173, "roms/samesuite/sgb/command_mlt_req_1_incrementing.gb")
+ROM_TEST(174, "roms/mooneye/acceptance/ppu/lcdon_timing-GS.gb")
+ROM_TEST(175, "roms/mooneye/acceptance/ppu/lcdon_write_timing-GS.gb")
 
 
 inline int ExecuteTestRoms(const int argc, char **argv) {

@@ -26,6 +26,10 @@ public:
         bus.gpu_.hardware = hw;
         bus.audio_.SetDMG(IsDmg(hw));
         const bool sgbFamily = hw == Hardware::SGB || hw == Hardware::SGB2;
+        // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts
+        bus.joypad_.ConfigureSgb(sgbFamily &&
+                                 bus.cartridge_.ReadByte(0x146) == 0x03 &&
+                                 bus.cartridge_.ReadByte(0x14B) == 0x33);
         if (!biosPath.empty()) {
             // CGB bootroms run in CGB mode; KEY0 writes can drop to DMG-compat
             bus.cgbMode = IsCgb(hw);
