@@ -63,6 +63,11 @@ public:
 
     void ExecuteMicroOp(Instructions<Self> &instructions, bool);
 
+    void SampleHaltInterrupts() {
+        // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
+        haltPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+    }
+
     [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() {
         return pc_;
     }
@@ -145,6 +150,7 @@ private:
     uint8_t mCycleCounter_{0x01};
     uint16_t nextInstruction_{0x0000};
     bool halted_{false};
+    uint8_t haltPending_{0};
     bool haltBug_{false};
     bool stopped_{false};
 

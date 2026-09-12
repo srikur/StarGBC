@@ -37,13 +37,13 @@
 
 ## Test ROM Performance
 
-Current Performance: (275/277)
+Current Performance: (277/277)
 
 | Test                                                                  | StarGBC            |
 |-----------------------------------------------------------------------|--------------------|
 | acid/dmg-acid2.gb                                                     | :white_check_mark: |
 | acid/cgb-acid2.gbc                                                    | :white_check_mark: |
-| acid/cgb-acid-hell.gbc                                                | :x:                |
+| acid/cgb-acid-hell.gbc                                                | :white_check_mark: |
 | blargg/cpu_instrs/01-special.gb                                       | :white_check_mark: |
 | blargg/cpu_instrs/02-interrupts.gb                                    | :white_check_mark: |
 | blargg/cpu_instrs/03-op sp,hl.gb                                      | :white_check_mark: |
@@ -115,7 +115,7 @@ Current Performance: (275/277)
 | mooneye/acceptance/boot_regs-dmgABC.gb                                | :white_check_mark: |
 | mooneye/acceptance/boot_div-dmg0.gb                                   | :white_check_mark: |
 | mooneye/acceptance/boot_div-S.gb                                      | :white_check_mark: |
-| mooneye/acceptance/boot_div2-s.gb                                     | :white_check_mark: |
+| mooneye/acceptance/boot_div2-S.gb                                     | :white_check_mark: |
 | mooneye/acceptance/boot_hwio-dmg0.gb                                  | :white_check_mark: |
 | mooneye/acceptance/boot_hwio-S.gb                                     | :white_check_mark: |
 | mooneye/acceptance/boot_regs-dmg0.gb                                  | :white_check_mark: |
@@ -145,14 +145,14 @@ Current Performance: (275/277)
 | mooneye/acceptance/oam_dma/reg_read.gb                                | :white_check_mark: |
 | mooneye/acceptance/oam_dma/sources-GS.gb                              | :white_check_mark: |
 | mooneye/acceptance/oam_dma_restart.gb                                 | :white_check_mark: |
-| mooneye/acceptance/oma_dma_start.gb                                   | :white_check_mark: |
+| mooneye/acceptance/oam_dma_start.gb                                   | :white_check_mark: |
 | mooneye/acceptance/oam_dma_timing.gb                                  | :white_check_mark: |
 | mooneye/acceptance/pop_timing.gb                                      | :white_check_mark: |
 | mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb                     | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_1_2_timing-GS.gb                          | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_0_timing.gb                             | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_mode0_timing.gb                         | :white_check_mark: |
-| mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb                 | :x:                |
+| mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb                 | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_mode3_timing.gb                         | :white_check_mark: |
 | mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb                        | :white_check_mark: |
 | mooneye/acceptance/ppu/lcdon_timing-GS.gb                             | :white_check_mark: |
@@ -248,7 +248,7 @@ Current Performance: (275/277)
 | samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb              | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_stop_div.gb                         | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_stop_restart.gb                     | :white_check_mark: |
-| samesuite/apu/channel_2/channel_2_volume_.gb                          | :white_check_mark: |
+| samesuite/apu/channel_2/channel_2_volume.gb                           | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_volume_div.gb                       | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_and_glitch.gb                       | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_delay.gb                            | :white_check_mark: |
@@ -304,10 +304,10 @@ Current Performance: (275/277)
 | mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb (DMG)       | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_change.gb (DMG)           | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb (DMG)       | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/m3_lcdc_win_e_change_multiple.gb (DMG)     | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb (DMG)    | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb (DMG) | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_win_map_change.gb (DMG)            | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/m3_obp0_change_gb (DMG)                    | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_obp0_change.gb (DMG)                    | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_scx_high_5_bits.gb (DMG)                | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb (DMG)                 | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_scy_change.gb (DMG)                     | :white_check_mark: |
@@ -316,5 +316,5 @@ Current Performance: (275/277)
 | mealybug-tearoom-tests/ppu/m3_wx_4_change.gb (DMG)                    | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb (DMG)            | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_wx_5_change.gb (DMG)                    | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/m3_x_6_change.gb (DMG)                     | :white_check_mark: |
+| mealybug-tearoom-tests/ppu/m3_wx_6_change.gb (DMG)                    | :white_check_mark: |
 | mbc3-tester/mbc3-tester.gb                                            | :white_check_mark: |

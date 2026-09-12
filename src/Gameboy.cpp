@@ -51,6 +51,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
             masterCycles++;
             return 1;
         }
+        if ((cpuTickPhase_ & 3) == 1) cpu_.SampleHaltInterrupts();
         timer_.Tick(bus_.speed);
         rtc_.Update();
         audio_.Tick();
@@ -69,6 +70,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         return consumed;
     }
     const bool evenCycle = masterCycles % 2 == 0;
+    if ((cpuTickPhase_ & 3) == 1) cpu_.SampleHaltInterrupts();
     timer_.Tick(bus_.speed);
     if (evenCycle) {
         rtc_.Update();

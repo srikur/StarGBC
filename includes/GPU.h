@@ -32,7 +32,7 @@ struct Sprite {
     bool processed{false};
 
     bool operator<(const Sprite &s) const {
-        return x < s.x || spriteNum < s.spriteNum;
+        return x < s.x || (x == s.x && spriteNum < s.spriteNum);
     }
 };
 
@@ -175,6 +175,12 @@ public:
     uint8_t bgpWriteStage{0};
     uint8_t lcdcPending{0};
     uint8_t lcdcWriteStage{0};
+    // CGB TILE_SEL has its own bitplane-bus phase and retains the previous
+    // high byte across BG/OBJ fetches and scanline boundaries.
+    bool cgbTileSelectOld_{false};
+    uint8_t cgbTileSelectStage_{0};
+    bool cgbTileSelectJustApplied_{false};
+    uint8_t cgbTileDataBus_{0};
     uint8_t wxPending{0};
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
@@ -250,6 +256,8 @@ private:
 
     [[nodiscard]] bool StatLineHigh() const;
 
+    [[nodiscard]] bool StatMode0Visible() const;
+
     void Fetcher_StepSpriteFetch();
 
     void Fetcher_StepBackgroundFetch();
@@ -259,6 +267,8 @@ private:
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
 
     uint16_t CalculateTileDataAddress();
+
+    uint8_t ReadBackgroundTileData(bool high);
 
     uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
 
