@@ -13,11 +13,10 @@
 #include <doctest/doctest.h>
 #include "ThreadContext.h"
 
-using namespace std::chrono_literals;
-
 struct Bootroms {
     std::string dmg0Bootrom = "roms/dmg0_boot.bin";
     std::string dmgBootrom = "roms/dmg_boot.bin";
+    std::string mgbBootrom = "roms/mgb_boot.bin";
     std::string cgb0Bootrom = "roms/cgb0_boot.bin";
     std::string cgbEBootrom = "roms/cgbE_boot.bin";
     std::string cgbBootrom = "roms/cgb_boot.bin";
@@ -28,6 +27,20 @@ struct Bootroms {
 };
 
 const Bootroms bootroms{};
+static unsigned romFrames = 0;
+static bool parallelRomTests = true;
+
+static consteval std::meta::info testGameboyMember(const std::string_view name) {
+    for (const auto m : std::meta::nonstatic_data_members_of(^^Gameboy, std::meta::access_context::unchecked())) {
+        if (std::meta::identifier_of(m) == name) return m;
+    }
+    throw "Gameboy member not found";
+}
+
+static bool mooneyePassed(const Gameboy &gameboy) {
+    const auto &regs = gameboy.[:testGameboyMember("registers_"):];
+    return regs.GetBC() == 0x0305 && regs.GetDE() == 0x080D && regs.GetHL() == 0x1522;
+}
 
 static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     std::ifstream ifs(path, std::ios::binary);
@@ -37,16 +50,19 @@ static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     constexpr int SCREEN_SIZE = 160 * 144;
     std::vector<uint32_t> result(SCREEN_SIZE);
     ifs.read(reinterpret_cast<char *>(result.data()), SCREEN_SIZE * sizeof(uint32_t));
+    if (!ifs) throw std::runtime_error("Incomplete screen file " + path);
     return result;
 }
 
 static bool runRomTest(const std::string &rom,
-                          const std::string &expected_screen,
-                          const std::string &bios,
-                          const Mode mode) {
+                       const std::string &expected_screen,
+                       const std::string &bios,
+                       const Mode mode,
+                       const bool requiresStop) {
     ThreadPermit _permit;
     try {
-        const std::vector<uint32_t> expectedResult = readBinaryFile(expected_screen);
+        const std::vector<uint32_t> expectedResult = expected_screen.empty()
+            ? std::vector<uint32_t>{} : readBinaryFile(expected_screen);
 
         const auto gameboy = Gameboy::init({
             .romName = rom,
@@ -54,17 +70,34 @@ static bool runRomTest(const std::string &rom,
             .mode = mode,
         });
 
-        const auto start = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - start < 10s) {
+        const auto passed = [&] {
+            // STOP references can be completely blank. Require the CPU to have
+            // stopped so an unrendered startup buffer cannot count as success.
+            if (requiresStop) {
+                return gameboy->[:testGameboyMember("cpu_"):].stopped() &&
+                    std::ranges::equal(std::span(gameboy->GetScreenData(), expectedResult.size()), expectedResult,
+                        [](uint32_t a, uint32_t b) { return (a & 0xFFFFFF) == (b & 0xFFFFFF); });
+            }
+            return expectedResult.empty() ? mooneyePassed(*gameboy)
+                : std::ranges::equal(std::span(gameboy->GetScreenData(), expectedResult.size()), expectedResult);
+        };
+        // An emulated-time budget is independent of host load. Most ROMs finish
+        // much earlier; require two matching frames before accepting their screen.
+        const unsigned frameLimit = romFrames ? romFrames : 6000;
+        unsigned matchingFrames = 0;
+        for (unsigned frames = 0; frames < frameLimit; ++frames) {
             gameboy->RunFrame();
+            matchingFrames = passed() ? matchingFrames + 1 : 0;
+            if (!romFrames && matchingFrames >= 2) return true;
         }
 
-        if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expectedResult.size()), expectedResult)) {
-            std::cerr << "Failed " << rom << std::endl;
+        if (!passed()) {
+            std::cerr << "Failed " << rom << " after " << frameLimit << " frames" << std::endl;
             return false;
         }
         return true;
-    } catch ([[maybe_unused]] const std::exception &e) {
+    } catch (const std::exception &e) {
+        std::cerr << "Failed " << rom << ": " << e.what() << std::endl;
         return false;
     }
 }
@@ -74,6 +107,7 @@ struct Case {
     std::string expected;
     std::string bios;
     Mode mode;
+    bool requiresStop{false};
 };
 
 static const std::vector<Case> romTestcases = {
@@ -249,6 +283,113 @@ static const std::vector<Case> romTestcases = {
     {"roms/mooneye/misc/boot_div-cgb0.gb", "tests/expected/mooneye/boot_div-cgb0.gb.screen", bootroms.cgb0Bootrom, Mode::CGB0},
     {"roms/mooneye/acceptance/boot_regs-sgb.gb", "tests/expected/mooneye/boot_regs-sgb.gb.screen", bootroms.sgbBootrom, Mode::SGB},
     {"roms/mooneye/acceptance/boot_regs-sgb2.gb", "tests/expected/mooneye/boot_regs-sgb2.gb.screen", bootroms.sgb2Bootrom, Mode::SGB2},
+    {"roms/samesuite/sgb/command_mlt_req.gb", "tests/expected/samesuite/sgb/command_mlt_req.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/samesuite/sgb/command_mlt_req_1_incrementing.gb", "tests/expected/samesuite/sgb/command_mlt_req_1_incrementing.gb.screen", bootroms.sgbBootrom, Mode::SGB},
+    {"roms/mooneye/acceptance/ppu/lcdon_timing-GS.gb", "tests/expected/mooneye/lcdon_timing-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ppu/lcdon_write_timing-GS.gb", "tests/expected/mooneye/lcdon_write_timing-GS.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/acid/cgb-acid-hell.gbc", "tests/expected/acid/cgb-acid-hell.gbc.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb", "tests/expected/mooneye/ppu/intr_2_mode0_timing_sprites.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/add_sp_e_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/bits/mem_oam.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/bits/reg_f.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/boot_regs-dmgABC.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/boot_regs-dmg0.gb", "", bootroms.dmg0Bootrom, Mode::DMG0},
+    {"roms/mooneye/acceptance/boot_regs-mgb.gb", "", bootroms.mgbBootrom, Mode::MBG},
+    {"roms/mooneye/acceptance/call_cc_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/call_cc_timing2.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/call_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/call_timing2.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/div_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/di_timing-GS.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ei_sequence.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ei_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/halt_ime0_ei.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/halt_ime0_nointr_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/halt_ime1_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/halt_ime1_timing2-GS.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/if_ie_registers.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/instr/daa.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/interrupts/ie_push.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/intr_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/jp_cc_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/jp_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ld_hl_sp_e_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/oam_dma/basic.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/oam_dma/reg_read.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/oam_dma/sources-GS.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/oam_dma_restart.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/oam_dma_start.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/oam_dma_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/pop_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/push_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/rapid_di_ei.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/reti_intr_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/reti_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ret_cc_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/ret_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/rst_timing.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/serial/boot_sclk_align-dmgABCmgb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/div_write.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/rapid_toggle.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim00.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim00_div_trigger.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim01.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim01_div_trigger.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim10.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim10_div_trigger.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim11.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tim11_div_trigger.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tima_reload.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tima_write_reloading.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/acceptance/timer/tma_write_reloading.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/bits_bank1.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/bits_bank2.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/bits_mode.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/bits_ramg.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/multicart_rom_8Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/ram_256kb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/ram_64kb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/rom_16Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/rom_1Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/rom_2Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/rom_4Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/rom_512kb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc1/rom_8Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/bits_ramg.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/bits_romb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/bits_unused.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/ram.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/rom_1Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/rom_2Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc2/rom_512kb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_16Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_1Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_2Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_32Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_4Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_512kb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_64Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/emulator-only/mbc5/rom_8Mb.gb", "", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/misc/boot_regs-cgb.gb", "", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/mooneye/acceptance/boot_div-S.gb", "", bootroms.sgb2Bootrom, Mode::SGB2},
+    {"roms/mooneye/acceptance/boot_div2-S.gb", "", bootroms.sgb2Bootrom, Mode::SGB2},
+    {"roms/acid/dmg-acid2.gb", "tests/expected/acid/dmg-acid2.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/acid/cgb-acid2.gbc", "tests/expected/acid/cgb-acid2.gbc.screen", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/daid/stop_instr.gb", "tests/expected/daid/stop_instr.gb.dmg.screen", bootroms.dmgBootrom, Mode::DMG, true},
+    {"roms/daid/stop_instr.gb", "tests/expected/daid/stop_instr.gb.cgb.screen", bootroms.cgbBootrom, Mode::CGB_GBC, true},
+    {"roms/daid/stop_instr_gbc_mode3.gb", "tests/expected/daid/stop_instr_gbc_mode3.gb.screen", bootroms.cgbBootrom, Mode::CGB_GBC, true},
+    {"roms/ax6/rtc3test-1.gb", "tests/expected/ax6/rtc3test-1.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/ax6/rtc3test-2.gb", "tests/expected/ax6/rtc3test-2.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/ax6/rtc3test-3.gb", "tests/expected/ax6/rtc3test-3.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/samesuite/dma/gbc_dma_cont.gb", "", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/dma/gdma_addr_mask.gb", "", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/dma/hdma_lcd_off.gb", "", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/samesuite/dma/hdma_mode0.gb", "", bootroms.cgbBootrom, Mode::CGB_GBC},
+    {"roms/cpp/rtc-invalid-banks-test.gb", "tests/expected/cpp/rtc-invalid-banks-test.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/cpp/latch-rtc-test.gb", "tests/expected/cpp/latch-rtc-test.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/cpp/ramg-mbc3-test.gb", "tests/expected/cpp/ramg-mbc3-test.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mbc3-tester/mbc3-tester.gb", "tests/expected/mbc3-tester/mbc3-tester.gb.screen", bootroms.dmgBootrom, Mode::DMG},
+    {"roms/mooneye/manual-only/sprite_priority.gb", "tests/expected/mooneye/manual-only/sprite_priority.gb.screen", bootroms.dmgBootrom, Mode::DMG},
 };
 
 static auto &romFutures() {
@@ -259,8 +400,8 @@ static auto &romFutures() {
 
         for (const auto &tc: romTestcases) {
             tmp.emplace_back(
-                std::async(std::launch::async, [tc] {
-                    return runRomTest(tc.rom, tc.expected, tc.bios, tc.mode);
+                std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [tc] {
+                    return runRomTest(tc.rom, tc.expected, tc.bios, tc.mode, tc.requiresStop);
                 }).share()
             );
         }
@@ -447,7 +588,116 @@ ROM_TEST(168, "roms/mooneye/misc/boot_regs-A.gb")
 ROM_TEST(169, "roms/mooneye/misc/boot_div-cgb0.gb")
 ROM_TEST(170, "roms/mooneye/acceptance/boot_regs-sgb.gb")
 ROM_TEST(171, "roms/mooneye/acceptance/boot_regs-sgb2.gb")
+ROM_TEST(172, "roms/samesuite/sgb/command_mlt_req.gb")
+ROM_TEST(173, "roms/samesuite/sgb/command_mlt_req_1_incrementing.gb")
+ROM_TEST(174, "roms/mooneye/acceptance/ppu/lcdon_timing-GS.gb")
+ROM_TEST(175, "roms/mooneye/acceptance/ppu/lcdon_write_timing-GS.gb")
+ROM_TEST(176, "roms/acid/cgb-acid-hell.gbc")
+ROM_TEST(177, "roms/mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb")
 
+
+ROM_TEST(178, "roms/mooneye/acceptance/add_sp_e_timing.gb")
+ROM_TEST(179, "roms/mooneye/acceptance/bits/mem_oam.gb")
+ROM_TEST(180, "roms/mooneye/acceptance/bits/reg_f.gb")
+ROM_TEST(181, "roms/mooneye/acceptance/boot_regs-dmgABC.gb")
+ROM_TEST(182, "roms/mooneye/acceptance/boot_regs-dmg0.gb")
+ROM_TEST(183, "roms/mooneye/acceptance/boot_regs-mgb.gb")
+ROM_TEST(184, "roms/mooneye/acceptance/call_cc_timing.gb")
+ROM_TEST(185, "roms/mooneye/acceptance/call_cc_timing2.gb")
+ROM_TEST(186, "roms/mooneye/acceptance/call_timing.gb")
+ROM_TEST(187, "roms/mooneye/acceptance/call_timing2.gb")
+ROM_TEST(188, "roms/mooneye/acceptance/div_timing.gb")
+ROM_TEST(189, "roms/mooneye/acceptance/di_timing-GS.gb")
+ROM_TEST(190, "roms/mooneye/acceptance/ei_sequence.gb")
+ROM_TEST(191, "roms/mooneye/acceptance/ei_timing.gb")
+ROM_TEST(192, "roms/mooneye/acceptance/halt_ime0_ei.gb")
+ROM_TEST(193, "roms/mooneye/acceptance/halt_ime0_nointr_timing.gb")
+ROM_TEST(194, "roms/mooneye/acceptance/halt_ime1_timing.gb")
+ROM_TEST(195, "roms/mooneye/acceptance/halt_ime1_timing2-GS.gb")
+ROM_TEST(196, "roms/mooneye/acceptance/if_ie_registers.gb")
+ROM_TEST(197, "roms/mooneye/acceptance/instr/daa.gb")
+ROM_TEST(198, "roms/mooneye/acceptance/interrupts/ie_push.gb")
+ROM_TEST(199, "roms/mooneye/acceptance/intr_timing.gb")
+ROM_TEST(200, "roms/mooneye/acceptance/jp_cc_timing.gb")
+ROM_TEST(201, "roms/mooneye/acceptance/jp_timing.gb")
+ROM_TEST(202, "roms/mooneye/acceptance/ld_hl_sp_e_timing.gb")
+ROM_TEST(203, "roms/mooneye/acceptance/oam_dma/basic.gb")
+ROM_TEST(204, "roms/mooneye/acceptance/oam_dma/reg_read.gb")
+ROM_TEST(205, "roms/mooneye/acceptance/oam_dma/sources-GS.gb")
+ROM_TEST(206, "roms/mooneye/acceptance/oam_dma_restart.gb")
+ROM_TEST(207, "roms/mooneye/acceptance/oam_dma_start.gb")
+ROM_TEST(208, "roms/mooneye/acceptance/oam_dma_timing.gb")
+ROM_TEST(209, "roms/mooneye/acceptance/pop_timing.gb")
+ROM_TEST(210, "roms/mooneye/acceptance/push_timing.gb")
+ROM_TEST(211, "roms/mooneye/acceptance/rapid_di_ei.gb")
+ROM_TEST(212, "roms/mooneye/acceptance/reti_intr_timing.gb")
+ROM_TEST(213, "roms/mooneye/acceptance/reti_timing.gb")
+ROM_TEST(214, "roms/mooneye/acceptance/ret_cc_timing.gb")
+ROM_TEST(215, "roms/mooneye/acceptance/ret_timing.gb")
+ROM_TEST(216, "roms/mooneye/acceptance/rst_timing.gb")
+ROM_TEST(217, "roms/mooneye/acceptance/serial/boot_sclk_align-dmgABCmgb.gb")
+ROM_TEST(218, "roms/mooneye/acceptance/timer/div_write.gb")
+ROM_TEST(219, "roms/mooneye/acceptance/timer/rapid_toggle.gb")
+ROM_TEST(220, "roms/mooneye/acceptance/timer/tim00.gb")
+ROM_TEST(221, "roms/mooneye/acceptance/timer/tim00_div_trigger.gb")
+ROM_TEST(222, "roms/mooneye/acceptance/timer/tim01.gb")
+ROM_TEST(223, "roms/mooneye/acceptance/timer/tim01_div_trigger.gb")
+ROM_TEST(224, "roms/mooneye/acceptance/timer/tim10.gb")
+ROM_TEST(225, "roms/mooneye/acceptance/timer/tim10_div_trigger.gb")
+ROM_TEST(226, "roms/mooneye/acceptance/timer/tim11.gb")
+ROM_TEST(227, "roms/mooneye/acceptance/timer/tim11_div_trigger.gb")
+ROM_TEST(228, "roms/mooneye/acceptance/timer/tima_reload.gb")
+ROM_TEST(229, "roms/mooneye/acceptance/timer/tima_write_reloading.gb")
+ROM_TEST(230, "roms/mooneye/acceptance/timer/tma_write_reloading.gb")
+ROM_TEST(231, "roms/mooneye/emulator-only/mbc1/bits_bank1.gb")
+ROM_TEST(232, "roms/mooneye/emulator-only/mbc1/bits_bank2.gb")
+ROM_TEST(233, "roms/mooneye/emulator-only/mbc1/bits_mode.gb")
+ROM_TEST(234, "roms/mooneye/emulator-only/mbc1/bits_ramg.gb")
+ROM_TEST(235, "roms/mooneye/emulator-only/mbc1/multicart_rom_8Mb.gb")
+ROM_TEST(236, "roms/mooneye/emulator-only/mbc1/ram_256kb.gb")
+ROM_TEST(237, "roms/mooneye/emulator-only/mbc1/ram_64kb.gb")
+ROM_TEST(238, "roms/mooneye/emulator-only/mbc1/rom_16Mb.gb")
+ROM_TEST(239, "roms/mooneye/emulator-only/mbc1/rom_1Mb.gb")
+ROM_TEST(240, "roms/mooneye/emulator-only/mbc1/rom_2Mb.gb")
+ROM_TEST(241, "roms/mooneye/emulator-only/mbc1/rom_4Mb.gb")
+ROM_TEST(242, "roms/mooneye/emulator-only/mbc1/rom_512kb.gb")
+ROM_TEST(243, "roms/mooneye/emulator-only/mbc1/rom_8Mb.gb")
+ROM_TEST(244, "roms/mooneye/emulator-only/mbc2/bits_ramg.gb")
+ROM_TEST(245, "roms/mooneye/emulator-only/mbc2/bits_romb.gb")
+ROM_TEST(246, "roms/mooneye/emulator-only/mbc2/bits_unused.gb")
+ROM_TEST(247, "roms/mooneye/emulator-only/mbc2/ram.gb")
+ROM_TEST(248, "roms/mooneye/emulator-only/mbc2/rom_1Mb.gb")
+ROM_TEST(249, "roms/mooneye/emulator-only/mbc2/rom_2Mb.gb")
+ROM_TEST(250, "roms/mooneye/emulator-only/mbc2/rom_512kb.gb")
+ROM_TEST(251, "roms/mooneye/emulator-only/mbc5/rom_16Mb.gb")
+ROM_TEST(252, "roms/mooneye/emulator-only/mbc5/rom_1Mb.gb")
+ROM_TEST(253, "roms/mooneye/emulator-only/mbc5/rom_2Mb.gb")
+ROM_TEST(254, "roms/mooneye/emulator-only/mbc5/rom_32Mb.gb")
+ROM_TEST(255, "roms/mooneye/emulator-only/mbc5/rom_4Mb.gb")
+ROM_TEST(256, "roms/mooneye/emulator-only/mbc5/rom_512kb.gb")
+ROM_TEST(257, "roms/mooneye/emulator-only/mbc5/rom_64Mb.gb")
+ROM_TEST(258, "roms/mooneye/emulator-only/mbc5/rom_8Mb.gb")
+ROM_TEST(259, "roms/mooneye/misc/boot_regs-cgb.gb")
+ROM_TEST(260, "roms/mooneye/acceptance/boot_div-S.gb (SGB2)")
+ROM_TEST(261, "roms/mooneye/acceptance/boot_div2-S.gb (SGB2)")
+
+ROM_TEST(262, "roms/acid/dmg-acid2.gb")
+ROM_TEST(263, "roms/acid/cgb-acid2.gbc")
+ROM_TEST(264, "roms/daid/stop_instr.gb (DMG)")
+ROM_TEST(265, "roms/daid/stop_instr.gb (CGB)")
+ROM_TEST(266, "roms/daid/stop_instr_gbc_mode3.gb")
+ROM_TEST(267, "roms/ax6/rtc3test-1.gb")
+ROM_TEST(268, "roms/ax6/rtc3test-2.gb")
+ROM_TEST(269, "roms/ax6/rtc3test-3.gb")
+ROM_TEST(270, "roms/samesuite/dma/gbc_dma_cont.gb")
+ROM_TEST(271, "roms/samesuite/dma/gdma_addr_mask.gb")
+ROM_TEST(272, "roms/samesuite/dma/hdma_lcd_off.gb")
+ROM_TEST(273, "roms/samesuite/dma/hdma_mode0.gb")
+ROM_TEST(274, "roms/cpp/rtc-invalid-banks-test.gb")
+ROM_TEST(275, "roms/cpp/latch-rtc-test.gb")
+ROM_TEST(276, "roms/cpp/ramg-mbc3-test.gb")
+ROM_TEST(277, "roms/mbc3-tester/mbc3-tester.gb")
+ROM_TEST(278, "roms/mooneye/manual-only/sprite_priority.gb")
 
 inline int ExecuteTestRoms(const int argc, char **argv) {
     std::vector<char *> doctest_args;
@@ -463,6 +713,18 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 std::cerr << "Invalid value for --max-threads" << std::endl;
                 return EXIT_FAILURE;
             }
+        } else if (constexpr std::string_view kFrames = "--frames="; arg.rfind(kFrames, 0) == 0) {
+            try {
+                size_t consumed = 0;
+                const auto value = std::stoul(std::string(arg.substr(kFrames.size())), &consumed);
+                if (consumed != arg.size() - kFrames.size() || value == 0 || value > 1'000'000) {
+                    throw std::invalid_argument("frames out of range");
+                }
+                romFrames = static_cast<unsigned>(value);
+            } catch (...) {
+                std::cerr << "Invalid value for --frames (expected 1..1000000)" << std::endl;
+                return EXIT_FAILURE;
+            }
         } else {
             doctest_args.push_back(argv[i]);
         }
@@ -470,6 +732,7 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
 
     if (maxThreads == 0) { maxThreads = 1; }
     threadSemaphore = std::make_shared<std::counting_semaphore<> >(maxThreads);
+    parallelRomTests = doctest_args.size() == 1;
 
     doctest::Context ctx;
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());

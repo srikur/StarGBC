@@ -26,6 +26,10 @@ public:
         bus.gpu_.hardware = hw;
         bus.audio_.SetDMG(IsDmg(hw));
         const bool sgbFamily = hw == Hardware::SGB || hw == Hardware::SGB2;
+        // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts
+        bus.joypad_.ConfigureSgb(sgbFamily &&
+                                 bus.cartridge_.ReadByte(0x146) == 0x03 &&
+                                 bus.cartridge_.ReadByte(0x14B) == 0x33);
         if (!biosPath.empty()) {
             // CGB bootroms run in CGB mode; KEY0 writes can drop to DMG-compat
             bus.cgbMode = IsCgb(hw);
@@ -58,6 +62,11 @@ public:
     void InitializeSystem(Mode);
 
     void ExecuteMicroOp(Instructions<Self> &instructions, bool);
+
+    void SampleHaltInterrupts() {
+        // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
+        haltPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+    }
 
     [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() {
         return pc_;
@@ -141,6 +150,7 @@ private:
     uint8_t mCycleCounter_{0x01};
     uint16_t nextInstruction_{0x0000};
     bool halted_{false};
+    uint8_t haltPending_{0};
     bool haltBug_{false};
     bool stopped_{false};
 

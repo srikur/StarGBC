@@ -83,7 +83,7 @@ void CPU<BusT>::InitializeSystem(const Mode mode) {
     // the APU is still off
     bus_.WriteByte(0xFF26, 0xF1, ComponentSource::CPU);
 
-    for (const auto &[address, value]: initialData) {
+    for (const auto &[address, value] : initialData) {
         uint8_t effective = value;
         if (sgbFamily) {
             // The SGB bootrom leaves both joypad select lines deselected
@@ -180,7 +180,10 @@ bool CPU<BusT>::ProcessInterrupts() {
                 interrupts_.interruptMasterEnable = true;
                 icount_ = 0;
             }
-            const uint8_t pending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+            // DMG samples the wake request halfway through its idle M-cycle. Running instructions use the request visible at the fetch boundary.
+            const uint8_t pending = halted_ && !IsCgb(bus_.gpu_.hardware)
+                                        ? haltPending_
+                                        : interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
             if (pending == 0) {
                 return false;
             }
@@ -193,12 +196,11 @@ bool CPU<BusT>::ProcessInterrupts() {
                 return false;
             }
 
-            // Waking from HALT into a dispatch costs one extra M-cycle before
-            // the normal 5-cycle interrupt sequence begins
-            if (halted_) {
+            if (halted_ && IsCgb(bus_.gpu_.hardware)) {
                 halted_ = false;
                 return true;
             }
+            halted_ = false;
 
             interruptState = M2;
             interrupts_.interruptMasterEnable = false;
@@ -216,7 +218,8 @@ bool CPU<BusT>::ProcessInterrupts() {
             return true;
         }
         case M3: {
-            if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(newPending & interruptMask)) {
+            if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(
+                newPending & interruptMask)) {
                 if (!newPending) {
                     sp_--;
                     bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);

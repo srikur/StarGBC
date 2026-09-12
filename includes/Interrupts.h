@@ -13,6 +13,8 @@ struct Interrupts {
 
     void Set(InterruptType, bool);
 
+    void SetAfter(InterruptType, uint8_t dots);
+
     bool IsSet(InterruptType) const;
 };
 

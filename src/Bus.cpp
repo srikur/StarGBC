@@ -42,12 +42,18 @@ uint8_t Bus::ReadHDMASource(uint16_t address) const {
     return ReadByte(address, ComponentSource::HDMA);
 }
 
-uint8_t Bus::ReadOAM(const uint16_t address) const {
-    return gpu_.stat.mode == GPUMode::MODE_3 ? 0xFF : gpu_.oam[address - 0xFE00];
+uint8_t Bus::ReadOAM(const uint16_t address, const ComponentSource source) const {
+    const bool blocked = source == ComponentSource::CPU
+                             ? gpu_.CpuOamReadBlocked()
+                             : gpu_.stat.mode == GPUMode::MODE_3;
+    return blocked ? 0xFF : gpu_.oam[address - 0xFE00];
 }
 
-void Bus::WriteOAM(const uint16_t address, const uint8_t value) const {
-    if (gpu_.stat.mode != GPUMode::MODE_3) gpu_.oam[address - 0xFE00] = value;
+void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentSource source) const {
+    const bool blocked = source == ComponentSource::CPU
+                             ? gpu_.CpuOamWriteBlocked()
+                             : gpu_.stat.mode == GPUMode::MODE_3;
+    if (!blocked) gpu_.oam[address - 0xFE00] = value;
 }
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
@@ -73,13 +79,18 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
             }
             return cartridge_.ReadByte(address);
         }
-        case 0x8000 ... 0x9FFF: return gpu_.ReadVRAM(address);
+        case 0x8000 ... 0x9FFF: {
+            if (source == ComponentSource::CPU) {
+                return gpu_.CpuVramReadBlocked() ? 0xFF : gpu_.vram[gpu_.vramBank * 0x2000 + address - 0x8000];
+            }
+            return gpu_.ReadVRAM(address);
+        }
         case 0xA000 ... 0xBFFF: return cartridge_.ReadByte(address);
         case 0xC000 ... 0xCFFF: return memory_.wram_[address - 0xC000];
         case 0xD000 ... 0xDFFF: return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
         case 0xE000 ... 0xEFFF: return memory_.wram_[address - 0xE000];
         case 0xF000 ... 0xFDFF: return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
-        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? ReadOAM(address) : 0xFF;
+        case 0xFE00 ... 0xFEFF: return address < 0xFEA0 ? ReadOAM(address, source) : 0xFF;
         case 0xFF00: return joypad_.GetJoypadState() | 0xC0;
         case 0xFF01 ... 0xFF02: {
             uint8_t value = serial_.ReadSerial(address);
@@ -133,8 +144,14 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
     switch (address) {
         case 0x0000 ... 0x7FFF: cartridge_.WriteByte(address, value);
             break;
-        case 0x8000 ... 0x9FFF: gpu_.WriteVRAM(address, value);
+        case 0x8000 ... 0x9FFF: {
+            if (source == ComponentSource::CPU) {
+                if (!gpu_.CpuVramWriteBlocked()) gpu_.vram[gpu_.vramBank * 0x2000 + address - 0x8000] = value;
+            } else {
+                gpu_.WriteVRAM(address, value);
+            }
             break;
+        }
         case 0xA000 ... 0xBFFF: cartridge_.WriteByte(address, value);
             break;
         case 0xC000 ... 0xCFFF: memory_.wram_[address - 0xC000] = value;
@@ -145,7 +162,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
             break;
         case 0xF000 ... 0xFDFF: memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_] = value;
             break;
-        case 0xFE00 ... 0xFE9F: WriteOAM(address, value);
+        case 0xFE00 ... 0xFE9F: WriteOAM(address, value, source);
             break;
         case 0xFF00: joypad_.SetJoypadState(value);
             break;
@@ -331,11 +348,21 @@ void Bus::ChangeSpeed() {
 }
 
 void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type) const {
-    if ((IsCgb(gpu_.hardware)) || (location < 0xFE00 || location > 0xFEFF) || gpu_.stat.mode !=
-        GPUMode::MODE_2)
+    if (IsCgb(gpu_.hardware) || location < 0xFE00 || location > 0xFEFF || gpu_.LCDDisabled())
         return;
-    if (gpu_.scanlineCounter >= 81) return;
-    const int currentRowIndex = gpu_.GetOAMScanRow();
+    // The scan's OAM bus activity leads the visible mode-2 window by 4 dots: it
+    // starts during the last 4 dots of the previous line (where the CPU-side
+    // OAM read lock already asserts) and the row advances on that shifted grid
+    // (blargg oam_bug scanline timing vs mooneye lcdon_timing-GS)
+    int currentRowIndex;
+    if (gpu_.stat.mode == GPUMode::MODE_2 && gpu_.scanlineCounter < 77) {
+        currentRowIndex = static_cast<int>(gpu_.scanlineCounter + 4) / 4;
+    } else if (gpu_.stat.mode == GPUMode::MODE_0 && gpu_.currentLine < 143 &&
+               gpu_.scanlineCounter >= 452) {
+        currentRowIndex = 0;
+    } else {
+        return;
+    }
 
     auto ReadWord = [&](const int index) -> uint16_t {
         return static_cast<uint16_t>(gpu_.oam[index]) << 8 | gpu_.oam[index + 1];

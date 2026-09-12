@@ -15,6 +15,20 @@ void Interrupts::Set(const InterruptType interrupt, const bool delayed) {
     }
 }
 
+void Interrupts::SetAfter(const InterruptType interrupt, const uint8_t dots) {
+    if (dots == 0) {
+        Set(interrupt, false);
+        return;
+    }
+    const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
+    if (interruptSetDelay > 0) {
+        interruptFlagDelayed |= mask;
+    } else {
+        interruptSetDelay = dots;
+        interruptFlagDelayed = interruptFlag | mask;
+    }
+}
+
 bool Interrupts::IsSet(InterruptType interrupt) const {
     const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
     return (interruptFlag & mask) != 0;
