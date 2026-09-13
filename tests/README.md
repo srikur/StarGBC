@@ -1,6 +1,6 @@
 ## Test ROM Performance
 
-Current Performance: (655/4404)
+Current Performance: (667/4404)
 
 | Test                                                                                               | StarGBC            |
 |----------------------------------------------------------------------------------------------------|--------------------|
@@ -4179,9 +4179,9 @@ Current Performance: (655/4404)
 | mealybug-tearoom-tests/ppu/m3_bgp_change.gb (DMG)                                                  | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb (DMG)                                          | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb (DMG)                                           | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change2.gb                                                | :grey_question:    |
+| mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change2.gb                                                | :x:                |
 | mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb (DMG)                                          | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change2.gb                                               | :grey_question:    |
+| mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change2.gb                                               | :x:                |
 | mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb (DMG)                                          | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb (DMG)                                  | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb (DMG)                                        | :white_check_mark: |
@@ -4310,7 +4310,7 @@ Current Performance: (655/4404)
 | mooneye/emulator-only/mbc5/rom_512kb.gb                                                            | :white_check_mark: |
 | mooneye/emulator-only/mbc5/rom_64Mb.gb                                                             | :white_check_mark: |
 | mooneye/emulator-only/mbc5/rom_8Mb.gb                                                              | :white_check_mark: |
-| mooneye/madness/mgb_oam_dma_halt_sprites.gb                                                        | :grey_question:    |
+| mooneye/madness/mgb_oam_dma_halt_sprites.gb                                                        | :white_check_mark: |
 | mooneye/manual-only/sprite_priority.gb                                                             | :white_check_mark: |
 | mooneye/misc/bits/unused_hwio-C.gb                                                                 | :white_check_mark: |
 | mooneye/misc/boot_div-A.gb                                                                         | :white_check_mark: |
@@ -4325,10 +4325,10 @@ Current Performance: (655/4404)
 | samesuite/apu/channel_1/channel_1_delay.gb                                                         | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_duty.gb                                                          | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_duty_delay.gb                                                    | :white_check_mark: |
-| samesuite/apu/channel_1/channel_1_extra_length_clocking-cgb0B.gb                                   | :grey_question:    |
+| samesuite/apu/channel_1/channel_1_extra_length_clocking-cgb0B.gb                                   | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_freq_change.gb                                                   | :white_check_mark: |
-| samesuite/apu/channel_1/channel_1_freq_change_timing-A.gb                                          | :grey_question:    |
-| samesuite/apu/channel_1/channel_1_freq_change_timing-cgb0BC.gb                                     | :grey_question:    |
+| samesuite/apu/channel_1/channel_1_freq_change_timing-A.gb                                          | :white_check_mark: |
+| samesuite/apu/channel_1/channel_1_freq_change_timing-cgb0BC.gb                                     | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb                                      | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_nrx2_glitch.gb                                                   | :white_check_mark: |
 | samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb                                             | :white_check_mark: |
@@ -4346,7 +4346,7 @@ Current Performance: (655/4404)
 | samesuite/apu/channel_2/channel_2_delay.gb                                                         | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_duty.gb                                                          | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_duty_delay.gb                                                    | :white_check_mark: |
-| samesuite/apu/channel_2/channel_2_extra_length_clocking-cgb0B.gb                                   | :grey_question:    |
+| samesuite/apu/channel_2/channel_2_extra_length_clocking-cgb0B.gb                                   | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_freq_change.gb                                                   | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_nrx2_glitch.gb                                                   | :white_check_mark: |
 | samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb                                             | :white_check_mark: |
@@ -4358,8 +4358,8 @@ Current Performance: (655/4404)
 | samesuite/apu/channel_2/channel_2_volume_div.gb                                                    | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_and_glitch.gb                                                    | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_delay.gb                                                         | :white_check_mark: |
-| samesuite/apu/channel_3/channel_3_extra_length_clocking-cgb0.gb                                    | :grey_question:    |
-| samesuite/apu/channel_3/channel_3_extra_length_clocking-cgbB.gb                                    | :grey_question:    |
+| samesuite/apu/channel_3/channel_3_extra_length_clocking-cgb0.gb                                    | :white_check_mark: |
+| samesuite/apu/channel_3/channel_3_extra_length_clocking-cgbB.gb                                    | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_first_sample.gb                                                  | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_freq_change_delay.gb                                             | :white_check_mark: |
 | samesuite/apu/channel_3/channel_3_restart_delay.gb                                                 | :white_check_mark: |
@@ -4374,7 +4374,7 @@ Current Performance: (655/4404)
 | samesuite/apu/channel_4/channel_4_align.gb                                                         | :white_check_mark: |
 | samesuite/apu/channel_4/channel_4_delay.gb                                                         | :white_check_mark: |
 | samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb                                        | :white_check_mark: |
-| samesuite/apu/channel_4/channel_4_extra_length_clocking-cgb0B.gb                                   | :grey_question:    |
+| samesuite/apu/channel_4/channel_4_extra_length_clocking-cgb0B.gb                                   | :white_check_mark: |
 | samesuite/apu/channel_4/channel_4_freq_change.gb                                                   | :white_check_mark: |
 | samesuite/apu/channel_4/channel_4_frequency_alignment.gb                                           | :white_check_mark: |
 | samesuite/apu/channel_4/channel_4_lfsr.gb                                                          | :white_check_mark: |
@@ -4394,13 +4394,13 @@ Current Performance: (655/4404)
 | samesuite/dma/hdma_lcd_off.gb                                                                      | :white_check_mark: |
 | samesuite/dma/hdma_mode0.gb                                                                        | :white_check_mark: |
 | samesuite/ppu/blocking_bgpi_increase.gb                                                            | :white_check_mark: |
-| samesuite/sgb/command_mlt_req.gb                                                                   | :x:                |
-| samesuite/sgb/command_mlt_req_1_incrementing.gb                                                    | :x:                |
+| samesuite/sgb/command_mlt_req.gb                                                                   | :white_check_mark: |
+| samesuite/sgb/command_mlt_req_1_incrementing.gb                                                    | :white_check_mark: |
 | scribbltests/lycscx/lycscx.gb                                                                      | :white_check_mark: |
 | scribbltests/lycscy/lycscy.gb                                                                      | :white_check_mark: |
 | scribbltests/palettely/palettely.gb                                                                | :white_check_mark: |
 | scribbltests/scxly/scxly.gb                                                                        | :white_check_mark: |
-| scribbltests/statcount/statcount-auto.gb                                                           | :x:                |
-| strikethrough/strikethrough.gb                                                                     | :grey_question:    |
+| scribbltests/statcount/statcount-auto.gb                                                           | :white_check_mark: |
+| strikethrough/strikethrough.gb                                                                     | :white_check_mark: |
 | turtle-tests/window_y_trigger/window_y_trigger.gb                                                  | :grey_question:    |
-| turtle-tests/window_y_trigger_wx_offscreen/window_y_trigger_wx_offscreen.gb                        | :grey_question:    |
+| turtle-tests/window_y_trigger_wx_offscreen/window_y_trigger_wx_offscreen.gb                        | :white_check_mark: |
