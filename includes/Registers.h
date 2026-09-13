@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Model.h"
+
 #include <cstdint>
 #include <fstream>
 
@@ -50,11 +52,7 @@ struct Registers {
         l = value & 0xFF;
     }
 
-    enum Model : std::size_t {
-        DMG = 0x01, MGB, SGB, SGB2, CGB_DMG, AGB_DMG, AGS_DMG, CGB_GBC, AGB_GBC, AGS_GBC, DMG0, CGB0
-    };
-
-    void SetStartupValues(Model model);
+    void SetStartupValues(Model model, bool cgbMode);
 
     bool SaveState(std::ofstream &stateFile) const {
         try {
@@ -77,66 +75,26 @@ struct Registers {
     }
 };
 
-static constexpr std::array<Registers, 12> DefaultValues = {
-    {
-        /* DMG in DMG mode */ {
-            .a = 0x01, .f = 0xB0, .b = 0x00, .c = 0x13,
-            .d = 0x00, .e = 0xD8, .h = 0x01, .l = 0x4D
-        },
-        /* MGB in DMG mode */
-        {
-            .a = 0xFF, .f = 0xB0, .b = 0x00, .c = 0x13,
-            .d = 0x00, .e = 0xD8, .h = 0x01, .l = 0x4D
-        },
-        /* SGB in DMG mode */
-        {
-            .a = 0x01, .f = 0x00, .b = 0x00, .c = 0x14,
-            .d = 0x00, .e = 0x00, .h = 0xC0, .l = 0x60
-        },
-        /* SGB2 in DMG mode */
-        {
-            .a = 0xFF, .f = 0x00, .b = 0x00, .c = 0x14,
-            .d = 0x00, .e = 0x00, .h = 0xC0, .l = 0x60
-        },
-        /* CGB in DMG mode */ {
-            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
-            .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
-        },
-        /* AGB in DMG mode */ {
-            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
-            .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
-        },
-        /* AGS in DMG mode */ {
-            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
-            .d = 0x00, .e = 0x08, .h = 0x00, .l = 0x7C
-        },
-        /* CGB in GBC mode */ {
-            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
-            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
-        },
-        /* AGB in GBC mode */ {
-            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
-            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
-        },
-        /* AGS in GBC mode */ {
-            .a = 0x11, .f = 0x00, .b = 0x01, .c = 0x00,
-            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
-        },
-        /* DMG0 in DMG mode */ {
-            .a = 0x01, .f = 0x00, .b = 0xFF, .c = 0x13,
-            .d = 0x00, .e = 0xC1, .h = 0x84, .l = 0x03
-        },
-        /* CGB0 in GBC mode -- same as CGB ABCDE */ {
-            .a = 0x11, .f = 0x80, .b = 0x00, .c = 0x00,
-            .d = 0xFF, .e = 0x56, .h = 0x00, .l = 0x0D
-        },
+inline void Registers::SetStartupValues(const Model model, const bool cgbMode) {
+    if (IsCgb(model)) {
+        SetAF(IsAgb(model) ? 0x1100 : 0x1180);
+        SetBC(IsAgb(model) ? 0x0100 : 0x0000);
+        SetDE(cgbMode ? 0xFF56 : 0x0008);
+        SetHL(cgbMode ? 0x000D : 0x007C);
+    } else if (IsSgb(model)) {
+        SetAF(model == Model::SGB2 ? 0xFF00 : 0x0100);
+        SetBC(0x0014);
+        SetDE(0x0000);
+        SetHL(0xC060);
+    } else if (model == Model::DMG0) {
+        SetAF(0x0100);
+        SetBC(0xFF13);
+        SetDE(0x00C1);
+        SetHL(0x8403);
+    } else {
+        SetAF(model == Model::MGB ? 0xFFB0 : 0x01B0);
+        SetBC(0x0013);
+        SetDE(0x00D8);
+        SetHL(0x014D);
     }
-};
-
-inline void Registers::SetStartupValues(const Model model) {
-    const std::size_t index = static_cast<std::size_t>(model) - 1;
-    SetAF(DefaultValues[index].GetAF());
-    SetBC(DefaultValues[index].GetBC());
-    SetDE(DefaultValues[index].GetDE());
-    SetHL(DefaultValues[index].GetHL());
 }

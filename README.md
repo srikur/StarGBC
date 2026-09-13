@@ -34,3 +34,17 @@
    ```
    To opt out of the automatic submodule update, pass
    `-DSTARGBC_UPDATE_SUBMODULES=OFF` to the configure step.
+
+## Hardware models
+
+Select a silicon revision with `--model`, for example:
+
+```bash
+build/release/Release/StarGBC --model cgbb --bios roms/cgb_boot.bin game.gbc
+build/release/Release/StarGBC --model cgbe game.gb
+```
+
+The physical model stays fixed when a Color or Advance runs a monochrome
+cartridge. `auto` selects DMG-B for monochrome cartridges and CGB-E for Color
+cartridges. The aliases `dmg`, `cgb`, `agb`, and `ags` select DMG-B, CGB-E,
+AGB-A, and AGB-B respectively.

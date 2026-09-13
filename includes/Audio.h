@@ -104,7 +104,7 @@ struct Envelope {
 
     void NRx2GlitchSingle(uint8_t value, uint8_t old);
 
-    void NRx2Glitch(uint8_t value, uint8_t old, bool dmg);
+    void NRx2Glitch(uint8_t value, uint8_t old, bool intermediateWrite);
 };
 
 struct Length {
@@ -172,7 +172,7 @@ struct Channel1 final : Channel {
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, bool dmg);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
 
     void TickLength();
 
@@ -192,9 +192,9 @@ struct Channel1 final : Channel {
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, bool dmg);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, bool dmg);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -213,7 +213,7 @@ struct Channel2 final : Channel {
     uint8_t dutyStep{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, bool dmg);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
 
     void TickLength();
 
@@ -223,11 +223,11 @@ struct Channel2 final : Channel {
 
     void UpdateOutput();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, bool dmg);
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, bool dmg);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -261,11 +261,11 @@ struct Channel3 final : Channel {
 
     void Tick();
 
-    void HandleNR34Write(uint8_t value, uint8_t freqStep, bool dmg);
+    void HandleNR34Write(uint8_t value, uint8_t freqStep, Model model);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, uint8_t freqStep, bool dmg);
+    void WriteByte(uint16_t address, uint8_t value, uint8_t freqStep, Model model);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -310,11 +310,11 @@ struct Channel4 final : Channel {
 
     void HandleNR43Write(uint8_t value);
 
-    void HandleNR44Write(uint8_t value, uint8_t freqStep, bool dmg);
+    void HandleNR44Write(uint8_t value, uint8_t freqStep, Model model);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, bool dmg);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, Model model);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -323,11 +323,12 @@ class Audio {
     enum class SkipState : uint8_t { Inactive, Skip, Skipped };
 
     bool audioEnabled{false};
-    bool dmg{false};
+    [[=NotStateAware]] Model model_{Model::CGBE};
     // Free-running DIV event counter (SameBoy's div_divider): incremented
     // before dispatch, so odd values clock the lengths, &3==3 the sweep and
     // &7==7 the envelope countdowns
     uint8_t frameSeqStep{0};
+    uint8_t pcm12Mask_{0xFF};
     SkipState skipState{SkipState::Inactive};
     uint32_t tickCounter{0};
 
@@ -367,8 +368,9 @@ public:
     uint8_t nr50{};
     uint8_t nr51{};
 
-    void SetDMG(const bool value) { dmg = value; }
-    [[nodiscard]] bool IsDMG() const { return dmg; }
+    void SetModel(const Model model) { model_ = model; }
+    [[nodiscard]] Model GetModel() const { return model_; }
+    [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
 
     // DIV-APU. divWriteSingleSpeed marks an event caused by a DIV write in
@@ -387,7 +389,7 @@ public:
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool);
+    void WriteByte(uint16_t address, uint8_t value, bool divBit4High, bool doubleSpeed = false);
 
     [[nodiscard]] uint8_t ReadPCM12() const;
 

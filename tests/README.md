@@ -4206,7 +4206,7 @@ Current Performance: (603/4404)
 | mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb (DMG)                                         | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_wx_5_change.gb (DMG)                                                 | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_wx_6_change.gb (DMG)                                                 | :white_check_mark: |
-| mealybug-tearoom-tests/ppu/win_without_bg.gb                                                       | :grey_question:    |
+| mealybug-tearoom-tests/ppu/win_without_bg.gb                                                       | :white_check_mark: |
 | mooneye/acceptance/add_sp_e_timing.gb                                                              | :white_check_mark: |
 | mooneye/acceptance/bits/mem_oam.gb                                                                 | :white_check_mark: |
 | mooneye/acceptance/bits/reg_f.gb                                                                   | :white_check_mark: |

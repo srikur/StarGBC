@@ -106,6 +106,7 @@ public:
     bool isFetchingWindow_{false};
     uint8_t fetcherDelay_{0};
     uint8_t fetcherTileX_ = 0; // Current tile X-coordinate in the BG/Win map (0-31).
+    uint8_t fetcherTileRow_{0}; // CGB-D and later latch Y during the tile-map fetch
     uint8_t fetcherTileNum_ = 0; // The tile ID read from VRAM.
     uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
     uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
@@ -133,6 +134,7 @@ public:
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};
+    uint8_t savedBgTileRow_{0};
     uint8_t savedBgTileDataLow_{0};
     uint8_t savedBgTileDataHigh_{0};
     uint16_t savedBgLastAddress_{0};
@@ -148,6 +150,7 @@ public:
     std::array<uint8_t, VRAM_SIZE> vram{};
     [[=NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
     std::array<uint8_t, 0xA0> oam{};
+    std::array<uint8_t, 0x60> extraOam{}; // CGB 0-D RAM behind FEA0-FEFF
     uint8_t lyc = 0; // 0xFF45
 
     std::pair<bool, uint8_t> priority_[160];
@@ -202,7 +205,7 @@ public:
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
 
     HDMA hdma{};
-    Hardware hardware = Hardware::DMG;
+    Model model = Model::DMGB;
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
     bool dmgCompat{false};

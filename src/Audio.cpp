@@ -60,14 +60,21 @@ void Audio::TickFrameSequencerSecondary() {
 
 void Audio::Tick() {
     tickCounter++;
+    pcm12Mask_ = 0xFF;
     if (audioEnabled) {
         ch3.alternateRead = false;
         // Square channels run on the 2MHz APU tick grid
         if ((tickCounter & 1) == 0) {
             ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
+            const auto old1 = ch1.GetDigitalOutput();
+            const auto old2 = ch2.GetDigitalOutput();
             ch1.Tick2M();
             ch2.Tick2M();
-            ch4.Tick2M(frameSeqStep, dmg);
+            if (HasEarlyCgbPcmGlitch(model_)) {
+                if (ch1.justReloaded && old1 == 0) pcm12Mask_ &= 0xF0;
+                if (ch2.justReloaded && old2 == 0) pcm12Mask_ &= 0x0F;
+            }
+            ch4.Tick2M(frameSeqStep, IsDMG());
         }
         ch3.Tick();
     }
@@ -109,7 +116,7 @@ uint8_t Audio::ReadByte(const uint16_t address) const {
         case 0xFF15 ... 0xFF19: return ch2.ReadByte(address);
         case 0xFF1A ... 0xFF1E: return ch3.ReadByte(address);
         case 0xFF1F ... 0xFF23: return ch4.ReadByte(address);
-        case 0xFF30 ... 0xFF3F: return ch3.ReadWaveRam(address, dmg);
+        case 0xFF30 ... 0xFF3F: return ch3.ReadWaveRam(address, IsDMG());
         case 0xFF24: return nr50 | 0x00;
         case 0xFF25: return nr51 | 0x00;
         case 0xFF26: return ReadAudioControl();
@@ -117,22 +124,22 @@ uint8_t Audio::ReadByte(const uint16_t address) const {
     }
 }
 
-void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool divBit4High) {
+void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool divBit4High, const bool doubleSpeed) {
     static const std::set<uint16_t> allowedAddresses = {
         0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20
     };
-    if (!audioEnabled && address != 0xFF26 && (!dmg || !allowedAddresses.contains(address))) {
+    if (!audioEnabled && address != 0xFF26 && (!IsDMG() || !allowedAddresses.contains(address))) {
         return;
     }
     const uint8_t lfDiv = (tickCounter & 2) ? 0 : 1;
     switch (address) {
-        case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep, lfDiv, dmg);
+        case 0xFF10 ... 0xFF14: ch1.WriteByte(address, value, audioEnabled, frameSeqStep, lfDiv, model_, doubleSpeed);
             break;
-        case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep, lfDiv, dmg);
+        case 0xFF15 ... 0xFF19: ch2.WriteByte(address, value, audioEnabled, frameSeqStep, lfDiv, model_, doubleSpeed);
             break;
-        case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep, dmg);
+        case 0xFF1A ... 0xFF1E: ch3.WriteByte(address, value, frameSeqStep, model_);
             break;
-        case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled, frameSeqStep, dmg);
+        case 0xFF1F ... 0xFF23: ch4.WriteByte(address, value, audioEnabled, frameSeqStep, model_);
             break;
         case 0xFF24: nr50 = value;
             break;
@@ -140,7 +147,7 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
             break;
         case 0xFF26: WriteAudioControl(value, divBit4High);
             break;
-        case 0xFF30 ... 0xFF3F: ch3.WriteWaveRam(address, value, dmg);
+        case 0xFF30 ... 0xFF3F: ch3.WriteWaveRam(address, value, IsDMG());
             break;
         default: break;
     }
@@ -189,9 +196,9 @@ void Envelope::NRx2GlitchSingle(const uint8_t value, const uint8_t old) {
     }
 }
 
-void Envelope::NRx2Glitch(const uint8_t value, const uint8_t old, const bool dmg) {
+void Envelope::NRx2Glitch(const uint8_t value, const uint8_t old, const bool intermediateWrite) {
     // Pre-CGB-D revisions pass through $FF as an intermediate value
-    if (dmg) {
+    if (intermediateWrite) {
         NRx2GlitchSingle(0xFF, old);
         NRx2GlitchSingle(value, 0xFF);
     } else {
@@ -200,14 +207,15 @@ void Envelope::NRx2Glitch(const uint8_t value, const uint8_t old, const bool dmg
 }
 
 uint8_t Audio::ReadPCM12() const {
-    return (ch2.GetDigitalOutput() << 4) | (ch1.GetDigitalOutput() & 0x0F);
+    return ((ch2.GetDigitalOutput() << 4) | (ch1.GetDigitalOutput() & 0x0F)) & pcm12Mask_;
 }
 
 uint8_t Audio::ReadPCM34() const {
     return (ch4.GetDigitalOutput() << 4) | (ch3.GetDigitalOutput() & 0x0F);
 }
 
-void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const Model model, const bool doubleSpeed) {
+    const bool dmg = IsDmg(model);
     const bool wasActive = enabled;
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
     didTick = false;
@@ -227,14 +235,14 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
     // frequency are clear
     bool forceUnsurpressed = false;
     if (!enabled) {
-        if (!dmg && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
+        if (HasLateCgbPulseTiming(model) && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
             dutyStep = (dutyStep + 1) & 7;
             forceUnsurpressed = true;
         }
-        trigDelay = 6 - lfDiv;
+        trigDelay = 6 + (doubleSpeed && HasEarlyCgbPulseTiming(model) ? lfDiv : -lfDiv);
     } else {
         uint8_t extraDelay = 0;
-        if (!dmg) {
+        if (HasLateCgbPulseTiming(model)) {
             if (!justReloaded && !(value & 4) && !(((sampleCountdown - 1 - trigDelay) / 2) & 0x400)) {
                 dutyStep = (dutyStep + 1) & 7;
                 sampleSurpressed = false;
@@ -417,13 +425,13 @@ void Channel1::Tick2M() {
     }
 }
 
-void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, const uint8_t lfDiv, const Model model, const bool doubleSpeed) {
     const uint16_t oldFreq = frequency.Value();
     // Quirk: lowering the frequency high bits from 7 while the countdown was
     // reloaded from the matching length steps the duty position back once
     // (SameBoy's ≥$700 to <$700 hack; on DMG only on an odd countdown phase)
     if (!(value & 0x80) && enabled && (oldFreq >> 8) == 7 && (value & 7) != 7) {
-        if (!dmg || (sampleCountdown & 1)) {
+        if (HasLateCgbPulseTiming(model) || (sampleCountdown & 1)) {
             if (didTick && (sampleCountdown >> 1) == (oldFreq ^ 0x7FF)) {
                 dutyStep = (dutyStep - 1) & 7;
                 sampleSurpressed = false;
@@ -438,16 +446,17 @@ void Channel1::HandleNR14Write(const uint8_t value, const uint8_t freqStep, cons
     }
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
-    if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
+    if (!oldEnabled && (lengthTimer.enabled || HasEarlyCgbLengthClocking(model)) && (freqStep % 2 != 0)) {
         if (lengthTimer.lengthTimer < 64) {
             lengthTimer.lengthTimer++;
         }
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(value, oldFreq, freqStep, lfDiv, dmg);
+    if (value & 0x80) Trigger(value, oldFreq, freqStep, lfDiv, model, doubleSpeed);
 }
 
-void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const Model model, const bool doubleSpeed) {
+    const bool dmg = IsDmg(model);
     switch (address & 0xF) {
         case 0x00: {
             if (sweep.calcCountdown || sweep.calcReloadTimer) {
@@ -471,7 +480,7 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
                 enabled = false;
             } else {
                 if (enabled) {
-                    envelope.NRx2Glitch(value, envelope.Value(), dmg);
+                    envelope.NRx2Glitch(value, envelope.Value(), HasIntermediateApuWrites(model));
                     UpdateOutput();
                 }
                 dacEnabled = true;
@@ -483,7 +492,7 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
                 sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
             }
             break;
-        case 0x04: HandleNR14Write(value, freqStep, lfDiv, dmg);
+        case 0x04: HandleNR14Write(value, freqStep, lfDiv, model, doubleSpeed);
             break;
         default: throw UnreachableCodeException("Channel1::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -494,7 +503,7 @@ uint8_t Channel1::GetDigitalOutput() const {
     return sampleOut;
 }
 
-void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_t freqStep, const uint8_t lfDiv, const Model model, const bool doubleSpeed) {
     dacEnabled = (envelope.initialVolume > 0 || envelope.direction);
     didTick = false;
 
@@ -507,14 +516,14 @@ void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
 
     bool forceUnsurpressed = false;
     if (!enabled) {
-        if (!dmg && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
+        if (HasLateCgbPulseTiming(model) && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
             dutyStep = (dutyStep + 1) & 7;
             forceUnsurpressed = true;
         }
-        trigDelay = 6 - lfDiv;
+        trigDelay = 6 + (doubleSpeed && HasEarlyCgbPulseTiming(model) ? lfDiv : -lfDiv);
     } else {
         uint8_t extraDelay = 0;
-        if (!dmg) {
+        if (HasLateCgbPulseTiming(model)) {
             if (!justReloaded && !(value & 4) && !(((sampleCountdown - 1 - trigDelay) / 2) & 0x400)) {
                 dutyStep = (dutyStep + 1) & 7;
                 sampleSurpressed = false;
@@ -577,10 +586,10 @@ void Channel2::Tick2M() {
     }
 }
 
-void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, const uint8_t lfDiv, const Model model, const bool doubleSpeed) {
     const uint16_t oldFreq = frequency.Value();
     if (!(value & 0x80) && enabled && (oldFreq >> 8) == 7 && (value & 7) != 7) {
-        if (!dmg || (sampleCountdown & 1)) {
+        if (HasLateCgbPulseTiming(model) || (sampleCountdown & 1)) {
             if (didTick && (sampleCountdown >> 1) == (oldFreq ^ 0x7FF)) {
                 dutyStep = (dutyStep - 1) & 7;
                 sampleSurpressed = false;
@@ -593,11 +602,11 @@ void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, cons
     }
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
-    if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
+    if (!oldEnabled && (lengthTimer.enabled || HasEarlyCgbLengthClocking(model)) && (freqStep % 2 != 0)) {
         if (lengthTimer.lengthTimer < 64) lengthTimer.lengthTimer++;
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
-    if (value & 0x80) Trigger(value, oldFreq, freqStep, lfDiv, dmg);
+    if (value & 0x80) Trigger(value, oldFreq, freqStep, lfDiv, model, doubleSpeed);
 }
 
 [[nodiscard]] uint8_t Channel2::ReadByte(const uint16_t address) const {
@@ -611,7 +620,7 @@ void Channel2::HandleNR24Write(const uint8_t value, const uint8_t freqStep, cons
     }
 }
 
-void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const bool dmg) {
+void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const uint8_t lfDiv, const Model model, const bool doubleSpeed) {
     switch (address & 0xF) {
         case 0x05: break;
         case 0x06: lengthTimer.Write(value, audioEnabled);
@@ -622,7 +631,7 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
                 enabled = false;
             } else {
                 if (enabled) {
-                    envelope.NRx2Glitch(value, envelope.Value(), dmg);
+                    envelope.NRx2Glitch(value, envelope.Value(), HasIntermediateApuWrites(model));
                     UpdateOutput();
                 }
                 dacEnabled = true;
@@ -634,7 +643,7 @@ void Channel2::WriteByte(const uint16_t address, const uint8_t value, const bool
                 sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
             }
             break;
-        case 0x09: HandleNR24Write(value, freqStep, lfDiv, dmg);
+        case 0x09: HandleNR24Write(value, freqStep, lfDiv, model, doubleSpeed);
             break;
         default: throw UnreachableCodeException("Channel2::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -719,13 +728,18 @@ void Channel3::Tick() {
     }
 }
 
-void Channel3::HandleNR34Write(const uint8_t value, const uint8_t freqStep, const bool dmg) {
+void Channel3::HandleNR34Write(const uint8_t value, const uint8_t freqStep, const Model model) {
+    const bool dmg = IsDmg(model);
     frequency.WriteHigh(value);
     const bool oldEnabled = lengthEnabled;
     lengthEnabled = value & 0x40;
-    if (!oldEnabled && lengthEnabled && (freqStep % 2 != 0)) {
+    if (!oldEnabled && (lengthEnabled || HasEarlyCgbLengthClocking(model)) && (freqStep % 2 != 0)) {
+        // CGB-A/B's wave channel observes expiry on the following write
+        // when length remains disabled. CGB-0 observes it immediately.
+        const bool expired = lengthTimer == 256;
         if (lengthTimer < 256) lengthTimer++;
-        if (lengthTimer == 256 && !(value & 0x80)) enabled = false;
+        const bool delayedExpiry = (model == Model::CGBA || model == Model::CGBB) && !lengthEnabled;
+        if ((delayedExpiry ? expired : lengthTimer == 256) && !(value & 0x80)) enabled = false;
     }
     if (value & 0x80) {
         Trigger(freqStep, dmg);
@@ -743,7 +757,7 @@ void Channel3::HandleNR34Write(const uint8_t value, const uint8_t freqStep, cons
     }
 }
 
-void Channel3::WriteByte(const uint16_t address, const uint8_t value, const uint8_t freqStep, const bool dmg) {
+void Channel3::WriteByte(const uint16_t address, const uint8_t value, const uint8_t freqStep, const Model model) {
     switch (address & 0xF) {
         case 0x0A: dacEnabled = (value & 0x80) != 0;
             if (!dacEnabled) {
@@ -758,7 +772,7 @@ void Channel3::WriteByte(const uint16_t address, const uint8_t value, const uint
             break;
         case 0x0D: frequency.WriteLow(value);
             break;
-        case 0x0E: HandleNR34Write(value, freqStep, dmg);
+        case 0x0E: HandleNR34Write(value, freqStep, model);
             break;
         default: throw UnreachableCodeException("Channel3::WriteByte unreachable code at address: " + std::to_string(address));
     }
@@ -1071,11 +1085,12 @@ void Channel4::HandleNR43Write(const uint8_t value) {
     }
 }
 
-void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep, const bool dmg) {
+void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep, const Model model) {
+    const bool dmg = IsDmg(model);
     trigger = value >> 7 & 0x01;
     const bool oldEnabled = lengthTimer.enabled;
     lengthTimer.enabled = value & 0x40;
-    if (!oldEnabled && lengthTimer.enabled && (freqStep % 2 != 0)) {
+    if (!oldEnabled && (lengthTimer.enabled || HasEarlyCgbLengthClocking(model)) && (freqStep % 2 != 0)) {
         if (lengthTimer.lengthTimer != 64) lengthTimer.lengthTimer++;
         if (lengthTimer.lengthTimer == 64 && !(value & 0x80)) enabled = false;
     }
@@ -1093,7 +1108,8 @@ void Channel4::HandleNR44Write(const uint8_t value, const uint8_t freqStep, cons
     }
 }
 
-void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const bool dmg) {
+void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool audioEnabled, const uint8_t freqStep, const Model model) {
+    const bool dmg = IsDmg(model);
     switch (address & 0xF) {
         case 0x0F: break;
         case 0x00: lengthTimer.Write(value, audioEnabled);
@@ -1112,7 +1128,7 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
                 counterActive = false;
             } else {
                 if (enabled) {
-                    envelope.NRx2Glitch(value, envelope.Value(), dmg);
+                    envelope.NRx2Glitch(value, envelope.Value(), HasIntermediateApuWrites(model));
                 }
                 dacEnabled = true;
             }
@@ -1133,7 +1149,7 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
             }
             HandleNR43Write(value);
             break;
-        case 0x03: HandleNR44Write(value, freqStep, dmg);
+        case 0x03: HandleNR44Write(value, freqStep, model);
             break;
         default: throw UnreachableCodeException("Channel4::WriteByte unreachable code at address: " + std::to_string(address));
     }

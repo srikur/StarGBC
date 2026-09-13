@@ -5,33 +5,18 @@
 #include <iterator>
 #include <map>
 
-// The register file a model hands off with depends on whether the boot dropped to DMG-compat mode
-static constexpr Registers::Model StartupModelFor(const Mode mode, const bool cgbMode) {
-    switch (mode) {
-        case Mode::DMG0: return Registers::DMG0;
-        case Mode::MBG: return Registers::MGB;
-        case Mode::SGB: return Registers::SGB;
-        case Mode::SGB2: return Registers::SGB2;
-        case Mode::CGB_DMG:
-        case Mode::CGB_GBC: return cgbMode ? Registers::CGB_GBC : Registers::CGB_DMG;
-        case Mode::CGB0: return cgbMode ? Registers::CGB0 : Registers::CGB_DMG;
-        case Mode::AGB_DMG:
-        case Mode::AGB_GBC: return cgbMode ? Registers::AGB_GBC : Registers::AGB_DMG;
-        case Mode::AGS_DMG:
-        case Mode::AGS_GBC: return cgbMode ? Registers::AGS_GBC : Registers::AGS_DMG;
-        default: return Registers::DMG;
-    }
-}
-
 template<BusLike BusT>
 void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
     std::ifstream file(bios_path, std::ios::binary);
+    if (!file) throw std::runtime_error("Could not open boot ROM: " + bios_path);
     file.unsetf(std::ios::skipws);
 
     file.seekg(0, std::ios::end);
     const std::streampos fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
 
+    const auto expectedSize = IsCgb(bus_.gpu_.model) ? 0x900 : 0x100;
+    if (fileSize != expectedSize) throw std::runtime_error("Boot ROM size does not match selected model");
     bus_.bootrom.reserve(fileSize);
     bus_.bootrom.insert(bus_.bootrom.begin(),
                         std::istream_iterator<uint8_t>(file),
@@ -51,11 +36,11 @@ void CPU<BusT>::InitializeEmbeddedBootrom(const bool cgb) const {
 }
 
 template<BusLike BusT>
-void CPU<BusT>::InitializeSystem(const Mode mode) {
-    regs_.SetStartupValues(StartupModelFor(mode, bus_.cgbMode));
+void CPU<BusT>::InitializeSystem() {
+    regs_.SetStartupValues(bus_.gpu_.model, bus_.cgbMode);
     sp_ = 0xFFFE;
-    const Hardware hw = bus_.gpu_.hardware;
-    const bool sgbFamily = hw == Hardware::SGB || hw == Hardware::SGB2;
+    const Model hw = bus_.gpu_.model;
+    const bool sgbFamily = IsSgb(hw);
 
     static const std::map<uint16_t, uint8_t> initialData = {
         {0xFF00, 0xCF}, {0xFF02, 0x7C}, {0xFF03, 0xFF}, {0xFF04, 0x1E}, {0xFF07, 0xF8}, {0xFF08, 0xFF}, {0xFF09, 0xFF},
@@ -129,10 +114,11 @@ void CPU<BusT>::BeginMCycle() {
         bus_.bootromRunning = false;
         // A bootrom that never wrote KEY0 (e.g. the embedded one) hands off
         // with the mode implied by the cart header
-        if (IsCgb(bus_.gpu_.hardware) && !bus_.key0Written) {
+        if (IsCgb(bus_.gpu_.model) && !bus_.key0Written) {
             bus_.cgbMode = (bus_.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
             bus_.gpu_.dmgCompat = !bus_.cgbMode;
         }
+        if (embeddedBootrom_) regs_.SetStartupValues(bus_.gpu_.model, bus_.cgbMode);
     }
     instrRunning = true;
 }
@@ -181,7 +167,7 @@ bool CPU<BusT>::ProcessInterrupts() {
                 icount_ = 0;
             }
             // DMG samples the wake request halfway through its idle M-cycle. Running instructions use the request visible at the fetch boundary.
-            const uint8_t pending = halted_ && !IsCgb(bus_.gpu_.hardware)
+            const uint8_t pending = halted_ && !IsCgb(bus_.gpu_.model)
                                         ? haltPending_
                                         : interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
             if (pending == 0) {
@@ -196,7 +182,7 @@ bool CPU<BusT>::ProcessInterrupts() {
                 return false;
             }
 
-            if (halted_ && IsCgb(bus_.gpu_.hardware)) {
+            if (halted_ && IsCgb(bus_.gpu_.model)) {
                 halted_ = false;
                 return true;
             }

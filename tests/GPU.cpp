@@ -8,11 +8,11 @@ struct LineResult {
     uint32_t pixel;
 };
 
-LineResult renderLine(Hardware hardware, bool objects, std::initializer_list<uint8_t> positions,
+LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions,
                       uint8_t windowX = 0) {
     Interrupts interrupts;
     GPU gpu(interrupts);
-    gpu.hardware = hardware;
+    gpu.model = model;
     gpu.lcdc = objects ? 0x93 : 0x91;
     gpu.currentLine = 10;
     if (windowX) {
@@ -52,35 +52,35 @@ LineResult renderLine(Hardware hardware, bool objects, std::initializer_list<uin
 }
 
 TEST_CASE("ppu: overlapping OBJs share alignment but retain six-dot fetches") {
-    const auto one = renderLine(Hardware::DMG, true, {0});
-    const auto ten = renderLine(Hardware::DMG, true, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+    const auto one = renderLine(Model::DMGB, true, {0});
+    const auto ten = renderLine(Model::DMGB, true, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     CHECK(ten.rendered - one.rendered == 54);
     CHECK(ten.statMode0 - one.statMode0 == 54);
 
-    const auto samePosition = renderLine(Hardware::DMG, true, {0, 0});
-    const auto adjacentTiles = renderLine(Hardware::DMG, true, {0, 8});
-    const auto reversed = renderLine(Hardware::DMG, true, {8, 0});
+    const auto samePosition = renderLine(Model::DMGB, true, {0, 0});
+    const auto adjacentTiles = renderLine(Model::DMGB, true, {0, 8});
+    const auto reversed = renderLine(Model::DMGB, true, {8, 0});
     CHECK(adjacentTiles.rendered - samePosition.rendered == 5);
     CHECK(reversed.rendered == adjacentTiles.rendered);
 }
 
 TEST_CASE("ppu: CGB fetches disabled OBJs while its mixer hides them") {
-    const auto cgbOn = renderLine(Hardware::CGB, true, {28});
-    const auto cgbOff = renderLine(Hardware::CGB, false, {28});
+    const auto cgbOn = renderLine(Model::CGBE, true, {28});
+    const auto cgbOff = renderLine(Model::CGBE, false, {28});
     CHECK(cgbOn.rendered == cgbOff.rendered);
     CHECK(cgbOn.pixel != cgbOff.pixel);
     CHECK(cgbOff.pixel == 0xFFFFFFFF);
 
-    const auto dmgOn = renderLine(Hardware::DMG, true, {28});
-    const auto dmgOff = renderLine(Hardware::DMG, false, {28});
+    const auto dmgOn = renderLine(Model::DMGB, true, {28});
+    const auto dmgOff = renderLine(Model::DMGB, false, {28});
     CHECK(dmgOn.rendered > dmgOff.rendered);
     CHECK(dmgOn.pixel != dmgOff.pixel);
 }
 
 TEST_CASE("ppu: STAT waits for fetches at the right edge") {
-    const auto background = renderLine(Hardware::DMG, true, {});
-    const auto object = renderLine(Hardware::DMG, true, {167});
-    const auto window = renderLine(Hardware::DMG, true, {}, 165);
+    const auto background = renderLine(Model::DMGB, true, {});
+    const auto object = renderLine(Model::DMGB, true, {167});
+    const auto window = renderLine(Model::DMGB, true, {}, 165);
     CHECK(object.statMode0 > background.statMode0);
     CHECK(window.statMode0 > background.statMode0);
 }

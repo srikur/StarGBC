@@ -25,7 +25,11 @@ const uint32_t *Gameboy::GetScreenData() const {
 }
 
 bool Gameboy::LoadedStateValid() const {
-    return gpu_.backgroundQueue.valid()
+    return IsValidModel(gpu_.model) && gpu_.model != Model::Auto
+           && gpu_.model == audio_.GetModel()
+           && (!bus_.cgbMode || IsCgb(gpu_.model))
+           && gpu_.dmgCompat == (IsCgb(gpu_.model) && !bus_.cgbMode)
+           && gpu_.backgroundQueue.valid()
            && gpu_.spriteFetchQueue.valid()
            && gpu_.spriteBuffer.valid()
            && gpu_.vramBank <= 1
