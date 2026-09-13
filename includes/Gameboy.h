@@ -14,7 +14,7 @@
 struct GameboySettings {
     std::string romName;
     std::string biosPath;
-    Mode mode{Mode::None};
+    Model model{Model::Auto};
     bool noBootrom{false};
     bool realRTC{false};
 };
@@ -36,7 +36,7 @@ public:
                                                         serial_(interrupts_), gpu_(interrupts_),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_,
                                                              audio_, interrupts_, gpu_),
-                                                        cpu_(settings.mode, biosPath_, settings.noBootrom, bus_,
+                                                        cpu_(settings.model, biosPath_, settings.noBootrom, bus_,
                                                              interrupts_, registers_),
                                                         instructions_(registers_, interrupts_) {
     }
@@ -75,9 +75,11 @@ public:
         return cartridge_.GlobalChecksum();
     }
 
-    [[nodiscard]] Hardware GetHardware() const {
-        return gpu_.hardware;
+    [[nodiscard]] Model GetModel() const {
+        return gpu_.model;
     }
+
+    [[nodiscard]] bool IsInCgbMode() const { return bus_.cgbMode; }
 
     [[nodiscard]] size_t GetAudioSamplesAvailable() const {
         return audio_.GetSamplesAvailable();
@@ -186,9 +188,10 @@ inline auto Gameboy::SaveState() const {
 
 inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
     if (state.size() != kGameboyStateSize) return false;
+    const Model expectedModel = GetModel();
     const auto backup = SaveState();
     DeserializeFrom(*this, state.data());
-    if (!LoadedStateValid()) {
+    if (GetModel() != expectedModel || !LoadedStateValid()) {
         DeserializeFrom(*this, backup.data());
         return false;
     }

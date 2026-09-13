@@ -61,8 +61,8 @@ struct MockCPU {
         stopped_ = value;
     }
 
-    Hardware hardware() {
-        return Hardware::DMG;
+    Model model() {
+        return Model::DMGB;
     }
 
     void Reset() {

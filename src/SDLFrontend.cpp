@@ -39,9 +39,9 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         if (args[i] == "--anti-aliasing") {
             useNearest_ = false;
         } else if (args[i] == "--gbc") {
-            settings.mode = Mode::CGB_GBC;
+            settings.model = Model::CGBE;
         } else if (args[i] == "--gb") {
-            settings.mode = Mode::DMG;
+            settings.model = Model::DMGB;
         } else if (args[i] == "--debugStart") {
             paused_ = true;
         } else if (args[i] == "--unthrottled") {
@@ -60,18 +60,10 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         } else if (args[i] == "--model") {
             if (i + 1 < args.size()) {
                 const std::string_view model = args[++i];
-                if (model == "dmg0") settings.mode = Mode::DMG0;
-                else if (model == "dmg") settings.mode = Mode::DMG;
-                else if (model == "mgb") settings.mode = Mode::MBG;
-                else if (model == "sgb") settings.mode = Mode::SGB;
-                else if (model == "sgb2") settings.mode = Mode::SGB2;
-                else if (model == "cgb0") settings.mode = Mode::CGB0;
-                else if (model == "cgb") settings.mode = Mode::CGB_GBC;
-                else if (model == "agb") settings.mode = Mode::AGB_GBC;
-                else if (model == "ags") settings.mode = Mode::AGS_GBC;
-                else {
-                    std::fprintf(stderr, "Error: unknown model '%.*s' "
-                                 "(dmg0|dmg|mgb|sgb|sgb2|cgb0|cgb|agb|ags)\n",
+                if (const auto parsed = ParseModel(model)) {
+                    settings.model = *parsed;
+                } else {
+                    std::fprintf(stderr, "Error: unknown model '%.*s'\n",
                                  static_cast<int>(model.size()), model.data());
                     return SDL_APP_FAILURE;
                 }
@@ -85,8 +77,9 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         } else {
             std::fprintf(stderr, "USAGE: StarGBC [options] romFile\n"
                          "Options:\n"
-                         "  --gbc | --gb        force gbc/dmg mode\n"
-                         "  --model <name>      hardware model: dmg0|dmg|mgb|sgb|sgb2|cgb0|cgb|agb|ags\n"
+                         "  --gbc | --gb        select default CGB/DMG model\n"
+                         "  --model <name>      SoC: auto|dmg0|dmga|dmgb|dmgc|mgb|sgb|sgb2|cgb0|cgba|cgbb|cgbc|cgbd|cgbe|agb0|agba|agbae|agbb|agbbe\n"
+                         "                      aliases: dmg=dmgb, cgb=cgbe, agb=agba, ags=agbb\n"
                          "  --bios <path>       external BIOS ROM\n"
                          "  --no-bootrom        skip built-in bootrom; jump straight to cart\n"
                          "  --anti-aliasing     linear-filter pixels");
@@ -312,7 +305,7 @@ struct SaveStateHeader {
     uint64_t stateSize;
     uint32_t version;
     uint16_t cartChecksum;
-    uint8_t hardware;
+    uint8_t model;
     uint8_t reserved;
 };
 
@@ -331,7 +324,7 @@ void SDLFrontend::SaveState(const uint8_t slot) const {
             .stateSize = kGameboyStateSize,
             .version = kStateVersion,
             .cartChecksum = gameboy_->CartChecksum(),
-            .hardware = static_cast<uint8_t>(gameboy_->GetHardware()),
+            .model = static_cast<uint8_t>(gameboy_->GetModel()),
             .reserved = 0,
         };
         const auto saveBytes = gameboy_->SaveState();
@@ -362,8 +355,8 @@ void SDLFrontend::LoadState(const uint8_t slot) {
         if (header.cartChecksum != gameboy_->CartChecksum()) {
             throw std::runtime_error("save state belongs to a different ROM");
         }
-        if (header.hardware != static_cast<uint8_t>(gameboy_->GetHardware())) {
-            throw std::runtime_error("save state uses a different hardware mode");
+        if (header.model != static_cast<uint8_t>(gameboy_->GetModel())) {
+            throw std::runtime_error("save state uses a different hardware model");
         }
         std::vector<std::byte> state(kGameboyStateSize);
         file.read(reinterpret_cast<char *>(state.data()), static_cast<std::streamsize>(state.size()));

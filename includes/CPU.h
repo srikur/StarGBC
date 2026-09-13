@@ -10,22 +10,19 @@ class CPU {
 public:
     using Self = CPU<BusT>;
 
-    explicit CPU(const Mode mode,
+    explicit CPU(const Model requestedModel,
                  const std::string &biosPath,
                  const bool noBootrom,
                  BusT &bus,
                  Interrupts &interrupts,
                  Registers &registers) : bus_(bus),
                                          interrupts_(interrupts),
-                                         regs_(registers),
-                                         mode_(mode) {
-        if (mode_ == Mode::None) {
-            mode_ = (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80 ? Mode::CGB_GBC : Mode::DMG;
-        }
-        const Hardware hw = HardwareForMode(mode_);
-        bus.gpu_.hardware = hw;
-        bus.audio_.SetDMG(IsDmg(hw));
-        const bool sgbFamily = hw == Hardware::SGB || hw == Hardware::SGB2;
+                                         regs_(registers) {
+        if (!IsValidModel(requestedModel)) throw std::invalid_argument("Invalid Game Boy model");
+        const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
+        bus.gpu_.model = hw;
+        bus.audio_.SetModel(hw);
+        const bool sgbFamily = IsSgb(hw);
         // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts
         bus.joypad_.ConfigureSgb(sgbFamily &&
                                  bus.cartridge_.ReadByte(0x146) == 0x03 &&
@@ -44,13 +41,14 @@ public:
             bus.bootromRunning = true;
             bus.timer_.divCounter = 0x0008;
             InitializeEmbeddedBootrom(IsCgb(hw));
+            embeddedBootrom_ = true;
             pc_ = 0x0000;
         } else {
             bus.cgbMode = IsCgb(hw) &&
                           (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
             bus.gpu_.dmgCompat = IsCgb(hw) && !bus.cgbMode;
             pc_ = 0x100;
-            InitializeSystem(mode_);
+            InitializeSystem();
         }
         currentInstruction = bus.ReadByte(pc_++, ComponentSource::CPU);
     }
@@ -59,7 +57,7 @@ public:
 
     void InitializeEmbeddedBootrom(bool cgb) const;
 
-    void InitializeSystem(Mode);
+    void InitializeSystem();
 
     void ExecuteMicroOp(Instructions<Self> &instructions, bool);
 
@@ -120,8 +118,8 @@ public:
         return stopped_;
     }
 
-    Hardware hardware() {
-        return bus_.gpu_.hardware;
+    Model model() {
+        return bus_.gpu_.model;
     }
 
     BusT &bus_;
@@ -142,7 +140,7 @@ private:
     Interrupts &interrupts_;
     Registers &regs_;
 
-    Mode mode_{Mode::DMG};
+    [[=NotStateAware]] bool embeddedBootrom_{false};
 
     uint16_t pc_{0x0000};
     uint16_t sp_{0x0000};

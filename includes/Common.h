@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Reflection.h"
+#include "Model.h"
 
 #include <array>
 #include <chrono>
@@ -46,19 +47,6 @@ static constexpr uint8_t LCDC_OBJ_SIZE = 2;
 static constexpr uint8_t LCDC_OBJ_ENABLE = 1;
 static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
 
-enum class Hardware {
-    DMG, CGB, MGB, SGB, SGB2, GBA, GBS, DMG0, CGB0,
-};
-
-constexpr bool IsCgb(const Hardware hardware) {
-    return hardware == Hardware::CGB || hardware == Hardware::CGB0 ||
-           hardware == Hardware::GBA || hardware == Hardware::GBS;
-}
-
-constexpr bool IsDmg(const Hardware hardware) {
-    return !IsCgb(hardware);
-}
-
 template<uint8_t bit>
 static constexpr bool Bit(const uint8_t value) {
     static_assert(bit < 8);
@@ -75,39 +63,6 @@ enum class Keys {
     Select = 0x40,
     Start = 0x80,
 };
-
-enum class Mode {
-    None = 0x00,
-    DMG = 0x01,
-    MBG = 0x02,
-    SGB = 0x03,
-    SGB2 = 0x04,
-    CGB_DMG = 0x05,
-    AGB_DMG = 0x06,
-    AGS_DMG = 0x07,
-    CGB_GBC = 0x08,
-    AGB_GBC = 0x09,
-    AGS_GBC = 0x0A,
-    DMG0 = 0x0B,
-    CGB0 = 0x0C,
-};
-
-constexpr Hardware HardwareForMode(const Mode mode) {
-    switch (mode) {
-        case Mode::DMG0: return Hardware::DMG0;
-        case Mode::MBG: return Hardware::MGB;
-        case Mode::SGB: return Hardware::SGB;
-        case Mode::SGB2: return Hardware::SGB2;
-        case Mode::CGB0: return Hardware::CGB0;
-        case Mode::CGB_DMG:
-        case Mode::CGB_GBC: return Hardware::CGB;
-        case Mode::AGB_DMG:
-        case Mode::AGB_GBC: return Hardware::GBA;
-        case Mode::AGS_DMG:
-        case Mode::AGS_GBC: return Hardware::GBS;
-        default: return Hardware::DMG;
-    }
-}
 
 enum class Speed {
     Regular = 0x01,
