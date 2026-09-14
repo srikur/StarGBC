@@ -8,7 +8,8 @@ void Timer::Tick(const Speed speed) {
     reloadActive = false;
     if (overflowPending && --overflowDelay == 0) {
         tima = tma;
-        interrupts_.Set(InterruptType::Timer, false);
+        // DMG exposes IF before the request reaches the CPU wake/dispatch path
+        interrupts_.SetAfter(InterruptType::Timer, audio_.IsDMG() ? 4 : 0, audio_.IsDMG());
         overflowPending = false;
         reloadActive = true;
     }

@@ -1,0 +1,20 @@
+--- a/tests/halt_op_dupe_delay.s
++++ b/tests/halt_op_dupe_delay.s
+@@ -31,6 +31,6 @@
+   ; 57/58
+   nops 58
+ 
+-  test_finish_div $55
++  test_finish_div $01
+ 
+ ;-------------------------------------------------------------------------------
+--- a/tests/stat_write_glitch_l154_d.s
++++ b/tests/stat_write_glitch_l154_d.s
+@@ -36,4 +36,4 @@
+   nops 110
+   
+   clear_stat
+-  test_finish_if $E0
+\ No newline at end of file
++  test_finish_if $E1
+\ No newline at end of file

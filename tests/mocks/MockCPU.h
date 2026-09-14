@@ -53,6 +53,8 @@ struct MockCPU {
         haltBug_ = value;
     }
 
+    void Lock() { locked_ = true; }
+
     std::add_lvalue_reference_t<bool> stopped() {
         return stopped_;
     }
@@ -72,6 +74,7 @@ struct MockCPU {
         mCycleCounter_ = 1;
         nextInstruction_ = 0;
         halted_ = false;
+        locked_ = false;
         haltBug_ = false;
         stopped_ = false;
         currentInstruction = 0;
@@ -96,6 +99,7 @@ private:
     uint8_t mCycleCounter_{0x01};
     uint16_t nextInstruction_{};
     bool halted_{};
+    bool locked_{};
     bool haltBug_{};
     bool stopped_{};
 };

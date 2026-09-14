@@ -143,6 +143,7 @@ public:
 
     FixedVector<Sprite, 10> spriteBuffer;
     uint8_t initialScrollXDiscard_{0x00};
+    uint8_t initialScrollXFine_{0};
     uint8_t pixelsDrawn{0x00};
     bool objectPriority{false};
     bool initialSCXSet{false};
@@ -160,8 +161,8 @@ public:
     uint8_t windowX = 0; // 0xFF4B
     uint8_t windowY = 0; // 0xFF4A
     uint8_t backgroundPalette = 0; // 0xFF47
-    uint8_t obp0Palette = 0; // 0xFF48
-    uint8_t obp1Palette = 0; // 0xFF49
+    uint8_t obp0Palette = 0xFF; // 0xFF48
+    uint8_t obp1Palette = 0xFF; // 0xFF49
 
     uint8_t scrollX{}; // 0xFF43
     uint8_t scrollY{}; // 0xFF42
@@ -170,6 +171,7 @@ public:
     bool vblank = false;
     [[=NotStateAware]] bool frameReady = true;
     bool statTriggered{false};
+    bool lycInterruptLine_{false};
     bool m2IrqRaisedEarly{false};
     // First line after LCD enable: starts in mode 0, skips OAM scan, and
     // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
@@ -184,6 +186,12 @@ public:
     uint8_t cgbTileSelectStage_{0};
     bool cgbTileSelectJustApplied_{false};
     uint8_t cgbTileDataBus_{0};
+    uint8_t cgbPreviousTileDataBus_{0};
+    bool backgroundDataReadThisDot_{false};
+    bool backgroundDataReadHigh_{false};
+    bool pixelOutputThisDot_{false};
+    Pixel outputBackground_{};
+    Pixel outputSprite_{};
     uint8_t wxPending{0};
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
@@ -259,13 +267,15 @@ private:
 
     [[nodiscard]] bool StatLineHigh() const;
 
-    [[nodiscard]] bool StatMode0Visible() const;
+    [[nodiscard]] bool StatMode0Visible(unsigned lead = 3) const;
 
     void Fetcher_StepSpriteFetch();
 
     void Fetcher_StepBackgroundFetch();
 
     void ApplyLCDC(uint8_t value);
+
+    [[nodiscard]] uint32_t MixPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
 
