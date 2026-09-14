@@ -40,6 +40,32 @@ TEST_CASE("models: configuration resolves a concrete revision") {
     CHECK_THROWS_AS(Gameboy(settings(static_cast<Model>(255))), std::invalid_argument);
 }
 
+TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") {
+    for (const uint8_t opcode : {0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD}) {
+        CAPTURE(opcode);
+        Gameboy gameboy(settings(Model::DMGB));
+        auto &cpu = gameboy.[:member<Gameboy>("cpu_"):];
+        auto &bus = gameboy.[:busMember:];
+        auto &interrupts = gameboy.[:member<Gameboy>("interrupts_"):];
+        bus.WriteByte(0xC000, opcode, ComponentSource::CPU);
+        cpu.pc(0xC001);
+        cpu.currentInstruction = opcode;
+        gameboy.RunFrame();
+        REQUIRE(cpu.locked());
+        CHECK(cpu.pc() == 0xC001);
+
+        interrupts.interruptEnable = interrupts.interruptFlag = 0x1F;
+        interrupts.interruptMasterEnable = true;
+        const auto div = bus.timer_.divCounter;
+        gameboy.RunFrame();
+        CHECK(cpu.pc() == 0xC001);
+        CHECK(bus.timer_.divCounter != div);
+        const auto state = gameboy.SaveState();
+        REQUIRE(gameboy.LoadState(state));
+        CHECK(cpu.locked());
+    }
+}
+
 TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBD, Model::CGBE, Model::AGB0, Model::AGBBE}) {
         CAPTURE(ModelName(model));

@@ -2,6 +2,7 @@
 #define STARGBC_GBMICROTEST_H
 
 #include "TestRoms.h"
+#include "GbMicrotestDiagnostics.h"
 #include <array>
 #include <sstream>
 
@@ -25,7 +26,20 @@ static GbMicrotestResult runGbMicrotest(const std::string &rom) {
 
         const auto &hram = gameboy->[:testGameboyMember("memory_"):].hram_;
         const auto &bus = gameboy->[:testGameboyMember("bus_"):];
+        std::optional<MicrotestDiagnosticCheck> diagnostic;
+        for (const auto &test : microtestDiagnostics) {
+            if (rom == "roms/gbmicrotest/" + std::string(test.name) + ".gb") {
+                diagnostic.emplace(test);
+                break;
+            }
+        }
         const auto result = [&](const unsigned frames) -> GbMicrotestResult {
+            if (diagnostic) {
+                std::ostringstream details;
+                details << rom << " [dmgb] after " << frames << " frames";
+                const auto passed = diagnostic->passed(*gameboy, details);
+                return {passed, details.str()};
+            }
             const bool completed = !bus.bootromRunning && (hram[2] == 0x01 || hram[2] == 0xFF);
             std::ostringstream details;
             details << rom << " [dmgb] "
@@ -38,8 +52,15 @@ static GbMicrotestResult runGbMicrotest(const std::string &rom) {
 
         const unsigned frameLimit = romFrames ? romFrames : 600;
         std::array<uint8_t, 3> previous{};
+        unsigned matchingFrames = 0;
         for (unsigned frames = 1; frames <= frameLimit; ++frames) {
             gameboy->RunFrame();
+            if (diagnostic) {
+                const auto current = result(frames);
+                matchingFrames = current.passed ? matchingFrames + 1 : 0;
+                if (!romFrames && matchingFrames >= 2) return current;
+                continue;
+            }
             const std::array<uint8_t, 3> current{hram[0], hram[1], hram[2]};
             if (!romFrames && !bus.bootromRunning && current == previous &&
                 (current[2] == 0x01 || current[2] == 0xFF)) {

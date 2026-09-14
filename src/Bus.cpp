@@ -59,6 +59,7 @@ uint8_t Bus::ReadOAM(const uint16_t address, const ComponentSource source) const
 }
 
 void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentSource source) const {
+    if (source == ComponentSource::CPU) HandleOAMCorruption(address, CorruptionType::Write);
     const bool blocked = source == ComponentSource::CPU
                              ? gpu_.CpuOamWriteBlocked()
                              : gpu_.stat.mode == GPUMode::MODE_3;
@@ -120,7 +121,7 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
             return value;
         }
         case 0xFF04 ... 0xFF07: return timer_.ReadByte(address);
-        case 0xFF0F: return interrupts_.interruptFlag | 0xE0;
+        case 0xFF0F: return interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0;
         case 0xFF10 ... 0xFF3F: return audio_.ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
@@ -191,7 +192,10 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
             break;
         case 0xFF04 ... 0xFF07: timer_.WriteByte(address, value, speed);
             break;
-        case 0xFF0F: interrupts_.interruptFlag = value;
+        case 0xFF0F:
+            interrupts_.interruptFlag = value;
+            interrupts_.interruptFlagDelayed &= value | ~interrupts_.interruptVisiblePending;
+            interrupts_.interruptVisiblePending &= value;
             break;
         case 0xFF10 ... 0xFF3F: audio_.WriteByte(address, value,
                                                  timer_.divCounter & (speed == Speed::Double ? 0x2000 : 0x1000), speed == Speed::Double);
@@ -376,7 +380,7 @@ void Bus::HandleOAMCorruption(const uint16_t location, const CorruptionType type
     // OAM read lock already asserts) and the row advances on that shifted grid
     // (blargg oam_bug scanline timing vs mooneye lcdon_timing-GS)
     int currentRowIndex;
-    if (gpu_.stat.mode == GPUMode::MODE_2 && gpu_.scanlineCounter < 77) {
+    if (gpu_.stat.mode == GPUMode::MODE_2 && gpu_.scanlineCounter < 76) {
         currentRowIndex = static_cast<int>(gpu_.scanlineCounter + 4) / 4;
     } else if (gpu_.stat.mode == GPUMode::MODE_0 && gpu_.currentLine < 143 &&
                gpu_.scanlineCounter >= 452) {

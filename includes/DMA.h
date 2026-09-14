@@ -8,7 +8,7 @@ struct DMA {
     static constexpr int TOTAL_BYTES{0xA0};
 
     uint8_t dmaTickCounter{0x00};
-    uint8_t writtenValue{0x00};
+    uint8_t writtenValue{0xFF};
     uint16_t startAddress{0x0000};
     uint8_t currentByte{0x00};
     bool transferActive{false};

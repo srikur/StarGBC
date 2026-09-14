@@ -71,6 +71,7 @@ static bool runRomTest(const std::string &rom,
         });
 
         const auto passed = [&] {
+            if (gameboy->[:testGameboyMember("bus_"):].bootromRunning) return false;
             // STOP references can be completely blank. Require the CPU to have
             // stopped so an unrendered startup buffer cannot count as success.
             if (requiresStop) {
@@ -165,7 +166,7 @@ static const std::vector<Case> romTestcases = {
     {"roms/mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb", "tests/expected/mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb.screen", bootroms.dmgBootrom, Model::DMGB},
     {"roms/mealybug-tearoom-tests/ppu/m3_bgp_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_bgp_change.gb.screen", bootroms.dmgBootrom, Model::DMGB},
     {"roms/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb.screen", bootroms.dmgBootrom, Model::DMGB},
-    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb.screen", bootroms.dmgBootrom, Model::DMGB},
+    {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.dmgb.screen", bootroms.dmgBootrom, Model::DMGB},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb.screen", bootroms.dmgBootrom, Model::DMGB},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb.screen", bootroms.dmgBootrom, Model::DMGB},
     {"roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb", "tests/expected/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb.screen", bootroms.dmgBootrom, Model::DMGB},

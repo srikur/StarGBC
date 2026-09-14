@@ -87,8 +87,9 @@ private:
 
     using WrappedFunction = bool (*)(Instructions &instr, CPUType &cpu);
 
-    static bool IllegalOpcode(Instructions &, CPUType &) {
-        throw std::runtime_error("Illegal opcode executed");
+    static bool IllegalOpcode(Instructions &, CPUType &cpu) {
+        cpu.Lock();
+        return false;
     }
 
     template<Register source>
@@ -182,9 +183,13 @@ private:
     }
 
     bool HALT(CPUType &cpu) const {
-        if (const bool bug = (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0; !interrupts_.interruptMasterEnable && bug) {
-            cpu.haltBug(true);
+        if ((interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0) {
+            cpu.haltBug(!interrupts_.interruptMasterEnable);
             cpu.halted(false);
+            // With IME set, the interrupt replaces HALT's fetch. Returning
+            // from the handler executes HALT again; IME-clear instead causes missing PC
+            // increment on the following opcode
+            if (interrupts_.interruptMasterEnable) --cpu.pc();
         } else {
             cpu.haltBug(false);
             cpu.halted(true);

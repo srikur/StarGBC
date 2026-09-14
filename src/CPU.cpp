@@ -96,7 +96,7 @@ void CPU<BusT>::InitializeSystem() {
 
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdmaActive) {
-    if (hdmaActive) return;
+    if (hdmaActive || locked_) return;
     if (!instrRunning) {
         if (ProcessInterrupts()) return;
         if (halted_) return;
@@ -166,9 +166,9 @@ bool CPU<BusT>::ProcessInterrupts() {
                 interrupts_.interruptMasterEnable = true;
                 icount_ = 0;
             }
-            // DMG samples the wake request halfway through its idle M-cycle. Running instructions use the request visible at the fetch boundary.
-            const uint8_t pending = halted_ && !IsCgb(bus_.gpu_.model)
-                                        ? haltPending_
+            // DMG samples HALT wake at T2 and running instructions at T4, before peripherals advance. CGB uses the current request
+            const uint8_t pending = !IsCgb(bus_.gpu_.model)
+                                        ? (halted_ ? haltPending_ : runningPending_)
                                         : interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
             if (pending == 0) {
                 return false;
@@ -204,19 +204,18 @@ bool CPU<BusT>::ProcessInterrupts() {
             return true;
         }
         case M3: {
-            if (const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F; !(
-                newPending & interruptMask)) {
-                if (!newPending) {
-                    sp_--;
-                    bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);
-                    pc_ = 0x0000;
-                    interruptState = M4;
-                    return true;
-                } else {
-                    interruptBit = std::countr_zero(newPending);
-                    interruptMask = 1u << interruptBit;
-                }
+            // The vector is selected at the low-byte stack write. A newly
+            // pending higher-priority source can replace the original request
+            const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+            if (!newPending) {
+                sp_--;
+                bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);
+                pc_ = 0x0000;
+                interruptState = M4;
+                return true;
             }
+            interruptBit = std::countr_zero(newPending);
+            interruptMask = 1u << interruptBit;
 
             sp_ -= 1;
             bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF), ComponentSource::CPU);
