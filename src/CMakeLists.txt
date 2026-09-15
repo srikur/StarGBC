@@ -12,3 +12,5 @@ target_link_libraries(${PROJECT_NAME}_Core PRIVATE spdlog::spdlog)
 
 add_executable(${PROJECT_NAME} main.cpp SDLFrontend.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_Core SDL3::SDL3-static)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE starparse::starparse)
