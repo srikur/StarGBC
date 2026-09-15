@@ -5,6 +5,12 @@
 #include <string_view>
 #include <thread>
 
+#include <starparse/starparse.hpp>
+
+constexpr std::string_view kAppName = "StarGBC";
+constexpr std::string_view kAppVersion = "0.0.1";
+constexpr std::string_view kAppIdentifier = "com.srikur.stargbc";
+
 SDLFrontend::~SDLFrontend() {
     if (audioStream_) {
         SDL_DestroyAudioStream(audioStream_);
@@ -25,75 +31,33 @@ SDLFrontend::~SDLFrontend() {
     SDL_Quit();
 }
 
+struct [[=StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
+    [[=StarParse::Positional{0}, =StarParse::Required{}]] std::string rom_path;
+    [[=StarParse::Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
+    bool unthrottled{false};
+    bool real_rtc{false};
+    bool debug_start{false};
+    bool no_bootrom{false};
+    [[=StarParse::Opt{'b', "Bios path"}, =StarParse::Alias{"bios"}]] std::string bios_path;
+    [[=StarParse::Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
+};
+
 SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
-    SDL_SetAppMetadata("StarGBC", "0.0.1", "com.srikur.stargbc");
+    SDL_SetAppMetadata(kAppName.data(), kAppVersion.data(), kAppIdentifier.data());
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         SDL_Log("Couldn't initialise SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    const std::vector<std::string_view> args(argv + 1, argv + argc);
-    GameboySettings settings{};
-    for (std::size_t i = 0; i < args.size(); ++i) {
-        if (args[i] == "--anti-aliasing") {
-            useNearest_ = false;
-        } else if (args[i] == "--gbc") {
-            settings.model = Model::CGBE;
-        } else if (args[i] == "--gb") {
-            settings.model = Model::DMGB;
-        } else if (args[i] == "--debugStart") {
-            paused_ = true;
-        } else if (args[i] == "--unthrottled") {
-            throttled_ = false;
-        } else if (args[i] == "--realRTC") {
-            settings.realRTC = true;
-        } else if (args[i] == "--bios") {
-            if (i + 1 < args.size()) {
-                settings.biosPath = args[++i];
-            } else {
-                std::fprintf(stderr, "Error: --bios requires a path argument\n");
-                return SDL_APP_FAILURE;
-            }
-        } else if (args[i] == "--no-bootrom") {
-            settings.noBootrom = true;
-        } else if (args[i] == "--model") {
-            if (i + 1 < args.size()) {
-                const std::string_view model = args[++i];
-                if (const auto parsed = ParseModel(model)) {
-                    settings.model = *parsed;
-                } else {
-                    std::fprintf(stderr, "Error: unknown model '%.*s'\n",
-                                 static_cast<int>(model.size()), model.data());
-                    return SDL_APP_FAILURE;
-                }
-            } else {
-                std::fprintf(stderr, "Error: --model requires an argument\n");
-                return SDL_APP_FAILURE;
-            }
-        } else if (i == args.size() - 1 ||
-                   args[i].ends_with(".gb") || args[i].ends_with(".gbc")) {
-            settings.romName = args[i];
-        } else {
-            std::fprintf(stderr, "USAGE: StarGBC [options] romFile\n"
-                         "Options:\n"
-                         "  --gbc | --gb        select default CGB/DMG model\n"
-                         "  --model <name>      SoC: auto|dmg0|dmga|dmgb|dmgc|mgb|sgb|sgb2|cgb0|cgba|cgbb|cgbc|cgbd|cgbe|agb0|agba|agbae|agbb|agbbe\n"
-                         "                      aliases: dmg=dmgb, cgb=cgbe, agb=agba, ags=agbb\n"
-                         "  --bios <path>       external BIOS ROM\n"
-                         "  --no-bootrom        skip built-in bootrom; jump straight to cart\n"
-                         "  --anti-aliasing     linear-filter pixels");
-            return SDL_APP_FAILURE;
-        }
-    }
-    if (settings.romName.empty() || (!settings.romName.ends_with(".gb") &&
-                                     !settings.romName.ends_with(".gbc"))) {
-        std::fprintf(stderr, "Error: no ROM specified");
-        return SDL_APP_FAILURE;
-    }
-    romPath_ = settings.romName;
+    constexpr StarParse::Settings settings{.allow_case_insensitivity = true};
+    const auto args{StarParse::parse_or_exit<Args>(argc, argv, settings)};
+    romPath_ = args->rom_path;
+    useNearest_ = args->anti_aliasing;
+    paused_ = args->debug_start;
+    throttled_ = !args->unthrottled;
 
-    if (!SDL_CreateWindowAndRenderer("StarGBC",
+    if (!SDL_CreateWindowAndRenderer(kAppName.data(),
                                      GB_SCREEN_W * WINDOW_SCALE, GB_SCREEN_H * WINDOW_SCALE,
                                      SDL_WINDOW_RESIZABLE,
                                      &window_, &renderer_)) {
@@ -115,7 +79,14 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     }
     SDL_SetTextureScaleMode(texture_,
                             useNearest_ ? SDL_SCALEMODE_NEAREST : SDL_SCALEMODE_LINEAR);
-    gameboy_ = Gameboy::init(settings);
+    gameboy_ = Gameboy::init({
+            .romName = args->rom_path,
+            .biosPath = args->bios_path,
+            .model = args->model,
+            .noBootrom = args->no_bootrom,
+            .realRTC = args->real_rtc
+        }
+    );
 
     SDL_AudioSpec audioSpec{};
     audioSpec.freq = AUDIO_SAMPLE_RATE;

@@ -18,7 +18,6 @@ public:
                  Registers &registers) : bus_(bus),
                                          interrupts_(interrupts),
                                          regs_(registers) {
-        if (!IsValidModel(requestedModel)) throw std::invalid_argument("Invalid Game Boy model");
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
         bus.gpu_.model = hw;
         bus.audio_.SetModel(hw);

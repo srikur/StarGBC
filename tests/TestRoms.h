@@ -393,14 +393,12 @@ static const std::vector<Case> romTestcases = {
     {"roms/mooneye/manual-only/sprite_priority.gb", "tests/expected/mooneye/manual-only/sprite_priority.gb.screen", bootroms.dmgBootrom, Model::DMGB},
 };
 
-// Model-specific ROMs are exercised on each documented silicon revision.
-// A ROM's suffix describes its expected targets, not the mode to force on it.
 static std::vector<Case> modelRomCases() {
     std::vector<Case> cases;
-    const auto add = [&](Model model, const std::string &bios, const std::string &rom) {
-        cases.push_back({"roms/" + rom, "", bios, model});
+    const auto add = [&](const Model model, const std::string &bios, const std::string &rom) {
+        cases.push_back({.rom = "roms/" + rom, .expected = "", .bios = bios, .model = model});
     };
-    for (unsigned i = 1; i < ModelNames.size(); ++i) {
+    for (unsigned i = 1; i < 19; ++i) {
         const auto model = static_cast<Model>(i);
         std::string bios;
         if (model == Model::DMG0) bios = bootroms.dmg0Bootrom;

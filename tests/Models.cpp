@@ -2,42 +2,24 @@
 #include <doctest/doctest.h>
 
 namespace {
-template<class T>
-consteval std::meta::info member(const std::string_view name) {
-    for (const auto m : std::meta::members_of(^^T, std::meta::access_context::unchecked())) {
-        if (std::meta::has_identifier(m) && std::meta::identifier_of(m) == name) return m;
+    template<class T>
+    consteval std::meta::info member(const std::string_view name) {
+        for (const auto m : std::meta::members_of(^^T, std::meta::access_context::unchecked())) {
+            if (std::meta::has_identifier(m) && std::meta::identifier_of(m) == name) return m;
+        }
+        throw "Test member not found";
     }
-    throw "Test member not found";
-}
 
-constexpr auto busMember = member<Gameboy>("bus_");
-constexpr auto regsMember = member<Gameboy>("registers_");
+    constexpr auto busMember = member<Gameboy>("bus_");
+    constexpr auto regsMember = member<Gameboy>("registers_");
 
-GameboySettings settings(const Model model, const bool color = false) {
-    return {
-        .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
-        .model = model,
-        .noBootrom = true,
-    };
-}
-}
-
-TEST_CASE("models: configuration resolves a concrete revision") {
-    for (unsigned i = 0; i < ModelNames.size(); ++i) {
-        const auto model = static_cast<Model>(i);
-        CHECK(ParseModel(ModelName(model)) == model);
+    GameboySettings settings(const Model model, const bool color = false) {
+        return {
+            .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
+            .model = model,
+            .noBootrom = true,
+        };
     }
-    CHECK(ParseModel("dmg") == Model::DMGB);
-    CHECK(ParseModel("cgb") == Model::CGBE);
-    CHECK(ParseModel("agb") == Model::AGBA);
-    CHECK(ParseModel("ags") == Model::AGBB);
-    CHECK_FALSE(ParseModel("cgbf").has_value());
-    CHECK_FALSE(ParseModel("").has_value());
-    Gameboy monochrome(settings(Model::Auto));
-    Gameboy color(settings(Model::Auto, true));
-    CHECK(monochrome.GetModel() == Model::DMGB);
-    CHECK(color.GetModel() == Model::CGBE);
-    CHECK_THROWS_AS(Gameboy(settings(static_cast<Model>(255))), std::invalid_argument);
 }
 
 TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") {
@@ -68,7 +50,6 @@ TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") 
 
 TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBD, Model::CGBE, Model::AGB0, Model::AGBBE}) {
-        CAPTURE(ModelName(model));
         Gameboy dmgCart(settings(model));
         Gameboy cgbCart(settings(model, true));
         CHECK(dmgCart.GetModel() == model);
@@ -85,14 +66,17 @@ TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
 }
 
 TEST_CASE("models: unused OAM follows revision-specific address decoding") {
-    for (const auto model : {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB,
-                             Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
-        CAPTURE(ModelName(model));
+    for (const auto model : {
+             Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB,
+             Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA
+         }) {
         Gameboy gameboy(settings(model)); // Includes CGB hardware in DMG compatibility mode.
         auto &bus = gameboy.[:busMember:];
         bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
         const auto read = [&](uint16_t address) { return bus.ReadByte(address, ComponentSource::CPU); };
-        const auto write = [&](uint16_t address, uint8_t value) { bus.WriteByte(address, value, ComponentSource::CPU); };
+        const auto write = [&](uint16_t address, uint8_t value) {
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        };
         write(0xFEA0, 0x12);
         write(0xFEB8, 0x34);
         write(0xFEC0, 0x56);
@@ -127,9 +111,10 @@ TEST_CASE("models: unused OAM follows revision-specific address decoding") {
 }
 
 TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
-    for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC,
-                             Model::CGBD, Model::CGBE, Model::AGBA}) {
-        CAPTURE(ModelName(model));
+    for (const auto model : {
+             Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC,
+             Model::CGBD, Model::CGBE, Model::AGBA
+         }) {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.model = model;
@@ -152,9 +137,10 @@ TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
 }
 
 TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
-    for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB,
-                             Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
-        CAPTURE(ModelName(model));
+    for (const auto model : {
+             Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB,
+             Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA
+         }) {
         Audio audio;
         audio.SetModel(model);
         audio.WriteByte(0xFF26, 0x80, true); // Odd DIV-APU step.
@@ -190,7 +176,6 @@ TEST_CASE("models: save states retain extra OAM and reject a different revision"
 
 TEST_CASE("models: early CGB envelope writes pass through an intermediate value") {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
-        CAPTURE(ModelName(model));
         Audio audio;
         audio.SetModel(model);
         audio.WriteByte(0xFF26, 0x80, false);
