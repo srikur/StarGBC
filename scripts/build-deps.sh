@@ -9,7 +9,7 @@ JOBS="$(getconf _NPROCESSORS_ONLN)"
 
 CXX_COMPILER="${CXX_COMPILER:-/opt/homebrew/bin/g++-16}"
 
-git -C "$ROOT" submodule update --init --recursive
+git -C "$ROOT" submodule update --remote --merge --init --recursive
 
 build_dep() {
   local name="$1"
@@ -42,5 +42,11 @@ build_dep doctest \
   -DCMAKE_CXX_COMPILER="$CXX_COMPILER" \
   -DDOCTEST_WITH_TESTS=OFF \
   -DDOCTEST_WITH_MAIN_IN_STATIC_LIB=OFF
+
+build_dep starparse \
+  -DCMAKE_CXX_COMPILER="$CXX_COMPILER" \
+  -DSTARPARSE_BUILD_TESTS=OFF \
+  -DSTARPARSE_BUILD_EXAMPLES=OFF \
+  -DSTARPARSE_INSTALL=ON
 
 echo "==> Done. Static dependencies installed to $PREFIX"

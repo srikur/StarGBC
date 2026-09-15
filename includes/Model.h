@@ -5,37 +5,30 @@
 #include <optional>
 #include <string_view>
 
+#include <starparse/starparse.hpp>
+
 enum class Model : uint8_t {
     Auto,
-    DMG0, DMGA, DMGB, DMGC,
+    DMG0, DMGA, DMGB [[=StarParse::Alias{"DMG"}]], DMGC,
     MGB, SGB, SGB2,
-    CGB0, CGBA, CGBB, CGBC, CGBD, CGBE,
-    AGB0, AGBA, AGBAE, AGBB, AGBBE,
+    CGB0, CGBA, CGBB, CGBC, CGBD, CGBE [[=StarParse::Alias{"CGB"}]],
+    AGB0, AGBA [[=StarParse::Alias{"AGB"}]], AGBAE, AGBB [[=StarParse::Alias{"AGS"}]], AGBBE,
 };
 
-inline constexpr std::array<std::string_view, 19> ModelNames{
-    std::string_view{"auto"}, "dmg0", "dmga", "dmgb", "dmgc",
-    "mgb", "sgb", "sgb2", "cgb0", "cgba", "cgbb", "cgbc", "cgbd", "cgbe",
-    "agb0", "agba", "agbae", "agbb", "agbbe",
-};
-
-constexpr bool IsValidModel(const Model model) {
-    return static_cast<unsigned>(model) < ModelNames.size();
+template<typename E>
+    requires std::is_enum_v<E>
+constexpr std::string_view model_name(E value) {
+    template for (constexpr auto e :
+        std::define_static_array(std::meta::enumerators_of(^^E))) {
+        if (value == [:e:]) {
+            return std::meta::identifier_of(e);
+        }
+    }
+    return "invalid";
 }
 
 constexpr std::string_view ModelName(const Model model) {
-    return IsValidModel(model) ? ModelNames[static_cast<unsigned>(model)] : "invalid";
-}
-
-constexpr std::optional<Model> ParseModel(const std::string_view name) {
-    if (name == "dmg") return Model::DMGB;
-    if (name == "cgb") return Model::CGBE;
-    if (name == "agb") return Model::AGBA;
-    if (name == "ags") return Model::AGBB;
-    for (unsigned i = 0; i < ModelNames.size(); ++i) {
-        if (name == ModelNames[i]) return static_cast<Model>(i);
-    }
-    return std::nullopt;
+    return model_name(model);
 }
 
 constexpr Model ResolveModel(const Model requested, const bool colorCartridge) {

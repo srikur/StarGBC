@@ -25,7 +25,7 @@ const uint32_t *Gameboy::GetScreenData() const {
 }
 
 bool Gameboy::LoadedStateValid() const {
-    return IsValidModel(gpu_.model) && gpu_.model != Model::Auto
+    return gpu_.model != Model::Auto
            && gpu_.model == audio_.GetModel()
            && (!bus_.cgbMode || IsCgb(gpu_.model))
            && gpu_.dmgCompat == (IsCgb(gpu_.model) && !bus_.cgbMode)
