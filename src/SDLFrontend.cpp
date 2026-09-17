@@ -34,10 +34,10 @@ SDLFrontend::~SDLFrontend() {
 struct [[=StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
     [[=StarParse::Positional{0}, =StarParse::Required{}]] std::string rom_path;
     [[=StarParse::Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
-    bool unthrottled{false};
-    bool real_rtc{false};
-    bool debug_start{false};
-    bool no_bootrom{false};
+    [[=StarParse::Opt{"Start without speed limitations"}]] bool unthrottled{false};
+    [[=StarParse::Opt{"Use real time clock"}]] bool real_rtc{false};
+    [[=StarParse::Opt{"Start emulator paused"}]] bool debug_start{false};
+    [[=StarParse::Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
     [[=StarParse::Opt{'b', "Bios path"}, =StarParse::Alias{"bios"}]] std::string bios_path;
     [[=StarParse::Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
 };
