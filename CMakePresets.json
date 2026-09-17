@@ -33,6 +33,17 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "profile",
+      "displayName": "Profiling Build",
+      "description": "Optimized build with profiling symbols and frame pointers, without LTO",
+      "inherits": "release",
+      "cacheVariables": {
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE": "OFF",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -g1 -DNDEBUG -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS_RELEASE": "-O3 -g1 -DNDEBUG -fno-omit-frame-pointer"
+      }
     }
   ],
   "buildPresets": [
@@ -45,6 +56,11 @@
       "name": "release",
       "displayName": "Build Release",
       "configurePreset": "release"
+    },
+    {
+      "name": "profile",
+      "displayName": "Build for Profiling",
+      "configurePreset": "profile"
     }
   ],
   "workflowPresets": [
@@ -62,6 +78,14 @@
       "steps": [
         { "type": "configure", "name": "release" },
         { "type": "build", "name": "release" }
+      ]
+    },
+    {
+      "name": "profile",
+      "displayName": "Configure + Build for Profiling",
+      "steps": [
+        { "type": "configure", "name": "profile" },
+        { "type": "build", "name": "profile" }
       ]
     }
   ]

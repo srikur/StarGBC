@@ -57,7 +57,7 @@ private:
     SDL_AudioStream *audioStream_{nullptr};
     std::unique_ptr<Gameboy> gameboy_;
     std::string romPath_;
-    std::vector<float> audioBuffer_ = std::vector<float>(AUDIO_BUFFER_SIZE * 2);
+    std::vector<float> audioBuffer_;
     bool useNearest_{true};
     bool audioEnabled_{true};
     bool paused_{false};

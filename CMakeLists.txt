@@ -39,7 +39,8 @@ FetchContent_Declare(starparse
 FetchContent_MakeAvailable(SDL3 spdlog doctest starparse)
 
 if(STARGBC_IPO_SUPPORTED)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON CACHE BOOL
+        "Enable link-time optimization in Release builds")
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # C++26 reflection (experimental in GCC 16); static runtimes so the binary

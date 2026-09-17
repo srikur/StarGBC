@@ -1224,6 +1224,7 @@ void Audio::BandLimitedRead(const int channel, double &outLeft, double &outRight
 }
 
 void Audio::GenerateSample() {
+    if (emulatorAudioDisabled) return;
     auto dac = [](const double digital, const bool dacOn) -> double {
         if (!dacOn) return 0.0;
         return (15.0 - digital * 2.0) / 15.0;
