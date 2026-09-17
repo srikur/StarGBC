@@ -1,7 +1,5 @@
 .vscode
 build/*
-dependencies/build/
-dependencies/install/
 gcm.cache/*
 .idea/*
 .idea_modules/*

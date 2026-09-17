@@ -14,18 +14,29 @@ if(NOT STARGBC_IPO_SUPPORTED)
     message(STATUS "IPO/LTO not supported: ${STARGBC_IPO_ERROR}")
 endif()
 
-# Dependencies are prebuilt static libraries installed by scripts/build-deps.sh; the local prefix is prepended so it wins over any system/Homebrew installs.
-list(PREPEND CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/dependencies/install")
-find_package(SDL3 CONFIG QUIET)
-find_package(spdlog CONFIG QUIET)
-find_package(doctest CONFIG QUIET)
-find_package(starparse CONFIG QUIET)
-if(NOT SDL3_FOUND OR NOT spdlog_FOUND OR NOT doctest_FOUND OR NOT starparse_FOUND)
-    message(FATAL_ERROR "Missing dependencies (SDL3 found: ${SDL3_FOUND}, spdlog found: ${spdlog_FOUND}, doctest found: ${doctest_FOUND}, starparse found: ${starparse_FOUND}). Run ./scripts/build-deps.sh once to build them into dependencies/install/, or point CMAKE_PREFIX_PATH at an install that provides them.")
-endif()
-if(NOT TARGET SDL3::SDL3-static)
-    message(FATAL_ERROR "SDL3 was found at ${SDL3_DIR} but provides no static library. Run ./scripts/build-deps.sh to build the static SDL3 into dependencies/install/.")
-endif()
+include(FetchContent)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(DOCTEST_WITH_MAIN_IN_STATIC_LIB OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(SDL3
+        URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.16.tar.gz
+        URL_HASH SHA256=c2ee715e42ec520c4d11fd8d249ef1d2b2baf4ad31148b72b3b000276c0b3633
+        EXCLUDE_FROM_ALL SYSTEM)
+FetchContent_Declare(spdlog
+        URL https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz
+        URL_HASH SHA256=d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744
+        EXCLUDE_FROM_ALL SYSTEM)
+FetchContent_Declare(doctest
+        URL https://github.com/doctest/doctest/archive/refs/tags/v2.5.3.tar.gz
+        URL_HASH SHA256=174ebc4e769928959614789c5b4e9c3d0a0f81a62bb608756b127bfebfb21331
+        EXCLUDE_FROM_ALL SYSTEM)
+FetchContent_Declare(starparse
+        GIT_REPOSITORY https://github.com/srikur/starparse.git
+        GIT_TAG main
+        GIT_SHALLOW ON
+        EXCLUDE_FROM_ALL SYSTEM)
+FetchContent_MakeAvailable(SDL3 spdlog doctest starparse)
 
 if(STARGBC_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
