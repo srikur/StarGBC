@@ -17,6 +17,7 @@ struct GameboySettings {
     Model model{Model::Auto};
     bool noBootrom{false};
     bool realRTC{false};
+    bool noAudio{false};
 };
 
 class Gameboy {
@@ -32,7 +33,8 @@ public:
                                                         biosPath_(std::move(settings.biosPath)),
                                                         rtc_(settings.realRTC),
                                                         cartridge_(romPath_, rtc_),
-                                                        joypad_(interrupts_), timer_(audio_, interrupts_),
+                                                        joypad_(interrupts_), audio_(settings.noAudio),
+                                                        timer_(audio_, interrupts_),
                                                         serial_(interrupts_), gpu_(interrupts_),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_,
                                                              audio_, interrupts_, gpu_),

@@ -39,17 +39,13 @@ struct [[=StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
     [[=StarParse::Opt{"Use real time clock"}]] bool real_rtc{false};
     [[=StarParse::Opt{"Start emulator paused"}]] bool debug_start{false};
     [[=StarParse::Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
+    [[=StarParse::Opt{"Disable audio"}]] bool no_audio{false};
     [[=StarParse::Opt{'b', "Bios path"}, =StarParse::Alias{"bios"}]] std::string bios_path;
     [[=StarParse::Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
 };
 
 SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     SDL_SetAppMetadata(kAppName.data(), kAppVersion.data(), kAppIdentifier.data());
-
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
-        SDL_Log("Couldn't initialise SDL: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
 
     constexpr StarParse::Settings settings{.allow_case_insensitivity = true};
     const auto args{StarParse::parse_or_exit<Args>(argc, argv, settings)};
@@ -65,6 +61,12 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     useNearest_ = args->anti_aliasing;
     paused_ = args->debug_start;
     throttled_ = !args->unthrottled;
+    audioEnabled_ = !args->no_audio;
+
+    if (!SDL_Init(SDL_INIT_VIDEO | (audioEnabled_ ? SDL_INIT_AUDIO : 0))) {
+        SDL_Log("Couldn't initialise SDL: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
 
     if (!SDL_CreateWindowAndRenderer(kAppName.data(),
                                      GB_SCREEN_W * WINDOW_SCALE, GB_SCREEN_H * WINDOW_SCALE,
@@ -88,27 +90,32 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     }
     SDL_SetTextureScaleMode(texture_,
                             useNearest_ ? SDL_SCALEMODE_NEAREST : SDL_SCALEMODE_LINEAR);
+
+    if (audioEnabled_) {
+        SDL_AudioSpec audioSpec{};
+        audioSpec.freq = AUDIO_SAMPLE_RATE;
+        audioSpec.format = SDL_AUDIO_F32;
+        audioSpec.channels = 2;
+
+        audioStream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, nullptr, nullptr);
+        if (!audioStream_) {
+            SDL_Log("Failed to create audio stream: %s", SDL_GetError());
+            audioEnabled_ = false;
+        } else {
+            audioBuffer_.resize(AUDIO_BUFFER_SIZE * 2);
+            SDL_ResumeAudioStreamDevice(audioStream_);
+        }
+    }
+
     gameboy_ = Gameboy::init({
             .romName = args->rom_path,
             .biosPath = args->bios_path,
             .model = args->model,
             .noBootrom = args->no_bootrom,
-            .realRTC = args->real_rtc
+            .realRTC = args->real_rtc,
+            .noAudio = !audioEnabled_
         }
     );
-
-    SDL_AudioSpec audioSpec{};
-    audioSpec.freq = AUDIO_SAMPLE_RATE;
-    audioSpec.format = SDL_AUDIO_F32;
-    audioSpec.channels = 2;
-
-    audioStream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, nullptr, nullptr);
-    if (!audioStream_) {
-        SDL_Log("Failed to create audio stream: %s", SDL_GetError());
-        audioEnabled_ = false;
-    } else {
-        SDL_ResumeAudioStreamDevice(audioStream_);
-    }
 
     return SDL_APP_CONTINUE;
 }
@@ -166,8 +173,8 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
             SaveScreenshot();
             break;
         case SDLK_N:
-            audioEnabled_ = !audioEnabled_;
             if (audioStream_) {
+                audioEnabled_ = !audioEnabled_;
                 if (audioEnabled_) {
                     SDL_ResumeAudioStreamDevice(audioStream_);
                 } else {

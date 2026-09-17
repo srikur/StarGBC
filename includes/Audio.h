@@ -323,6 +323,7 @@ class Audio {
     enum class SkipState : uint8_t { Inactive, Skip, Skipped };
 
     bool audioEnabled{false};
+    [[=NotStateAware]] bool emulatorAudioDisabled{false};
     [[=NotStateAware]] Model model_{Model::CGBE};
     // Free-running DIV event counter (SameBoy's div_divider): incremented
     // before dispatch, so odd values clock the lengths, &3==3 the sweep and
@@ -354,7 +355,8 @@ class Audio {
     void BandLimitedRead(int channel, double &outLeft, double &outRight);
 
 public:
-    Audio() {
+    explicit Audio(const bool noAudio = false) : emulatorAudioDisabled(noAudio) {
+        if (emulatorAudioDisabled) return;
         sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); // *2 for stereo
         highpassRate = std::pow(0.999958, APU_CLOCK_RATE / AUDIO_SAMPLE_RATE);
         InitBandLimitedTable();
