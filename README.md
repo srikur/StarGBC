@@ -16,6 +16,10 @@
 2. [doctest](https://github.com/doctest/doctest)
 3. [Ninja](https://github.com/ninja-build/ninja)
 4. [spdlog](https://github.com/gabime/spdlog)
+5. [starparse](https://github.com/srikur/starparse)
+
+All library dependencies are downloaded and built automatically at configure
+time via CMake's FetchContent. Only CMake 4+ and Ninja need to be installed.
 
 ## Building
 
@@ -23,17 +27,10 @@
    ```bash
    git clone https://github.com/srikur/StarGBC.git
    ```
-2. Configure and build (submodules are initialized automatically during configure):
+2. Configure and build:
    ```bash
    cmake --workflow --preset release
    ```
-   If you prefer the two-step form (e.g. to rebuild without reconfiguring):
-   ```bash
-   cmake --preset release        # configure: fetches submodules, creates build/release/CMakeCache.txt
-   cmake --build --preset release # build
-   ```
-   To opt out of the automatic submodule update, pass
-   `-DSTARGBC_UPDATE_SUBMODULES=OFF` to the configure step.
 
 ## Hardware models
 
