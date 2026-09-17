@@ -16,4 +16,4 @@ CLAUDE.md
 bootrom/build/
 bootrom/*.o
 bootrom/*.sym
-docs/models.md
+docs/
