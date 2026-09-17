@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string_view>
 #include <thread>
+#include <print>
 
 #include <starparse/starparse.hpp>
 
@@ -52,6 +53,14 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
 
     constexpr StarParse::Settings settings{.allow_case_insensitivity = true};
     const auto args{StarParse::parse_or_exit<Args>(argc, argv, settings)};
+    if (args.help_requested()) {
+        std::print("{}", args.help());
+        return SDL_APP_SUCCESS;
+    }
+    if (args.version_requested()) {
+        std::print("{}", args.version());
+        return SDL_APP_SUCCESS;
+    }
     romPath_ = args->rom_path;
     useNearest_ = args->anti_aliasing;
     paused_ = args->debug_start;
