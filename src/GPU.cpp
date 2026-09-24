@@ -423,10 +423,10 @@ uint32_t GPU::MixPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 }
 
 void GPU::TickMode3() {
-    // The WX <= 7 warmup trigger fires only on its exact dot, latched here so
-    // it survives a sprite fetch occupying the fetcher at that moment
+    // scx discard pixels get delayed activation on window, rather than being discarded
     if (pixelsDrawn == 0 && windowX <= 7 &&
-        scanlineCounter == 85u + windowX + (windowX == 0 && (scrollX & 7) != 0 ? 1 : 0)) {
+        scanlineCounter == 85u + windowX +
+            (windowX == 0 ? ((scrollX & 7) != 0 ? 1u : 0u) : initialScrollXFine_)) {
         windowPixel0Triggered_ = true;
     }
     // The window comparator is evaluated before the sprite one: an activation
@@ -594,12 +594,8 @@ void GPU::CheckForWindowTrigger() {
         }
         if (windowActivatePending_ && pixelsDrawn > 0) --pixelsDrawn;
         windowActivatePending_ = false;
-        // A window with WX <= 7 triggers mid-warmup (dot 85 + WX); its first
-        // 7 - WX pixels pop into the offscreen dots, left-clipping the first
-        // window tile. The SCX fine-scroll discard belongs to the background,
-        // so an activation cancels any unconsumed discards rather than letting
-        // them eat window pixels — except at WX = 0, whose delayed trigger
-        // lets the SCX stall play out, stacking under the window's clip
+        // Clip only the offscreen part of the window. Except at WX=0, the
+        // fine-scroll delay has already been accounted for by the trigger
         if (windowWasActiveThisLine_) windowLineCounter_++;
         windowWasActiveThisLine_ = true;
         isFetchingWindow_ = true;
