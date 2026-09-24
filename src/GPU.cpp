@@ -772,12 +772,15 @@ void GPU::Fetcher_StepSpriteFetch() {
             const auto xPos = sprite.x;
             const int clip = xPos < 0 ? -xPos : 0; // leftmost tile pixels lost off the screen edge
             for (int i = 0; !spriteFetchAbort_ && i < 8 - clip; i++) {
-                const bool hasHigherPriority = IsCgb(model) && sprite.spriteNum <= spriteArray[0].spriteNum;
-                if (!hasHigherPriority && spriteArray[i].color != 0 && !spriteArray[i].isPlaceholder) continue;
                 const auto pixelIndex = attrs.xflip ? i + clip : 7 - (i + clip);
                 const uint8_t bitLow = (fetcherTileDataLow_ >> pixelIndex) & 1;
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
                 const uint8_t color = (bitHigh << 1) | bitLow;
+                if (color == 0) continue; // transparent OBJ pixels shouldn't replace anther OBJ
+                const auto &current = spriteArray[i];
+                // only CGB check needed since DMG priority resolved by the sprite fetch order
+                const bool hasHigherPriority = IsCgb(model) && !objectPriority && sprite.spriteNum < current.spriteNum;
+                if (!hasHigherPriority && current.color != 0 && !current.isPlaceholder) continue;
 
                 spriteArray[i] = Pixel{
                     .color = color,
