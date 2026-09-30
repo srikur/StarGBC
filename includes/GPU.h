@@ -176,15 +176,11 @@ public:
     // First line after LCD enable: starts in mode 0, skips OAM scan, and
     // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
     bool lcdEnableLine0_{false};
+    bool lcdStartDoubleSpeed_{false};
     uint8_t bgpPending{0};
     uint8_t bgpWriteStage{0};
     uint8_t lcdcPending{0};
     uint8_t lcdcWriteStage{0};
-    // CGB TILE_SEL has its own bitplane-bus phase and retains the previous
-    // high byte across BG/OBJ fetches and scanline boundaries.
-    bool cgbTileSelectOld_{false};
-    uint8_t cgbTileSelectStage_{0};
-    bool cgbTileSelectJustApplied_{false};
     uint8_t cgbTileDataBus_{0};
     uint8_t cgbPreviousTileDataBus_{0};
     bool backgroundDataReadThisDot_{false};
@@ -213,6 +209,12 @@ public:
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
 
     HDMA hdma{};
+    uint8_t clockPause_{0};
+    bool doubleSpeed{false};
+    uint8_t mode3EndDelay_{0};
+    uint16_t mode3EndDot_{0};
+    std::array<Pixel, 3> recentPixels_{};
+    std::array<uint16_t, 3> recentPixelOffsets_{0xFFFF, 0xFFFF, 0xFFFF};
     Model model = Model::DMGB;
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
@@ -275,6 +277,7 @@ private:
 
     void ApplyLCDC(uint8_t value);
 
+    [[nodiscard]] Pixel SelectPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
     [[nodiscard]] uint32_t MixPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;

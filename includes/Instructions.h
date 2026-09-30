@@ -183,7 +183,7 @@ private:
     }
 
     bool HALT(CPUType &cpu) const {
-        if ((interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0) {
+        if ((interrupts_.interruptEnable & (interrupts_.interruptFlag | interrupts_.interruptVisiblePending) & 0x1F) != 0) {
             cpu.haltBug(!interrupts_.interruptMasterEnable);
             cpu.halted(false);
             // With IME set, the interrupt replaces HALT's fetch. Returning
@@ -549,19 +549,17 @@ private:
     bool STOP(CPUType &cpu) const {
         const uint8_t key1 = cpu.bus_.ReadByte(0xFF4D, ComponentSource::CPU);
         const bool speedSwitchRequested = cpu.bus_.prepareSpeedShift && (key1 & 0x01);
-        cpu.bus_.WriteByte(0xFF04, 0x00, ComponentSource::CPU);
-
         if (speedSwitchRequested) {
+            if (cpu.mCycleCounter() == 2) {
+                cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
+                return false;
+            }
+            cpu.bus_.timer_.WriteDIV(cpu.bus_.speed == Speed::Double, true);
             cpu.bus_.ChangeSpeed();
-            // The CPU stalls through the switch while the PPU and timers run.
-            // SameBoy uses 0x20008 T-cycles; the +0x14 recenters the window for
-            // this core's STOP micro-op timing (daid speed_switch_timing_ly/stat)
-            cpu.bus_.speedSwitchHalt = 0x2001C;
-            // The DIV reset takes effect 0x14 T-cycles into the switch, so the
-            // counter starts slightly negative (daid speed_switch_timing_div)
-            cpu.bus_.timer_.divCounter = static_cast<uint16_t>(-0x14);
-            cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
+            cpu.bus_.speedSwitchHalt = 0x20004;
+            cpu.SpeedSwitchHalt((interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0);
         } else {
+            cpu.bus_.WriteByte(0xFF04, 0x00, ComponentSource::CPU);
             cpu.stopped(true);
             // On DMG -- blank out the screen white, on CGB -- blank out the screen black, unless GPU is in Mode 3
             if (IsDmg(cpu.model())) {

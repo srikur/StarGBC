@@ -12,6 +12,8 @@ public:
     uint8_t tima{0x00};
     uint8_t tac{0x00};
     uint8_t overflowDelay{0x00};
+    uint8_t apuEventDelay{0};
+    bool apuEventSecondary{false};
     uint16_t divCounter{0x0000};
     bool overflowPending{false};
     bool reloadActive{false};
@@ -27,7 +29,7 @@ public:
 
     [[nodiscard]] uint8_t ReadByte(uint16_t) const;
 
-    void WriteDIV(bool);
+    void WriteDIV(bool, bool duringStop = false);
 
     void WriteTAC(uint8_t);
 

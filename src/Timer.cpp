@@ -5,6 +5,10 @@
 void Timer::Tick(const Speed speed) {
     const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
 
+    if (apuEventDelay && --apuEventDelay == 0) {
+        if (apuEventSecondary) audio_.TickFrameSequencerSecondary();
+        else audio_.TickFrameSequencer();
+    }
     reloadActive = false;
     if (overflowPending && --overflowDelay == 0) {
         tima = tma;
@@ -17,7 +21,8 @@ void Timer::Tick(const Speed speed) {
     const bool timerEnabled = tac & 0x04;
     const int timerBit = TimerBit(tac);
     const bool oldSignal = timerEnabled && (divCounter & (1u << timerBit));
-    const bool oldFrameSeqSignal = divCounter & 1u << frameSeqBit;
+    const unsigned apuDelay = speed == Speed::Double && audio_.HasSpeedSwitchFrameSeqDelay() ? 4 : 0;
+    const bool oldFrameSeqSignal = divCounter & (1u << frameSeqBit);
 
     ++divCounter;
 
@@ -29,10 +34,12 @@ void Timer::Tick(const Speed speed) {
     // Falling edge of the DIV-APU bit fires the frame sequencer; the rising
     // edge fires the secondary event that latches envelope clocks
     const bool newFrameSeqSignal = (divCounter & (1u << frameSeqBit));
-    if (oldFrameSeqSignal && !newFrameSeqSignal) {
-        audio_.TickFrameSequencer();
-    } else if (!oldFrameSeqSignal && newFrameSeqSignal) {
-        audio_.TickFrameSequencerSecondary();
+    if (oldFrameSeqSignal != newFrameSeqSignal) {
+        if (apuDelay) {
+            apuEventDelay = apuDelay;
+            apuEventSecondary = newFrameSeqSignal;
+        } else if (newFrameSeqSignal) audio_.TickFrameSequencerSecondary();
+        else audio_.TickFrameSequencer();
     }
 }
 
@@ -51,7 +58,7 @@ void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed s
     return 0xFF;
 }
 
-void Timer::WriteDIV(const bool doubleSpeed) {
+void Timer::WriteDIV(const bool doubleSpeed, const bool duringStop) {
     const bool enabled = tac & 0x04;
     const int bit = TimerBit(tac);
     const bool oldSignal = enabled && (divCounter & (1u << bit));
@@ -59,13 +66,18 @@ void Timer::WriteDIV(const bool doubleSpeed) {
     // Resetting DIV while the DIV-APU bit is high is a falling edge and
     // fires the frame sequencer
     const int frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 12 : 13;
-    if (divCounter & (1u << frameSeqBit)) {
+    if ((divCounter & (1u << frameSeqBit)) &&
+        !(duringStop && (divCounter & ((1u << (frameSeqBit + 1)) - 1)) == (1u << frameSeqBit))) {
         audio_.TickFrameSequencer(!doubleSpeed);
     }
 
+    const auto oldCounter = divCounter;
     divCounter = 0;
 
-    if (oldSignal) IncrementTIMA();
+    const bool delayedStopEdge = duringStop &&
+        ((tac & 3) == 0 || (audio_.GetModel() == Model::CGBE && (tac & 3) != 1)) &&
+        (oldCounter & ((1u << (bit + 1)) - 1)) == (1u << bit);
+    if (oldSignal && !delayedStopEdge) IncrementTIMA();
 }
 
 void Timer::WriteTAC(uint8_t value) {

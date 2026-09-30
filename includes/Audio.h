@@ -329,6 +329,7 @@ class Audio {
     // before dispatch, so odd values clock the lengths, &3==3 the sweep and
     // &7==7 the envelope countdowns
     uint8_t frameSeqStep{0};
+    bool speedSwitchFrameSeqDelay{false};
     uint8_t pcm12Mask_{0xFF};
     SkipState skipState{SkipState::Inactive};
     uint32_t tickCounter{0};
@@ -355,6 +356,11 @@ class Audio {
     void BandLimitedRead(int channel, double &outLeft, double &outRight);
 
 public:
+    [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
+    void OnSpeedSwitch(bool doubleSpeed) {
+        if (doubleSpeed && audioEnabled) speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
+    }
+
     explicit Audio(const bool noAudio = false) : emulatorAudioDisabled(noAudio) {
         if (emulatorAudioDisabled) return;
         sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); // *2 for stereo

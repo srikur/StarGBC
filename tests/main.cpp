@@ -2,6 +2,7 @@
 #include "TestRoms.h"
 #include "GbMicrotest.h"
 #include "GraphicsRoms.h"
+#include "AgeTestRoms.h"
 
 int main(const int argc, char **argv) {
     return ExecuteTestRoms(argc, argv);

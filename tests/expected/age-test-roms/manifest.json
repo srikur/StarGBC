@@ -1,0 +1,57 @@
+{
+  "m3-bg-bgp-dmgC.screen": {
+    "source": "roms/age-test-roms/m3-bg-bgp/m3-bg-bgp-dmgC.png",
+    "source_sha256": "92922e3bad63f5062807fe507cfdc91e22130e42df7cd9d88ba14bec84e77eda",
+    "screen_sha256": "b5515a449ca747e6975c6dab5c7c2c7061a245edf705ee3c12281a51a987671b"
+  },
+  "m3-bg-bgp-ncmBC.screen": {
+    "source": "roms/age-test-roms/m3-bg-bgp/m3-bg-bgp-ncmBC.png",
+    "source_sha256": "38fc4a904b318ef2ca7d25d8d7da189a8d70ad6bf51c25f20a6402f7983b24be",
+    "screen_sha256": "f14c4cd42078df50433025e519510b6e3bd438e6e6bc2c2c582adb9974d59782"
+  },
+  "m3-bg-bgp-ncmE.screen": {
+    "source": "roms/age-test-roms/m3-bg-bgp/m3-bg-bgp-ncmE.png",
+    "source_sha256": "a872ddd3225015cba1e466e035337fb6cedf2c24ed48661828bb24866fe6713f",
+    "screen_sha256": "2d3536c6ef17e487ff224ed5fa860e646337b70602e67fe62580d09262469900"
+  },
+  "m3-bg-lcdc-cgbBCE.screen": {
+    "source": "roms/age-test-roms/m3-bg-lcdc/m3-bg-lcdc-cgbBCE.png",
+    "source_sha256": "69a0b85a82eddc884ec225a3c6353622876afe589125809d6517439cbeb91cef",
+    "screen_sha256": "e0f4d589cee619d56857f856f53ff2c54dacd6b3416cb0019941c8a83cd61ec1"
+  },
+  "m3-bg-lcdc-dmgC.screen": {
+    "source": "roms/age-test-roms/m3-bg-lcdc/m3-bg-lcdc-dmgC.png",
+    "source_sha256": "0ea5464a75aa674ade5942cee2c57b4ff7b506916a62986a1545531f0f200588",
+    "screen_sha256": "b4761c7525ccd5e61e1c4ad66df503f31331e3e26d75ad0c074c1c592c7e4951"
+  },
+  "m3-bg-lcdc-ds-cgbBCE.screen": {
+    "source": "roms/age-test-roms/m3-bg-lcdc/m3-bg-lcdc-ds-cgbBCE.png",
+    "source_sha256": "804f5692b2d4897a6edcf2691004f1484cfbf9b77f5f779923aba91237a5abba",
+    "screen_sha256": "0a98d8bcbecedb6358a49527ff0fb79bf9715c11ba2318cb01339aa2bce5892b"
+  },
+  "m3-bg-lcdc-nocgb-ncmBCE.screen": {
+    "source": "roms/age-test-roms/m3-bg-lcdc/m3-bg-lcdc-nocgb-ncmBCE.png",
+    "source_sha256": "f4dbb03aff6fbd95c69eb85d264712b28727a1403f81b28ebba357bceb02f908",
+    "screen_sha256": "fa8baa08b90bb70e3e1cf3a80a9a79e7c6c8d53bf25af3508f96d15366fda6e2"
+  },
+  "m3-bg-scx-cgbBCE.screen": {
+    "source": "roms/age-test-roms/m3-bg-scx/m3-bg-scx-cgbBCE.png",
+    "source_sha256": "6895b6111d432ea5f0422991a1d7143f1fe133481e018b3c8652616af759085d",
+    "screen_sha256": "be7576b24f7304dd361d3a8db1f90a6cfa5e4406ddfecedec5a3d3662877c2eb"
+  },
+  "m3-bg-scx-dmgC.screen": {
+    "source": "roms/age-test-roms/m3-bg-scx/m3-bg-scx-dmgC.png",
+    "source_sha256": "7a501a6a49340a422e8346cd49e9804dd880a8735093f38fba0855c42cd4ba34",
+    "screen_sha256": "bcc7e7c50eef9ff3c4412f4f3d48f41932955f3310aba76c6d3f57edc0c9add7"
+  },
+  "m3-bg-scx-ds-cgbBCE.screen": {
+    "source": "roms/age-test-roms/m3-bg-scx/m3-bg-scx-ds-cgbBCE.png",
+    "source_sha256": "6895b6111d432ea5f0422991a1d7143f1fe133481e018b3c8652616af759085d",
+    "screen_sha256": "be7576b24f7304dd361d3a8db1f90a6cfa5e4406ddfecedec5a3d3662877c2eb"
+  },
+  "m3-bg-scx-nocgb-ncmBCE.screen": {
+    "source": "roms/age-test-roms/m3-bg-scx/m3-bg-scx-nocgb-ncmBCE.png",
+    "source_sha256": "1224f9f27644355067bec6e17f3db619926b85fbcd90ec8b06e5fa93ec536114",
+    "screen_sha256": "53cae0e9185473c59e3b46beb351fb38fea865e02dfeb805d7fdad824b93c1f7"
+  }
+}
