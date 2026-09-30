@@ -41,8 +41,57 @@ bool Gameboy::LoadedStateValid() const {
            && (!bus_.bootromRunning || !bus_.bootrom.empty());
 }
 
+// One whole M-cycle (4 dots, up to 8 master cycles) at regular speed with the
+// CPU phase aligned: the per-dot phase tests constant-fold, the speed/stop
+// checks hoist to the caller, and quiet GPU dots skip the Update call
+// entirely. Mirrors the regular-speed path of AdvanceCycles dot for dot.
+uint32_t Gameboy::AdvanceMCycle() {
+    const auto dot = [&](const unsigned phase) {
+        if (phase == 3) cpu_.SampleRunningInterrupts();
+        if (phase == 1) cpu_.SampleHaltInterrupts();
+        timer_.Tick(Speed::Regular);
+        rtc_.Update();
+        audio_.Tick();
+        serial_.Update();
+        if (dma_.transferActive) {
+            gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+            gpu_.oamDmaDest_ = dma_.currentByte;
+        } else if (gpu_.oamDmaActive) {
+            gpu_.oamDmaActive = false;
+        }
+        bus_.UpdateDMA();
+        if (gpu_.idleDots_ > 0) {
+            interrupts_.Tick();
+            --gpu_.idleDots_;
+            ++gpu_.scanlineCounter;
+        } else if (gpu_.lcdOffIdle_) {
+            interrupts_.Tick();
+        } else {
+            gpu_.Update();
+        }
+        bus_.RunHDMA();
+        if (bus_.speedSwitchHalt > 0) {
+            --bus_.speedSwitchHalt;
+            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
+            else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+        }
+    };
+    dot(0);
+    dot(1);
+    dot(2);
+    dot(3);
+    cpuTickPhase_ += 4;
+    cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
+    // A STOP/speed switch executed this M-cycle consumes only 1 master cycle
+    // on its final dot (matching AdvanceCycles), leaving masterCycles odd so
+    // the slow path takes over
+    const uint32_t consumed = bus_.speed == Speed::Regular && !cpu_.stopped() ? 8 : 7;
+    masterCycles += consumed;
+    return consumed;
+}
+
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
-    if (masterCycles == CGB_CYCLES_PER_SECOND) masterCycles = 0;
+    if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
     if (cpu_.stopped()) {
         if (bus_.joypad_.KeyPressed()) {
             cpu_.stopped() = false;
@@ -62,8 +111,12 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         rtc_.Update();
         audio_.Tick();
         serial_.Update();
-        gpu_.oamDmaActive = dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES;
-        gpu_.oamDmaDest_ = dma_.currentByte;
+        if (dma_.transferActive) {
+            gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+            gpu_.oamDmaDest_ = dma_.currentByte;
+        } else if (gpu_.oamDmaActive) {
+            gpu_.oamDmaActive = false;
+        }
         bus_.UpdateDMA();
         gpu_.Update();
         bus_.RunHDMA();
@@ -89,8 +142,12 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     }
     serial_.Update();
     if (evenCycle) {
-        gpu_.oamDmaActive = dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES;
-        gpu_.oamDmaDest_ = dma_.currentByte;
+        if (dma_.transferActive) {
+            gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+            gpu_.oamDmaDest_ = dma_.currentByte;
+        } else if (gpu_.oamDmaActive) {
+            gpu_.oamDmaActive = false;
+        }
     }
     bus_.UpdateDMA();
     if (evenCycle) {
@@ -112,6 +169,15 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
 void Gameboy::RunFrame() {
     uint32_t remaining = kFrameCyclesCGB;
     while (remaining > 0) {
-        remaining -= AdvanceCycles(remaining);
+        if (remaining >= 8 && bus_.speed == Speed::Regular && !cpu_.stopped() &&
+            (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
+            if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
+            remaining -= AdvanceMCycle();
+        } else {
+            remaining -= AdvanceCycles(remaining);
+        }
     }
+    // Deferred APU ticks never cross a frame boundary, so between-frames
+    // observers (sample drain, save states) always see current state
+    audio_.CatchUp();
 }

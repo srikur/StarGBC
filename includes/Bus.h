@@ -51,7 +51,14 @@ public:
 
     void UpdateDMAWork();
 
-    void RunHDMA() const;
+    // Inline idle fast path; HDMA is inactive almost always
+    void RunHDMA() const {
+        if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_) return;
+        RunHDMAWork();
+    }
+
+    void RunHDMAWork() const;
+
 
     void ChangeSpeed();
 

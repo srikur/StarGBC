@@ -38,7 +38,13 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     mode3EndDot_ = 0;
     backgroundQueue.clear();
     spriteArray.fill({.isPlaceholder = true});
-    if (clearBuffer) spriteBuffer.clear();
+    spriteArrayHead_ = 0;
+    if (clearBuffer) {
+        spriteBuffer.clear();
+        spritesPending_ = 0;
+        spriteXBits_ = {};
+        spriteNegX_ = false;
+    }
     fetcherTileX_ = 0;
     spriteFetchActive_ = false;
     isFetchingWindow_ = false;
@@ -65,6 +71,33 @@ uint8_t GPU::GetOAMScanRow() const {
 
 void GPU::Update() {
     interrupts_.Tick();
+    // Batched-idle fast paths: a quiet HBlank/VBlank dot only advances the
+    // dot counter, and an idle disabled LCD does nothing at all
+    if (idleDots_ > 0) {
+        --idleDots_;
+        ++scanlineCounter;
+        return;
+    }
+    if (lcdOffIdle_) return;
+    if (scanFastDots_ > 0) {
+        --scanFastDots_;
+        TickOAMScan();
+        ++scanlineCounter;
+        return;
+    }
+    if (mode3Quiet_) {
+        // CGB non-compat mode-3 dot with no delayed writes in flight: the
+        // preamble, LY/LYC chain, STAT latch and boundary checks are all
+        // provably constant; only the pixel pipeline advances
+        if (stat.mode == GPUMode::MODE_3 && mode3EndDelay_ == 0 && pixelsDrawn < SCREEN_WIDTH) {
+            backgroundDataReadThisDot_ = false;
+            pixelOutputThisDot_ = false;
+            TickMode3();
+            ++scanlineCounter;
+            return;
+        }
+        mode3Quiet_ = false;
+    }
     if (clockPause_ > 0) {
         --clockPause_;
         return;
@@ -140,6 +173,13 @@ void GPU::Update() {
     }
 
     if (LCDDisabled()) {
+        // Nothing can change until a register write re-enables the LCD or
+        // arms a delayed-write stage (writes clear lcdOffIdle_)
+        if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scyJustApplied_ &&
+            (bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage |
+             windowEndStage_ | obp0WriteStage | obp1WriteStage) == 0) {
+            lcdOffIdle_ = true;
+        }
         return;
     }
 
@@ -333,6 +373,44 @@ void GPU::Update() {
             initialSCXSet = false;
         }
     }
+
+    MaybeArmIdle();
+}
+
+// Arm the batched-idle fast path when the remaining dots of this HBlank or
+// VBlank line are provably quiet: nothing between here and the next event dot
+// reads or writes anything except scanlineCounter, as long as no CPU register
+// write intervenes (writes call InvalidateIdle)
+void GPU::MaybeArmIdle() {
+    if (lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_) return;
+    if ((bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage |
+         windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0) return;
+
+    if (stat.mode == GPUMode::MODE_3) {
+        // Only CGB outside DMG-compat: DMG has mode-3 STAT probes and the
+        // compat mode needs the recent-pixel history aged per dot
+        if (isCgb_ && !dmgCompat) mode3Quiet_ = true;
+        return;
+    }
+
+    if (stat.mode == GPUMode::MODE_2) {
+        // Dots 1..78 of the OAM scan only run TickOAMScan; dot 79 (post-
+        // increment 80) performs the mode-3 transition and must be full
+        if (scanlineCounter >= 1 && scanlineCounter < 79) {
+            scanFastDots_ = 79 - scanlineCounter;
+        }
+        return;
+    }
+
+    // Line 153's LY-flip quirk dots must be fully processed
+    if (currentLine == 153 && scanlineCounter < 9) return;
+
+    // DMG events resume at dot 451 (post-increment 452: the early mode-2 STAT
+    // pulse and the end-of-line LYC lull); CGB runs quiet to the dot before
+    // the line boundary (post-increment 456)
+    const uint32_t limit = isCgb_ ? 455 : 451;
+    if (scanlineCounter >= limit) return;
+    idleDots_ = limit - scanlineCounter;
 }
 
 void GPU::TickOAMScan() {
@@ -366,6 +444,9 @@ void GPU::TickOAMScan() {
             .spriteNum = static_cast<uint8_t>(scanlineCounter), .x = spriteX, .y = spriteY,
             .tileIndex = spriteTileIndex, .attributes = attr, .processed = false
         });
+        ++spritesPending_;
+        if (spriteX < 0) spriteNegX_ = true;
+        else if (spriteX < SCREEN_WIDTH) spriteXBits_[spriteX >> 5] |= 1u << (spriteX & 31);
     }
 }
 
@@ -381,11 +462,9 @@ void GPU::OutputPixel(const bool lcdcAhead) {
     const auto bgPixel = backgroundQueue.front();
     backgroundQueue.pop_front();
 
-    const auto spritePixel = spriteArray[0];
-    for (size_t i = 0; i < spriteArray.size() - 1; i++) {
-        spriteArray[i] = spriteArray[i + 1];
-    }
-    spriteArray[spriteArray.size() - 1] = {.isSprite = true, .isPlaceholder = true};
+    const auto spritePixel = spriteArray[spriteArrayHead_ & 7];
+    spriteArray[spriteArrayHead_ & 7] = {.isSprite = true, .isPlaceholder = true};
+    spriteArrayHead_ = (spriteArrayHead_ + 1) & 7;
 
     // OBJ enable gates sprite pixels at mix time: pixels already in the FIFO
     // keep shifting while disabled, but display as background. A pixel shipped
@@ -534,7 +613,14 @@ void GPU::TickMode3() {
                 if (pixelsDrawn == 0 && !isFetchingWindow_ &&
                     Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7 &&
                     backgroundQueue.empty()) {
-                    CheckForWindowTrigger();
+                    if (windowActivatePending_ ||
+        (windowTriggeredThisFrame && (!isCgb_ || !isFetchingWindow_))) {
+        CheckForWindowTrigger();
+    } else {
+        // The full check reduces to the match latch when the window cannot
+        // trigger or glitch this frame
+        windowMatchLatch_ = pixelsDrawn + 7 == windowX;
+    }
                 }
                 if (fetcherState_ == FetcherState::GetTile && fetcherDelay_ == 0) {
                     Fetcher_StepBackgroundFetch();
@@ -559,7 +645,12 @@ void GPU::TickMode3() {
 }
 
 void GPU::CheckForSpriteTrigger() {
-    if ((!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdc)) || spriteFetchActive_ || !spriteFetchQueue.empty()) return;
+    if (spritesPending_ == 0 || (!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdc)) || spriteFetchActive_ || !spriteFetchQueue.empty()) return;
+    // Superset filter: no pending sprite can trigger at this pixel
+    if (!(spriteXBits_[pixelsDrawn >> 5] & (1u << (pixelsDrawn & 31))) &&
+        !(pixelsDrawn == 0 && spriteNegX_)) {
+        return;
+    }
     // Pixel-0 triggers for on-screen sprites hold until the first background
     // push is ready; earlier, the fetcher warmup would absorb the stall the
     // sprite fetch is supposed to cause. Left-clipped sprites instead take
@@ -576,6 +667,7 @@ void GPU::CheckForSpriteTrigger() {
             continue;
         }
         sprite.processed = true;
+        --spritesPending_;
         spriteFetchQueue.push_back(sprite);
     }
     if (!spriteFetchQueue.empty()) {
@@ -796,12 +888,12 @@ void GPU::Fetcher_StepSpriteFetch() {
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
                 const uint8_t color = (bitHigh << 1) | bitLow;
                 if (color == 0) continue; // transparent OBJ pixels shouldn't replace anther OBJ
-                const auto &current = spriteArray[i];
+                const auto &current = spriteArray[(spriteArrayHead_ + i) & 7];
                 // only CGB check needed since DMG priority resolved by the sprite fetch order
                 const bool hasHigherPriority = isCgb_ && !objectPriority && sprite.spriteNum < current.spriteNum;
                 if (!hasHigherPriority && current.color != 0 && !current.isPlaceholder) continue;
 
-                spriteArray[i] = Pixel{
+                spriteArray[(spriteArrayHead_ + i) & 7] = Pixel{
                     .color = color,
                     .dmgPalette = paletteSelect,
                     .cgbPalette = attrs.paletteNumberCGB,
@@ -1159,6 +1251,8 @@ void GPU::ApplyLCDC(const uint8_t value) {
 }
 
 void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
+    // Any register write can end a batched-idle window
+    InvalidateIdle();
     switch (address) {
         case 0xFF40: {
             if (isCgb_ && stat.mode == GPUMode::MODE_3 && !LCDDisabled() &&

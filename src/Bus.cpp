@@ -297,11 +297,7 @@ void Bus::UpdateDMAWork() {
     }
 }
 
-void Bus::RunHDMA() const {
-    if (!gpu_.hdma.hdmaActive || IsDmg(gpu_.model)) {
-        return;
-    }
-
+void Bus::RunHDMAWork() const {
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
             if (gpu_.hdma.step == HDMAStep::Read) {
@@ -378,6 +374,7 @@ void Bus::ChangeSpeed() {
         speed = speed == Speed::Regular ? Speed::Double : Speed::Regular;
         prepareSpeedShift = false;
         gpu_.doubleSpeed = speed == Speed::Double;
+        gpu_.InvalidateIdle();
         audio_.OnSpeedSwitch(gpu_.doubleSpeed);
         if (gpu_.doubleSpeed && !gpu_.LCDDisabled()) gpu_.clockPause_ = 1;
     }

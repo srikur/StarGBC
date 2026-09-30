@@ -92,7 +92,10 @@ public:
 
     FixedDeque<Pixel, 16> backgroundQueue;
     FixedDeque<Sprite, 10> spriteFetchQueue;
+    // Ring buffer: spriteArrayHead_ is slot 0; avoids shifting 7 Pixel
+    // structs on every output pixel. Indexed with & 7 throughout.
     std::array<Pixel, 8> spriteArray;
+    uint8_t spriteArrayHead_{0};
 
     bool windowTriggeredThisFrame{false};
     Sprite spriteToFetch_{};
@@ -209,6 +212,23 @@ public:
     std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
 
     HDMA hdma{};
+    // Batched-idle fast path: idleDots_ > 0 means the next N dots are provably
+    // quiet HBlank/VBlank dots (advance scanlineCounter, nothing else);
+    // lcdOffIdle_ means the LCD is off with no delayed writes in flight. Any
+    // register write, speed switch, or state load clears both.
+    [[=NotStateAware]] uint32_t idleDots_{0};
+    [[=NotStateAware]] bool lcdOffIdle_{false};
+    // Mode-2 variant: the rest of an OAM-scan line where only TickOAMScan and
+    // the dot counter matter (STAT/LYC state is provably constant)
+    [[=NotStateAware]] uint32_t scanFastDots_{0};
+    // CGB non-compat mode-3 condensed dots (pixel pipeline only)
+    [[=NotStateAware]] bool mode3Quiet_{false};
+    // Count of unprocessed spriteBuffer entries; skips the per-dot trigger scan
+    [[=NotStateAware]] uint8_t spritesPending_{0};
+    // Superset of this line's sprite trigger X positions (never cleared per
+    // sprite, so a stale bit only costs a scan)
+    [[=NotStateAware]] std::array<uint32_t, 5> spriteXBits_{};
+    [[=NotStateAware]] bool spriteNegX_{false};
     uint8_t clockPause_{0};
     bool doubleSpeed{false};
     uint8_t mode3EndDelay_{0};
@@ -238,6 +258,27 @@ public:
         isCgb_ = IsCgb(m);
         RebuildColorLuts();
     }
+
+    void InvalidateIdle() {
+        idleDots_ = 0;
+        lcdOffIdle_ = false;
+        scanFastDots_ = 0;
+        mode3Quiet_ = false;
+    }
+
+    void RecomputeSpritePending() {
+        uint8_t n = 0;
+        spriteXBits_ = {};
+        spriteNegX_ = false;
+        for (const auto &s: spriteBuffer) {
+            n += !s.processed;
+            if (s.x < 0) spriteNegX_ = true;
+            else if (s.x < SCREEN_WIDTH) spriteXBits_[s.x >> 5] |= 1u << (s.x & 31);
+        }
+        spritesPending_ = n;
+    }
+
+    void MaybeArmIdle();
 
     void RebuildColorLuts();
 
