@@ -117,7 +117,7 @@ TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
          }) {
         Interrupts interrupts;
         GPU gpu(interrupts);
-        gpu.model = model;
+        gpu.SetModel(model);
         gpu.lcdc = 0x91;
         gpu.vram[0] = 0x55; // row 0, low plane
         gpu.vram[1] = 0xAA; // row 0, high plane

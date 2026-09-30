@@ -348,6 +348,12 @@ class Audio {
     [[=NotStateAware]] double highpassLeft{0.0};
     [[=NotStateAware]] double highpassRight{0.0};
     [[=NotStateAware]] double highpassRate{0.0};
+    // Last-seen mixing inputs; when unchanged, every BandLimitedUpdate would
+    // see an exact-zero delta, so GenerateSample skips the level computation.
+    // 0xFFFFFFFF is unreachable (nr50 occupies the top packed byte).
+    [[=NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
+    [[=NotStateAware]] std::array<float, 4> lastMixOutputs_{};
+    [[=NotStateAware]] bool hasEarlyPcmGlitch_{false};
 
     void InitBandLimitedTable();
 
@@ -376,7 +382,10 @@ public:
     uint8_t nr50{};
     uint8_t nr51{};
 
-    void SetModel(const Model model) { model_ = model; }
+    void SetModel(const Model model) {
+        model_ = model;
+        hasEarlyPcmGlitch_ = HasEarlyCgbPcmGlitch(model);
+    }
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }

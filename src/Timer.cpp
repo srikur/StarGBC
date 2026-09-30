@@ -3,7 +3,7 @@
 #include "Common.h"
 
 void Timer::Tick(const Speed speed) {
-    const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
+    if (tac != cachedTac_ || speed != cachedSpeed_) [[unlikely]] RecomputeTickCache(speed);
 
     if (apuEventDelay && --apuEventDelay == 0) {
         if (apuEventSecondary) audio_.TickFrameSequencerSecondary();
@@ -18,29 +18,36 @@ void Timer::Tick(const Speed speed) {
         reloadActive = true;
     }
 
-    const bool timerEnabled = tac & 0x04;
-    const int timerBit = TimerBit(tac);
-    const bool oldSignal = timerEnabled && (divCounter & (1u << timerBit));
-    const unsigned apuDelay = speed == Speed::Double && audio_.HasSpeedSwitchFrameSeqDelay() ? 4 : 0;
-    const bool oldFrameSeqSignal = divCounter & (1u << frameSeqBit);
+    const bool oldSignal = divCounter & timerSignalMask_;
+    const bool oldFrameSeqSignal = divCounter & frameSeqMask_;
 
     ++divCounter;
 
-    const bool newSignal = timerEnabled && (divCounter & (1u << timerBit));
+    const bool newSignal = divCounter & timerSignalMask_;
     if (oldSignal && !newSignal) {
         IncrementTIMA();
     }
 
     // Falling edge of the DIV-APU bit fires the frame sequencer; the rising
     // edge fires the secondary event that latches envelope clocks
-    const bool newFrameSeqSignal = (divCounter & (1u << frameSeqBit));
+    const bool newFrameSeqSignal = divCounter & frameSeqMask_;
     if (oldFrameSeqSignal != newFrameSeqSignal) {
+        // Evaluated per edge (512Hz), not per tick: speedSwitchFrameSeqDelay
+        // can be restored by LoadState without a (tac, speed) key change
+        const unsigned apuDelay = speed == Speed::Double && audio_.HasSpeedSwitchFrameSeqDelay() ? 4 : 0;
         if (apuDelay) {
             apuEventDelay = apuDelay;
             apuEventSecondary = newFrameSeqSignal;
         } else if (newFrameSeqSignal) audio_.TickFrameSequencerSecondary();
         else audio_.TickFrameSequencer();
     }
+}
+
+void Timer::RecomputeTickCache(const Speed speed) {
+    cachedTac_ = tac;
+    cachedSpeed_ = speed;
+    timerSignalMask_ = tac & 0x04 ? static_cast<uint16_t>(1u << TimerBit(tac)) : 0;
+    frameSeqMask_ = static_cast<uint16_t>(1u << (audio_.IsDMG() || speed == Speed::Regular ? 12 : 13));
 }
 
 void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed speed) {

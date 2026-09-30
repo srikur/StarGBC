@@ -216,6 +216,13 @@ public:
     std::array<Pixel, 3> recentPixels_{};
     std::array<uint16_t, 3> recentPixelOffsets_{0xFFFF, 0xFFFF, 0xFFFF};
     Model model = Model::DMGB;
+    // Cached IsCgb(model): read dozens of times per dot, and the compiler
+    // cannot hoist the range compares across non-inlined calls
+    [[=NotStateAware]] bool isCgb_{false};
+    // Color-corrected ARGB for every CGB palette entry (8 palettes x 4
+    // colors), maintained on palette-RAM writes instead of per pixel
+    [[=NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
+    [[=NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
     bool dmgCompat{false};
@@ -225,6 +232,14 @@ public:
     uint8_t oamDmaDest_{0};
     uint8_t mode2YBus_{0xFF};
     uint8_t mode2XBus_{0xFF};
+
+    void SetModel(const Model m) {
+        model = m;
+        isCgb_ = IsCgb(m);
+        RebuildColorLuts();
+    }
+
+    void RebuildColorLuts();
 
     void Update();
 
@@ -278,6 +293,7 @@ private:
     void ApplyLCDC(uint8_t value);
 
     [[nodiscard]] Pixel SelectPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+    [[nodiscard]] uint32_t ResolveColor(const Pixel &finalPixel) const;
     [[nodiscard]] uint32_t MixPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;

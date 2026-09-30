@@ -41,7 +41,15 @@ public:
 
     uint64_t RecalculateZeroTime();
 
-    void Update();
+    // Called every T-cycle; inline so the idle path is a counter bump.
+    // Rolls the rtc over every emulated second
+    void Update() {
+        if (!halted_) counter_++;
+        if (counter_ == RTC_TICKS_PER_SECOND) {
+            counter_ = 0;
+            Tick();
+        }
+    }
 
     void Load(std::ifstream &stateFile);
 

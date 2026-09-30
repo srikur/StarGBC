@@ -65,14 +65,21 @@ void Audio::Tick() {
         ch3.alternateRead = false;
         // Square channels run on the 2MHz APU tick grid
         if ((tickCounter & 1) == 0) {
-            ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
-            const auto old1 = ch1.GetDigitalOutput();
-            const auto old2 = ch2.GetDigitalOutput();
-            ch1.Tick2M();
-            ch2.Tick2M();
-            if (HasEarlyCgbPcmGlitch(model_)) {
+            // The sweep unit body is a strict no-op unless one of these
+            // countdowns is armed (by a trigger or NR10 write)
+            if (ch1.sweep.calcReloadTimer | ch1.sweep.calcCountdown | ch1.restartHold) {
+                ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
+            }
+            if (hasEarlyPcmGlitch_) {
+                const auto old1 = ch1.GetDigitalOutput();
+                const auto old2 = ch2.GetDigitalOutput();
+                ch1.Tick2M();
+                ch2.Tick2M();
                 if (ch1.justReloaded && old1 == 0) pcm12Mask_ &= 0xF0;
                 if (ch2.justReloaded && old2 == 0) pcm12Mask_ &= 0x0F;
+            } else {
+                ch1.Tick2M();
+                ch2.Tick2M();
             }
             ch4.Tick2M(frameSeqStep, IsDMG());
         }
@@ -1226,30 +1233,44 @@ void Audio::BandLimitedRead(const int channel, double &outLeft, double &outRight
 
 void Audio::GenerateSample() {
     if (emulatorAudioDisabled) return;
-    auto dac = [](const double digital, const bool dacOn) -> double {
-        if (!dacOn) return 0.0;
-        return (15.0 - digital * 2.0) / 15.0;
-    };
 
-    const int phase = static_cast<int>((sampleCounter / CYCLES_PER_SAMPLE) * BL_PHASES) & (BL_PHASES - 1);
-    auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled,
-                                const uint8_t leftMask, const uint8_t rightMask) {
-        const double val = dac(output, enabled && dacEnabled);
-        double left = (nr51 & leftMask) ? val : 0.0;
-        double right = (nr51 & rightMask) ? val : 0.0;
+    // Channel levels are a pure function of these inputs; when none changed
+    // since the last tick, every BandLimitedUpdate below would compute an
+    // exact-zero delta and deposit nothing, so the whole block is skippable
+    const uint32_t mixRegs = static_cast<uint32_t>(nr50) << 16 | static_cast<uint32_t>(nr51) << 8
+                             | ch1.enabled | ch1.dacEnabled << 1 | ch2.enabled << 2 | ch2.dacEnabled << 3
+                             | ch3.enabled << 4 | ch3.dacEnabled << 5 | ch4.enabled << 6 | ch4.dacEnabled << 7;
+    if (mixRegs != lastMixRegs_
+        || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1]
+        || ch3.currentOutput != lastMixOutputs_[2] || ch4.currentOutput != lastMixOutputs_[3]) {
+        lastMixRegs_ = mixRegs;
+        lastMixOutputs_ = {ch1.currentOutput, ch2.currentOutput, ch3.currentOutput, ch4.currentOutput};
 
-        const double leftVol = (nr50 >> 4 & 0x07) + 1;
-        const double rightVol = (nr50 & 0x07) + 1;
-        left *= leftVol;
-        right *= rightVol;
+        auto dac = [](const double digital, const bool dacOn) -> double {
+            if (!dacOn) return 0.0;
+            return (15.0 - digital * 2.0) / 15.0;
+        };
 
-        BandLimitedUpdate(ch, left, right, phase);
-    };
+        const int phase = static_cast<int>((sampleCounter / CYCLES_PER_SAMPLE) * BL_PHASES) & (BL_PHASES - 1);
+        auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled,
+                                    const uint8_t leftMask, const uint8_t rightMask) {
+            const double val = dac(output, enabled && dacEnabled);
+            double left = (nr51 & leftMask) ? val : 0.0;
+            double right = (nr51 & rightMask) ? val : 0.0;
 
-    getChannelOutput(0, ch1.currentOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
-    getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
-    getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
-    getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
+            const double leftVol = (nr50 >> 4 & 0x07) + 1;
+            const double rightVol = (nr50 & 0x07) + 1;
+            left *= leftVol;
+            right *= rightVol;
+
+            BandLimitedUpdate(ch, left, right, phase);
+        };
+
+        getChannelOutput(0, ch1.currentOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
+        getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
+        getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
+        getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
+    }
 
     sampleCounter += 1.0;
     if (sampleCounter < CYCLES_PER_SAMPLE) {
@@ -1308,6 +1329,7 @@ void Audio::ClearBuffer() {
     sampleCounter = 0.0;
     highpassLeft = 0.0;
     highpassRight = 0.0;
+    lastMixRegs_ = 0xFFFFFFFFu;
     for (auto &bl: bandLimited) {
         bl.Reset();
     }

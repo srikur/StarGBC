@@ -17,6 +17,14 @@ public:
     uint16_t divCounter{0x0000};
     bool overflowPending{false};
     bool reloadActive{false};
+    // Per-tick edge masks derived from (tac, speed); refreshed lazily when the
+    // key changes, which also covers LoadState restoring a different tac.
+    // 0xFF is unreachable for tac (WriteTAC masks to 0x07), so it forces the
+    // first recompute.
+    [[=NotStateAware]] uint8_t cachedTac_{0xFF};
+    [[=NotStateAware]] Speed cachedSpeed_{Speed::Regular};
+    [[=NotStateAware]] uint16_t timerSignalMask_{0};
+    [[=NotStateAware]] uint16_t frameSeqMask_{0};
     Audio &audio_;
     Interrupts &interrupts_;
 
@@ -24,6 +32,8 @@ public:
     }
 
     void Tick(Speed);
+
+    void RecomputeTickCache(Speed);
 
     void WriteByte(uint16_t, uint8_t, Speed);
 

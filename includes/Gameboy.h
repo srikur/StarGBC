@@ -201,6 +201,8 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
     rtc_.RecalculateZeroTime();
     cartridge_.MarkRamDirty();
     audio_.ClearBuffer();
+    interrupts_.RecomputePending();
+    gpu_.SetModel(gpu_.model);
     gpu_.frameReady = false;
     return true;
 }
