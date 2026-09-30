@@ -32,9 +32,7 @@ void Serial::ShiftOneBit() {
     data_ = static_cast<uint8_t>(data_ << 1 | 0x01);
 }
 
-void Serial::Update() {
-    if (!active_) return;
-
+void Serial::UpdateActive() {
     if (--ticksUntilShift_ == 0) {
         ShiftOneBit();
         if (++bitsShifted_ == 8) {

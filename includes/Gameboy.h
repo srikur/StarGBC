@@ -119,6 +119,8 @@ private:
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 
+    uint32_t AdvanceMCycle();
+
     [[nodiscard]] bool LoadedStateValid() const;
 };
 
@@ -201,6 +203,10 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
     rtc_.RecalculateZeroTime();
     cartridge_.MarkRamDirty();
     audio_.ClearBuffer();
+    interrupts_.RecomputePending();
+    gpu_.SetModel(gpu_.model);
+    gpu_.InvalidateIdle();
+    gpu_.RecomputeSpritePending();
     gpu_.frameReady = false;
     return true;
 }

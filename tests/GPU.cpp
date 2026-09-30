@@ -14,7 +14,7 @@ namespace {
                           uint8_t windowX = 0) {
         Interrupts interrupts;
         GPU gpu(interrupts);
-        gpu.model = model;
+        gpu.SetModel(model);
         gpu.lcdc = objects ? 0x93 : 0x91;
         gpu.currentLine = 10;
         if (windowX) {
@@ -25,6 +25,7 @@ namespace {
         gpu.backgroundPalette = gpu.obp0Palette = 0xE4;
         gpu.bgpd[0][0] = {31, 31, 31};
         gpu.obpd[0][1] = {31, 0, 0};
+        gpu.RebuildColorLuts();
         unsigned index = 0;
         for (auto x : positions) {
             gpu.oam[index++] = 26;
@@ -66,7 +67,7 @@ namespace {
         CAPTURE(coordinatePriority);
         Interrupts interrupts;
         GPU gpu(interrupts);
-        gpu.model = model;
+        gpu.SetModel(model);
         gpu.objectPriority = coordinatePriority;
         gpu.lcdc = 0x93;
         gpu.currentLine = 10;
@@ -75,6 +76,7 @@ namespace {
         gpu.obpd[0][1] = {31, 31, 31};
         gpu.obpd[0][2] = {16, 16, 16};
         gpu.obpd[0][3] = {8, 8, 8};
+        gpu.RebuildColorLuts();
         for (unsigned row = 0; row < 8; ++row) {
             gpu.vram[row * 2] = gpu.vram[row * 2 + 1] = 0xFF;
         }
@@ -115,7 +117,7 @@ namespace {
         CAPTURE(scx);
         Interrupts interrupts;
         GPU gpu(interrupts);
-        gpu.model = model;
+        gpu.SetModel(model);
         gpu.doubleSpeed = doubleSpeed;
         gpu.dmgCompat = compatibility;
         gpu.lcdc = 0xF1;
@@ -127,6 +129,7 @@ namespace {
         constexpr uint8_t shades[] = {31, 23, 11, 0};
         constexpr uint32_t cgbColors[] = {0xFFFFFFFF, 0xFFBDBDBD, 0xFF5A5A5A, 0xFF000000};
         for (unsigned color = 0; color < 4; ++color) gpu.bgpd[0][color].fill(shades[color]);
+        gpu.RebuildColorLuts();
         constexpr std::string_view pattern = "0123321012032130";
         for (unsigned row = 0; row < 8; ++row) {
             gpu.vram[row * 2] = gpu.vram[row * 2 + 1] = 0xFF;

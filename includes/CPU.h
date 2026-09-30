@@ -19,7 +19,7 @@ public:
                                          interrupts_(interrupts),
                                          regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
-        bus.gpu_.model = hw;
+        bus.gpu_.SetModel(hw);
         bus.audio_.SetModel(hw);
         const bool sgbFamily = IsSgb(hw);
         // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts

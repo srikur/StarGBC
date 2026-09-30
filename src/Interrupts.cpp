@@ -23,9 +23,11 @@ void Interrupts::SetAfter(const InterruptType interrupt, const uint8_t dots, con
     }
     if (interruptSetDelays[index] == 0) interruptSetDelays[index] = dots;
     interruptFlagDelayed |= mask;
+    delaysPending_ = true;
 }
 
-void Interrupts::Tick() {
+void Interrupts::TickPending() {
+    uint8_t remaining = 0;
     for (unsigned i = 0; i < interruptSetDelays.size(); ++i) {
         const uint8_t mask = 1u << i;
         if (interruptVisibleDelays[i] && --interruptVisibleDelays[i] == 0) interruptVisiblePending |= mask;
@@ -34,7 +36,9 @@ void Interrupts::Tick() {
             interruptFlagDelayed &= ~mask;
             interruptVisiblePending &= ~mask;
         }
+        remaining |= interruptSetDelays[i] | interruptVisibleDelays[i];
     }
+    delaysPending_ = remaining != 0;
 }
 
 bool Interrupts::IsSet(InterruptType interrupt) const {

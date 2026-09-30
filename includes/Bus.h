@@ -40,9 +40,25 @@ public:
 
     void WriteByte(uint16_t, uint8_t, ComponentSource);
 
-    void UpdateDMA();
+    // Inline fast path: 3 of 4 calls only advance the phase counter, and the
+    // 4th is idle unless a transfer is active or just finished
+    void UpdateDMA() {
+        if (++dma_.dmaTickCounter % 4 != 0) return;
+        dma_.dmaTickCounter = 0;
+        if (!dma_.transferActive && !dma_.transferComplete) return;
+        UpdateDMAWork();
+    }
 
-    void RunHDMA() const;
+    void UpdateDMAWork();
+
+    // Inline idle fast path; HDMA is inactive almost always
+    void RunHDMA() const {
+        if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_) return;
+        RunHDMAWork();
+    }
+
+    void RunHDMAWork() const;
+
 
     void ChangeSpeed();
 

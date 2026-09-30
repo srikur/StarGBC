@@ -2,45 +2,13 @@
 
 #include "Common.h"
 
-void Timer::Tick(const Speed speed) {
+void Timer::RecomputeTickCache(const Speed speed) {
+    cachedTac_ = tac;
+    cachedSpeed_ = speed;
+    timerFallMask_ = tac & 0x04 ? static_cast<uint16_t>((1u << (TimerBit(tac) + 1)) - 1) : 0;
     const int frameSeqBit = audio_.IsDMG() || speed == Speed::Regular ? 12 : 13;
-
-    if (apuEventDelay && --apuEventDelay == 0) {
-        if (apuEventSecondary) audio_.TickFrameSequencerSecondary();
-        else audio_.TickFrameSequencer();
-    }
-    reloadActive = false;
-    if (overflowPending && --overflowDelay == 0) {
-        tima = tma;
-        // DMG exposes IF before the request reaches the CPU wake/dispatch path
-        interrupts_.SetAfter(InterruptType::Timer, audio_.IsDMG() ? 4 : 0, audio_.IsDMG());
-        overflowPending = false;
-        reloadActive = true;
-    }
-
-    const bool timerEnabled = tac & 0x04;
-    const int timerBit = TimerBit(tac);
-    const bool oldSignal = timerEnabled && (divCounter & (1u << timerBit));
-    const unsigned apuDelay = speed == Speed::Double && audio_.HasSpeedSwitchFrameSeqDelay() ? 4 : 0;
-    const bool oldFrameSeqSignal = divCounter & (1u << frameSeqBit);
-
-    ++divCounter;
-
-    const bool newSignal = timerEnabled && (divCounter & (1u << timerBit));
-    if (oldSignal && !newSignal) {
-        IncrementTIMA();
-    }
-
-    // Falling edge of the DIV-APU bit fires the frame sequencer; the rising
-    // edge fires the secondary event that latches envelope clocks
-    const bool newFrameSeqSignal = (divCounter & (1u << frameSeqBit));
-    if (oldFrameSeqSignal != newFrameSeqSignal) {
-        if (apuDelay) {
-            apuEventDelay = apuDelay;
-            apuEventSecondary = newFrameSeqSignal;
-        } else if (newFrameSeqSignal) audio_.TickFrameSequencerSecondary();
-        else audio_.TickFrameSequencer();
-    }
+    frameSeqBitMask_ = static_cast<uint16_t>(1u << frameSeqBit);
+    frameSeqToggleMask_ = static_cast<uint16_t>((1u << frameSeqBit) - 1);
 }
 
 void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed speed) {

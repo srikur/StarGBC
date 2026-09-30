@@ -1,10 +1,12 @@
 #include "Audio.h"
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <set>
 #include <string>
 
 void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
+    CatchUp();
     if (!audioEnabled) return;
     // Powering the APU on while the DIV-APU bit is high skips the first
     // event; the second event then runs without incrementing the divider
@@ -46,6 +48,7 @@ void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
 }
 
 void Audio::TickFrameSequencerSecondary() {
+    CatchUp();
     if (!audioEnabled) return;
     const auto latch = [](auto &ch) {
         if (ch.enabled && ch.envelope.volumeCountdown == 0) {
@@ -58,27 +61,135 @@ void Audio::TickFrameSequencerSecondary() {
     latch(ch4);
 }
 
-void Audio::Tick() {
-    tickCounter++;
-    pcm12Mask_ = 0xFF;
-    if (audioEnabled) {
-        ch3.alternateRead = false;
-        // Square channels run on the 2MHz APU tick grid
-        if ((tickCounter & 1) == 0) {
-            ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
-            const auto old1 = ch1.GetDigitalOutput();
-            const auto old2 = ch2.GetDigitalOutput();
-            ch1.Tick2M();
-            ch2.Tick2M();
-            if (HasEarlyCgbPcmGlitch(model_)) {
-                if (ch1.justReloaded && old1 == 0) pcm12Mask_ &= 0xF0;
-                if (ch2.justReloaded && old2 == 0) pcm12Mask_ &= 0x0F;
-            }
-            ch4.Tick2M(frameSeqStep, IsDMG());
+void Audio::CatchUpWork() {
+    uint32_t n = pendingTicks_;
+    pendingTicks_ = 0;
+    // Loop invariants: audioEnabled and the model can only change through
+    // paths that catch up first
+    const bool dmg = IsDMG();
+    const bool enabled = audioEnabled;
+    while (n > 0) {
+        // Quiet-stretch skip: between channel waveform events and sample
+        // emissions the per-tick work reduces to countdown arithmetic, which
+        // this advances in bulk, bit-identically. Event ticks (duty steps,
+        // wave steps, noise counter increments, emissions) and any hairy
+        // transient state are processed one tick at a time below.
+        uint32_t quiet = n;
+        {
+            // Emission: sample due when sampleAcc_ crosses the APU rate
+            const uint32_t untilEmit = (APU_CLOCK_RATE_INT - sampleAcc_ + AUDIO_SAMPLE_RATE - 1) / AUDIO_SAMPLE_RATE;
+            quiet = std::min(quiet, untilEmit - 1);
         }
-        ch3.Tick();
+        if (enabled) {
+            const bool hairy =
+                (ch1.sweep.calcReloadTimer | ch1.sweep.calcCountdown | ch1.restartHold) != 0 ||
+                ch4.dmgDelayedStart > 0 ||
+                (ch1.enabled && ch1.lengthTimer.enabled && ch1.lengthTimer.lengthTimer == 64) ||
+                (ch2.enabled && ch2.lengthTimer.enabled && ch2.lengthTimer.lengthTimer == 64) ||
+                (ch4.enabled && ch4.lengthTimer.enabled && ch4.lengthTimer.lengthTimer == 64) ||
+                (ch3.enabled && ch3.lengthEnabled && ch3.lengthTimer == 256);
+            if (hairy) {
+                quiet = 0;
+            } else {
+                // 2MHz-grid distances: a quiet stretch of q2 2M ticks covers
+                // 2*q2 (+1 if the next 4M tick is not a 2M tick) 4M ticks
+                const bool nextIs2M = (tickCounter & 1) != 0;
+                const auto to4M = [nextIs2M](const uint32_t q2) {
+                    return nextIs2M ? 2 * q2 : 2 * q2 + 1;
+                };
+                if (ch1.enabled) quiet = std::min(quiet, to4M(ch1.sampleCountdown));
+                if (ch2.enabled) quiet = std::min(quiet, to4M(ch2.sampleCountdown));
+                if (ch4.counterActive || ch4.backgroundCounterActive) {
+                    unsigned divisor = ch4.noise.clockDivider << 2;
+                    if (!divisor) divisor = 2;
+                    const uint32_t untilStep = ch4.counterCountdown == 0 ? divisor : ch4.counterCountdown;
+                    if (ch4.enabled) {
+                        // Only counter steps that produce a rising edge of bit
+                        // clockShift clock the LFSR; skip across the rest
+                        const uint32_t period = 1u << (ch4.noise.clockShift + 1);
+                        uint32_t stepsToEdge = ((period >> 1) - (ch4.counter & (period - 1))) & (period - 1);
+                        if (stepsToEdge == 0) stepsToEdge = period;
+                        quiet = std::min(quiet, to4M(untilStep + (stepsToEdge - 1) * divisor - 1));
+                    }
+                }
+                if (ch3.enabled) {
+                    quiet = ch3.period > 0 ? std::min(quiet, static_cast<uint32_t>(ch3.period) - 1) : 0;
+                }
+            }
+        }
+        if (quiet > 0) {
+            const uint32_t q2 = (tickCounter & 1) ? (quiet + 1) / 2 : quiet / 2;
+            tickCounter += quiet;
+            pcm12Mask_ = 0xFF;
+            sampleAcc_ += AUDIO_SAMPLE_RATE * quiet;
+            if (enabled) {
+                ch3.alternateRead = false;
+                if (q2 > 0) {
+                    if (ch1.enabled) {
+                        ch1.trigDelay = ch1.trigDelay > q2 ? ch1.trigDelay - q2 : 0;
+                        ch1.sampleCountdown -= q2;
+                        ch1.justReloaded = false;
+                    }
+                    if (ch2.enabled) {
+                        ch2.trigDelay = ch2.trigDelay > q2 ? ch2.trigDelay - q2 : 0;
+                        ch2.sampleCountdown -= q2;
+                        ch2.justReloaded = false;
+                    }
+                    ch4.alignment += q2;
+                    if (ch4.counterActive || ch4.backgroundCounterActive) {
+                        unsigned divisor = ch4.noise.clockDivider << 2;
+                        if (!divisor) divisor = 2;
+                        const uint32_t untilStep = ch4.counterCountdown == 0 ? divisor : ch4.counterCountdown;
+                        if (q2 >= untilStep) {
+                            // Non-edge counter steps crossed in bulk (the LFSR
+                            // never clocks here; edges bound the stretch)
+                            const uint32_t steps = (q2 - untilStep) / divisor + 1;
+                            const uint32_t sinceLastStep = q2 - (untilStep + (steps - 1) * divisor);
+                            ch4.counter = (ch4.counter + steps) & 0x3FFF;
+                            ch4.didStepCounter = true;
+                            ch4.counterCountdown = divisor - sinceLastStep;
+                            ch4.countdownReloaded = sinceLastStep == 0;
+                        } else {
+                            ch4.counterCountdown = untilStep - q2;
+                            ch4.countdownReloaded = false;
+                        }
+                    }
+                }
+                if (ch3.enabled) ch3.period -= quiet;
+            }
+            n -= quiet;
+            continue;
+        }
+
+        tickCounter++;
+        pcm12Mask_ = 0xFF;
+        if (enabled) {
+            ch3.alternateRead = false;
+            // Square channels run on the 2MHz APU tick grid
+            if ((tickCounter & 1) == 0) {
+                // The sweep unit body is a strict no-op unless one of these
+                // countdowns is armed (by a trigger or NR10 write)
+                if (ch1.sweep.calcReloadTimer | ch1.sweep.calcCountdown | ch1.restartHold) {
+                    ch1.TickSweepUnit((tickCounter & 2) ? 0 : 1);
+                }
+                if (hasEarlyPcmGlitch_) {
+                    const auto old1 = ch1.GetDigitalOutput();
+                    const auto old2 = ch2.GetDigitalOutput();
+                    ch1.Tick2M();
+                    ch2.Tick2M();
+                    if (ch1.justReloaded && old1 == 0) pcm12Mask_ &= 0xF0;
+                    if (ch2.justReloaded && old2 == 0) pcm12Mask_ &= 0x0F;
+                } else {
+                    ch1.Tick2M();
+                    ch2.Tick2M();
+                }
+                ch4.Tick2M(frameSeqStep, dmg);
+            }
+            ch3.Tick();
+        }
+        GenerateSample();
+        --n;
     }
-    GenerateSample();
 }
 
 void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
@@ -111,7 +222,8 @@ uint8_t Audio::ReadAudioControl() const {
     return (audioEnabled ? 0x80 : 0x00) | (ch4.enabled << 3) | (ch3.enabled << 2) | (ch2.enabled << 1) | (ch1.enabled << 0) | 0x70;
 }
 
-uint8_t Audio::ReadByte(const uint16_t address) const {
+uint8_t Audio::ReadByte(const uint16_t address) {
+    CatchUp();
     switch (address) {
         case 0xFF10 ... 0xFF14: return ch1.ReadByte(address);
         case 0xFF15 ... 0xFF19: return ch2.ReadByte(address);
@@ -126,6 +238,7 @@ uint8_t Audio::ReadByte(const uint16_t address) const {
 }
 
 void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool divBit4High, const bool doubleSpeed) {
+    CatchUp();
     static const std::set<uint16_t> allowedAddresses = {
         0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20
     };
@@ -207,11 +320,13 @@ void Envelope::NRx2Glitch(const uint8_t value, const uint8_t old, const bool int
     }
 }
 
-uint8_t Audio::ReadPCM12() const {
+uint8_t Audio::ReadPCM12() {
+    CatchUp();
     return ((ch2.GetDigitalOutput() << 4) | (ch1.GetDigitalOutput() & 0x0F)) & pcm12Mask_;
 }
 
-uint8_t Audio::ReadPCM34() const {
+uint8_t Audio::ReadPCM34() {
+    CatchUp();
     return (ch4.GetDigitalOutput() << 4) | (ch3.GetDigitalOutput() & 0x0F);
 }
 
@@ -1226,36 +1341,50 @@ void Audio::BandLimitedRead(const int channel, double &outLeft, double &outRight
 
 void Audio::GenerateSample() {
     if (emulatorAudioDisabled) return;
-    auto dac = [](const double digital, const bool dacOn) -> double {
-        if (!dacOn) return 0.0;
-        return (15.0 - digital * 2.0) / 15.0;
-    };
 
-    const int phase = static_cast<int>((sampleCounter / CYCLES_PER_SAMPLE) * BL_PHASES) & (BL_PHASES - 1);
-    auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled,
-                                const uint8_t leftMask, const uint8_t rightMask) {
-        const double val = dac(output, enabled && dacEnabled);
-        double left = (nr51 & leftMask) ? val : 0.0;
-        double right = (nr51 & rightMask) ? val : 0.0;
+    // Channel levels are a pure function of these inputs; when none changed
+    // since the last tick, every BandLimitedUpdate below would compute an
+    // exact-zero delta and deposit nothing, so the whole block is skippable
+    const uint32_t mixRegs = static_cast<uint32_t>(nr50) << 16 | static_cast<uint32_t>(nr51) << 8
+                             | ch1.enabled | ch1.dacEnabled << 1 | ch2.enabled << 2 | ch2.dacEnabled << 3
+                             | ch3.enabled << 4 | ch3.dacEnabled << 5 | ch4.enabled << 6 | ch4.dacEnabled << 7;
+    if (mixRegs != lastMixRegs_
+        || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1]
+        || ch3.currentOutput != lastMixOutputs_[2] || ch4.currentOutput != lastMixOutputs_[3]) {
+        lastMixRegs_ = mixRegs;
+        lastMixOutputs_ = {ch1.currentOutput, ch2.currentOutput, ch3.currentOutput, ch4.currentOutput};
 
-        const double leftVol = (nr50 >> 4 & 0x07) + 1;
-        const double rightVol = (nr50 & 0x07) + 1;
-        left *= leftVol;
-        right *= rightVol;
+        auto dac = [](const double digital, const bool dacOn) -> double {
+            if (!dacOn) return 0.0;
+            return (15.0 - digital * 2.0) / 15.0;
+        };
 
-        BandLimitedUpdate(ch, left, right, phase);
-    };
+        const int phase = static_cast<int>(sampleAcc_ >> 15) & (BL_PHASES - 1);
+        auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled,
+                                    const uint8_t leftMask, const uint8_t rightMask) {
+            const double val = dac(output, enabled && dacEnabled);
+            double left = (nr51 & leftMask) ? val : 0.0;
+            double right = (nr51 & rightMask) ? val : 0.0;
 
-    getChannelOutput(0, ch1.currentOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
-    getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
-    getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
-    getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
+            const double leftVol = (nr50 >> 4 & 0x07) + 1;
+            const double rightVol = (nr50 & 0x07) + 1;
+            left *= leftVol;
+            right *= rightVol;
 
-    sampleCounter += 1.0;
-    if (sampleCounter < CYCLES_PER_SAMPLE) {
+            BandLimitedUpdate(ch, left, right, phase);
+        };
+
+        getChannelOutput(0, ch1.currentOutput, ch1.enabled, ch1.dacEnabled, 0x10, 0x01);
+        getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
+        getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
+        getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
+    }
+
+    sampleAcc_ += AUDIO_SAMPLE_RATE;
+    if (sampleAcc_ < APU_CLOCK_RATE_INT) {
         return;
     }
-    sampleCounter -= CYCLES_PER_SAMPLE;
+    sampleAcc_ -= APU_CLOCK_RATE_INT;
 
     if (samplesAvailable >= AUDIO_BUFFER_SIZE) {
         for (int i = 0; i < 4; i++) {
@@ -1289,6 +1418,7 @@ void Audio::GenerateSample() {
 }
 
 size_t Audio::ReadSamples(float *output, const size_t numSamples) {
+    CatchUp();
     const size_t samplesToRead = std::min(numSamples, samplesAvailable);
 
     for (size_t i = 0; i < samplesToRead; i++) {
@@ -1305,9 +1435,11 @@ void Audio::ClearBuffer() {
     bufferWritePos = 0;
     bufferReadPos = 0;
     samplesAvailable = 0;
-    sampleCounter = 0.0;
+    sampleAcc_ = 0;
     highpassLeft = 0.0;
     highpassRight = 0.0;
+    lastMixRegs_ = 0xFFFFFFFFu;
+    pendingTicks_ = 0;
     for (auto &bl: bandLimited) {
         bl.Reset();
     }

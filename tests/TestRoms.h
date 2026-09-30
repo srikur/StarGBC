@@ -1,6 +1,7 @@
 #ifndef STARGBC_TESTROMS_H
 #define STARGBC_TESTROMS_H
 
+#include <chrono>
 #include <fstream>
 #include <future>
 #include <Gameboy.h>
@@ -778,14 +779,59 @@ ROM_TEST(276, "roms/cpp/ramg-mbc3-test.gb")
 ROM_TEST(277, "roms/mbc3-tester/mbc3-tester.gb")
 ROM_TEST(278, "roms/mooneye/manual-only/sprite_priority.gb")
 
+static std::optional<Model> ModelFromName(const std::string_view name) {
+    template for (constexpr auto e :
+        std::define_static_array(std::meta::enumerators_of(^^Model))) {
+        if (name == std::meta::identifier_of(e)) return [:e:];
+    }
+    return std::nullopt;
+}
+
+// Headless throughput benchmark: no screen compares, no doctest context. The
+// audio sample ring fills and takes the same drain-and-drop path the ROM tests
+// exercise, so benchmark and test builds run identical code.
+static int runBenchmark(const std::string &rom, const Model model, const unsigned frames) {
+    try {
+        const auto gameboy = Gameboy::init({
+            .romName = rom,
+            .biosPath = "",
+            .model = model,
+        });
+        constexpr double kGbFrameHz = 4194304.0 / 70224.0;
+        const auto start = std::chrono::steady_clock::now();
+        for (unsigned f = 0; f < frames; ++f) { gameboy->RunFrame(); }
+        const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - start;
+        const double fps = frames * 1000.0 / elapsed.count();
+        std::cout << rom << " [" << ModelName(model) << "] " << frames << " frames in "
+                  << elapsed.count() << " ms | " << fps << " fps | "
+                  << fps / kGbFrameHz << "x realtime" << std::endl;
+        return EXIT_SUCCESS;
+    } catch (const std::exception &e) {
+        std::cerr << "Benchmark failed for " << rom << ": " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+}
+
 inline int ExecuteTestRoms(const int argc, char **argv) {
     std::vector<char *> doctest_args;
     doctest_args.reserve(argc);
     doctest_args.push_back(argv[0]);
 
+    std::string benchRom;
+    Model benchModel = Model::Auto;
+
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        if (constexpr std::string_view kPrefix = "--max-threads="; arg.rfind(kPrefix, 0) == 0) {
+        if (constexpr std::string_view kBench = "--bench="; arg.rfind(kBench, 0) == 0) {
+            benchRom = arg.substr(kBench.size());
+        } else if (constexpr std::string_view kBenchModel = "--bench-model="; arg.rfind(kBenchModel, 0) == 0) {
+            const auto parsed = ModelFromName(arg.substr(kBenchModel.size()));
+            if (!parsed) {
+                std::cerr << "Unknown model for --bench-model" << std::endl;
+                return EXIT_FAILURE;
+            }
+            benchModel = *parsed;
+        } else if (constexpr std::string_view kPrefix = "--max-threads="; arg.rfind(kPrefix, 0) == 0) {
             try {
                 maxThreads = std::stoul(std::string(arg.substr(kPrefix.size())));
             } catch (...) {
@@ -807,6 +853,10 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
         } else {
             doctest_args.push_back(argv[i]);
         }
+    }
+
+    if (!benchRom.empty()) {
+        return runBenchmark(benchRom, benchModel, romFrames ? romFrames : 3000);
     }
 
     if (maxThreads == 0) { maxThreads = 1; }

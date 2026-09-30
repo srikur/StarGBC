@@ -272,39 +272,32 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
     }
 }
 
-void Bus::UpdateDMA() {
-    if (++dma_.dmaTickCounter % 4 == 0) {
-        dma_.dmaTickCounter = 0;
-        if (dma_.transferComplete) {
-            dma_.transferActive = false;
-            dma_.transferComplete = false;
-            dma_.ticks = 0;
-            dma_.currentByte = 0;
-        }
-        if (!dma_.transferActive) { return; }
-        if (dma_.restartPending && --dma_.restartCountdown == 0) {
-            dma_.restartPending = false;
-            dma_.startAddress = dma_.pendingStart;
-            dma_.currentByte = 0;
-            dma_.ticks = 1;
-        }
+void Bus::UpdateDMAWork() {
+    if (dma_.transferComplete) {
+        dma_.transferActive = false;
+        dma_.transferComplete = false;
+        dma_.ticks = 0;
+        dma_.currentByte = 0;
+    }
+    if (!dma_.transferActive) { return; }
+    if (dma_.restartPending && --dma_.restartCountdown == 0) {
+        dma_.restartPending = false;
+        dma_.startAddress = dma_.pendingStart;
+        dma_.currentByte = 0;
+        dma_.ticks = 1;
+    }
 
-        ++dma_.ticks;
-        if (dma_.ticks <= DMA::STARTUP_CYCLES) return; // OAM still accessible here
+    ++dma_.ticks;
+    if (dma_.ticks <= DMA::STARTUP_CYCLES) return; // OAM still accessible here
 
-        gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
-        ++dma_.currentByte;
-        if (dma_.currentByte == DMA::TOTAL_BYTES) {
-            dma_.transferComplete = true;
-        }
+    gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+    ++dma_.currentByte;
+    if (dma_.currentByte == DMA::TOTAL_BYTES) {
+        dma_.transferComplete = true;
     }
 }
 
-void Bus::RunHDMA() const {
-    if (!gpu_.hdma.hdmaActive || IsDmg(gpu_.model)) {
-        return;
-    }
-
+void Bus::RunHDMAWork() const {
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
             if (gpu_.hdma.step == HDMAStep::Read) {
@@ -381,6 +374,7 @@ void Bus::ChangeSpeed() {
         speed = speed == Speed::Regular ? Speed::Double : Speed::Regular;
         prepareSpeedShift = false;
         gpu_.doubleSpeed = speed == Speed::Double;
+        gpu_.InvalidateIdle();
         audio_.OnSpeedSwitch(gpu_.doubleSpeed);
         if (gpu_.doubleSpeed && !gpu_.LCDDisabled()) gpu_.clockPause_ = 1;
     }

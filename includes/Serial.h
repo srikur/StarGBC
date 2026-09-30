@@ -15,7 +15,13 @@ struct Serial {
 
     void ShiftOneBit();
 
-    void Update();
+    // Inline idle fast path: nothing to do unless a transfer is shifting
+    void Update() {
+        if (!active_) return;
+        UpdateActive();
+    }
+
+    void UpdateActive();
 
     bool SaveState(std::ofstream &) const;
 

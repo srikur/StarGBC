@@ -30,22 +30,26 @@ public:
         return data_[head_];
     }
 
+    // Indices stay below 2*Capacity, so a conditional subtract replaces the
+    // modulo (a real division for non-power-of-two capacities)
     constexpr void push_back(const T &value) {
         assert(count_ < Capacity);
-        data_[(head_ + count_) % Capacity] = value;
+        std::size_t idx = head_ + count_;
+        if (idx >= Capacity) idx -= Capacity;
+        data_[idx] = value;
         ++count_;
     }
 
     constexpr void push_front(const T &value) {
         assert(count_ < Capacity);
-        head_ = (head_ + Capacity - 1) % Capacity;
+        head_ = head_ == 0 ? Capacity - 1 : head_ - 1;
         data_[head_] = value;
         ++count_;
     }
 
     constexpr void pop_front() {
         assert(count_ > 0);
-        head_ = (head_ + 1) % Capacity;
+        head_ = head_ + 1 == Capacity ? 0 : head_ + 1;
         --count_;
     }
 

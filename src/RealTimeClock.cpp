@@ -25,14 +25,6 @@ uint64_t RealTimeClock::RecalculateZeroTime() {
     return zeroTime_;
 }
 
-void RealTimeClock::Update() {
-    // Called every T-cycle, ticks rtc counter and ticks rtc every 1000ms
-    if (!halted_) counter_++;
-    if (counter_ == RTC_TICKS_PER_SECOND) {
-        counter_ = 0;
-        Tick();
-    }
-}
 
 void RealTimeClock::Load(std::ifstream &stateFile) {
     stateFile.read(reinterpret_cast<char *>(&zeroTime_), sizeof(zeroTime_));

@@ -12,6 +12,7 @@ static constexpr int AUDIO_SAMPLE_RATE = 48000; // Higher sample rate for better
 static constexpr int AUDIO_BUFFER_SIZE = 2048;
 static constexpr double APU_CLOCK_RATE = 4194304.0;
 static constexpr double CYCLES_PER_SAMPLE = APU_CLOCK_RATE / AUDIO_SAMPLE_RATE;
+static constexpr uint32_t APU_CLOCK_RATE_INT = 4194304;
 
 static constexpr int BL_WIDTH = 32;
 static constexpr int BL_PHASES = 128;
@@ -341,13 +342,26 @@ class Audio {
     [[=NotStateAware]] size_t bufferWritePos{0};
     [[=NotStateAware]] size_t bufferReadPos{0};
     [[=NotStateAware]] size_t samplesAvailable{0};
-    [[=NotStateAware]] double sampleCounter{0.0};
+    // Integer decimation accumulator: += 48000 per APU tick, emits a sample on
+    // overflow past 4194304 (= 2^22). The band-limited kernel phase is the
+    // fractional position scaled to BL_PHASES, i.e. acc * 2^7 / 2^22 = acc >> 15
+    [[=NotStateAware]] uint32_t sampleAcc_{0};
 
     [[=NotStateAware]] std::array<BandLimited, 4> bandLimited{};
     [[=NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
     [[=NotStateAware]] double highpassLeft{0.0};
     [[=NotStateAware]] double highpassRight{0.0};
     [[=NotStateAware]] double highpassRate{0.0};
+    // Last-seen mixing inputs; when unchanged, every BandLimitedUpdate would
+    // see an exact-zero delta, so GenerateSample skips the level computation.
+    // 0xFFFFFFFF is unreachable (nr50 occupies the top packed byte).
+    [[=NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
+    [[=NotStateAware]] std::array<float, 4> lastMixOutputs_{};
+    [[=NotStateAware]] bool hasEarlyPcmGlitch_{false};
+    // APU ticks deferred by the master loop; materialized by CatchUp() before
+    // anything observes APU state (register/PCM access, frame-sequencer
+    // events, sample reads, end of frame). Always zero between frames.
+    [[=NotStateAware]] uint32_t pendingTicks_{0};
 
     void InitBandLimitedTable();
 
@@ -376,7 +390,10 @@ public:
     uint8_t nr50{};
     uint8_t nr51{};
 
-    void SetModel(const Model model) { model_ = model; }
+    void SetModel(const Model model) {
+        model_ = model;
+        hasEarlyPcmGlitch_ = HasEarlyCgbPcmGlitch(model);
+    }
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
@@ -389,19 +406,28 @@ public:
     // channels whose volume countdown has expired
     void TickFrameSequencerSecondary();
 
-    void Tick();
+    // The master loop defers APU ticks; CatchUp() materializes them before
+    // every register/PCM access, frame-sequencer event, sample read, and at
+    // the end of each frame, so observable ordering is exact
+    void Tick() { ++pendingTicks_; }
+
+    void CatchUp() {
+        if (pendingTicks_ > 0) CatchUpWork();
+    }
+
+    void CatchUpWork();
 
     void WriteAudioControl(uint8_t value, bool);
 
     [[nodiscard]] uint8_t ReadAudioControl() const;
 
-    [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
+    [[nodiscard]] uint8_t ReadByte(uint16_t address);
 
     void WriteByte(uint16_t address, uint8_t value, bool divBit4High, bool doubleSpeed = false);
 
-    [[nodiscard]] uint8_t ReadPCM12() const;
+    [[nodiscard]] uint8_t ReadPCM12();
 
-    [[nodiscard]] uint8_t ReadPCM34() const;
+    [[nodiscard]] uint8_t ReadPCM34();
 
     void GenerateSample();
 
