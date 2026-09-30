@@ -66,6 +66,17 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentS
     if (blocked) return;
     if (address < 0xFEA0) {
         gpu_.oam[address - 0xFE00] = value;
+        if (source == ComponentSource::CPU && !IsCgb(gpu_.model) && !gpu_.LCDDisabled() &&
+            ((gpu_.stat.mode == GPUMode::MODE_0 && gpu_.currentLine < 143) || gpu_.currentLine == 153) &&
+            gpu_.scanlineCounter >= 452) {
+            const unsigned row = address & 0xF8;
+            const unsigned word = address & 0xFE;
+            for (unsigned byte = 0; byte < 2; ++byte) {
+                const auto a = gpu_.oam[byte], b = gpu_.oam[row + byte], c = gpu_.oam[word + byte];
+                gpu_.oam[byte] = ((a ^ c) & (b ^ c)) ^ c;
+            }
+            for (unsigned byte = 2; byte < 8; ++byte) gpu_.oam[byte] = gpu_.oam[row + byte];
+        }
         return;
     }
     uint8_t offset = address & 0xFF;
@@ -369,6 +380,9 @@ void Bus::ChangeSpeed() {
     if (prepareSpeedShift) {
         speed = speed == Speed::Regular ? Speed::Double : Speed::Regular;
         prepareSpeedShift = false;
+        gpu_.doubleSpeed = speed == Speed::Double;
+        audio_.OnSpeedSwitch(gpu_.doubleSpeed);
+        if (gpu_.doubleSpeed && !gpu_.LCDDisabled()) gpu_.clockPause_ = 1;
     }
 }
 

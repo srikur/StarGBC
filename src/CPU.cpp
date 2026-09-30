@@ -166,16 +166,21 @@ bool CPU<BusT>::ProcessInterrupts() {
                 interrupts_.interruptMasterEnable = true;
                 icount_ = 0;
             }
-            // DMG samples HALT wake at T2 and running instructions at T4, before peripherals advance. CGB uses the current request
+            // DMG samples HALT wake at T2 and running instructions at T4
+            // CGB VBlank reaches interrupt dispatch one M-cycle before its
+            // IME=0 HALT-wake path; STAT retains its own propagation delay
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
                                         ? (halted_ ? haltPending_ : runningPending_)
-                                        : interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+                                        : interrupts_.interruptEnable &
+                                          (interrupts_.interruptFlag | (interrupts_.interruptMasterEnable
+                                              ? interrupts_.interruptVisiblePending & 0x01 : 0)) & 0x1F;
             if (pending == 0) {
                 return false;
             }
             if (halted_ && !interrupts_.interruptMasterEnable) {
                 halted_ = false;
-                return false;
+                speedSwitchWakePending_ = false;
+                return IsCgb(bus_.gpu_.model);
             }
 
             if (interrupts_.interruptDelay || !interrupts_.interruptMasterEnable) {
@@ -183,6 +188,11 @@ bool CPU<BusT>::ProcessInterrupts() {
             }
 
             if (halted_ && IsCgb(bus_.gpu_.model)) {
+                if (speedSwitchWakePending_) {
+                    speedSwitchWakePending_ = false;
+                    ++pc_;
+                    return true;
+                }
                 halted_ = false;
                 return true;
             }
@@ -226,7 +236,8 @@ bool CPU<BusT>::ProcessInterrupts() {
             return true;
         }
         case M4: {
-            interruptState = M5;
+            interruptState = shortInterruptEntry_ ? M6 : M5;
+            shortInterruptEntry_ = false;
             return true;
         }
         case M5: {

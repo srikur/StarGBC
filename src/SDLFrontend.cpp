@@ -58,7 +58,7 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         return SDL_APP_SUCCESS;
     }
     romPath_ = args->rom_path;
-    useNearest_ = args->anti_aliasing;
+    useNearest_ = !args->anti_aliasing;
     paused_ = args->debug_start;
     throttled_ = !args->unthrottled;
     audioEnabled_ = !args->no_audio;

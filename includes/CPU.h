@@ -112,6 +112,14 @@ public:
 
     void halted(const bool value) {
         halted_ = value;
+        if (!value) speedSwitchWakePending_ = false;
+    }
+
+    void SpeedSwitchHalt(const bool pending) {
+        halted_ = !pending;
+        speedSwitchWakePending_ = !pending;
+        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC &&
+            (interrupts_.interruptMasterEnable || interrupts_.interruptDelay);
     }
 
     void haltBug(const bool value) {
@@ -137,7 +145,7 @@ public:
 private:
     uint8_t RunInstructionCycle(Instructions<Self> &, uint8_t, bool);
 
-    uint8_t InterruptAddress(uint8_t) const;
+    [[nodiscard]] uint8_t InterruptAddress(uint8_t) const;
 
     bool ProcessInterrupts();
 
@@ -156,6 +164,8 @@ private:
     uint8_t mCycleCounter_{0x01};
     uint16_t nextInstruction_{0x0000};
     bool halted_{false};
+    bool speedSwitchWakePending_{false};
+    bool shortInterruptEntry_{false};
     bool locked_{false};
     uint8_t haltPending_{0};
     uint8_t runningPending_{0};

@@ -98,6 +98,7 @@ void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
     } else if (!wasEnabled && audioEnabled) {
         // Reset tick counter for phase tracking
         tickCounter = 0;
+        speedSwitchFrameSeqDelay = false;
         // If the DIV-APU bit is high at power-on the first event is skipped
         // and the divider starts at 1, so a length-enabling NRx4 write lands
         // on an odd divider right away

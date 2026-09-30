@@ -29,6 +29,7 @@ bool Gameboy::LoadedStateValid() const {
            && gpu_.model == audio_.GetModel()
            && (!bus_.cgbMode || IsCgb(gpu_.model))
            && gpu_.dmgCompat == (IsCgb(gpu_.model) && !bus_.cgbMode)
+           && gpu_.doubleSpeed == (bus_.speed == Speed::Double)
            && gpu_.backgroundQueue.valid()
            && gpu_.spriteFetchQueue.valid()
            && gpu_.spriteBuffer.valid()
@@ -66,7 +67,11 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         bus_.UpdateDMA();
         gpu_.Update();
         bus_.RunHDMA();
-        if (bus_.speedSwitchHalt > 0) --bus_.speedSwitchHalt;
+        if (bus_.speedSwitchHalt > 0) {
+            --bus_.speedSwitchHalt;
+            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
+            else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+        }
         if ((++cpuTickPhase_ & 3) == 0) {
             cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
         }
@@ -92,7 +97,11 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         gpu_.Update();
         bus_.RunHDMA();
     }
-    if (bus_.speedSwitchHalt > 0) --bus_.speedSwitchHalt;
+    if (bus_.speedSwitchHalt > 0) {
+        --bus_.speedSwitchHalt;
+        if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
+        else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+    }
     if ((++cpuTickPhase_ & 3) == 0) {
         cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
     }
