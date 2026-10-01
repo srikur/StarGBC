@@ -64,4 +64,5 @@ private:
     bool throttled_{true};
     int speedMultiplier_{1};
     std::chrono::steady_clock::time_point nextFrameTime_{};
+    std::chrono::steady_clock::time_point lastPresentTime_{};
 };

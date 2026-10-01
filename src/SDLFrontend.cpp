@@ -231,7 +231,13 @@ SDL_AppResult SDLFrontend::Iterate() {
     }
 
     if (gameboy_->ConsumeFrame()) {
-        PresentFrame();
+        if (throttled_) {
+            PresentFrame();
+        } else if (const auto now = std::chrono::steady_clock::now();
+                   now - lastPresentTime_ >= std::chrono::milliseconds(8)) {
+            lastPresentTime_ = now;
+            PresentFrame();
+        }
     }
 
     PumpAudio();
