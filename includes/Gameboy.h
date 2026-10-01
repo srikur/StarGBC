@@ -121,6 +121,8 @@ private:
 
     uint32_t AdvanceMCycle();
 
+    uint32_t AdvanceMCycleDouble();
+
     [[nodiscard]] bool LoadedStateValid() const;
 };
 

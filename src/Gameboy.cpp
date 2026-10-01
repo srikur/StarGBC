@@ -90,6 +90,54 @@ uint32_t Gameboy::AdvanceMCycle() {
     return consumed;
 }
 
+uint32_t Gameboy::AdvanceMCycleDouble() {
+    const auto cycle = [&](const unsigned phase) {
+        if (phase == 3) cpu_.SampleRunningInterrupts();
+        if (phase == 1) cpu_.SampleHaltInterrupts();
+        timer_.Tick(Speed::Double);
+        const bool evenCycle = (phase & 1) == 0;
+        if (evenCycle) {
+            rtc_.Update();
+            audio_.Tick();
+        }
+        serial_.Update();
+        if (evenCycle) {
+            if (dma_.transferActive) {
+                gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+                gpu_.oamDmaDest_ = dma_.currentByte;
+            } else if (gpu_.oamDmaActive) {
+                gpu_.oamDmaActive = false;
+            }
+        }
+        bus_.UpdateDMA();
+        if (evenCycle) {
+            if (gpu_.idleDots_ > 0) {
+                interrupts_.Tick();
+                --gpu_.idleDots_;
+                ++gpu_.scanlineCounter;
+            } else if (gpu_.lcdOffIdle_) {
+                interrupts_.Tick();
+            } else {
+                gpu_.Update();
+            }
+            bus_.RunHDMA();
+        }
+        if (bus_.speedSwitchHalt > 0) {
+            --bus_.speedSwitchHalt;
+            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
+            else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+        }
+    };
+    cycle(0);
+    cycle(1);
+    cycle(2);
+    cycle(3);
+    cpuTickPhase_ += 4;
+    cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
+    masterCycles += 4;
+    return 4;
+}
+
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
     if (cpu_.stopped()) {
@@ -169,13 +217,19 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
 void Gameboy::RunFrame() {
     uint32_t remaining = kFrameCyclesCGB;
     while (remaining > 0) {
-        if (remaining >= 8 && bus_.speed == Speed::Regular && !cpu_.stopped() &&
-            (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
-            if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
-            remaining -= AdvanceMCycle();
-        } else {
-            remaining -= AdvanceCycles(remaining);
+        if (!cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
+            if (bus_.speed == Speed::Regular && remaining >= 8) {
+                if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
+                remaining -= AdvanceMCycle();
+                continue;
+            }
+            if (bus_.speed == Speed::Double && remaining >= 4) {
+                if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
+                remaining -= AdvanceMCycleDouble();
+                continue;
+            }
         }
+        remaining -= AdvanceCycles(remaining);
     }
     // Deferred APU ticks never cross a frame boundary, so between-frames
     // observers (sample drain, save states) always see current state
