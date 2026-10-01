@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Convert the bundled AGE PNG oracles to StarGBC's RGBA framebuffer palette."""
+"""Convert Gambatte bundled screenshots to .screen raw RGBA for comparison.
+
+Output mirrors the folder layout under roms/gambatte, because many PNGs share a
+base name across subdirectories (e.g. dmgpalette_during_m3/ and its scx3/ variant).
+"""
 
 import argparse
 import hashlib
@@ -9,7 +13,8 @@ import struct
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "tests/expected/age-test-roms"
+SOURCE = ROOT / "roms/gambatte"
+OUTPUT = ROOT / "tests/expected/gambatte"
 
 
 def read_png(path):
@@ -81,30 +86,39 @@ def main():
     args = parser.parse_args()
     manifest = {}
     outputs = {}
-    for source in sorted((ROOT / "roms/age-test-roms").rglob("*.png")):
+    for source in sorted(SOURCE.rglob("*.png")):
         pixels = convert(source)
-        name = source.stem + ".screen"
+        # Keep the subdirectory so same-named PNGs in different folders don't collide.
+        name = source.relative_to(SOURCE).with_suffix(".screen").as_posix()
         if name in outputs:
             raise ValueError(f"Duplicate reference name: {name}")
         outputs[name] = pixels
         manifest[name] = {
-            "source": str(source.relative_to(ROOT)),
+            "source": source.relative_to(ROOT).as_posix(),
             "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
             "screen_sha256": hashlib.sha256(pixels).hexdigest(),
         }
     if not outputs:
-        raise ValueError("No AGE reference PNGs found")
+        raise ValueError("No Gambatte reference PNGs found")
     outputs["manifest.json"] = (json.dumps(manifest, indent=2) + "\n").encode()
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+
+    stale = [path for path in OUTPUT.rglob("*.screen")
+             if path.relative_to(OUTPUT).as_posix() not in outputs] if OUTPUT.exists() else []
+    if args.check and stale:
+        raise SystemExit(f"Stale reference without a source PNG: {stale[0]}")
+
     for name, content in outputs.items():
         target = OUTPUT / name
         if args.check:
             if not target.exists() or target.read_bytes() != content:
                 raise SystemExit(f"Reference needs regeneration: {target}")
         else:
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
-    print(f"{'Verified' if args.check else 'Generated'} {len(manifest)} AGE references")
-
+    for path in stale:
+        path.unlink()
+    print(f"{'Verified' if args.check else 'Generated'} {len(manifest)} Gambatte references"
+          + (f", removed {len(stale)} stale" if stale else ""))
 
 if __name__ == "__main__":
     main()
