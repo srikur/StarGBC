@@ -1,9 +1,10 @@
 #include "SDLFrontend.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <format>
 #include <fstream>
 #include <string_view>
-#include <thread>
 #include <print>
 
 #include <starparse/starparse.hpp>
@@ -76,9 +77,17 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
+    SDL_SetRenderVSync(renderer_, SDL_RENDERER_VSYNC_DISABLED);
+
     SDL_SetRenderLogicalPresentation(renderer_,
                                      GB_SCREEN_W, GB_SCREEN_H,
                                      SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+
+    if (const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window_));
+        mode && mode->refresh_rate > 0.0f) {
+        unthrottledPresentInterval_ = std::chrono::nanoseconds(
+            static_cast<int64_t>(1e9 / mode->refresh_rate));
+    }
 
     texture_ = SDL_CreateTexture(renderer_,
                                  SDL_PIXELFORMAT_RGBA32,
@@ -116,6 +125,8 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
             .noAudio = !audioEnabled_
         }
     );
+
+    lastTitleTime_ = std::chrono::steady_clock::now();
 
     return SDL_APP_CONTINUE;
 }
@@ -227,6 +238,7 @@ void SDLFrontend::HandleKeyUp(const SDL_KeyboardEvent &key) {
 SDL_AppResult SDLFrontend::Iterate() {
     if (!paused_) {
         gameboy_->RunFrame();
+        ++framesSinceTitle_;
         ThrottleFrame();
     }
 
@@ -234,13 +246,14 @@ SDL_AppResult SDLFrontend::Iterate() {
         if (throttled_) {
             PresentFrame();
         } else if (const auto now = std::chrono::steady_clock::now();
-                   now - lastPresentTime_ >= std::chrono::milliseconds(8)) {
+            now - lastPresentTime_ >= unthrottledPresentInterval_) {
             lastPresentTime_ = now;
             PresentFrame();
         }
     }
 
     PumpAudio();
+    UpdateWindowTitle();
 
     return SDL_APP_CONTINUE;
 }
@@ -250,13 +263,29 @@ void SDLFrontend::ThrottleFrame() {
     if (throttled_) {
         nextFrameTime_ += Gameboy::FRAME_PERIOD / speedMultiplier_;
         if (const auto now = clock::now(); nextFrameTime_ > now) {
-            std::this_thread::sleep_until(nextFrameTime_);
+            SDL_DelayPrecise(std::chrono::duration_cast<std::chrono::nanoseconds>(nextFrameTime_ - now).count());
         } else {
             nextFrameTime_ = now; // fell behind; don't try to catch up in a burst
         }
     } else {
         nextFrameTime_ = clock::now();
     }
+}
+
+void SDLFrontend::UpdateWindowTitle() {
+    const auto now = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration<double>(now - lastTitleTime_).count();
+    if (elapsed < 1.0) return;
+    const double fps = framesSinceTitle_ / elapsed;
+    framesSinceTitle_ = 0;
+    lastTitleTime_ = now;
+
+    std::string suffix;
+    if (paused_) suffix = " (paused)";
+    else if (!throttled_) suffix = " (unthrottled)";
+    else if (speedMultiplier_ != 1) suffix = std::format(" ({}x)", speedMultiplier_);
+    const std::string title = std::format("{} — {:.1f} fps{}", kAppName, fps, suffix);
+    SDL_SetWindowTitle(window_, title.c_str());
 }
 
 void SDLFrontend::PresentFrame() const {
@@ -279,6 +308,14 @@ void SDLFrontend::PumpAudio() {
         // When the queue is backed up (unthrottled/4x speed), samples are consumed but dropped
         SDL_PutAudioStreamData(audioStream_, audioBuffer_.data(),
                                static_cast<int>(samplesRead * 2 * sizeof(float)));
+    }
+    if (throttled_) {
+        const auto queuedFrames = static_cast<int>(SDL_GetAudioStreamQueued(audioStream_) / (2 * sizeof(float)));
+        const double error = static_cast<double>(queuedFrames - AUDIO_TARGET_QUEUE_FRAMES) / AUDIO_TARGET_QUEUE_FRAMES;
+        const auto ratio = static_cast<float>(std::clamp(1.0 + 0.005 * error, 0.995, 1.005));
+        SDL_SetAudioStreamFrequencyRatio(audioStream_, ratio);
+    } else {
+        SDL_SetAudioStreamFrequencyRatio(audioStream_, 1.0f);
     }
 }
 
