@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "TestRoms.h"
-#include "GbMicrotest.h"
+#include "GbMicrotest.gen.h"
 #include "GraphicsRoms.h"
 #include "AgeTestRoms.h"
 
