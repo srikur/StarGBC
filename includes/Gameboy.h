@@ -2,13 +2,13 @@
 
 #include <chrono>
 #include <memory>
+#include <numeric>
 #include <span>
 #include <type_traits>
 #include <utility>
-#include <numeric>
 
-#include "Common.h"
 #include "CPU.h"
+#include "Common.h"
 #include "Memory.h"
 
 struct GameboySettings {
@@ -25,23 +25,13 @@ public:
     static constexpr uint32_t DMG_CYCLES_PER_SECOND = 4194304;
     static constexpr uint32_t CGB_CYCLES_PER_SECOND = DMG_CYCLES_PER_SECOND * 2;
     static constexpr uint32_t FRAME_CYCLES_DMG = 70224;
-    static constexpr std::chrono::nanoseconds FRAME_PERIOD{
-        FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND
-    };
+    static constexpr std::chrono::nanoseconds FRAME_PERIOD{FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND};
 
-    explicit Gameboy(const GameboySettings &settings) : romPath_(std::move(settings.romName)),
-                                                        biosPath_(std::move(settings.biosPath)),
-                                                        rtc_(settings.realRTC),
-                                                        cartridge_(romPath_, rtc_),
-                                                        joypad_(interrupts_), audio_(settings.noAudio),
-                                                        timer_(audio_, interrupts_),
-                                                        serial_(interrupts_), gpu_(interrupts_),
-                                                        bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_,
-                                                             audio_, interrupts_, gpu_),
-                                                        cpu_(settings.model, biosPath_, settings.noBootrom, bus_,
-                                                             interrupts_, registers_),
-                                                        instructions_(registers_, interrupts_) {
-    }
+    explicit Gameboy(const GameboySettings &settings) :
+        romPath_(std::move(settings.romName)), biosPath_(std::move(settings.biosPath)), rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
+        joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_), gpu_(interrupts_),
+        bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
+        cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_), instructions_(registers_, interrupts_) {}
 
     Gameboy(const Gameboy &other) = delete;
 
@@ -53,9 +43,7 @@ public:
 
     ~Gameboy() = default;
 
-    static std::unique_ptr<Gameboy> init(const GameboySettings &settings) {
-        return std::make_unique<Gameboy>(settings);
-    }
+    static std::unique_ptr<Gameboy> init(const GameboySettings &settings) { return std::make_unique<Gameboy>(settings); }
 
     void RunFrame();
 
@@ -73,31 +61,21 @@ public:
 
     [[nodiscard]] bool LoadState(std::span<const std::byte> state);
 
-    [[nodiscard]] uint16_t CartChecksum() const {
-        return cartridge_.GlobalChecksum();
-    }
+    [[nodiscard]] uint16_t CartChecksum() const { return cartridge_.GlobalChecksum(); }
 
-    [[nodiscard]] Model GetModel() const {
-        return gpu_.model;
-    }
+    [[nodiscard]] Model GetModel() const { return gpu_.model; }
 
     [[nodiscard]] bool IsInCgbMode() const { return bus_.cgbMode; }
 
-    [[nodiscard]] size_t GetAudioSamplesAvailable() const {
-        return audio_.GetSamplesAvailable();
-    }
+    [[nodiscard]] size_t GetAudioSamplesAvailable() const { return audio_.GetSamplesAvailable(); }
 
-    size_t ReadAudioSamples(float *output, const size_t numSamples) {
-        return audio_.ReadSamples(output, numSamples);
-    }
+    size_t ReadAudioSamples(float *output, const size_t numSamples) { return audio_.ReadSamples(output, numSamples); }
 
-    void ClearAudioBuffer() {
-        audio_.ClearBuffer();
-    }
+    void ClearAudioBuffer() { audio_.ClearBuffer(); }
 
 private:
-    [[=NotStateAware]] std::string romPath_;
-    [[=NotStateAware]] std::string biosPath_;
+    [[= NotStateAware]] std::string romPath_;
+    [[= NotStateAware]] std::string biosPath_;
 
     RealTimeClock rtc_; // init in constructor
     Cartridge cartridge_; // init in constructor
@@ -112,7 +90,7 @@ private:
     GPU gpu_;
     Bus bus_;
     CPU<Bus> cpu_;
-    Instructions<CPU<Bus> > instructions_;
+    Instructions<CPU<Bus>> instructions_;
 
     uint32_t masterCycles{0x00000000};
     uint8_t cpuTickPhase_{0x00};
@@ -139,7 +117,7 @@ template<class T, class Visitor>
 static constexpr std::size_t ForEachStateLeaf(T &obj, Visitor &&visit, std::size_t offset = 0) {
     using U = std::remove_const_t<T>;
     if constexpr (std::is_array_v<U>) {
-        for (auto &element: obj) {
+        for (auto &element : obj) {
             offset = ForEachStateLeaf(element, visit, offset);
         }
     } else {
@@ -149,13 +127,11 @@ static constexpr std::size_t ForEachStateLeaf(T &obj, Visitor &&visit, std::size
             visit(obj, offset);
             offset += sizeof(U);
         } else {
-            template for (constexpr auto base: bases) {
+            template for (constexpr auto base : bases) {
                 using BaseT = [:base:];
                 offset = ForEachStateLeaf(StateBaseCast<BaseT>(obj), visit, offset);
             }
-            template for (constexpr auto m: members) {
-                offset = ForEachStateLeaf(obj.[:m:], visit, offset);
-            }
+            template for (constexpr auto m : members) { offset = ForEachStateLeaf(obj.[:m:], visit, offset); }
         }
     }
     return offset;
@@ -165,7 +141,7 @@ template<class T>
 static constexpr void SerializeInto(const T &obj, std::byte *out) {
     ForEachStateLeaf(obj, [out](const auto &leaf, const std::size_t offset) {
         using Leaf = std::remove_cvref_t<decltype(leaf)>;
-        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(Leaf)> >(leaf), out + offset);
+        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(Leaf)>>(leaf), out + offset);
     });
 }
 
@@ -193,7 +169,8 @@ inline auto Gameboy::SaveState() const {
 #pragma GCC diagnostic pop
 
 inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
-    if (state.size() != kGameboyStateSize) return false;
+    if (state.size() != kGameboyStateSize)
+        return false;
     const Model expectedModel = GetModel();
     const auto backup = SaveState();
     DeserializeFrom(*this, state.data());

@@ -6,66 +6,37 @@
 
 template<typename BusT>
 struct MockCPU {
-    explicit MockCPU(BusT &bus) : bus_(bus) {
-    }
+    explicit MockCPU(BusT &bus) : bus_(bus) {}
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() {
-        return pc_;
-    }
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() { return pc_; }
 
-    void pc(const uint16_t value) {
-        pc_ = value;
-    }
+    void pc(const uint16_t value) { pc_ = value; }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> sp() {
-        return sp_;
-    }
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> sp() { return sp_; }
 
-    void sp(const uint16_t value) {
-        sp_ = value;
-    }
+    void sp(const uint16_t value) { sp_ = value; }
 
-    void icount(const uint8_t value) {
-        icount_ = value;
-    }
+    void icount(const uint8_t value) { icount_ = value; }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint8_t> mCycleCounter() {
-        return mCycleCounter_;
-    }
+    [[nodiscard]] std::add_lvalue_reference_t<uint8_t> mCycleCounter() { return mCycleCounter_; }
 
-    void mCycleCounter(const uint8_t value) {
-        mCycleCounter_ = value;
-    }
+    void mCycleCounter(const uint8_t value) { mCycleCounter_ = value; }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> nextInstruction() {
-        return nextInstruction_;
-    }
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> nextInstruction() { return nextInstruction_; }
 
-    void nextInstruction(const uint16_t value) {
-        nextInstruction_ = value;
-    }
+    void nextInstruction(const uint16_t value) { nextInstruction_ = value; }
 
-    void halted(const bool value) {
-        halted_ = value;
-    }
+    void halted(const bool value) { halted_ = value; }
 
-    void haltBug(const bool value) {
-        haltBug_ = value;
-    }
+    void haltBug(const bool value) { haltBug_ = value; }
 
     void Lock() { locked_ = true; }
 
-    std::add_lvalue_reference_t<bool> stopped() {
-        return stopped_;
-    }
+    std::add_lvalue_reference_t<bool> stopped() { return stopped_; }
 
-    void stopped(const bool value) {
-        stopped_ = value;
-    }
+    void stopped(const bool value) { stopped_ = value; }
 
-    Model model() {
-        return Model::DMGB;
-    }
+    Model model() { return Model::DMGB; }
 
     void Reset() {
         pc_ = 0;
@@ -81,11 +52,9 @@ struct MockCPU {
         prefixed = false;
     }
 
-    bool ExecuteMicroOp(Instructions<MockCPU<MockBus> > &instructions) {
+    bool ExecuteMicroOp(Instructions<MockCPU<MockBus>> &instructions) {
         mCycleCounter_++;
-        return prefixed
-                   ? instructions.prefixedInstr(currentInstruction, *this)
-                   : instructions.nonPrefixedInstr(currentInstruction, *this);
+        return prefixed ? instructions.prefixedInstr(currentInstruction, *this) : instructions.nonPrefixedInstr(currentInstruction, *this);
     }
 
     BusT &bus_;
@@ -104,4 +73,4 @@ private:
     bool stopped_{};
 };
 
-#endif //STARGBC_MOCKCPU_H
+#endif // STARGBC_MOCKCPU_H

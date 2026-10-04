@@ -19,9 +19,11 @@ void Interrupts::SetAfter(const InterruptType interrupt, const uint8_t dots, con
     if (visibleEarly) {
         if (visibleDelay) {
             interruptVisibleDelays[index] = visibleDelay;
-        } else interruptVisiblePending |= mask;
+        } else
+            interruptVisiblePending |= mask;
     }
-    if (interruptSetDelays[index] == 0) interruptSetDelays[index] = dots;
+    if (interruptSetDelays[index] == 0)
+        interruptSetDelays[index] = dots;
     interruptFlagDelayed |= mask;
     delaysPending_ = true;
 }
@@ -30,7 +32,8 @@ void Interrupts::TickPending() {
     uint8_t remaining = 0;
     for (unsigned i = 0; i < interruptSetDelays.size(); ++i) {
         const uint8_t mask = 1u << i;
-        if (interruptVisibleDelays[i] && --interruptVisibleDelays[i] == 0) interruptVisiblePending |= mask;
+        if (interruptVisibleDelays[i] && --interruptVisibleDelays[i] == 0)
+            interruptVisiblePending |= mask;
         if (interruptSetDelays[i] && --interruptSetDelays[i] == 0) {
             interruptFlag |= interruptFlagDelayed & mask;
             interruptFlagDelayed &= ~mask;

@@ -31,9 +31,7 @@ struct Sprite {
     Attributes attributes{};
     bool processed{false};
 
-    bool operator<(const Sprite &s) const {
-        return x < s.x || (x == s.x && spriteNum < s.spriteNum);
-    }
+    bool operator<(const Sprite &s) const { return x < s.x || (x == s.x && spriteNum < s.spriteNum); }
 };
 
 // State for the pixel fetcher
@@ -50,12 +48,7 @@ struct Gpi {
     bool autoIncrement{};
 };
 
-enum class GPUMode {
-    MODE_0,
-    MODE_1,
-    MODE_2,
-    MODE_3
-};
+enum class GPUMode { MODE_0, MODE_1, MODE_2, MODE_3 };
 
 enum class CorruptionType {
     Write,
@@ -72,22 +65,20 @@ struct Stat {
     GPUMode mode{GPUMode::MODE_2};
 
     [[nodiscard]] uint8_t value() const {
-        return 0x80 | enableLYInterrupt << 6 | enableM2Interrupt << 5 |
-               enableM1Interrupt << 4 | enableM0Interrupt << 3 |
-               coincidenceFlag << 2 | static_cast<uint8_t>(mode);
+        return 0x80 | enableLYInterrupt << 6 | enableM2Interrupt << 5 | enableM1Interrupt << 4 | enableM0Interrupt << 3 | coincidenceFlag << 2 |
+               static_cast<uint8_t>(mode);
     }
 };
 
 class GPU {
 public:
-    explicit GPU(Interrupts &interrupts) : interrupts_(interrupts) {
-    }
+    explicit GPU(Interrupts &interrupts) : interrupts_(interrupts) {}
 
     static constexpr uint32_t DMG_SHADE[4] = {
-        0xFFFFFFFFu, // FF FF FF FF
-        0xFFC0C0C0u, // C0 C0 C0 FF
-        0xFF606060u, // 60 60 60 FF
-        0xFF000000u // 00 00 00 FF
+            0xFFFFFFFFu, // FF FF FF FF
+            0xFFC0C0C0u, // C0 C0 C0 FF
+            0xFF606060u, // 60 60 60 FF
+            0xFF000000u // 00 00 00 FF
     };
 
     FixedDeque<Pixel, 16> backgroundQueue;
@@ -152,7 +143,7 @@ public:
     bool initialSCXSet{false};
 
     std::array<uint8_t, VRAM_SIZE> vram{};
-    [[=NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
+    [[= NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
     std::array<uint8_t, 0xA0> oam{};
     std::array<uint8_t, 0x60> extraOam{}; // CGB 0-D RAM behind FEA0-FEFF
     uint8_t lyc = 0; // 0xFF45
@@ -172,7 +163,7 @@ public:
     uint32_t scanlineCounter = 0; // current dot in scanline
 
     bool vblank = false;
-    [[=NotStateAware]] bool frameReady = true;
+    [[= NotStateAware]] bool frameReady = true;
     bool statTriggered{false};
     bool lycInterruptLine_{false};
     bool m2IrqRaisedEarly{false};
@@ -216,19 +207,19 @@ public:
     // quiet HBlank/VBlank dots (advance scanlineCounter, nothing else);
     // lcdOffIdle_ means the LCD is off with no delayed writes in flight. Any
     // register write, speed switch, or state load clears both.
-    [[=NotStateAware]] uint32_t idleDots_{0};
-    [[=NotStateAware]] bool lcdOffIdle_{false};
+    [[= NotStateAware]] uint32_t idleDots_{0};
+    [[= NotStateAware]] bool lcdOffIdle_{false};
     // Mode-2 variant: the rest of an OAM-scan line where only TickOAMScan and
     // the dot counter matter (STAT/LYC state is provably constant)
-    [[=NotStateAware]] uint32_t scanFastDots_{0};
+    [[= NotStateAware]] uint32_t scanFastDots_{0};
     // CGB non-compat mode-3 condensed dots (pixel pipeline only)
-    [[=NotStateAware]] bool mode3Quiet_{false};
+    [[= NotStateAware]] bool mode3Quiet_{false};
     // Count of unprocessed spriteBuffer entries; skips the per-dot trigger scan
-    [[=NotStateAware]] uint8_t spritesPending_{0};
+    [[= NotStateAware]] uint8_t spritesPending_{0};
     // Superset of this line's sprite trigger X positions (never cleared per
     // sprite, so a stale bit only costs a scan)
-    [[=NotStateAware]] std::array<uint32_t, 5> spriteXBits_{};
-    [[=NotStateAware]] bool spriteNegX_{false};
+    [[= NotStateAware]] std::array<uint32_t, 5> spriteXBits_{};
+    [[= NotStateAware]] bool spriteNegX_{false};
     uint8_t clockPause_{0};
     bool doubleSpeed{false};
     uint8_t mode3EndDelay_{0};
@@ -238,11 +229,11 @@ public:
     Model model = Model::DMGB;
     // Cached IsCgb(model): read dozens of times per dot, and the compiler
     // cannot hoist the range compares across non-inlined calls
-    [[=NotStateAware]] bool isCgb_{false};
+    [[= NotStateAware]] bool isCgb_{false};
     // Color-corrected ARGB for every CGB palette entry (8 palettes x 4
     // colors), maintained on palette-RAM writes instead of per pixel
-    [[=NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
-    [[=NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
+    [[= NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
+    [[= NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
     bool dmgCompat{false};
@@ -270,10 +261,12 @@ public:
         uint8_t n = 0;
         spriteXBits_ = {};
         spriteNegX_ = false;
-        for (const auto &s: spriteBuffer) {
+        for (const auto &s : spriteBuffer) {
             n += !s.processed;
-            if (s.x < 0) spriteNegX_ = true;
-            else if (s.x < SCREEN_WIDTH) spriteXBits_[s.x >> 5] |= 1u << (s.x & 31);
+            if (s.x < 0)
+                spriteNegX_ = true;
+            else if (s.x < SCREEN_WIDTH)
+                spriteXBits_[s.x >> 5] |= 1u << (s.x & 31);
         }
         spritesPending_ = n;
     }

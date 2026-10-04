@@ -70,9 +70,7 @@ struct Sweep {
         step = v & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80); }
 };
 
 struct Envelope {
@@ -97,9 +95,7 @@ struct Envelope {
         sweepPace = value & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace); }
 
     void SetClock(bool value, bool dir, uint8_t volume);
 
@@ -114,13 +110,12 @@ struct Length {
     uint8_t dutyCycle{0};
 
     void Write(const uint8_t value, const bool audioEnabled) {
-        if (audioEnabled) dutyCycle = value >> 6 & 0x03;
+        if (audioEnabled)
+            dutyCycle = value >> 6 & 0x03;
         lengthTimer = value & 0x3F;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(dutyCycle << 6 | 0x3F);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(dutyCycle << 6 | 0x3F); }
 };
 
 struct Noise {
@@ -134,9 +129,7 @@ struct Noise {
         clockDivider = value & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider); }
 };
 
 // Deliberately non-virtual: channels are only ever used as their concrete
@@ -146,10 +139,10 @@ struct Channel {
     bool dacEnabled{false};
 
     static constexpr uint8_t DUTY_PATTERNS[4][8] = {
-        {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
-        {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
-        {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
-        {0, 1, 1, 1, 1, 1, 1, 0} // 75%
+            {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
+            {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
+            {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
+            {0, 1, 1, 1, 1, 1, 1, 0} // 75%
     };
 };
 
@@ -324,8 +317,8 @@ class Audio {
     enum class SkipState : uint8_t { Inactive, Skip, Skipped };
 
     bool audioEnabled{false};
-    [[=NotStateAware]] bool emulatorAudioDisabled{false};
-    [[=NotStateAware]] Model model_{Model::CGBE};
+    [[= NotStateAware]] bool emulatorAudioDisabled{false};
+    [[= NotStateAware]] Model model_{Model::CGBE};
     // Free-running DIV event counter (SameBoy's div_divider): incremented
     // before dispatch, so odd values clock the lengths, &3==3 the sweep and
     // &7==7 the envelope countdowns
@@ -338,30 +331,30 @@ class Audio {
     // Host-side output machinery, not APU hardware state: the sample ring
     // buffer refills after a load, the resampler/highpass state is transient,
     // and blSteps/highpassRate are constants rebuilt by the constructor
-    [[=NotStateAware]] std::vector<float> sampleBuffer{};
-    [[=NotStateAware]] size_t bufferWritePos{0};
-    [[=NotStateAware]] size_t bufferReadPos{0};
-    [[=NotStateAware]] size_t samplesAvailable{0};
+    [[= NotStateAware]] std::vector<float> sampleBuffer{};
+    [[= NotStateAware]] size_t bufferWritePos{0};
+    [[= NotStateAware]] size_t bufferReadPos{0};
+    [[= NotStateAware]] size_t samplesAvailable{0};
     // Integer decimation accumulator: += 48000 per APU tick, emits a sample on
     // overflow past 4194304 (= 2^22). The band-limited kernel phase is the
     // fractional position scaled to BL_PHASES, i.e. acc * 2^7 / 2^22 = acc >> 15
-    [[=NotStateAware]] uint32_t sampleAcc_{0};
+    [[= NotStateAware]] uint32_t sampleAcc_{0};
 
-    [[=NotStateAware]] std::array<BandLimited, 4> bandLimited{};
-    [[=NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
-    [[=NotStateAware]] double highpassLeft{0.0};
-    [[=NotStateAware]] double highpassRight{0.0};
-    [[=NotStateAware]] double highpassRate{0.0};
+    [[= NotStateAware]] std::array<BandLimited, 4> bandLimited{};
+    [[= NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
+    [[= NotStateAware]] double highpassLeft{0.0};
+    [[= NotStateAware]] double highpassRight{0.0};
+    [[= NotStateAware]] double highpassRate{0.0};
     // Last-seen mixing inputs; when unchanged, every BandLimitedUpdate would
     // see an exact-zero delta, so GenerateSample skips the level computation.
     // 0xFFFFFFFF is unreachable (nr50 occupies the top packed byte).
-    [[=NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
-    [[=NotStateAware]] std::array<float, 4> lastMixOutputs_{};
-    [[=NotStateAware]] bool hasEarlyPcmGlitch_{false};
+    [[= NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
+    [[= NotStateAware]] std::array<float, 4> lastMixOutputs_{};
+    [[= NotStateAware]] bool hasEarlyPcmGlitch_{false};
     // APU ticks deferred by the master loop; materialized by CatchUp() before
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
-    [[=NotStateAware]] uint32_t pendingTicks_{0};
+    [[= NotStateAware]] uint32_t pendingTicks_{0};
 
     void InitBandLimitedTable();
 
@@ -372,11 +365,13 @@ class Audio {
 public:
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
     void OnSpeedSwitch(bool doubleSpeed) {
-        if (doubleSpeed && audioEnabled) speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
+        if (doubleSpeed && audioEnabled)
+            speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
     }
 
     explicit Audio(const bool noAudio = false) : emulatorAudioDisabled(noAudio) {
-        if (emulatorAudioDisabled) return;
+        if (emulatorAudioDisabled)
+            return;
         sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); // *2 for stereo
         highpassRate = std::pow(0.999958, APU_CLOCK_RATE / AUDIO_SAMPLE_RATE);
         InitBandLimitedTable();
@@ -412,7 +407,8 @@ public:
     void Tick() { ++pendingTicks_; }
 
     void CatchUp() {
-        if (pendingTicks_ > 0) CatchUpWork();
+        if (pendingTicks_ > 0)
+            CatchUpWork();
     }
 
     void CatchUpWork();

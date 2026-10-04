@@ -4,41 +4,22 @@
 
 static constexpr uint32_t kFrameCyclesCGB = Gameboy::FRAME_CYCLES_DMG * 2;
 
-bool Gameboy::ConsumeFrame() {
-    return std::exchange(gpu_.frameReady, false);
-}
+bool Gameboy::ConsumeFrame() { return std::exchange(gpu_.frameReady, false); }
 
-void Gameboy::Save() const {
-    cartridge_.Save();
-}
+void Gameboy::Save() const { cartridge_.Save(); }
 
-void Gameboy::KeyUp(const Keys key) {
-    joypad_.KeyUp(key);
-}
+void Gameboy::KeyUp(const Keys key) { joypad_.KeyUp(key); }
 
-void Gameboy::KeyDown(const Keys key) {
-    joypad_.KeyDown(key);
-}
+void Gameboy::KeyDown(const Keys key) { joypad_.KeyDown(key); }
 
-const uint32_t *Gameboy::GetScreenData() const {
-    return gpu_.GetScreenData();
-}
+const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
 
 bool Gameboy::LoadedStateValid() const {
-    return gpu_.model != Model::Auto
-           && gpu_.model == audio_.GetModel()
-           && (!bus_.cgbMode || IsCgb(gpu_.model))
-           && gpu_.dmgCompat == (IsCgb(gpu_.model) && !bus_.cgbMode)
-           && gpu_.doubleSpeed == (bus_.speed == Speed::Double)
-           && gpu_.backgroundQueue.valid()
-           && gpu_.spriteFetchQueue.valid()
-           && gpu_.spriteBuffer.valid()
-           && gpu_.vramBank <= 1
-           && gpu_.currentLine <= 153
-           && gpu_.pixelsDrawn <= SCREEN_WIDTH
-           && memory_.wramBank_ <= 7
-           && cartridge_.BankingStateValid()
-           && (!bus_.bootromRunning || !bus_.bootrom.empty());
+    return gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
+           gpu_.dmgCompat == (IsCgb(gpu_.model) && !bus_.cgbMode) && gpu_.doubleSpeed == (bus_.speed == Speed::Double) &&
+           gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() && gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 &&
+           gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 && cartridge_.BankingStateValid() &&
+           (!bus_.bootromRunning || !bus_.bootrom.empty());
 }
 
 // One whole M-cycle (4 dots, up to 8 master cycles) at regular speed with the
@@ -47,8 +28,10 @@ bool Gameboy::LoadedStateValid() const {
 // entirely. Mirrors the regular-speed path of AdvanceCycles dot for dot.
 uint32_t Gameboy::AdvanceMCycle() {
     const auto dot = [&](const unsigned phase) {
-        if (phase == 3) cpu_.SampleRunningInterrupts();
-        if (phase == 1) cpu_.SampleHaltInterrupts();
+        if (phase == 3)
+            cpu_.SampleRunningInterrupts();
+        if (phase == 1)
+            cpu_.SampleHaltInterrupts();
         timer_.Tick(Speed::Regular);
         rtc_.Update();
         audio_.Tick();
@@ -72,8 +55,10 @@ uint32_t Gameboy::AdvanceMCycle() {
         bus_.RunHDMA();
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
-            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
-            else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+                bus_.speedSwitchHalt = 0;
+            else if (bus_.speedSwitchHalt == 0)
+                cpu_.halted(false);
         }
     };
     dot(0);
@@ -92,8 +77,10 @@ uint32_t Gameboy::AdvanceMCycle() {
 
 uint32_t Gameboy::AdvanceMCycleDouble() {
     const auto cycle = [&](const unsigned phase) {
-        if (phase == 3) cpu_.SampleRunningInterrupts();
-        if (phase == 1) cpu_.SampleHaltInterrupts();
+        if (phase == 3)
+            cpu_.SampleRunningInterrupts();
+        if (phase == 1)
+            cpu_.SampleHaltInterrupts();
         timer_.Tick(Speed::Double);
         const bool evenCycle = (phase & 1) == 0;
         if (evenCycle) {
@@ -124,8 +111,10 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
         }
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
-            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
-            else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+                bus_.speedSwitchHalt = 0;
+            else if (bus_.speedSwitchHalt == 0)
+                cpu_.halted(false);
         }
     };
     cycle(0);
@@ -139,7 +128,8 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
 }
 
 uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
-    if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
+    if (masterCycles >= CGB_CYCLES_PER_SECOND)
+        masterCycles -= CGB_CYCLES_PER_SECOND;
     if (cpu_.stopped()) {
         if (bus_.joypad_.KeyPressed()) {
             cpu_.stopped() = false;
@@ -153,8 +143,10 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
             masterCycles++;
             return 1;
         }
-        if ((cpuTickPhase_ & 3) == 3) cpu_.SampleRunningInterrupts();
-        if ((cpuTickPhase_ & 3) == 1) cpu_.SampleHaltInterrupts();
+        if ((cpuTickPhase_ & 3) == 3)
+            cpu_.SampleRunningInterrupts();
+        if ((cpuTickPhase_ & 3) == 1)
+            cpu_.SampleHaltInterrupts();
         timer_.Tick(bus_.speed);
         rtc_.Update();
         audio_.Tick();
@@ -170,8 +162,10 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         bus_.RunHDMA();
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
-            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
-            else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+                bus_.speedSwitchHalt = 0;
+            else if (bus_.speedSwitchHalt == 0)
+                cpu_.halted(false);
         }
         if ((++cpuTickPhase_ & 3) == 0) {
             cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
@@ -181,8 +175,10 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         return consumed;
     }
     const bool evenCycle = masterCycles % 2 == 0;
-    if ((cpuTickPhase_ & 3) == 3) cpu_.SampleRunningInterrupts();
-    if ((cpuTickPhase_ & 3) == 1) cpu_.SampleHaltInterrupts();
+    if ((cpuTickPhase_ & 3) == 3)
+        cpu_.SampleRunningInterrupts();
+    if ((cpuTickPhase_ & 3) == 1)
+        cpu_.SampleHaltInterrupts();
     timer_.Tick(bus_.speed);
     if (evenCycle) {
         rtc_.Update();
@@ -204,8 +200,10 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     }
     if (bus_.speedSwitchHalt > 0) {
         --bus_.speedSwitchHalt;
-        if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) bus_.speedSwitchHalt = 0;
-        else if (bus_.speedSwitchHalt == 0) cpu_.halted(false);
+        if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+            bus_.speedSwitchHalt = 0;
+        else if (bus_.speedSwitchHalt == 0)
+            cpu_.halted(false);
     }
     if ((++cpuTickPhase_ & 3) == 0) {
         cpu_.ExecuteMicroOp(instructions_, gpu_.hdma.ShouldHaltCPU() || bus_.speedSwitchHalt > 0);
@@ -219,12 +217,14 @@ void Gameboy::RunFrame() {
     while (remaining > 0) {
         if (!cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
             if (bus_.speed == Speed::Regular && remaining >= 8) {
-                if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
+                if (masterCycles >= CGB_CYCLES_PER_SECOND)
+                    masterCycles -= CGB_CYCLES_PER_SECOND;
                 remaining -= AdvanceMCycle();
                 continue;
             }
             if (bus_.speed == Speed::Double && remaining >= 4) {
-                if (masterCycles >= CGB_CYCLES_PER_SECOND) masterCycles -= CGB_CYCLES_PER_SECOND;
+                if (masterCycles >= CGB_CYCLES_PER_SECOND)
+                    masterCycles -= CGB_CYCLES_PER_SECOND;
                 remaining -= AdvanceMCycleDouble();
                 continue;
             }

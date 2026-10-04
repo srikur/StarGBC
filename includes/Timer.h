@@ -21,27 +21,29 @@ public:
     // key changes, which also covers LoadState restoring a different tac.
     // 0xFF is unreachable for tac (WriteTAC masks to 0x07), so it forces the
     // first recompute.
-    [[=NotStateAware]] uint8_t cachedTac_{0xFF};
-    [[=NotStateAware]] Speed cachedSpeed_{Speed::Regular};
+    [[= NotStateAware]] uint8_t cachedTac_{0xFF};
+    [[= NotStateAware]] Speed cachedSpeed_{Speed::Regular};
     // A falling edge of bit b happens exactly when the incremented counter's
     // low b+1 bits are zero; a toggle when its low b bits are zero
-    [[=NotStateAware]] uint16_t timerFallMask_{0};
-    [[=NotStateAware]] uint16_t frameSeqBitMask_{0};
-    [[=NotStateAware]] uint16_t frameSeqToggleMask_{0};
+    [[= NotStateAware]] uint16_t timerFallMask_{0};
+    [[= NotStateAware]] uint16_t frameSeqBitMask_{0};
+    [[= NotStateAware]] uint16_t frameSeqToggleMask_{0};
     Audio &audio_;
     Interrupts &interrupts_;
 
-    explicit Timer(Audio &audio, Interrupts &interrupts) : audio_(audio), interrupts_(interrupts) {
-    }
+    explicit Timer(Audio &audio, Interrupts &interrupts) : audio_(audio), interrupts_(interrupts) {}
 
     // Inline: runs every T-cycle (2x per dot at double speed); the masks make
     // the common case two edge tests on register-resident values
     void Tick(const Speed speed) {
-        if (tac != cachedTac_ || speed != cachedSpeed_) [[unlikely]] RecomputeTickCache(speed);
+        if (tac != cachedTac_ || speed != cachedSpeed_) [[unlikely]]
+            RecomputeTickCache(speed);
 
         if (apuEventDelay && --apuEventDelay == 0) {
-            if (apuEventSecondary) audio_.TickFrameSequencerSecondary();
-            else audio_.TickFrameSequencer();
+            if (apuEventSecondary)
+                audio_.TickFrameSequencerSecondary();
+            else
+                audio_.TickFrameSequencer();
         }
         reloadActive = false;
         if (overflowPending && --overflowDelay == 0) {
@@ -68,8 +70,10 @@ public:
             if (apuDelay) {
                 apuEventDelay = apuDelay;
                 apuEventSecondary = newFrameSeqSignal;
-            } else if (newFrameSeqSignal) audio_.TickFrameSequencerSecondary();
-            else audio_.TickFrameSequencer();
+            } else if (newFrameSeqSignal)
+                audio_.TickFrameSequencerSecondary();
+            else
+                audio_.TickFrameSequencer();
         }
     }
 
@@ -96,4 +100,4 @@ public:
     bool LoadState(std::ifstream &);
 };
 
-#endif //STARGBC_TIMER_H
+#endif // STARGBC_TIMER_H

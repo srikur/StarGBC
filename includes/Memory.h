@@ -20,4 +20,4 @@ struct Memory {
     bool LoadState(std::ifstream &stateFile);
 };
 
-#endif //STARGBC_MEMORY_H
+#endif // STARGBC_MEMORY_H

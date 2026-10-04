@@ -12,19 +12,10 @@
 
 class Bus {
 public:
-    explicit Bus(Joypad &joypad, Memory &memory,
-                 Timer &timer, Cartridge &cartridge,
-                 Serial &serial, DMA &dma,
-                 Audio &audio, Interrupts &interrupts, GPU &gpu) : joypad_(joypad),
-                                                                   memory_(memory),
-                                                                   timer_(timer),
-                                                                   cartridge_(cartridge),
-                                                                   serial_(serial),
-                                                                   dma_(dma),
-                                                                   audio_(audio),
-                                                                   interrupts_(interrupts),
-                                                                   gpu_(gpu) {
-    }
+    explicit Bus(Joypad &joypad, Memory &memory, Timer &timer, Cartridge &cartridge, Serial &serial, DMA &dma, Audio &audio, Interrupts &interrupts,
+                 GPU &gpu) :
+        joypad_(joypad), memory_(memory), timer_(timer), cartridge_(cartridge), serial_(serial), dma_(dma), audio_(audio), interrupts_(interrupts),
+        gpu_(gpu) {}
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
 
@@ -43,9 +34,11 @@ public:
     // Inline fast path: 3 of 4 calls only advance the phase counter, and the
     // 4th is idle unless a transfer is active or just finished
     void UpdateDMA() {
-        if (++dma_.dmaTickCounter % 4 != 0) return;
+        if (++dma_.dmaTickCounter % 4 != 0)
+            return;
         dma_.dmaTickCounter = 0;
-        if (!dma_.transferActive && !dma_.transferComplete) return;
+        if (!dma_.transferActive && !dma_.transferComplete)
+            return;
         UpdateDMAWork();
     }
 
@@ -53,7 +46,8 @@ public:
 
     // Inline idle fast path; HDMA is inactive almost always
     void RunHDMA() const {
-        if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_) return;
+        if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_)
+            return;
         RunHDMAWork();
     }
 
@@ -93,5 +87,5 @@ public:
     uint8_t psw73{0x00}; // undocumented $FF73
     uint8_t psw74{0x00}; // undocumented $FF74, CGB mode only
     uint8_t pgb75{0x00}; // undocumented $FF75, bits 4-6 writable
-    [[=NotStateAware]] std::vector<uint8_t> bootrom;
+    [[= NotStateAware]] std::vector<uint8_t> bootrom;
 };

@@ -1,6 +1,6 @@
 #include "GPU.h"
-#include <doctest/doctest.h>
 #include <algorithm>
+#include <doctest/doctest.h>
 #include <string_view>
 
 namespace {
@@ -10,8 +10,7 @@ namespace {
         uint32_t pixel;
     };
 
-    LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions,
-                          uint8_t windowX = 0) {
+    LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions, uint8_t windowX = 0) {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
@@ -33,17 +32,20 @@ namespace {
             gpu.oam[index++] = 1;
             gpu.oam[index++] = 0;
         }
-        for (unsigned row = 0; row < 8; ++row) gpu.vram[16 + row * 2] = 0xFF;
+        for (unsigned row = 0; row < 8; ++row)
+            gpu.vram[16 + row * 2] = 0xFF;
 
         LineResult result{};
         bool enteredMode3 = false;
         for (unsigned dot = 1; dot < 456; ++dot) {
             gpu.Update();
             const unsigned mode = gpu.ReadRegisters(0xFF41) & 3;
-            if (mode == 3) enteredMode3 = true;
+            if (mode == 3)
+                enteredMode3 = true;
             if (result.statMode0 != 0)
                 CHECK(mode == 0);
-            if (enteredMode3 && mode == 0 && result.statMode0 == 0) result.statMode0 = dot;
+            if (enteredMode3 && mode == 0 && result.statMode0 == 0)
+                result.statMode0 = dot;
             if (gpu.stat.mode == GPUMode::MODE_0) {
                 result.rendered = dot;
                 result.pixel = gpu.GetScreenData()[10 * SCREEN_WIDTH + 20];
@@ -60,9 +62,8 @@ namespace {
         uint8_t flags{0};
     };
 
-    void checkObjectOverlap(Model model, bool coordinatePriority,
-                            std::initializer_list<ObjectPixels> objects,
-                            unsigned startX, std::string_view expected) {
+    void checkObjectOverlap(Model model, bool coordinatePriority, std::initializer_list<ObjectPixels> objects, unsigned startX,
+                            std::string_view expected) {
         CAPTURE(ModelName(model));
         CAPTURE(coordinatePriority);
         Interrupts interrupts;
@@ -97,7 +98,8 @@ namespace {
             }
             ++index;
         }
-        for (unsigned dot = 0; dot < 456 && gpu.pixelsDrawn < SCREEN_WIDTH; ++dot) gpu.Update();
+        for (unsigned dot = 0; dot < 456 && gpu.pixelsDrawn < SCREEN_WIDTH; ++dot)
+            gpu.Update();
         REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
         constexpr uint32_t cgbColors[] = {0xFF000000, 0xFFFFFFFF, 0xFF848484, 0xFF424242};
         for (unsigned x = 0; x < SCREEN_WIDTH; ++x) {
@@ -108,8 +110,7 @@ namespace {
         }
     }
 
-    unsigned checkWindowLine(Model model, bool doubleSpeed, bool compatibility,
-                             uint8_t wx, uint8_t scx) {
+    unsigned checkWindowLine(Model model, bool doubleSpeed, bool compatibility, uint8_t wx, uint8_t scx) {
         CAPTURE(ModelName(model));
         CAPTURE(doubleSpeed);
         CAPTURE(compatibility);
@@ -128,7 +129,8 @@ namespace {
         gpu.backgroundPalette = 0xE4;
         constexpr uint8_t shades[] = {31, 23, 11, 0};
         constexpr uint32_t cgbColors[] = {0xFFFFFFFF, 0xFFBDBDBD, 0xFF5A5A5A, 0xFF000000};
-        for (unsigned color = 0; color < 4; ++color) gpu.bgpd[0][color].fill(shades[color]);
+        for (unsigned color = 0; color < 4; ++color)
+            gpu.bgpd[0][color].fill(shades[color]);
         gpu.RebuildColorLuts();
         constexpr std::string_view pattern = "0123321012032130";
         for (unsigned row = 0; row < 8; ++row) {
@@ -140,10 +142,12 @@ namespace {
                 gpu.vram[address + 1] |= (color >> 1) << (7 - x % 8);
             }
         }
-        for (unsigned tile = 0; tile < 32; ++tile) gpu.vram[0x1C00 + tile] = 1 + tile % 2;
+        for (unsigned tile = 0; tile < 32; ++tile)
+            gpu.vram[0x1C00 + tile] = 1 + tile % 2;
         for (unsigned dot = 0; dot < 456; ++dot) {
             gpu.Update();
-            if (gpu.stat.mode == GPUMode::MODE_0) break;
+            if (gpu.stat.mode == GPUMode::MODE_0)
+                break;
         }
         REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
         std::array<uint32_t, SCREEN_WIDTH> expected{};
@@ -158,7 +162,7 @@ namespace {
         CHECK(std::equal(expected.begin(), expected.end(), gpu.GetScreenData() + 10 * SCREEN_WIDTH));
         return gpu.scanlineCounter;
     }
-}
+} // namespace
 
 TEST_CASE("ppu: overlapping OBJs share alignment but retain six-dot fetches") {
     const auto one = renderLine(Model::DMGB, true, {0});
@@ -203,10 +207,8 @@ TEST_CASE("ppu: transparent higher-priority OBJ pixels preserve overlapping obje
 
 TEST_CASE("ppu: OBJ priority is resolved separately for every FIFO pixel") {
     for (const auto model : {Model::CGBB, Model::CGBC, Model::CGBE, Model::AGBB}) {
-        checkObjectOverlap(model, false,
-                           {{24, "11101010"}, {26, "22222222"}, {20, "33333333"}}, 12, "33331112121222");
-        checkObjectOverlap(model, false,
-                           {{24, "11010101"}, {26, "22222222"}, {20, "33333333"}}, 12, "33331121212122");
+        checkObjectOverlap(model, false, {{24, "11101010"}, {26, "22222222"}, {20, "33333333"}}, 12, "33331112121222");
+        checkObjectOverlap(model, false, {{24, "11010101"}, {26, "22222222"}, {20, "33333333"}}, 12, "33331121212122");
     }
 }
 
@@ -214,25 +216,23 @@ TEST_CASE("ppu: OBJ ordering follows OAM or coordinate priority with OAM breakin
     for (const auto model : {Model::DMGB, Model::CGBB, Model::CGBC, Model::CGBE, Model::AGBB}) {
         for (const bool coordinatePriority : {false, true}) {
             const bool byX = !IsCgb(model) || coordinatePriority;
-            checkObjectOverlap(model, coordinatePriority,
-                               {{24, "11111111"}, {20, "22222222"}}, 12, byX ? "222222221111" : "222211111111");
-            checkObjectOverlap(model, coordinatePriority,
-                               {{20, "10101010"}, {20, "22222222"}}, 12, "12121212");
+            checkObjectOverlap(model, coordinatePriority, {{24, "11111111"}, {20, "22222222"}}, 12, byX ? "222222221111" : "222211111111");
+            checkObjectOverlap(model, coordinatePriority, {{20, "10101010"}, {20, "22222222"}}, 12, "12121212");
         }
     }
 }
 
 TEST_CASE("ppu: BG priority is applied after selecting the first opaque OBJ pixel") {
     for (const auto model : {Model::DMGB, Model::CGBB, Model::CGBC, Model::CGBE, Model::AGBB}) {
-        checkObjectOverlap(model, !IsCgb(model),
-                           {{20, "10101010", 0x80}, {20, "22222222"}}, 12, "02020202");
+        checkObjectOverlap(model, !IsCgb(model), {{20, "10101010", 0x80}, {20, "22222222"}}, 12, "02020202");
     }
 }
 
 TEST_CASE("ppu: SCX delays window output without scrolling its pixels") {
     for (const auto model : {Model::DMGC, Model::CGBB, Model::CGBC, Model::CGBE, Model::AGBB}) {
         for (const bool doubleSpeed : {false, true}) {
-            if (doubleSpeed && !IsCgb(model)) continue;
+            if (doubleSpeed && !IsCgb(model))
+                continue;
             for (const uint8_t wx : {1, 5, 7, 8, 32, 165}) {
                 const auto unscrolled = checkWindowLine(model, doubleSpeed, false, wx, 0);
                 for (uint8_t scx = 1; scx < 16; ++scx) {

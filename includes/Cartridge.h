@@ -33,9 +33,7 @@ public:
 
     void MarkRamDirty() { ramDirty_ = true; }
 
-    [[nodiscard]] uint16_t GlobalChecksum() const {
-        return static_cast<uint16_t>(gameRom_[0x14E]) << 8 | gameRom_[0x14F];
-    }
+    [[nodiscard]] uint16_t GlobalChecksum() const { return static_cast<uint16_t>(gameRom_[0x14E]) << 8 | gameRom_[0x14F]; }
 
     [[nodiscard]] bool BankingStateValid() const { return ramBank <= 0x0F; }
 
@@ -76,33 +74,31 @@ private:
 
     static std::string RemoveExtension(const std::string &filename);
 
-    enum class MBC {
-        None, MBC1, MBC2, MBC3, MBC5
-    };
+    enum class MBC { None, MBC1, MBC2, MBC3, MBC5 };
 
     RealTimeClock &rtc_;
 
-    [[=NotStateAware]] std::string savepath_;
-    [[=NotStateAware]] std::vector<uint8_t> gameRom_;
+    [[= NotStateAware]] std::string savepath_;
+    [[= NotStateAware]] std::vector<uint8_t> gameRom_;
     std::array<uint8_t, MAX_RAM_SIZE> gameRam_{};
 
     // Derived from the ROM header/contents in the constructor, never mutated
-    [[=NotStateAware]] MBC mbc{MBC::None};
-    [[=NotStateAware]] uint32_t gameRamSize{0x00};
-    [[=NotStateAware]] uint32_t romBankCount{0x00};
-    [[=NotStateAware]] uint32_t ramBankCount{0x00};
+    [[= NotStateAware]] MBC mbc{MBC::None};
+    [[= NotStateAware]] uint32_t gameRamSize{0x00};
+    [[= NotStateAware]] uint32_t romBankCount{0x00};
+    [[= NotStateAware]] uint32_t ramBankCount{0x00};
     uint8_t romBank{0x01};
     uint8_t ramBank{0x00};
     uint8_t bank1{0x01};
     uint8_t bank2{0x00};
-    [[=NotStateAware]] uint8_t lowRomMask{0x00}; // derived from ROM size
+    [[= NotStateAware]] uint8_t lowRomMask{0x00}; // derived from ROM size
     uint8_t mode{0x00};
 
     bool ramEnabled{false};
-    [[=NotStateAware]] bool multicart{false}; // derived from ROM contents
-    [[=NotStateAware]] bool ramDirty_{false}; // host .sav flush bookkeeping
+    [[= NotStateAware]] bool multicart{false}; // derived from ROM contents
+    [[= NotStateAware]] bool ramDirty_{false}; // host .sav flush bookkeeping
     bool prevRamEnable_{false};
-    [[=NotStateAware]] bool hasRumble_{false}; // derived from ROM header
+    [[= NotStateAware]] bool hasRumble_{false}; // derived from ROM header
     bool rumbleOn_{false};
-    [[=NotStateAware]] std::function<void(bool)> rumbleCallback_; // host callback
+    [[= NotStateAware]] std::function<void(bool)> rumbleCallback_; // host callback
 };

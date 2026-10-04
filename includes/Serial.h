@@ -6,8 +6,7 @@
 #include "Interrupts.h"
 
 struct Serial {
-    explicit Serial(Interrupts &interrupts) : interrupts_(interrupts) {
-    }
+    explicit Serial(Interrupts &interrupts) : interrupts_(interrupts) {}
 
     [[nodiscard]] uint8_t ReadSerial(uint16_t) const;
 
@@ -17,7 +16,8 @@ struct Serial {
 
     // Inline idle fast path: nothing to do unless a transfer is shifting
     void Update() {
-        if (!active_) return;
+        if (!active_)
+            return;
         UpdateActive();
     }
 
@@ -37,4 +37,4 @@ struct Serial {
 };
 
 
-#endif //STARGBC_SERIAL_H
+#endif // STARGBC_SERIAL_H

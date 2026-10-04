@@ -11,14 +11,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     return frontend->Init(argc, argv);
 }
 
-SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
-    return static_cast<SDLFrontend *>(appstate)->HandleEvent(*event);
-}
+SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) { return static_cast<SDLFrontend *>(appstate)->HandleEvent(*event); }
 
-SDL_AppResult SDL_AppIterate(void *appstate) {
-    return static_cast<SDLFrontend *>(appstate)->Iterate();
-}
+SDL_AppResult SDL_AppIterate(void *appstate) { return static_cast<SDLFrontend *>(appstate)->Iterate(); }
 
-void SDL_AppQuit(void *appstate, SDL_AppResult) {
-    delete static_cast<SDLFrontend *>(appstate);
-}
+void SDL_AppQuit(void *appstate, SDL_AppResult) { delete static_cast<SDLFrontend *>(appstate); }
