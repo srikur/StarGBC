@@ -30,16 +30,7 @@ my @output = (
 );
 my ($romsReplaced, $casesReplaced) = (0, 0);
 while (my $line = <$template>) {
-    if ($line =~ /^(\s*)\Q$ROMS_PLACEHOLDER\E\s*$/) {
-        my $indent = $1;
-        push @output, map {"$indent\"$_\",\n"} @roms;
-        ++$romsReplaced;
-    }
-    elsif ($line =~ /^\s*#\s*define\s+\Q$CASES_PLACEHOLDER\E\s*$/) {
-        push @output, map {"GBMICRO_TEST($_, \"" . basename($roms[$_]) . "\")\n"} 0 .. $#roms;
-        ++$casesReplaced;
-    }
-    elsif ($line =~ /^\s*#\s*(define|undef)\s+\Q$ROMS_PLACEHOLDER\E\s*$/) {
+    if ($line =~ /^\s*#\s*(define|undef)\s+\Q$ROMS_PLACEHOLDER\E\s*$/) {
         # Take the blank line that set the directive apart along with it
         if ($1 eq 'undef') {
             pop @output if @output && $output[-1] =~ /^\s*$/;
@@ -52,12 +43,26 @@ while (my $line = <$template>) {
             }
         }
     }
+    elsif ($line =~ /^\s*#\s*define\s+\Q$CASES_PLACEHOLDER\E\s*$/) {
+        push @output, map {"GBMICRO_TEST($_, \"" . basename($roms[$_]) . "\")\n"} 0 .. $#roms;
+        ++$casesReplaced;
+    }
+    elsif ($line =~ /^(\s*)(.*)\b\Q$ROMS_PLACEHOLDER\E\b/) {
+        my ($indent, $prefix) = ($1, $2);
+        my $entryIndent = $prefix eq '' ? $indent : "$indent    ";
+        my $entries = join('', map {"$entryIndent\"$_\",\n"} @roms);
+        $entries = "\n$entries$indent" unless $prefix eq '';
+        $line =~ s/^\s*// if $prefix eq '';
+        $line =~ s/\b\Q$ROMS_PLACEHOLDER\E\b\s*\n?/$entries/;
+        push @output, $line;
+        ++$romsReplaced;
+    }
     else {
         push @output, $line;
     }
 }
 close($template);
-die "$templatePath: expected exactly one '$ROMS_PLACEHOLDER' line, found $romsReplaced\n"
+die "$templatePath: expected exactly one use of '$ROMS_PLACEHOLDER', found $romsReplaced\n"
     unless $romsReplaced == 1;
 die "$templatePath: expected exactly one '#define $CASES_PLACEHOLDER' line, found $casesReplaced\n"
     unless $casesReplaced == 1;

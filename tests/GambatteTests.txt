@@ -1,0 +1,1 @@
+roms/gambatte/bgen/bgoff_bgon_sprite_above_window.gbc,tests/expected/gambatte/bgen/bgoff_bgon_sprite_above_window_cgb04c.screen,cgbc

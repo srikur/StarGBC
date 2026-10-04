@@ -16,8 +16,21 @@ add_custom_command(
         COMMENT "Generating GbMicrotest.gen.h"
         VERBATIM)
 
+set(GAMBATTE_TEXT ${CMAKE_CURRENT_SOURCE_DIR}/GambatteTests.txt)
+set(GAMBATTE_SCRIPT ${PARENT_DIR}/scripts/generate_gambatte.pl)
+set(GAMBATTE_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/GambatteTests.h)
+set(GAMBATTE_GENERATED_HEADER ${GBMICROTEST_GENERATED_DIR}/GambatteTests.gen.h)
+
+add_custom_command(
+        OUTPUT ${GAMBATTE_GENERATED_HEADER}
+        COMMAND ${PERL_EXECUTABLE} ${GAMBATTE_SCRIPT}
+                ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${GAMBATTE_GENERATED_HEADER}
+        DEPENDS ${GAMBATTE_SCRIPT} ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${PARENT_DIR}/includes/Model.h
+        COMMENT "Generating GambatteTests.gen.h"
+        VERBATIM)
+
 add_subdirectory(mocks)
-add_executable(${PROJECT_NAME}_Tests ${TEST_SOURCES} ${GBMICROTEST_GENERATED_HEADER})
+add_executable(${PROJECT_NAME}_Tests ${TEST_SOURCES} ${GBMICROTEST_GENERATED_HEADER} ${GAMBATTE_GENERATED_HEADER})
 target_include_directories(${PROJECT_NAME}_Tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR} ${GBMICROTEST_GENERATED_DIR})
 target_link_libraries(${PROJECT_NAME}_Tests PRIVATE ${PROJECT_NAME}_Core doctest::doctest)
