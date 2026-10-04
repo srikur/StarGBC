@@ -34,7 +34,7 @@ SDLFrontend::~SDLFrontend() {
 }
 
 struct [[=StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
-    [[=StarParse::Positional{0}, =StarParse::Required{}]] std::string rom_path;
+    [[=StarParse::Positional{0}, =StarParse::Required]] std::string rom_path;
     [[=StarParse::Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
     [[=StarParse::Opt{"Start without speed limitations"}]] bool unthrottled{false};
     [[=StarParse::Opt{"Use real time clock"}]] bool real_rtc{false};
