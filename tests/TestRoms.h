@@ -4,6 +4,7 @@
 #include <Gameboy.h>
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <fstream>
 #include <future>
@@ -17,19 +18,19 @@
 #include "ThreadContext.h"
 
 struct Bootroms {
-    std::string dmg0Bootrom = "roms/dmg0_boot.bin";
-    std::string dmgBootrom = "roms/dmg_boot.bin";
-    std::string mgbBootrom = "roms/mgb_boot.bin";
-    std::string cgb0Bootrom = "roms/cgb0_boot.bin";
-    std::string cgbEBootrom = "roms/cgbE_boot.bin";
-    std::string cgbBootrom = "roms/cgb_boot.bin";
-    std::string cgbAGBBootrom = "roms/cgb_agb_boot.bin";
-    std::string cgbAGB0Bootrom = "roms/cgb_agb0_boot.bin";
-    std::string sgbBootrom = "roms/sgb_boot.bin";
-    std::string sgb2Bootrom = "roms/sgb2_boot.bin";
+    const char *dmg0Bootrom = "roms/dmg0_boot.bin";
+    const char *dmgBootrom = "roms/dmg_boot.bin";
+    const char *mgbBootrom = "roms/mgb_boot.bin";
+    const char *cgb0Bootrom = "roms/cgb0_boot.bin";
+    const char *cgbEBootrom = "roms/cgbE_boot.bin";
+    const char *cgbBootrom = "roms/cgb_boot.bin";
+    const char *cgbAGBBootrom = "roms/cgb_agb_boot.bin";
+    const char *cgbAGB0Bootrom = "roms/cgb_agb0_boot.bin";
+    const char *sgbBootrom = "roms/sgb_boot.bin";
+    const char *sgb2Bootrom = "roms/sgb2_boot.bin";
 };
 
-const Bootroms bootroms{};
+static constexpr Bootroms bootroms{};
 static unsigned romFrames = 0;
 static bool parallelRomTests = true;
 
@@ -147,7 +148,15 @@ struct Case {
     bool requiresStop{false};
 };
 
-static const std::vector<Case> romTestcases = {
+struct RomCase {
+    const char *rom;
+    const char *expected;
+    const char *bios;
+    Model model;
+    bool requiresStop{false};
+};
+
+static constexpr RomCase romTestcases[] = {
         {"roms/blargg/halt_bug.gb", "tests/expected/blargg/halt_bug.gb.screen", bootroms.dmgBootrom, Model::DMGB},
         {"roms/blargg/instr_timing/instr_timing.gb", "tests/expected/blargg/instr_timing.gb.screen", bootroms.dmgBootrom, Model::DMGB},
         {"roms/blargg/interrupt_time/interrupt_time.gb", "tests/expected/blargg/interrupt_time.gb.screen", bootroms.cgbBootrom, Model::CGBE},
@@ -658,7 +667,7 @@ static auto &romFutures() {
     using SF = std::shared_future<bool>;
     static std::vector<SF> futures = [] {
         std::vector<SF> tmp;
-        tmp.reserve(romTestcases.size());
+        tmp.reserve(std::size(romTestcases));
 
         for (const auto &tc : romTestcases) {
             tmp.emplace_back(std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [tc] {
@@ -670,294 +679,32 @@ static auto &romFutures() {
     return futures;
 }
 
-#define ROM_TEST(IDX, ROM_STR)                                                                                                                       \
-    TEST_CASE("rom: " ROM_STR *doctest::test_suite("rom")) {                                                                                         \
-        auto &futures = romFutures();                                                                                                                \
-        CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);                                                                                       \
+// Registered as romTestcases:<index>, since the table's entries have no line numbers of their own
+static void checkRomCase() {
+    const size_t idx = currentTestCase->m_line;
+    CHECK_MESSAGE(romFutures()[idx].get(), "failed: ", std::string(romTestcases[idx].rom));
+}
+
+[[maybe_unused]] static const bool romCasesRegistered = [] {
+    static std::vector<std::string> names; // doctest keeps pointers to the names
+    names.reserve(std::size(romTestcases));
+    const auto romOf = [](const RomCase &tc) { return std::string_view(tc.rom); };
+    for (size_t i = 0; i < std::size(romTestcases); ++i) {
+        const auto &tc = romTestcases[i];
+        std::string name = "rom: " + std::string(tc.rom);
+        // ROMs that are run on more than one model get the model in their name
+        if (std::ranges::count(romTestcases, romOf(tc), romOf) > 1) {
+            std::string model(ModelName(tc.model));
+            std::ranges::transform(model, model.begin(), [](const unsigned char c) { return std::tolower(c); });
+            name += " [" + model + "]";
+        }
+        names.push_back(std::move(name));
+        doctest::detail::regTest(doctest::detail::TestCase(checkRomCase, "romTestcases", static_cast<unsigned>(i),
+                                                           doctest::detail::TestSuite() * "rom") *
+                                 names.back().c_str());
     }
-
-ROM_TEST(0, "roms/blargg/halt_bug.gb")
-ROM_TEST(1, "roms/blargg/instr_timing/instr_timing.gb")
-ROM_TEST(2, "roms/blargg/interrupt_time/interrupt_time.gb")
-ROM_TEST(3, "roms/blargg/cpu_instrs/individual/01-special.gb")
-ROM_TEST(4, "roms/blargg/cpu_instrs/individual/02-interrupts.gb")
-ROM_TEST(5, "roms/blargg/cpu_instrs/individual/03-op sp,hl.gb")
-ROM_TEST(6, "roms/blargg/cpu_instrs/individual/04-op r,imm.gb")
-ROM_TEST(7, "roms/blargg/cpu_instrs/individual/05-op rp.gb")
-ROM_TEST(8, "roms/blargg/cpu_instrs/individual/06-ld r,r.gb")
-ROM_TEST(9, "roms/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb")
-ROM_TEST(10, "roms/blargg/cpu_instrs/individual/08-misc instrs.gb")
-ROM_TEST(11, "roms/blargg/cpu_instrs/individual/09-op r,r.gb")
-ROM_TEST(12, "roms/blargg/cpu_instrs/individual/10-bit ops.gb")
-ROM_TEST(13, "roms/blargg/cpu_instrs/individual/11-op a,(hl).gb")
-ROM_TEST(14, "roms/blargg/mem_timing/individual/01-read_timing.gb")
-ROM_TEST(15, "roms/blargg/mem_timing/individual/02-write_timing.gb")
-ROM_TEST(16, "roms/blargg/mem_timing/individual/03-modify_timing.gb")
-ROM_TEST(17, "roms/blargg/mem_timing-2/rom_singles/01-read_timing.gb")
-ROM_TEST(18, "roms/blargg/mem_timing-2/rom_singles/02-write_timing.gb")
-ROM_TEST(19, "roms/blargg/mem_timing-2/rom_singles/03-modify_timing.gb")
-ROM_TEST(20, "roms/blargg/dmg_sound/rom_singles/01-registers.gb")
-ROM_TEST(21, "roms/blargg/dmg_sound/rom_singles/02-len ctr.gb")
-ROM_TEST(22, "roms/blargg/dmg_sound/rom_singles/03-trigger.gb")
-ROM_TEST(23, "roms/blargg/dmg_sound/rom_singles/04-sweep.gb")
-ROM_TEST(24, "roms/blargg/dmg_sound/rom_singles/05-sweep details.gb")
-ROM_TEST(25, "roms/blargg/dmg_sound/rom_singles/06-overflow on trigger.gb")
-ROM_TEST(26, "roms/blargg/dmg_sound/rom_singles/07-len sweep period sync.gb")
-ROM_TEST(27, "roms/blargg/dmg_sound/rom_singles/08-len ctr during power.gb")
-ROM_TEST(28, "roms/blargg/dmg_sound/rom_singles/09-wave read while on.gb")
-ROM_TEST(29, "roms/blargg/dmg_sound/rom_singles/10-wave trigger while on.gb")
-ROM_TEST(30, "roms/blargg/dmg_sound/rom_singles/11-regs after power.gb")
-ROM_TEST(31, "roms/blargg/dmg_sound/rom_singles/12-wave write while on.gb")
-ROM_TEST(32, "roms/blargg/cgb_sound/rom_singles/01-registers.gb")
-ROM_TEST(33, "roms/blargg/cgb_sound/rom_singles/02-len ctr.gb")
-ROM_TEST(34, "roms/blargg/cgb_sound/rom_singles/03-trigger.gb")
-ROM_TEST(35, "roms/blargg/cgb_sound/rom_singles/04-sweep.gb")
-ROM_TEST(36, "roms/blargg/cgb_sound/rom_singles/05-sweep details.gb")
-ROM_TEST(37, "roms/blargg/cgb_sound/rom_singles/06-overflow on trigger.gb")
-ROM_TEST(38, "roms/blargg/cgb_sound/rom_singles/07-len sweep period sync.gb")
-ROM_TEST(39, "roms/blargg/cgb_sound/rom_singles/08-len ctr during power.gb")
-ROM_TEST(40, "roms/blargg/cgb_sound/rom_singles/09-wave read while on.gb")
-ROM_TEST(41, "roms/blargg/cgb_sound/rom_singles/10-wave trigger while on.gb")
-ROM_TEST(42, "roms/blargg/cgb_sound/rom_singles/11-regs after power.gb")
-ROM_TEST(43, "roms/blargg/cgb_sound/rom_singles/12-wave.gb")
-ROM_TEST(44, "roms/blargg/oam_bug/rom_singles/1-lcd_sync.gb")
-ROM_TEST(45, "roms/blargg/oam_bug/rom_singles/2-causes.gb")
-ROM_TEST(46, "roms/blargg/oam_bug/rom_singles/3-non_causes.gb")
-ROM_TEST(47, "roms/blargg/oam_bug/rom_singles/4-scanline_timing.gb")
-ROM_TEST(48, "roms/blargg/oam_bug/rom_singles/5-timing_bug.gb")
-ROM_TEST(49, "roms/blargg/oam_bug/rom_singles/6-timing_no_bug.gb")
-ROM_TEST(50, "roms/blargg/oam_bug/rom_singles/8-instr_effect.gb")
-ROM_TEST(51, "roms/mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb")
-ROM_TEST(52, "roms/mealybug-tearoom-tests/ppu/m3_bgp_change.gb")
-ROM_TEST(53, "roms/mealybug-tearoom-tests/ppu/m3_bgp_change_sprites.gb")
-ROM_TEST(54, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_en_change.gb")
-ROM_TEST(55, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_bg_map_change.gb")
-ROM_TEST(56, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change.gb")
-ROM_TEST(57, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_en_change_variant.gb")
-ROM_TEST(58, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change.gb")
-ROM_TEST(59, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_obj_size_change_scx.gb")
-ROM_TEST(60, "roms/mealybug-tearoom-tests/ppu/m3_scx_low_3_bits.gb")
-ROM_TEST(61, "roms/mealybug-tearoom-tests/ppu/m3_wx_4_change.gb")
-ROM_TEST(62, "roms/mealybug-tearoom-tests/ppu/m3_wx_4_change_sprites.gb")
-ROM_TEST(63, "roms/mealybug-tearoom-tests/ppu/m3_wx_5_change.gb")
-ROM_TEST(64, "roms/mealybug-tearoom-tests/ppu/m3_window_timing.gb")
-ROM_TEST(65, "roms/mealybug-tearoom-tests/ppu/m3_window_timing_wx_0.gb")
-ROM_TEST(66, "roms/mealybug-tearoom-tests/ppu/m3_scx_high_5_bits.gb")
-ROM_TEST(67, "roms/mealybug-tearoom-tests/ppu/m3_obp0_change.gb")
-ROM_TEST(68, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_map_change.gb")
-ROM_TEST(69, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_change.gb")
-ROM_TEST(70, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_tile_sel_win_change.gb")
-ROM_TEST(71, "roms/mealybug-tearoom-tests/ppu/m3_scy_change.gb")
-ROM_TEST(72, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple.gb")
-ROM_TEST(73, "roms/mealybug-tearoom-tests/ppu/m3_lcdc_win_en_change_multiple_wx.gb")
-ROM_TEST(74, "roms/mealybug-tearoom-tests/ppu/m3_wx_6_change.gb")
-ROM_TEST(75, "roms/mooneye/acceptance/ppu/hblank_ly_scx_timing-GS.gb")
-ROM_TEST(76, "roms/mooneye/acceptance/ppu/intr_1_2_timing-GS.gb")
-ROM_TEST(77, "roms/mooneye/acceptance/ppu/intr_2_mode0_timing.gb")
-ROM_TEST(78, "roms/mooneye/acceptance/ppu/intr_2_mode3_timing.gb")
-ROM_TEST(79, "roms/mooneye/acceptance/ppu/intr_2_oam_ok_timing.gb")
-ROM_TEST(80, "roms/mooneye/acceptance/ppu/vblank_stat_intr-GS.gb")
-ROM_TEST(81, "roms/mooneye/acceptance/ppu/intr_2_0_timing.gb")
-ROM_TEST(82, "roms/mooneye/acceptance/ppu/stat_lyc_onoff.gb")
-ROM_TEST(83, "roms/mooneye/acceptance/ppu/stat_irq_blocking.gb")
-ROM_TEST(84, "roms/mooneye/misc/ppu/vblank_stat_intr-C.gb")
-ROM_TEST(85, "roms/samesuite/apu/channel_1/channel_1_align.gb")
-ROM_TEST(86, "roms/samesuite/apu/channel_1/channel_1_align_cpu.gb")
-ROM_TEST(87, "roms/samesuite/apu/channel_1/channel_1_delay.gb")
-ROM_TEST(88, "roms/samesuite/apu/channel_1/channel_1_duty.gb")
-ROM_TEST(89, "roms/samesuite/apu/channel_1/channel_1_duty_delay.gb")
-ROM_TEST(90, "roms/samesuite/apu/channel_1/channel_1_freq_change.gb")
-ROM_TEST(91, "roms/samesuite/apu/channel_1/channel_1_freq_change_timing-cgbDE.gb")
-ROM_TEST(92, "roms/samesuite/apu/channel_1/channel_1_restart.gb")
-ROM_TEST(93, "roms/samesuite/apu/channel_1/channel_1_restart_nrx2_glitch.gb")
-ROM_TEST(94, "roms/samesuite/apu/channel_1/channel_1_stop_restart.gb")
-ROM_TEST(95, "roms/samesuite/apu/channel_2/channel_2_align.gb")
-ROM_TEST(96, "roms/samesuite/apu/channel_2/channel_2_align_cpu.gb")
-ROM_TEST(97, "roms/samesuite/apu/channel_2/channel_2_delay.gb")
-ROM_TEST(98, "roms/samesuite/apu/channel_2/channel_2_duty.gb")
-ROM_TEST(99, "roms/samesuite/apu/channel_2/channel_2_duty_delay.gb")
-ROM_TEST(100, "roms/samesuite/apu/channel_2/channel_2_freq_change.gb")
-ROM_TEST(101, "roms/samesuite/apu/channel_2/channel_2_restart.gb")
-ROM_TEST(102, "roms/samesuite/apu/channel_2/channel_2_restart_nrx2_glitch.gb")
-ROM_TEST(103, "roms/samesuite/apu/channel_2/channel_2_stop_restart.gb")
-ROM_TEST(104, "roms/samesuite/apu/channel_2/channel_2_volume.gb")
-ROM_TEST(105, "roms/samesuite/apu/channel_3/channel_3_and_glitch.gb")
-ROM_TEST(106, "roms/samesuite/apu/channel_3/channel_3_delay.gb")
-ROM_TEST(107, "roms/samesuite/apu/channel_3/channel_3_first_sample.gb")
-ROM_TEST(108, "roms/samesuite/apu/channel_3/channel_3_freq_change_delay.gb")
-ROM_TEST(109, "roms/samesuite/apu/channel_3/channel_3_restart_delay.gb")
-ROM_TEST(110, "roms/samesuite/apu/channel_3/channel_3_restart_during_delay.gb")
-ROM_TEST(111, "roms/samesuite/apu/channel_3/channel_3_restart_stop_delay.gb")
-ROM_TEST(112, "roms/samesuite/apu/channel_3/channel_3_shift_delay.gb")
-ROM_TEST(113, "roms/samesuite/apu/channel_3/channel_3_shift_skip_delay.gb")
-ROM_TEST(114, "roms/samesuite/apu/channel_3/channel_3_stop_delay.gb")
-ROM_TEST(115, "roms/samesuite/apu/channel_3/channel_3_stop_div.gb")
-ROM_TEST(116, "roms/samesuite/apu/channel_3/channel_3_wave_ram_sync.gb")
-ROM_TEST(117, "roms/samesuite/apu/channel_4/channel_4_lfsr.gb")
-ROM_TEST(118, "roms/samesuite/apu/channel_1/channel_1_nrx2_glitch.gb")
-ROM_TEST(119, "roms/samesuite/apu/channel_1/channel_1_volume.gb")
-ROM_TEST(120, "roms/samesuite/apu/channel_2/channel_2_nrx2_glitch.gb")
-ROM_TEST(121, "roms/samesuite/apu/channel_1/channel_1_nrx2_speed_change.gb")
-ROM_TEST(122, "roms/samesuite/apu/channel_2/channel_2_nrx2_speed_change.gb")
-ROM_TEST(123, "roms/samesuite/apu/div_write_trigger.gb")
-ROM_TEST(124, "roms/samesuite/apu/channel_1/channel_1_stop_div.gb")
-ROM_TEST(125, "roms/samesuite/apu/channel_1/channel_1_volume_div.gb")
-ROM_TEST(126, "roms/samesuite/apu/channel_2/channel_2_stop_div.gb")
-ROM_TEST(127, "roms/samesuite/apu/channel_2/channel_2_volume_div.gb")
-ROM_TEST(128, "roms/samesuite/apu/channel_4/channel_4_volume_div.gb")
-ROM_TEST(129, "roms/samesuite/apu/div_trigger_volume_10.gb")
-ROM_TEST(130, "roms/samesuite/apu/div_write_trigger_volume.gb")
-ROM_TEST(131, "roms/samesuite/apu/div_write_trigger_volume_10.gb")
-ROM_TEST(132, "roms/samesuite/apu/div_write_trigger_10.gb")
-ROM_TEST(133, "roms/samesuite/apu/channel_1/channel_1_sweep.gb")
-ROM_TEST(134, "roms/samesuite/apu/channel_1/channel_1_sweep_restart.gb")
-ROM_TEST(135, "roms/samesuite/apu/channel_1/channel_1_sweep_restart_2.gb")
-ROM_TEST(136, "roms/samesuite/apu/channel_3/channel_3_wave_ram_locked_write.gb")
-ROM_TEST(137, "roms/samesuite/apu/channel_4/channel_4_align.gb")
-ROM_TEST(138, "roms/samesuite/apu/channel_4/channel_4_delay.gb")
-ROM_TEST(139, "roms/samesuite/apu/channel_4/channel_4_equivalent_frequencies.gb")
-ROM_TEST(140, "roms/samesuite/apu/channel_4/channel_4_freq_change.gb")
-ROM_TEST(141, "roms/samesuite/apu/channel_4/channel_4_frequency_alignment.gb")
-ROM_TEST(142, "roms/samesuite/apu/channel_4/channel_4_lfsr15.gb")
-ROM_TEST(143, "roms/samesuite/apu/channel_4/channel_4_lfsr_15_7.gb")
-ROM_TEST(144, "roms/samesuite/apu/channel_4/channel_4_lfsr_7_15.gb")
-ROM_TEST(145, "roms/samesuite/apu/channel_4/channel_4_lfsr_restart.gb")
-ROM_TEST(146, "roms/samesuite/apu/channel_4/channel_4_lfsr_restart_fast.gb")
-ROM_TEST(147, "roms/mooneye/acceptance/bits/unused_hwio-GS.gb")
-ROM_TEST(148, "roms/mooneye/misc/bits/unused_hwio-C.gb")
-ROM_TEST(149, "roms/mooneye/acceptance/boot_div-dmgABCmgb.gb")
-ROM_TEST(150, "roms/mooneye/misc/boot_div-cgbABCDE.gb")
-ROM_TEST(151, "roms/mooneye/acceptance/boot_hwio-dmgABCmgb.gb")
-ROM_TEST(152, "roms/mooneye/misc/boot_hwio-C.gb")
-ROM_TEST(153, "roms/samesuite/ppu/blocking_bgpi_increase.gb")
-ROM_TEST(154, "roms/daid/speed_switch_timing_div.gbc")
-ROM_TEST(155, "roms/daid/speed_switch_timing_ly.gbc")
-ROM_TEST(156, "roms/daid/speed_switch_timing_stat.gbc")
-ROM_TEST(157, "roms/daid/ppu_scanline_bgp.gb (DMG)")
-ROM_TEST(158, "roms/daid/ppu_scanline_bgp.gb (GBC)")
-ROM_TEST(159, "roms/hacktix/strikethrough.gb")
-ROM_TEST(160, "roms/hacktix/bully.gb (DMG)")
-ROM_TEST(161, "roms/hacktix/bully.gb (GBC)")
-ROM_TEST(162, "roms/mooneye/acceptance/boot_div-dmg0.gb")
-ROM_TEST(163, "roms/mooneye/acceptance/boot_hwio-dmg0.gb")
-ROM_TEST(164, "roms/mooneye/acceptance/boot_div-S.gb")
-ROM_TEST(165, "roms/mooneye/acceptance/boot_div2-S.gb")
-ROM_TEST(166, "roms/mooneye/acceptance/boot_hwio-S.gb")
-ROM_TEST(167, "roms/mooneye/misc/boot_div-A.gb")
-ROM_TEST(168, "roms/mooneye/misc/boot_regs-A.gb")
-ROM_TEST(169, "roms/mooneye/misc/boot_div-cgb0.gb")
-ROM_TEST(170, "roms/mooneye/acceptance/boot_regs-sgb.gb")
-ROM_TEST(171, "roms/mooneye/acceptance/boot_regs-sgb2.gb")
-ROM_TEST(172, "roms/samesuite/sgb/command_mlt_req.gb")
-ROM_TEST(173, "roms/samesuite/sgb/command_mlt_req_1_incrementing.gb")
-ROM_TEST(174, "roms/mooneye/acceptance/ppu/lcdon_timing-GS.gb")
-ROM_TEST(175, "roms/mooneye/acceptance/ppu/lcdon_write_timing-GS.gb")
-ROM_TEST(176, "roms/acid/cgb-acid-hell.gbc")
-ROM_TEST(177, "roms/mooneye/acceptance/ppu/intr_2_mode0_timing_sprites.gb")
-
-
-ROM_TEST(178, "roms/mooneye/acceptance/add_sp_e_timing.gb")
-ROM_TEST(179, "roms/mooneye/acceptance/bits/mem_oam.gb")
-ROM_TEST(180, "roms/mooneye/acceptance/bits/reg_f.gb")
-ROM_TEST(181, "roms/mooneye/acceptance/boot_regs-dmgABC.gb")
-ROM_TEST(182, "roms/mooneye/acceptance/boot_regs-dmg0.gb")
-ROM_TEST(183, "roms/mooneye/acceptance/boot_regs-mgb.gb")
-ROM_TEST(184, "roms/mooneye/acceptance/call_cc_timing.gb")
-ROM_TEST(185, "roms/mooneye/acceptance/call_cc_timing2.gb")
-ROM_TEST(186, "roms/mooneye/acceptance/call_timing.gb")
-ROM_TEST(187, "roms/mooneye/acceptance/call_timing2.gb")
-ROM_TEST(188, "roms/mooneye/acceptance/div_timing.gb")
-ROM_TEST(189, "roms/mooneye/acceptance/di_timing-GS.gb")
-ROM_TEST(190, "roms/mooneye/acceptance/ei_sequence.gb")
-ROM_TEST(191, "roms/mooneye/acceptance/ei_timing.gb")
-ROM_TEST(192, "roms/mooneye/acceptance/halt_ime0_ei.gb")
-ROM_TEST(193, "roms/mooneye/acceptance/halt_ime0_nointr_timing.gb")
-ROM_TEST(194, "roms/mooneye/acceptance/halt_ime1_timing.gb")
-ROM_TEST(195, "roms/mooneye/acceptance/halt_ime1_timing2-GS.gb")
-ROM_TEST(196, "roms/mooneye/acceptance/if_ie_registers.gb")
-ROM_TEST(197, "roms/mooneye/acceptance/instr/daa.gb")
-ROM_TEST(198, "roms/mooneye/acceptance/interrupts/ie_push.gb")
-ROM_TEST(199, "roms/mooneye/acceptance/intr_timing.gb")
-ROM_TEST(200, "roms/mooneye/acceptance/jp_cc_timing.gb")
-ROM_TEST(201, "roms/mooneye/acceptance/jp_timing.gb")
-ROM_TEST(202, "roms/mooneye/acceptance/ld_hl_sp_e_timing.gb")
-ROM_TEST(203, "roms/mooneye/acceptance/oam_dma/basic.gb")
-ROM_TEST(204, "roms/mooneye/acceptance/oam_dma/reg_read.gb")
-ROM_TEST(205, "roms/mooneye/acceptance/oam_dma/sources-GS.gb")
-ROM_TEST(206, "roms/mooneye/acceptance/oam_dma_restart.gb")
-ROM_TEST(207, "roms/mooneye/acceptance/oam_dma_start.gb")
-ROM_TEST(208, "roms/mooneye/acceptance/oam_dma_timing.gb")
-ROM_TEST(209, "roms/mooneye/acceptance/pop_timing.gb")
-ROM_TEST(210, "roms/mooneye/acceptance/push_timing.gb")
-ROM_TEST(211, "roms/mooneye/acceptance/rapid_di_ei.gb")
-ROM_TEST(212, "roms/mooneye/acceptance/reti_intr_timing.gb")
-ROM_TEST(213, "roms/mooneye/acceptance/reti_timing.gb")
-ROM_TEST(214, "roms/mooneye/acceptance/ret_cc_timing.gb")
-ROM_TEST(215, "roms/mooneye/acceptance/ret_timing.gb")
-ROM_TEST(216, "roms/mooneye/acceptance/rst_timing.gb")
-ROM_TEST(217, "roms/mooneye/acceptance/serial/boot_sclk_align-dmgABCmgb.gb")
-ROM_TEST(218, "roms/mooneye/acceptance/timer/div_write.gb")
-ROM_TEST(219, "roms/mooneye/acceptance/timer/rapid_toggle.gb")
-ROM_TEST(220, "roms/mooneye/acceptance/timer/tim00.gb")
-ROM_TEST(221, "roms/mooneye/acceptance/timer/tim00_div_trigger.gb")
-ROM_TEST(222, "roms/mooneye/acceptance/timer/tim01.gb")
-ROM_TEST(223, "roms/mooneye/acceptance/timer/tim01_div_trigger.gb")
-ROM_TEST(224, "roms/mooneye/acceptance/timer/tim10.gb")
-ROM_TEST(225, "roms/mooneye/acceptance/timer/tim10_div_trigger.gb")
-ROM_TEST(226, "roms/mooneye/acceptance/timer/tim11.gb")
-ROM_TEST(227, "roms/mooneye/acceptance/timer/tim11_div_trigger.gb")
-ROM_TEST(228, "roms/mooneye/acceptance/timer/tima_reload.gb")
-ROM_TEST(229, "roms/mooneye/acceptance/timer/tima_write_reloading.gb")
-ROM_TEST(230, "roms/mooneye/acceptance/timer/tma_write_reloading.gb")
-ROM_TEST(231, "roms/mooneye/emulator-only/mbc1/bits_bank1.gb")
-ROM_TEST(232, "roms/mooneye/emulator-only/mbc1/bits_bank2.gb")
-ROM_TEST(233, "roms/mooneye/emulator-only/mbc1/bits_mode.gb")
-ROM_TEST(234, "roms/mooneye/emulator-only/mbc1/bits_ramg.gb")
-ROM_TEST(235, "roms/mooneye/emulator-only/mbc1/multicart_rom_8Mb.gb")
-ROM_TEST(236, "roms/mooneye/emulator-only/mbc1/ram_256kb.gb")
-ROM_TEST(237, "roms/mooneye/emulator-only/mbc1/ram_64kb.gb")
-ROM_TEST(238, "roms/mooneye/emulator-only/mbc1/rom_16Mb.gb")
-ROM_TEST(239, "roms/mooneye/emulator-only/mbc1/rom_1Mb.gb")
-ROM_TEST(240, "roms/mooneye/emulator-only/mbc1/rom_2Mb.gb")
-ROM_TEST(241, "roms/mooneye/emulator-only/mbc1/rom_4Mb.gb")
-ROM_TEST(242, "roms/mooneye/emulator-only/mbc1/rom_512kb.gb")
-ROM_TEST(243, "roms/mooneye/emulator-only/mbc1/rom_8Mb.gb")
-ROM_TEST(244, "roms/mooneye/emulator-only/mbc2/bits_ramg.gb")
-ROM_TEST(245, "roms/mooneye/emulator-only/mbc2/bits_romb.gb")
-ROM_TEST(246, "roms/mooneye/emulator-only/mbc2/bits_unused.gb")
-ROM_TEST(247, "roms/mooneye/emulator-only/mbc2/ram.gb")
-ROM_TEST(248, "roms/mooneye/emulator-only/mbc2/rom_1Mb.gb")
-ROM_TEST(249, "roms/mooneye/emulator-only/mbc2/rom_2Mb.gb")
-ROM_TEST(250, "roms/mooneye/emulator-only/mbc2/rom_512kb.gb")
-ROM_TEST(251, "roms/mooneye/emulator-only/mbc5/rom_16Mb.gb")
-ROM_TEST(252, "roms/mooneye/emulator-only/mbc5/rom_1Mb.gb")
-ROM_TEST(253, "roms/mooneye/emulator-only/mbc5/rom_2Mb.gb")
-ROM_TEST(254, "roms/mooneye/emulator-only/mbc5/rom_32Mb.gb")
-ROM_TEST(255, "roms/mooneye/emulator-only/mbc5/rom_4Mb.gb")
-ROM_TEST(256, "roms/mooneye/emulator-only/mbc5/rom_512kb.gb")
-ROM_TEST(257, "roms/mooneye/emulator-only/mbc5/rom_64Mb.gb")
-ROM_TEST(258, "roms/mooneye/emulator-only/mbc5/rom_8Mb.gb")
-ROM_TEST(259, "roms/mooneye/misc/boot_regs-cgb.gb")
-ROM_TEST(260, "roms/mooneye/acceptance/boot_div-S.gb (SGB2)")
-ROM_TEST(261, "roms/mooneye/acceptance/boot_div2-S.gb (SGB2)")
-
-ROM_TEST(262, "roms/acid/dmg-acid2.gb")
-ROM_TEST(263, "roms/acid/cgb-acid2.gbc")
-ROM_TEST(264, "roms/daid/stop_instr.gb (DMG)")
-ROM_TEST(265, "roms/daid/stop_instr.gb (CGB)")
-ROM_TEST(266, "roms/daid/stop_instr_gbc_mode3.gb")
-ROM_TEST(267, "roms/ax6/rtc3test-1.gb")
-ROM_TEST(268, "roms/ax6/rtc3test-2.gb")
-ROM_TEST(269, "roms/ax6/rtc3test-3.gb")
-ROM_TEST(270, "roms/samesuite/dma/gbc_dma_cont.gb")
-ROM_TEST(271, "roms/samesuite/dma/gdma_addr_mask.gb")
-ROM_TEST(272, "roms/samesuite/dma/hdma_lcd_off.gb")
-ROM_TEST(273, "roms/samesuite/dma/hdma_mode0.gb")
-ROM_TEST(274, "roms/cpp/rtc-invalid-banks-test.gb")
-ROM_TEST(275, "roms/cpp/latch-rtc-test.gb")
-ROM_TEST(276, "roms/cpp/ramg-mbc3-test.gb")
-ROM_TEST(277, "roms/mbc3-tester/mbc3-tester.gb")
-ROM_TEST(278, "roms/mooneye/manual-only/sprite_priority.gb")
+    return true;
+}();
 
 static std::optional<Model> ModelFromName(const std::string_view name) {
     template for (constexpr auto e : std::define_static_array(std::meta::enumerators_of(^^Model))) {
