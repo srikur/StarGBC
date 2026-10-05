@@ -351,6 +351,8 @@ class Audio {
     [[= NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
     [[= NotStateAware]] std::array<float, 4> lastMixOutputs_{};
     [[= NotStateAware]] bool hasEarlyPcmGlitch_{false};
+    [[= NotStateAware]] std::array<double, 2> mixLevel_{};
+    [[= NotStateAware]] uint64_t mixLevelChanges_{0};
     // APU ticks deferred by the master loop; materialized by CatchUp() before
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
@@ -428,6 +430,11 @@ public:
     void GenerateSample();
 
     [[nodiscard]] size_t GetSamplesAvailable() const { return samplesAvailable; }
+
+    [[nodiscard]] uint64_t GetMixLevelChanges() {
+        CatchUp();
+        return mixLevelChanges_;
+    }
 
     size_t ReadSamples(float *output, size_t numSamples);
 

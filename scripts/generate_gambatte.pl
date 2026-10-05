@@ -29,10 +29,11 @@ while (my $line = <$list>) {
     $line =~ s/^\s+|\s+$//g;
     next if $line eq '' || $line =~ /^#/;
     my @fields = map {s/^\s+|\s+$//gr} split(/,/, $line, -1);
-    die "$listPath:$.: expected '<rom>,<expected screen>,<model>', got '$line'\n" unless @fields == 3;
+    die "$listPath:$.: expected '<rom>,<expected>,<model>', got '$line'\n" unless @fields == 3;
     my ($rom, $expected, $modelName) = @fields;
     die "$listPath:$.: missing ROM path\n" if $rom eq '';
-    die "$listPath:$.: missing expected screen path\n" if $expected eq '';
+    die "$listPath:$.: expected result must be a .screen path, 'out:<hex>' or 'audio:<0|1>', got '$expected'\n"
+        unless $expected =~ /\.screen$/ || $expected =~ /^out:[0-9A-F]+$/ || $expected =~ /^audio:[01]$/;
     for ($rom, $expected) {
         die "$listPath:$.: '$_' can't be written as a C++ string literal\n" if /["\\]/;
     }

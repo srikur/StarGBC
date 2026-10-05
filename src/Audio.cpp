@@ -1468,6 +1468,7 @@ void Audio::GenerateSample() {
         };
 
         const int phase = static_cast<int>(sampleAcc_ >> 15) & (BL_PHASES - 1);
+        std::array<double, 2> level{};
         auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled, const uint8_t leftMask,
                                     const uint8_t rightMask) {
             const double val = dac(output, enabled && dacEnabled);
@@ -1478,6 +1479,8 @@ void Audio::GenerateSample() {
             const double rightVol = (nr50 & 0x07) + 1;
             left *= leftVol;
             right *= rightVol;
+            level[0] += left;
+            level[1] += right;
 
             BandLimitedUpdate(ch, left, right, phase);
         };
@@ -1486,6 +1489,10 @@ void Audio::GenerateSample() {
         getChannelOutput(1, ch2.currentOutput, ch2.enabled, ch2.dacEnabled, 0x20, 0x02);
         getChannelOutput(2, ch3.currentOutput, ch3.enabled, ch3.dacEnabled, 0x40, 0x04);
         getChannelOutput(3, ch4.currentOutput, ch4.enabled, ch4.dacEnabled, 0x80, 0x08);
+        if (level != mixLevel_) {
+            mixLevel_ = level;
+            ++mixLevelChanges_;
+        }
     }
 
     sampleAcc_ += AUDIO_SAMPLE_RATE;
