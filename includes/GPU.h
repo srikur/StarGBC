@@ -72,7 +72,7 @@ struct Stat {
 
 class GPU {
 public:
-    explicit GPU(Interrupts &interrupts) : interrupts_(interrupts) {}
+    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : colorCorrection_(colorCorrection), interrupts_(interrupts) {}
 
     static constexpr uint32_t DMG_SHADE[4] = {
             0xFFFFFFFFu, // FF FF FF FF
@@ -230,6 +230,7 @@ public:
     // Cached IsCgb(model): read dozens of times per dot, and the compiler
     // cannot hoist the range compares across non-inlined calls
     [[= NotStateAware]] bool isCgb_{false};
+    [[= NotStateAware]] bool colorCorrection_{true};
     // Color-corrected ARGB for every CGB palette entry (8 palettes x 4
     // colors), maintained on palette-RAM writes instead of per pixel
     [[= NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};

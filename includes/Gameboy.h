@@ -18,6 +18,7 @@ struct GameboySettings {
     bool noBootrom{false};
     bool realRTC{false};
     bool noAudio{false};
+    bool colorCorrection{true};
 };
 
 class Gameboy {
@@ -29,8 +30,8 @@ public:
 
     explicit Gameboy(const GameboySettings &settings) :
         romPath_(std::move(settings.romName)), biosPath_(std::move(settings.biosPath)), rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
-        joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_), gpu_(interrupts_),
-        bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
+        joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_),
+        gpu_(interrupts_, settings.colorCorrection), bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
         cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_), instructions_(registers_, interrupts_) {}
 
     Gameboy(const Gameboy &other) = delete;

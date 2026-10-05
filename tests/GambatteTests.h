@@ -35,6 +35,7 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
                 .romName = gambatte_case.rom,
                 .model = gambatte_case.model,
                 .noBootrom = true,
+                .colorCorrection = false,
         });
 
         for (unsigned frame = 0; frame < GAMBATTE_FRAME_LIMIT; ++frame) {

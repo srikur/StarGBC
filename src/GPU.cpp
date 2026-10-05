@@ -1004,20 +1004,23 @@ uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
     return address;
 }
 
-// Color-correction matrix + 5->8 expansion for one CGB palette entry; results
-// live in the bg/obj color LUTs and are refreshed on palette-RAM writes
-static uint32_t ComputeCgbColor(const std::array<uint8_t, 3> &rgb) noexcept {
-    const auto r5 = static_cast<uint8_t>(rgb[0] & 0x1F);
-    const auto g5 = static_cast<uint8_t>(rgb[1] & 0x1F);
-    const auto b5 = static_cast<uint8_t>(rgb[2] & 0x1F);
+static uint32_t ComputeCgbColor(const std::array<uint8_t, 3> &rgb, const bool colorCorrection) noexcept {
+    auto r5 = static_cast<uint8_t>(rgb[0] & 0x1F);
+    auto g5 = static_cast<uint8_t>(rgb[1] & 0x1F);
+    auto b5 = static_cast<uint8_t>(rgb[2] & 0x1F);
 
-    const auto corrR5 = static_cast<uint8_t>((26 * r5 + 4 * g5 + 2 * b5) >> 5);
-    const auto corrG5 = static_cast<uint8_t>((6 * r5 + 24 * g5 + 2 * b5) >> 5);
-    const auto corrB5 = static_cast<uint8_t>((2 * r5 + 4 * g5 + 26 * b5) >> 5);
+    if (colorCorrection) {
+        const auto corrR5 = static_cast<uint8_t>((26 * r5 + 4 * g5 + 2 * b5) >> 5);
+        const auto corrG5 = static_cast<uint8_t>((6 * r5 + 24 * g5 + 2 * b5) >> 5);
+        const auto corrB5 = static_cast<uint8_t>((2 * r5 + 4 * g5 + 26 * b5) >> 5);
+        r5 = corrR5;
+        g5 = corrG5;
+        b5 = corrB5;
+    }
 
-    const uint8_t r = expand5(corrR5);
-    const uint8_t g = expand5(corrG5);
-    const uint8_t b = expand5(corrB5);
+    const uint8_t r = expand5(r5);
+    const uint8_t g = expand5(g5);
+    const uint8_t b = expand5(b5);
 
     return 0xFF000000u | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | r;
 }
@@ -1025,8 +1028,8 @@ static uint32_t ComputeCgbColor(const std::array<uint8_t, 3> &rgb) noexcept {
 void GPU::RebuildColorLuts() {
     for (unsigned p = 0; p < 8; ++p) {
         for (unsigned c = 0; c < 4; ++c) {
-            bgColorLut_[p * 4 + c] = ComputeCgbColor(bgpd[p][c]);
-            objColorLut_[p * 4 + c] = ComputeCgbColor(obpd[p][c]);
+            bgColorLut_[p * 4 + c] = ComputeCgbColor(bgpd[p][c], colorCorrection_);
+            objColorLut_[p * 4 + c] = ComputeCgbColor(obpd[p][c], colorCorrection_);
         }
     }
 }
@@ -1482,7 +1485,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 bgpd[r][c][1] = (bgpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
                 bgpd[r][c][2] = (value >> 2) & 0x1F;
             }
-            bgColorLut_[r * 4 + c] = ComputeCgbColor(bgpd[r][c]);
+            bgColorLut_[r * 4 + c] = ComputeCgbColor(bgpd[r][c], colorCorrection_);
             if (bgpi.autoIncrement)
                 bgpi.index = (bgpi.index + 1) & 0x3F;
             break;
@@ -1500,7 +1503,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 obpd[r][c][1] = (obpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
                 obpd[r][c][2] = (value >> 2) & 0x1F;
             }
-            objColorLut_[r * 4 + c] = ComputeCgbColor(obpd[r][c]);
+            objColorLut_[r * 4 + c] = ComputeCgbColor(obpd[r][c], colorCorrection_);
             if (obpi.autoIncrement)
                 obpi.index = (obpi.index + 1) & 0x3F;
             break;
