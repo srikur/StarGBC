@@ -1,0 +1,2067 @@
+{
+  "bgen/bgoff_bgon_sprite_above_window_cgb04c.screen": {
+    "source": "roms/gambatte/bgen/bgoff_bgon_sprite_above_window_cgb04c.png",
+    "source_sha256": "2c303f48a8a79e0187ec2d55e83732e296fc73f3f342a5e0f3f4c49e05f1af41",
+    "screen_sha256": "cc5715def73f415005be68ed6a7b647618a9b4bc3e293086103dcb74771b5a54"
+  },
+  "bgen/bgoff_bgon_sprite_above_window_xdmg08.screen": {
+    "source": "roms/gambatte/bgen/bgoff_bgon_sprite_above_window_xdmg08.png",
+    "source_sha256": "473fa4c3d19f36ac580daa27984ee9149a63c62455ca967b952d8d2f73b7e7ae",
+    "screen_sha256": "a8fd283fafd2c35454b780d7aac06b39baf54f910a268febb5125fc7148a6944"
+  },
+  "bgen/bgoff_bgon_sprite_below_window_cgb04c.screen": {
+    "source": "roms/gambatte/bgen/bgoff_bgon_sprite_below_window_cgb04c.png",
+    "source_sha256": "df953abe3a961af3d73ff657c091f71a95c2129af262ba44cde829c6aae3b2db",
+    "screen_sha256": "ef987100dffac5127acd46548aeab815be74b7e38e0ae590c391a354675d5ad0"
+  },
+  "bgen/bgoff_bgon_sprite_below_window_xdmg08.screen": {
+    "source": "roms/gambatte/bgen/bgoff_bgon_sprite_below_window_xdmg08.png",
+    "source_sha256": "66716a07d78151f6e24b2e5dcd0ed4f4c24fcf4035e840e6ac085ad62e833720",
+    "screen_sha256": "e9c529a1f53a75cfd585b5a5b73bf1ce2bda066194b2cdc97c4e8181c6c4c614"
+  },
+  "bgtiledata/bgtiledata_spx08_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_1_cgb04c.png",
+    "source_sha256": "6cfe64e699d34e6c191b78d658c9ca79e3f774a328449b54b7d73076e1ccc30a",
+    "screen_sha256": "3393d8a62d68a7a023e321d6da50907475696b101a272b5f26200a1a4e52fb50"
+  },
+  "bgtiledata/bgtiledata_spx08_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_1_dmg08.png",
+    "source_sha256": "9c930a19ceaf9d22b063e9c45c22e51150d72ecf66cbf0ec40055678b7e7b802",
+    "screen_sha256": "ee7d3ab75c31d7b2c01d347373422ad7e103965d74161df6d51a6b0550e86657"
+  },
+  "bgtiledata/bgtiledata_spx08_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_2_cgb04c.png",
+    "source_sha256": "3dfc101da60fc87f2311f1753ec664897670a29c84cf04171ecd10e070f1762d",
+    "screen_sha256": "23dbbc2f1abff236811c00fba173e2364a0b2e79341e3fce1a653a2f2529b4af"
+  },
+  "bgtiledata/bgtiledata_spx08_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_2_dmg08.png",
+    "source_sha256": "458c686d94ff39964afeed80c0e7e7af7d08e22d3b758bbf0e8e719a19ba2a43",
+    "screen_sha256": "dc28b7aae3822d964225f2b639b1ac4e8368d8f79e6b6b864342b6bfde6fedf5"
+  },
+  "bgtiledata/bgtiledata_spx08_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_3_cgb04c.png",
+    "source_sha256": "b9889537a4656d36ae136c7a066d1116b7a3312f56c8a3f5fa66a7a2eacde789",
+    "screen_sha256": "e8027801c36fef7be06c2b56fee883e6f8ac621b8bbd66ed16380c1b3855f3b2"
+  },
+  "bgtiledata/bgtiledata_spx08_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_3_dmg08.png",
+    "source_sha256": "1c34d797186cfdaaee4aeec169e1431b64dbcaddc15c413d370fd8ac4d60f0d1",
+    "screen_sha256": "4a65633db31e9846c532e9ebd48a26a4f04a971aa88c656da11ea2be1e5632d2"
+  },
+  "bgtiledata/bgtiledata_spx08_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_4_cgb04c.png",
+    "source_sha256": "913fca42b1c92895b2344d29a5cdd7fdfdfe8e27456d14a0041d6a9ee5c53ea8",
+    "screen_sha256": "d1f9fe1d0e4d83035fc7174e0f0faecb76e8bfb1aee25450e1f975d195a465ec"
+  },
+  "bgtiledata/bgtiledata_spx08_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_4_dmg08.png",
+    "source_sha256": "2db91d8a43faf5ae7bb15f8b47414a2bf211de7de27756c7003bf5cefef9f994",
+    "screen_sha256": "5a41aea95ecc73f8d14489bfba3781e9f4e50ba86a02e9dafa09fef1195e3123"
+  },
+  "bgtiledata/bgtiledata_spx08_ds_1_xcgb.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_ds_1_xcgb.png",
+    "source_sha256": "4d8a5afd9e17771c7d1f2b93dab7ca29dbf17f4f4416077eab730b4d1c324e2d",
+    "screen_sha256": "0daf81089f27af6edbf9d9ac6494a295a211b0689e7561fa3f51cbb4ff8822bc"
+  },
+  "bgtiledata/bgtiledata_spx08_ds_2_xcgb.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_ds_2_xcgb.png",
+    "source_sha256": "1aab4e562b38de5795064e02a76314b2a85271a33048e5d206cb4ccab0749d0c",
+    "screen_sha256": "7bab53fe90616fa1765f3224adf9db0efa06ec23c37286a101a8162b0f17484b"
+  },
+  "bgtiledata/bgtiledata_spx08_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_ds_3_cgb04c.png",
+    "source_sha256": "274e39371ac1b930d364b49ae7f78800b0de5fcd9b9faa6e744b4fe9dff2a822",
+    "screen_sha256": "9b0f273f5a8e4fc6f1793291116458609860bd6bf92e4fe2a9c25b788ab0391c"
+  },
+  "bgtiledata/bgtiledata_spx08_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx08_ds_4_cgb04c.png",
+    "source_sha256": "d57ff9aea5246161932b893965272bde4156a8b80883f81b57363eedb223a963",
+    "screen_sha256": "ea4a6bffd2acd8fe08286e9ecf16510e3037eaf6ed973e9378292a16b75b0184"
+  },
+  "bgtiledata/bgtiledata_spx09_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_1_cgb04c.png",
+    "source_sha256": "01b90a906c33297c6fd2a57e0b4ddd872dab510a32ade7199de854af7463aaf9",
+    "screen_sha256": "177806c46e2e8e6e5daf30b3e818846bda8c8e8079876c0d135a64015b986201"
+  },
+  "bgtiledata/bgtiledata_spx09_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_1_dmg08.png",
+    "source_sha256": "48eb1850f321f62d8927ed07933282a847c6f64a322619d8639c247a7c7cff61",
+    "screen_sha256": "f1c9333e608291b5f8e67733d85bca957d568c7231c17125036bdbac52889a67"
+  },
+  "bgtiledata/bgtiledata_spx09_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_2_dmg08.png",
+    "source_sha256": "e3309e28a1654da8480b5f4f42de9c05535e1c3c9a9948a4964dd3113f387b39",
+    "screen_sha256": "63a1117f0db42542f0781e38cfe4d3b7f47bd255cf66d4f688f42ef941f483c7"
+  },
+  "bgtiledata/bgtiledata_spx09_2_xcgb.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_2_xcgb.png",
+    "source_sha256": "445c92247bf6656608e3525c601f3fd5e1d212e9e60c075566d4ce640ce7a480",
+    "screen_sha256": "1307117a52ef06f14088296aca33f0194a8f8b7bd5e76bb8bd45d27b6ce6a0a8"
+  },
+  "bgtiledata/bgtiledata_spx09_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_3_cgb04c.png",
+    "source_sha256": "29530d61d8f61aaf060aa96ee249a616a9a28ba78bb5dab363ec5a4a3c070a84",
+    "screen_sha256": "bb528679b52958a6274065a0b7db722c0ad35e791621f80a226cf584210128bf"
+  },
+  "bgtiledata/bgtiledata_spx09_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_3_dmg08.png",
+    "source_sha256": "725fe560ece7dad02c170ed753c3824b40006a639321951c6caa5639e3ccc505",
+    "screen_sha256": "92d98c5fc0fbb83bac3d1cbd5f62bf0a584657044570652a1ee6bc79143c968a"
+  },
+  "bgtiledata/bgtiledata_spx09_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_4_dmg08.png",
+    "source_sha256": "60369978d4b50d2919001986befe599d8713246011d7d2ebec8995bbce6c333b",
+    "screen_sha256": "8ad8e54429faa38608078825abffd6e277429e671feb1bd7d2047d30a67a5240"
+  },
+  "bgtiledata/bgtiledata_spx09_4_xcgb.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_4_xcgb.png",
+    "source_sha256": "32cae0f4f8cf180243ffe3e100ccf8985a8d88f53444c874b8b09464feea866f",
+    "screen_sha256": "1922544812c12f2073ed2bfb8b5413fe0f299d985462e426e3babd04210d7439"
+  },
+  "bgtiledata/bgtiledata_spx09_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_ds_1_cgb04c.png",
+    "source_sha256": "61ee412dcd8bd43383b339363c52cc9dddc5bc53be8efbc8e026fb35eaf4e628",
+    "screen_sha256": "26896050ea0f32ec1cdb7f19a52ee0a2184b51409b35a33fa68b9c65737e98d4"
+  },
+  "bgtiledata/bgtiledata_spx09_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_ds_2_cgb04c.png",
+    "source_sha256": "ffbb1c461ee6f85b66603d376aeb024b5bf6857cb661e981abe4b18ece78deb7",
+    "screen_sha256": "b52ce18cbaa34340a58ade29f125f39a04320063228552333e84c89ace53d009"
+  },
+  "bgtiledata/bgtiledata_spx09_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_ds_3_cgb04c.png",
+    "source_sha256": "5351a729088d6b62f345390ec30c57d37d3c721363191ff4fce211568daef675",
+    "screen_sha256": "603807160e09f6a6faead260af02720452c7e6b89de6df5cf5a2ec34e74b586d"
+  },
+  "bgtiledata/bgtiledata_spx09_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx09_ds_4_cgb04c.png",
+    "source_sha256": "75fdf8292c9a80ee57b355d8c66f82297e1dcf27699b324b3be83fce4c1cd8c7",
+    "screen_sha256": "32d312719e76e3b915746fd2af7d8b34a97ade7591a7c819e372b29fd627ae16"
+  },
+  "bgtiledata/bgtiledata_spx0A_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_1_cgb04c.png",
+    "source_sha256": "de249d944629519ecf5085743a22b5544b01606d97768f35b06ce6b026a5414f",
+    "screen_sha256": "11a09b5846ba860cc4c7d993a7cfbd6cbbe02ae974ce1157df5d3c34d21dedee"
+  },
+  "bgtiledata/bgtiledata_spx0A_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_1_dmg08.png",
+    "source_sha256": "3c9cde757afe3a01cf60ff29dd10f4725b84a3c1103a3b3513b8ebbbbca9bec0",
+    "screen_sha256": "552febb87b974f99bce17a06ecf7f4b5b770bf4955bb2b0e5a7177971f682909"
+  },
+  "bgtiledata/bgtiledata_spx0A_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_2_cgb04c.png",
+    "source_sha256": "cbe25c9865d9cc441daa5b704da8033d33ac47ee66d5a24029913d6f29c73908",
+    "screen_sha256": "3e07d7613b8995b77c3cb4944187d4840f0cd53a956658b636809d9e95abae22"
+  },
+  "bgtiledata/bgtiledata_spx0A_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_2_dmg08.png",
+    "source_sha256": "b34c1d75425661cde04911577422404958f75177e301bfc21031025637b0d009",
+    "screen_sha256": "688f04b18a6c40e9b89be7cd14c6846334901e5ab0ca57de25ab1db0d421f0d5"
+  },
+  "bgtiledata/bgtiledata_spx0A_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_3_cgb04c.png",
+    "source_sha256": "8e638e920158053e18efea56edccad3a7d3c18c0fe94f7b0557d4927fc9cf0cb",
+    "screen_sha256": "d89c3a8d8143f15ed3b7f958ff026165c138a52890098b101c34fa792e58ba37"
+  },
+  "bgtiledata/bgtiledata_spx0A_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_3_dmg08.png",
+    "source_sha256": "ce8298ee0338fb72feceb9369b84f7d1667b1a1cf235a9316e91a244eac2b156",
+    "screen_sha256": "4040f1980022e1a47612f4754f50ac40d5850327f6f400a13460fe914ffc8858"
+  },
+  "bgtiledata/bgtiledata_spx0A_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_4_cgb04c.png",
+    "source_sha256": "0c72035bfe770d888d6d4f300b88e0a16dd1c68b34fe7f3c2889a12c9b61a772",
+    "screen_sha256": "f60bd9652779c70cabe1988aca4aa031cd3b28a6bdd95cc9f0134f601f6fe983"
+  },
+  "bgtiledata/bgtiledata_spx0A_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0A_4_dmg08.png",
+    "source_sha256": "ea6e4a9984bdaaf74444e84ce16c5e7695972c9c70c6a6c742ddd5651608b67e",
+    "screen_sha256": "d55eb3ab5a0b5fc1a3452c919bb9976f55aaf78e8a0853dc04ba397ad6b3fbf2"
+  },
+  "bgtiledata/bgtiledata_spx0B_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_1_dmg08.png",
+    "source_sha256": "f9e147fd85f1df22a9a412daeb4c7533437f123543cf2a69fdc6ca939c37dea8",
+    "screen_sha256": "ccc5186e7122821b5b99b354a3977f47e045e5823c5b1882fa7708762b11a2ff"
+  },
+  "bgtiledata/bgtiledata_spx0B_1_xcgb.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_1_xcgb.png",
+    "source_sha256": "9da49c1cc29816516d58276024238ab807b9496cb10e2c3496d3e6342594a8c4",
+    "screen_sha256": "14cfd91799ad21d9fc59d593603b45355ce7c07f59a50c5aaf05ba70544fa1bb"
+  },
+  "bgtiledata/bgtiledata_spx0B_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_2_cgb04c.png",
+    "source_sha256": "8dcbe3ec943ee0579f21628a9a9dc2329408589c13ac4921ada97e0c814d63f5",
+    "screen_sha256": "66a1ccc320d36cc81e9879b646d91d471609392ae90d502f6c5a009471cf6078"
+  },
+  "bgtiledata/bgtiledata_spx0B_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_2_dmg08.png",
+    "source_sha256": "4a49cc779fc23ee444b7e9e3b5d79a804e23f1569ee9212fb0ea5860af386d37",
+    "screen_sha256": "66a1ccc320d36cc81e9879b646d91d471609392ae90d502f6c5a009471cf6078"
+  },
+  "bgtiledata/bgtiledata_spx0B_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_3_dmg08.png",
+    "source_sha256": "49a87c9e919359958d3f6a8acb07fd6ea8965c0992edc187dd2ac271a7e85d06",
+    "screen_sha256": "77a9c48804d5a3bea3841b4363903d4e0c7397d178e27caefb4fb7ca5023c6ba"
+  },
+  "bgtiledata/bgtiledata_spx0B_3_xcgb.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_3_xcgb.png",
+    "source_sha256": "445e191c55ae5ac51cab79bd5932c0bea2d65abef102fc323e2456bf5b5b9086",
+    "screen_sha256": "34dd7561e71287b114beed55bb280567512726259c79ca83d7f2d2bcf83a3d0c"
+  },
+  "bgtiledata/bgtiledata_spx0B_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_4_cgb04c.png",
+    "source_sha256": "4a77cb331f0d50e178632cf54a13b666fe017948ee485820c69f7f6f0d6cabb2",
+    "screen_sha256": "174a696feb43988cf8d75f314787b8e8c3e9321b4bb43fd0235aba4d5eed11ac"
+  },
+  "bgtiledata/bgtiledata_spx0B_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtiledata/bgtiledata_spx0B_4_dmg08.png",
+    "source_sha256": "cd0c194eeb879fa98df5efd4b305ecfc4975ae20fbf2041b899b10b0cf3e0633",
+    "screen_sha256": "174a696feb43988cf8d75f314787b8e8c3e9321b4bb43fd0235aba4d5eed11ac"
+  },
+  "bgtilemap/bgtilemap_spx08_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_1_cgb04c.png",
+    "source_sha256": "f83e3fc10e72c4b3fb8bdd12743d79124ed5315fbbcae3d34862d7e9effee56b",
+    "screen_sha256": "ce53d94995af1414afe34fb8207e6a9caf56eda1eff6d23461dc297c982aabb0"
+  },
+  "bgtilemap/bgtilemap_spx08_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_1_dmg08.png",
+    "source_sha256": "a050c56d2c140ff147949f7fd39d487672c0eb2cdcfc3405521f41cb7a2556cc",
+    "screen_sha256": "ce53d94995af1414afe34fb8207e6a9caf56eda1eff6d23461dc297c982aabb0"
+  },
+  "bgtilemap/bgtilemap_spx08_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_2_cgb04c.png",
+    "source_sha256": "864068c1d98c216932a189330a6e5b61f55b085ddf3905f05c28be801c4df15c",
+    "screen_sha256": "109fa5a0eac37e429dea80e5848e1018e1df4aa9d45fc55d1810d44cabf4192d"
+  },
+  "bgtilemap/bgtilemap_spx08_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_2_dmg08.png",
+    "source_sha256": "36bd575768158dca51b215fe51f96dafa5b78de2b705448f4bea269181bf7f39",
+    "screen_sha256": "109fa5a0eac37e429dea80e5848e1018e1df4aa9d45fc55d1810d44cabf4192d"
+  },
+  "bgtilemap/bgtilemap_spx08_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_3_cgb04c.png",
+    "source_sha256": "c1c7843c596665ea56884856faa5150dba847f7068b675d0da0dbbf7290ed156",
+    "screen_sha256": "05eeb20b0c7dad5219da5cd3705c8f1e21dfaa4cc5230fdddf596a5f0d64703c"
+  },
+  "bgtilemap/bgtilemap_spx08_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_3_dmg08.png",
+    "source_sha256": "388a8dcebb95f7705bfa6596375805d23d0319fa5db6ee214fac40d214269a7f",
+    "screen_sha256": "05eeb20b0c7dad5219da5cd3705c8f1e21dfaa4cc5230fdddf596a5f0d64703c"
+  },
+  "bgtilemap/bgtilemap_spx08_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_4_cgb04c.png",
+    "source_sha256": "3cbf7fce67894f55481021f7b9e5cd881a982a6303614b1d8f82cd30e8210a2c",
+    "screen_sha256": "de17317b08f99ab2d982c867975965cfdcc928222754882f7445bc3771bc1125"
+  },
+  "bgtilemap/bgtilemap_spx08_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_4_dmg08.png",
+    "source_sha256": "4ceef8bdecdcc80012ce95096301de74f8235d3570d49e9239b1e700c6f395f0",
+    "screen_sha256": "de17317b08f99ab2d982c867975965cfdcc928222754882f7445bc3771bc1125"
+  },
+  "bgtilemap/bgtilemap_spx08_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_ds_1_cgb04c.png",
+    "source_sha256": "f83e3fc10e72c4b3fb8bdd12743d79124ed5315fbbcae3d34862d7e9effee56b",
+    "screen_sha256": "ce53d94995af1414afe34fb8207e6a9caf56eda1eff6d23461dc297c982aabb0"
+  },
+  "bgtilemap/bgtilemap_spx08_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_ds_2_cgb04c.png",
+    "source_sha256": "c631bb02d99e7ac487e1a3ba40ff953732fba951866a040c915c9156a2fd99da",
+    "screen_sha256": "e1429b592fbc298fd9e1f632409f4832fa46b9a215c6d608c35ca99acd81ddf3"
+  },
+  "bgtilemap/bgtilemap_spx08_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_ds_3_cgb04c.png",
+    "source_sha256": "c631bb02d99e7ac487e1a3ba40ff953732fba951866a040c915c9156a2fd99da",
+    "screen_sha256": "e1429b592fbc298fd9e1f632409f4832fa46b9a215c6d608c35ca99acd81ddf3"
+  },
+  "bgtilemap/bgtilemap_spx08_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx08_ds_4_cgb04c.png",
+    "source_sha256": "864068c1d98c216932a189330a6e5b61f55b085ddf3905f05c28be801c4df15c",
+    "screen_sha256": "109fa5a0eac37e429dea80e5848e1018e1df4aa9d45fc55d1810d44cabf4192d"
+  },
+  "bgtilemap/bgtilemap_spx09_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_1_cgb04c.png",
+    "source_sha256": "9fef01e8fb24288d16bfbf8fe76895885b95ededb31f615755141fdb126ca759",
+    "screen_sha256": "3476a007d417d89aeb0b4e7ca30abcec91badcf075185e6ae2fa28cfb68eacc6"
+  },
+  "bgtilemap/bgtilemap_spx09_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_1_dmg08.png",
+    "source_sha256": "13ed4e50987974c0408ba828e502c3e70b2fa657533e696728ef9d6aa325d4c4",
+    "screen_sha256": "fac2bf8540cccfbe696f1d1a5a71c2a60cf3e879559dd27d23c2baf756f5f946"
+  },
+  "bgtilemap/bgtilemap_spx09_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_2_cgb04c.png",
+    "source_sha256": "25f9247e0dec5c7b6f028c04071fc0f15c98dc99787cf3860921ceb7e728339d",
+    "screen_sha256": "689786fc51168c88c5e5dead97720f7abaaff6d31800e892f77459752a005ecc"
+  },
+  "bgtilemap/bgtilemap_spx09_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_2_dmg08.png",
+    "source_sha256": "be7354bd3998c88498a881bbe9cf934186fb1e211ca30d7a6ef99c3718e3f99a",
+    "screen_sha256": "571470aec2dccedabbc9bb82d447829b26c1a2e1d9c8e98337abf85598a4251a"
+  },
+  "bgtilemap/bgtilemap_spx09_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_3_cgb04c.png",
+    "source_sha256": "c0011b322ec4ba5214918da58c67fd43ea94d4ecb9c528d592745be2fd301002",
+    "screen_sha256": "fc69deae3209cb9f04dfa9fbd744e775ab93f6900e6c213821c9877a648be9fd"
+  },
+  "bgtilemap/bgtilemap_spx09_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_3_dmg08.png",
+    "source_sha256": "df18426bd32e5b39346c7fa08d6a93a363c2888459a9cad27b01a5496dc5f5cc",
+    "screen_sha256": "197af29597ab5c95dc7a5a626e20fde189da44dbb4e6bd3f55f6c9ef53f02f86"
+  },
+  "bgtilemap/bgtilemap_spx09_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_4_cgb04c.png",
+    "source_sha256": "efb335d126e8e449c00d2439deb5eb3df8dbed74c15ca1b25425bbe50e6d84ef",
+    "screen_sha256": "9725b7a245d0350cc471f231fac38d57171c60b322d3349cd9013ca2fc2fa50c"
+  },
+  "bgtilemap/bgtilemap_spx09_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_4_dmg08.png",
+    "source_sha256": "2bb4c1647c88011db37e74508025f684346979afe82d6c237b1195ac91c6f3d5",
+    "screen_sha256": "0c3423f4f6c134f7862908d4885109d385a063d45e65911ecd32a8cddd407cef"
+  },
+  "bgtilemap/bgtilemap_spx09_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_ds_1_cgb04c.png",
+    "source_sha256": "06a10c680573fbf9ad014d13a9cf02137c7e41e69a355da18b5facec7583ca65",
+    "screen_sha256": "fac2bf8540cccfbe696f1d1a5a71c2a60cf3e879559dd27d23c2baf756f5f946"
+  },
+  "bgtilemap/bgtilemap_spx09_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_ds_2_cgb04c.png",
+    "source_sha256": "ca12676f5866571908a3925cfd697cfb6496b2caeb6ce270b93391c5ce86ed98",
+    "screen_sha256": "e66650c3f993d10d91f19a46d9f87c3d96354ffcfce5e790dd3ea585c6fd4ee5"
+  },
+  "bgtilemap/bgtilemap_spx09_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_ds_3_cgb04c.png",
+    "source_sha256": "ca12676f5866571908a3925cfd697cfb6496b2caeb6ce270b93391c5ce86ed98",
+    "screen_sha256": "e66650c3f993d10d91f19a46d9f87c3d96354ffcfce5e790dd3ea585c6fd4ee5"
+  },
+  "bgtilemap/bgtilemap_spx09_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx09_ds_4_cgb04c.png",
+    "source_sha256": "02f33cc7d152fff674c30133944396fe0cf1991d6c907cf62b1526b65885a711",
+    "screen_sha256": "571470aec2dccedabbc9bb82d447829b26c1a2e1d9c8e98337abf85598a4251a"
+  },
+  "bgtilemap/bgtilemap_spx0A_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_1_cgb04c.png",
+    "source_sha256": "9658b1617c300eef57f650e6a51e2bc4418f4349316f92d9294777815bbfe285",
+    "screen_sha256": "555014e74c7bc2654b04d4fe0575df22cc15178fffd45676df79816fcd8cd547"
+  },
+  "bgtilemap/bgtilemap_spx0A_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_1_dmg08.png",
+    "source_sha256": "6b468aaa3de065a6cdd2183423acee2a607e5491e94e00646602d6b41a3794b1",
+    "screen_sha256": "ce1f7f60ad19b091b73c01e8b604a882ef50ff77d2b07a444810897672034421"
+  },
+  "bgtilemap/bgtilemap_spx0A_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_2_cgb04c.png",
+    "source_sha256": "d42aaa717e25c7754f48985f8d55418aa7b180c3f03247dbe8d0ef6260f45576",
+    "screen_sha256": "f59834f4e65eb2d2d2b8908165148ec29759ca539a5a76b1117be138e7367e97"
+  },
+  "bgtilemap/bgtilemap_spx0A_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_2_dmg08.png",
+    "source_sha256": "f7ffae7d2b36c7dad3834324435be350d853d2dbfd0a63cd36c188dec0dcfe52",
+    "screen_sha256": "86ed8a2e688aca3e7a67ff9b5652b79496c6f3c5a7dcdcae144c02c96396b198"
+  },
+  "bgtilemap/bgtilemap_spx0A_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_3_cgb04c.png",
+    "source_sha256": "6264335ca625850b116c4f44e76ceb3368c0973ec869e29b850d25e630b16363",
+    "screen_sha256": "810fcbe72a802159ff96ec9f52278b56a63c58c99880b1792cfd33c6470687cf"
+  },
+  "bgtilemap/bgtilemap_spx0A_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_3_dmg08.png",
+    "source_sha256": "b780a509e1f9aa06afa8ebd9f71d279b1ce1a8390af805f86c50961db6327b91",
+    "screen_sha256": "ba9a8b635bd657b6b9d79235f41845c9101fd76121e8d03a850fb5c6d0ef4b9e"
+  },
+  "bgtilemap/bgtilemap_spx0A_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_4_cgb04c.png",
+    "source_sha256": "034eb81ec1c4881053ee118434d2723f610c98274ba90bfb42382a984abf6018",
+    "screen_sha256": "2b5dfc3076e5353b538d6f51d7ad0d25839de41817c0c9c656bc58aea586d178"
+  },
+  "bgtilemap/bgtilemap_spx0A_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0A_4_dmg08.png",
+    "source_sha256": "b695e3289f6ec810a0e7d9bee39c8d6210e1308347f89679223188ad5b937701",
+    "screen_sha256": "695bd922848d33e4fd32ccb7324301e25d4b6a06ef2881124a5f27afe19a1210"
+  },
+  "bgtilemap/bgtilemap_spx0B_1_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_1_cgb04c.png",
+    "source_sha256": "2dabaefd78b0cb0262c204c5feffa040a082dd1db13071cc11b7cd97745a7469",
+    "screen_sha256": "0ff432911dcaa41821bfa1f13959895db5714e4eccfcf87520d2816ffe3b9c71"
+  },
+  "bgtilemap/bgtilemap_spx0B_1_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_1_dmg08.png",
+    "source_sha256": "ed7d8fb0f428a219c6ab7fed5b95d2d06386c2fb793f72204da02009b65a0b2b",
+    "screen_sha256": "0ff432911dcaa41821bfa1f13959895db5714e4eccfcf87520d2816ffe3b9c71"
+  },
+  "bgtilemap/bgtilemap_spx0B_2_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_2_cgb04c.png",
+    "source_sha256": "5b425fd27096cf279a57f90dbd2c51768b25938c1ef3784202ea6af2a8c0099d",
+    "screen_sha256": "1aa54b52ea56b1275a5b26b835b5d07db3eecadfab75d6cc9ddea3ac517a816b"
+  },
+  "bgtilemap/bgtilemap_spx0B_2_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_2_dmg08.png",
+    "source_sha256": "59843b7788d297ed16221ac4bb78d870a76978b74f68d71383b047813efa65b1",
+    "screen_sha256": "1aa54b52ea56b1275a5b26b835b5d07db3eecadfab75d6cc9ddea3ac517a816b"
+  },
+  "bgtilemap/bgtilemap_spx0B_3_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_3_cgb04c.png",
+    "source_sha256": "7103e4bf0e1dae9d825de1db6574ad23241415b6a199311add2393764c242343",
+    "screen_sha256": "73c9802f0e0e66651377ddd27e06b55657b03fc048a8d8a60f5083fbc1dba7b4"
+  },
+  "bgtilemap/bgtilemap_spx0B_3_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_3_dmg08.png",
+    "source_sha256": "bd181735f358e6859f3de6f9e9a5475a43ecadbe21ceb5919b3826838b82f81b",
+    "screen_sha256": "73c9802f0e0e66651377ddd27e06b55657b03fc048a8d8a60f5083fbc1dba7b4"
+  },
+  "bgtilemap/bgtilemap_spx0B_4_cgb04c.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_4_cgb04c.png",
+    "source_sha256": "3d9d8a79b18d8b131ed9575e61fec94fd5b626168dd7caf5fe81fde59fa3881e",
+    "screen_sha256": "99b7025221bb3823d6446316584153da7e4e0031529e034a4fe789434a5dae03"
+  },
+  "bgtilemap/bgtilemap_spx0B_4_dmg08.screen": {
+    "source": "roms/gambatte/bgtilemap/bgtilemap_spx0B_4_dmg08.png",
+    "source_sha256": "4df8869f007c90e7c6344373c880b8d84488ecda96f7c61510830c8292474857",
+    "screen_sha256": "99b7025221bb3823d6446316584153da7e4e0031529e034a4fe789434a5dae03"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_1.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_1.png",
+    "source_sha256": "fd79debaed0eb70aac4de2ffb41af12bf01e7d5db53e97aa1b6534669ad4b50c",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_1_dmg08.png",
+    "source_sha256": "f10faaa3e4f260a5dbae9af31c4507eb048a60a07c09b49bedccdfcb521e04d4",
+    "screen_sha256": "fc7bc70fa8de6eb76d3a6c47669324e70f084c326e0ea1166224c516b5c4e642"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_2.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_2.png",
+    "source_sha256": "a83814408d38cd74d8579fa09aa61802da6616d05961bb47be5a06be397ff783",
+    "screen_sha256": "fe8a50e545f570e04041e06dfe86f8040f42359b084f6cdc5b5b0b0e649c745d"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_2_dmg08.png",
+    "source_sha256": "7fbb4328d9f150506eda48707bb73f89eb843f3f4d9d1fd366441dc13441fd9a",
+    "screen_sha256": "3f5783f07331fb9c720426eb1f82be24a267a296ca15f26693e50160f54b054e"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_2_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_2_gba.png",
+    "source_sha256": "1324ee4b6a1ee8a284bdaed73dacb320ed53f02afc4ee5211ac847d53928e4e6",
+    "screen_sha256": "a990d68cd679b981d822b7a04162dd1fc418e3d910847c7884023b4252634d9f"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_3.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_3.png",
+    "source_sha256": "54090ba0289d4ceedd26c61d40d6d79b8b25ea55e009b0c5a0c7f6384754a2a7",
+    "screen_sha256": "01486f32643ae131674939b172d4fda5ce9b4672103d5cfa2756137e1fe2089a"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_3_dmg08.png",
+    "source_sha256": "f3a84e3be2fc993948cd9eb21e98d56f9936b535c88573200c1c676a8db8d2e7",
+    "screen_sha256": "221be2abf3e857fcad1926aba1eabdee93fcd6a10d97f1de8f49b585f418cb43"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_3_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_3_gba.png",
+    "source_sha256": "2ba3649d1c3c02ca79b34db78b57be3972964ba4028ca40860238ced2d33d756",
+    "screen_sha256": "ca5eda2e755555bac5f681e588b6fadef4ce64ca853d35945a8cb3fcf8d3ff14"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_4.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_4.png",
+    "source_sha256": "d6de08439e5b475dd4a48d881f869a85f8bf732094c16f0cdc746f933f1adc67",
+    "screen_sha256": "f3922bf6a59be1a9f71e3209253411a4ce794a8db857e3c7777e2cdd3f216e3a"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_4_dmg08.png",
+    "source_sha256": "fc3907c1e33c119c7a6c0cdb342a4e2a5bccfd76940c5b05a775af03685f630a",
+    "screen_sha256": "cc9994a7a7739cec05b839098d9c8734b5ad3ea3fcda83c72d404af85c47b14d"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_4_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_4_gba.png",
+    "source_sha256": "a6ce3ae62674b144ac94abcacaa1610971b4bf84ee6105566a61ae2139a4b050",
+    "screen_sha256": "68b3dc96c05b4fadf173542a6ae15bbbdfc56fa7fffed33af73a83adb30cd387"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_5.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_5.png",
+    "source_sha256": "6e0c877484557b8d5ad10a4b3f93db252eeb7d8af228c91e0d13efb91dd59b4e",
+    "screen_sha256": "a02cbcce47c79a06ae36add071eb7bd4e34984fc8a0da6c6ff00953d6ec9c142"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_5_dmg08.png",
+    "source_sha256": "f4e40ff26784e3e0280f45632ae81870be0eb5cab725134b26b0a03f06f8f4ca",
+    "screen_sha256": "30c5d55a47dda5b5f94722b0359b0523a07097ca516b2ec4539fefdad5584aa5"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_5_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_5_gba.png",
+    "source_sha256": "185525a756dd11cb7e91b5cbec8dcde93ee3587096b050ccffa3dd0d5f91f20f",
+    "screen_sha256": "e4bcd0fd14c8e86175157f20a95abef29b4b74af14127ae75cc6bdf42aceed6d"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_scx1_1_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_scx1_1_dmg08.png",
+    "source_sha256": "f10faaa3e4f260a5dbae9af31c4507eb048a60a07c09b49bedccdfcb521e04d4",
+    "screen_sha256": "fc7bc70fa8de6eb76d3a6c47669324e70f084c326e0ea1166224c516b5c4e642"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_scx1_4_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_scx1_4_dmg08.png",
+    "source_sha256": "092cf31bafb9d6fba903d7ceccede95425b0d615a258f29582c698da231a067e",
+    "screen_sha256": "d00ad4c71f3235307cdb68a09d58ce3cb28285751f4f146dcf3cb1b6f14e8284"
+  },
+  "dmgpalette_during_m3/dmgpalette_during_m3_scx2_1_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/dmgpalette_during_m3_scx2_1_dmg08.png",
+    "source_sha256": "459f31a05cb481cf807acaa4577d2f74ce6eec6fbda5f3d442f053acbe8639f7",
+    "screen_sha256": "0d876e3e568fcbf3a0b1aeddf57cc4a94a73e07cd75d1719730195b7980a4d0d"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_1.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_1.png",
+    "source_sha256": "e649bb1ec380755d9d4093bb2b0fe36d624576cc734d7bdf77677223ed04bb96",
+    "screen_sha256": "bf38d6f47969aa1adb17659926418491f2a4b57a477795a20176ed151cb4366f"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_1_dmg08.png",
+    "source_sha256": "f6cee8f27abd28a466248c8871e6cc726b70984621a5de81d88d90239a0ded59",
+    "screen_sha256": "11e21140ad3d08970c3e9f0c4b7561a76d5d6e508d24eae8d1476ebe97fe436f"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_1_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_1_gba.png",
+    "source_sha256": "0d04518ed24e84ce55f064c9bf4b9a99201ba9bfeba037db8099d84a0fd9ec41",
+    "screen_sha256": "cdba5a5a12656433472441b3d8e198c409a0dfa93938c8b7fc187799e9efa1a7"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_2.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_2.png",
+    "source_sha256": "1f62e2dbb3a88bb0b9ae28fdceb7565465d41ead07a01bc5fa4c2e92880f4de4",
+    "screen_sha256": "7f36d76df5c42f56cd60889d1de6a0a350babc55e74a3cf1c369375b62e7b40c"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_2_dmg08.png",
+    "source_sha256": "6c39a52168431a7a5f62c9d98d1ffca86b3e9f13ac625adbcc46f4d488eb5c9d",
+    "screen_sha256": "cefcf1d56684c94acc9d5a33118a19a491eec324049afa7fcda58a0b143a213e"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_2_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_2_gba.png",
+    "source_sha256": "10aa53c0eb863842e6dd77774749d15fb3b9545d06e86a8fb1a6d74a284ade00",
+    "screen_sha256": "2a9f669fa5f26c369192db761def82e08d5e4e76fe5e175cbde75484ed5ebf03"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_3.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_3.png",
+    "source_sha256": "06501b4d7ccdb32f6255f4010012eda0e1b69de1caa7cd75d5672937f43d3b1c",
+    "screen_sha256": "f68c456f6e0a3c4987da4c7c357ea188b0d863c5ed4d60db880d4ef543619e3f"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_3_dmg08.png",
+    "source_sha256": "59d3de062ffdf5588a49ed98ae1fbffbfd9326ee082e1a13f9534c8229e3137c",
+    "screen_sha256": "a475cf34749e6112c47bbdc3eabee0d33bc2142ecb7abfe762dc9c8752de4cbe"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_3_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_3_gba.png",
+    "source_sha256": "78999eadf07c9cb8ae01c487db7f839d68acf917e47fc3aef2b6af2c3776b47e",
+    "screen_sha256": "54113cf20b062c92379b806c514071e3f3360bbc3d3ed959bf689f9514d0715e"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_4.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_4.png",
+    "source_sha256": "53df841ab4d037994388a93938cb69226e417e71179fb5396e148a8b1f476fd2",
+    "screen_sha256": "8035283eb6699c928b334ad24868ffbc0a8e116c5fb19735f5896361aebffd28"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_4_dmg08.png",
+    "source_sha256": "d718658d0a66d630ffd742b5c9b32f6e4af1086a382f9eb9c502382f5e2d777b",
+    "screen_sha256": "34e2cc744b3aefd4e8fd63d420fdc7f51d64f6d65e366cae568d2ab218d136ad"
+  },
+  "dmgpalette_during_m3/lycint_dmgpalette_during_m3_4_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/lycint_dmgpalette_during_m3_4_gba.png",
+    "source_sha256": "b468f69228496834d7a0218b9f0724831b1feae9d02f1a294cf1332aa962df2a",
+    "screen_sha256": "4fe0697e278b7f411c6681eefdc2b6e36421da12833b657c9e52c35e4e670e9e"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_1.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_1.png",
+    "source_sha256": "8b003d3a61539325c7ca87040c053a96bb6ab388cf715c3c700b17f74a48d9b0",
+    "screen_sha256": "5dd4187582e7b15310e2e13fdab81fbe16299ec661697d06954f90c478209b44"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_1_dmg08.png",
+    "source_sha256": "69966d2f7ff665e3f71a743cfdd192bbf0e8fa719ae6f0f6e589b3f7fdd5f5d9",
+    "screen_sha256": "a00551278fa5f13aa05326a25e9f64dda735b411ad2a0f397a68b04af0df5568"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_1_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_1_gba.png",
+    "source_sha256": "c2496e1cace1454040ac839017e4ebdb6081f080b458b948d34d4d63914ba3e1",
+    "screen_sha256": "fe8a50e545f570e04041e06dfe86f8040f42359b084f6cdc5b5b0b0e649c745d"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_2.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_2.png",
+    "source_sha256": "fb4e90ce16b83bd678f9aa25905af14bc613643184e3096afb0462ead92194d2",
+    "screen_sha256": "0defd0bf0ab611dc9cd6e317fe15886303c566ea2774414f309339e063076a61"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_2_dmg08.png",
+    "source_sha256": "439ccce68c69b6eec4b522566b7b689aeca8beb2880cd49978d2a9ad490befec",
+    "screen_sha256": "2a034c4309cde832d3e3560911491233b2cfdfcb227f0927b003aac4921407c8"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_2_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_2_gba.png",
+    "source_sha256": "4595487710f5b5a89578a4bc8367a3df339268696cfce00f86b0e2df175f737f",
+    "screen_sha256": "a6af4f8f39508515097b979af99a236b747f04f3864deb516daa2a75f040b1b2"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_3.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_3.png",
+    "source_sha256": "209c053b6f4e4d908b9edec3cc535c4132e353270b463917e644fac92bcff5b0",
+    "screen_sha256": "d0168bec4744b13eed7e75bfc9bd61000ba8b7615316c92f907a22bdacc07fb3"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_3_dmg08.png",
+    "source_sha256": "e0c5c2fde781fee084f27246fd8073c3c99b51c745e30c79d559ae294af00cba",
+    "screen_sha256": "48b8819964a0a85a5ce2624db0b475bfe7f525436f1a01e3d9e0784be287053b"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_3_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_3_gba.png",
+    "source_sha256": "6c0184c040034c22310f205ec1dc42c6b3acc96fbc8b3be4eda0c9519e5b143f",
+    "screen_sha256": "bcf2124455abf0680ad03d14d06ee1e9a01a480f9b009a9dcd230c7b9613fed9"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_4.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_4.png",
+    "source_sha256": "25d26a47482ee0a20e8522e82f6925e79499e129ac009a52357ea88112ddf928",
+    "screen_sha256": "d8d5d2ada77e143400ba73f2d4df3f1f8cdc96009769b0b3a1aa85b5299f1102"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_4_dmg08.png",
+    "source_sha256": "1215bc366e883c77dd2a69623ddc4b7a6a1cbef5daa41b909ed2ef1b646ad8e8",
+    "screen_sha256": "9629ad14c70a3bd1e15efd9fc346e634ce8bff0af12b15acbf42bdb35a058ebf"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_4_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_4_gba.png",
+    "source_sha256": "dba3c30e590d8c9d29c6fa1c7373f9ab02a0ffac70a570afa6c3e0afea7ac59f",
+    "screen_sha256": "6aa474aeeea57a834c5a84d9fc354a679100305fa74812c4d89f23a48cb5622e"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_5.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_5.png",
+    "source_sha256": "64433f7b66ab70883ad81a1c59f7327a1d42921bd22f8d602543111bf0a82042",
+    "screen_sha256": "a9abf79086f25bf144e2bdaa91ac7a253eb9d4529b993d811e417f911520a59f"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_5_dmg08.png",
+    "source_sha256": "9b4074c5ef793012589efbfb57a8f0d8ad5fc7173b7960c239c80dfefe5489ac",
+    "screen_sha256": "f037c1e564e196ac0e6d9fb9d8075fa6550444f221374736c4873d57fa6199a6"
+  },
+  "dmgpalette_during_m3/scx3/dmgpalette_during_m3_5_gba.screen": {
+    "source": "roms/gambatte/dmgpalette_during_m3/scx3/dmgpalette_during_m3_5_gba.png",
+    "source_sha256": "0884e5671c18f316cbbde507fddfd1bff8f773d7b6bd115e0073efcad44ec02c",
+    "screen_sha256": "e74324e5d3befac8adad33c077d5d09adee0a05e5f452cca125984983c014921"
+  },
+  "halt/lycint_dmgpalette_during_m3_1.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_1.png",
+    "source_sha256": "e649bb1ec380755d9d4093bb2b0fe36d624576cc734d7bdf77677223ed04bb96",
+    "screen_sha256": "bf38d6f47969aa1adb17659926418491f2a4b57a477795a20176ed151cb4366f"
+  },
+  "halt/lycint_dmgpalette_during_m3_1_gba.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_1_gba.png",
+    "source_sha256": "0d04518ed24e84ce55f064c9bf4b9a99201ba9bfeba037db8099d84a0fd9ec41",
+    "screen_sha256": "cdba5a5a12656433472441b3d8e198c409a0dfa93938c8b7fc187799e9efa1a7"
+  },
+  "halt/lycint_dmgpalette_during_m3_2.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_2.png",
+    "source_sha256": "1f62e2dbb3a88bb0b9ae28fdceb7565465d41ead07a01bc5fa4c2e92880f4de4",
+    "screen_sha256": "7f36d76df5c42f56cd60889d1de6a0a350babc55e74a3cf1c369375b62e7b40c"
+  },
+  "halt/lycint_dmgpalette_during_m3_2_gba.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_2_gba.png",
+    "source_sha256": "10aa53c0eb863842e6dd77774749d15fb3b9545d06e86a8fb1a6d74a284ade00",
+    "screen_sha256": "2a9f669fa5f26c369192db761def82e08d5e4e76fe5e175cbde75484ed5ebf03"
+  },
+  "halt/lycint_dmgpalette_during_m3_3.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_3.png",
+    "source_sha256": "06501b4d7ccdb32f6255f4010012eda0e1b69de1caa7cd75d5672937f43d3b1c",
+    "screen_sha256": "f68c456f6e0a3c4987da4c7c357ea188b0d863c5ed4d60db880d4ef543619e3f"
+  },
+  "halt/lycint_dmgpalette_during_m3_3_gba.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_3_gba.png",
+    "source_sha256": "78999eadf07c9cb8ae01c487db7f839d68acf917e47fc3aef2b6af2c3776b47e",
+    "screen_sha256": "54113cf20b062c92379b806c514071e3f3360bbc3d3ed959bf689f9514d0715e"
+  },
+  "halt/lycint_dmgpalette_during_m3_4.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_4.png",
+    "source_sha256": "53df841ab4d037994388a93938cb69226e417e71179fb5396e148a8b1f476fd2",
+    "screen_sha256": "8035283eb6699c928b334ad24868ffbc0a8e116c5fb19735f5896361aebffd28"
+  },
+  "halt/lycint_dmgpalette_during_m3_4_gba.screen": {
+    "source": "roms/gambatte/halt/lycint_dmgpalette_during_m3_4_gba.png",
+    "source_sha256": "b468f69228496834d7a0218b9f0724831b1feae9d02f1a294cf1332aa962df2a",
+    "screen_sha256": "4fe0697e278b7f411c6681eefdc2b6e36421da12833b657c9e52c35e4e670e9e"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_1.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_1.png",
+    "source_sha256": "0a2817119f4336bca422ecce920612512e1caa345311e2809ca0c8bef2f27969",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_2.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_2.png",
+    "source_sha256": "08a45c16446a60a6e97cc8693a45f673451e173f9ba476e3981a0128821d73e2",
+    "screen_sha256": "677d513706abbee39b8c269b9ee7e8aa6cc5db30e89d0684d0a9b8ef4103b81f"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_3.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_3.png",
+    "source_sha256": "4ade3c28a844c8f57aca54cee0b4cac4bd1e94f219bc86c234d5fbe78146ef41",
+    "screen_sha256": "d4b038f5bc3a629cbf42158beb14d77de40060a5c7739e1b3e8cf1492298ca26"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_4.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_4.png",
+    "source_sha256": "d7700488f3ea17edabcad06ede5a8fbb5f9971372dd00be71a4bb9d18d1c40cd",
+    "screen_sha256": "92af8438932e8d8aed4c7e06b6fb6526ab13c724963ac4494ebddac9b4526772"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_5.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_5.png",
+    "source_sha256": "359cc3fd0769bdc49cc7f323e6a864ddad6c7a0ff999914740fcb95c63d584f9",
+    "screen_sha256": "ec0b400850bbab781b212972abd57df3b8c77493022dc0c206a867015afc3f6f"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_1.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_1.png",
+    "source_sha256": "0a2817119f4336bca422ecce920612512e1caa345311e2809ca0c8bef2f27969",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_2.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_2.png",
+    "source_sha256": "91951f88a3af29e13e2868cd133d18f3fec4cb5cf551c895bc0ca924e335be02",
+    "screen_sha256": "a6fa773296795db66d644f05b756d182161efc21d44819c36307bd4253418223"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_3.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_3.png",
+    "source_sha256": "dfb51b22ed1edbef9f44cdf588f8ed138c9ff431930db5c843d030b88def518a",
+    "screen_sha256": "250f44d5eea31b6bb9b5473252cc94edbb21b88bee4f3dd0c1a46451b9ea43de"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_4.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_4.png",
+    "source_sha256": "6ea581d28aa581d08d7d3a24c7660e6a7155a57b5f07624c40b643c3bde809c1",
+    "screen_sha256": "f63941f8e0d15c5ecaa951176bb969704271cdb5571d91a612a525e310523850"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_5.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_5.png",
+    "source_sha256": "6ea581d28aa581d08d7d3a24c7660e6a7155a57b5f07624c40b643c3bde809c1",
+    "screen_sha256": "f63941f8e0d15c5ecaa951176bb969704271cdb5571d91a612a525e310523850"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_6.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_6.png",
+    "source_sha256": "19b49925da6a29467314fba795c5b4022d7097227056bc92182a669148fc33e9",
+    "screen_sha256": "ab784f1cf1018b94936550c84ae211f6d4e04e854c5ce759c3a3ce2076c6eb6a"
+  },
+  "scx_during_m3/old/offset_3/scx_during_m3_ds_7.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_7.png",
+    "source_sha256": "d97451166ef7722b8eaa934994ddcb76221d93c9038ed5a24ce562cf4033c0ac",
+    "screen_sha256": "419d5731573c2948937a11e182de3eafb732d22f6ebb8d1435a0d4afca344d3c"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_1.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_1.png",
+    "source_sha256": "c1b35b8e4e3406ed094edf6fa392da6420408cac648065c73d373672bb52ba6b",
+    "screen_sha256": "f0bf6e7c83576cdd8cbaf51739ffe2f2ac5bf128a8f5aef93a95174a34352df0"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_2.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_2.png",
+    "source_sha256": "fa4cf4d6e5c195cc31935b2edd4692a18edbd51116dd6d56f4836b7efed983d8",
+    "screen_sha256": "28fd3c85b2ab2ae236b29c281476cfb48966f3650787d2971cb89df2f2c37520"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_3.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_3.png",
+    "source_sha256": "763770df7dff2a359c0d875370fb654d666fe31fbfad1f3886cc209ab91f7778",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_4.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_4.png",
+    "source_sha256": "cfc71e0b03bf66c65511ffdf494e9c0bab877f215167382e745b15c2aedbc553",
+    "screen_sha256": "ae88b4ee80b6e28eaa31afbdf9739aec66a32fe9620ca9d094638a7de4c68880"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_5.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_5.png",
+    "source_sha256": "f8dad14bf74b7dd3fbf6fa4458cb2210593e7c8d316dfde049945241aba7cffe",
+    "screen_sha256": "bf07f450e43f9bea05bc41f8e9b9504500539b6a9f7875a3539280a9289a3f90"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_1.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_1.png",
+    "source_sha256": "f847043510000353ae8c36c337579068c30d5c2bc81201257cfc8857dcc52a35",
+    "screen_sha256": "f0bf6e7c83576cdd8cbaf51739ffe2f2ac5bf128a8f5aef93a95174a34352df0"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_2.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_2.png",
+    "source_sha256": "fd7e2d054f74f519dc6fcfddf5bfdb4a578c2ee054aee8ba2a42d5de143ed63f",
+    "screen_sha256": "28fd3c85b2ab2ae236b29c281476cfb48966f3650787d2971cb89df2f2c37520"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_3.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_3.png",
+    "source_sha256": "036d9ad4485546f9462fdd5a98ab354626524ae04235d3e01b713a42b16f57df",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_4.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_4.png",
+    "source_sha256": "036d9ad4485546f9462fdd5a98ab354626524ae04235d3e01b713a42b16f57df",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_5.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_5.png",
+    "source_sha256": "036d9ad4485546f9462fdd5a98ab354626524ae04235d3e01b713a42b16f57df",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_6.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_6.png",
+    "source_sha256": "292e4124d444b7f946a029d6934b19f6b901f1857c55799e057f0e3cac188caa",
+    "screen_sha256": "ae88b4ee80b6e28eaa31afbdf9739aec66a32fe9620ca9d094638a7de4c68880"
+  },
+  "scx_during_m3/old/revoffset_3/scx_during_m3_ds_7.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_7.png",
+    "source_sha256": "28fd18d10fd3df3c77af1818a50cb43ed15a2cd5e9747090346c65957453b5fa",
+    "screen_sha256": "bf07f450e43f9bea05bc41f8e9b9504500539b6a9f7875a3539280a9289a3f90"
+  },
+  "scx_during_m3/old/scx_during_m3_1.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_1.png",
+    "source_sha256": "0a2817119f4336bca422ecce920612512e1caa345311e2809ca0c8bef2f27969",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scx_during_m3/old/scx_during_m3_2.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_2.png",
+    "source_sha256": "561033880f517cfafef7d98169a5a548a790c011805ec172acf7ab52b873d5a7",
+    "screen_sha256": "9059048fc4d7c880dd9bdd64a67c3c82ed23aff7ee9883d5278c4df91e70ae98"
+  },
+  "scx_during_m3/old/scx_during_m3_3.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_3.png",
+    "source_sha256": "2ee09e838ba9980deda189354d2e679e215b5ed39083304d79d3f43924cfa528",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/scx_during_m3_4.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_4.png",
+    "source_sha256": "cfc71e0b03bf66c65511ffdf494e9c0bab877f215167382e745b15c2aedbc553",
+    "screen_sha256": "ae88b4ee80b6e28eaa31afbdf9739aec66a32fe9620ca9d094638a7de4c68880"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_1.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_1.png",
+    "source_sha256": "0a2817119f4336bca422ecce920612512e1caa345311e2809ca0c8bef2f27969",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_2.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_2.png",
+    "source_sha256": "952a0a5bf335020c1ea69f2f80acdd5d164dfe230d0e64bd7d73115b0935fc3d",
+    "screen_sha256": "3fd3145585e14dc998d94c900d8b5ffdf840fa5e14da7b644429008d18b69d4d"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_3.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_3.png",
+    "source_sha256": "16ba86acacfe34c011d248ae4354f9bda2288821f85a023a9705195dd445fc6d",
+    "screen_sha256": "eedae9f7722e325ba5782038da1c2847446bd889f82dde75328aecdd8cb7e535"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_4.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_4.png",
+    "source_sha256": "036d9ad4485546f9462fdd5a98ab354626524ae04235d3e01b713a42b16f57df",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_5.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_5.png",
+    "source_sha256": "036d9ad4485546f9462fdd5a98ab354626524ae04235d3e01b713a42b16f57df",
+    "screen_sha256": "a1a98eb549c9b68a181084c00fdd5df388888f9b559aa34696db1e1995555117"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_6.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_6.png",
+    "source_sha256": "ce6065e83ff3da07f454fbe3f0ff505b30b5b687e23289f021a53aa67fc12f4c",
+    "screen_sha256": "96186c594975a69c4eb3bfb9b5d8e78090b518f57ff72c3051583a4d0ef1a487"
+  },
+  "scx_during_m3/old/scx_during_m3_ds_7.screen": {
+    "source": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_7.png",
+    "source_sha256": "e7548d601d48e55dd3a2a004c6ad8fd4b98c2557e8dda4e2dd9225bf8b3295cc",
+    "screen_sha256": "22dc1d63596857796265e688f6d674cffe9247443b6da34ff362b671e31573b0"
+  },
+  "scx_during_m3/scx1_scx0_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx1_scx0_during_m3_1_cgb04c.png",
+    "source_sha256": "9ed0de5649ae47b4ed3b52059c2e344747ef2a832fb378be0f9fdc3a5fb74b6f",
+    "screen_sha256": "235b323dc9384390eb96f003d2bee6b4a348348357be3a3f0feac22a6a5c9aa2"
+  },
+  "scx_during_m3/scx1_scx0_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx1_scx0_during_m3_1_dmg08.png",
+    "source_sha256": "e516911da10d3cf3b6b99dc42d1850b268af80f3dedecd445ff15b69875fd8ee",
+    "screen_sha256": "891fbd3bc92ea9d417a9242c4cd44c1eb9f4853b785d46aa6f7fd29941d74aa6"
+  },
+  "scx_during_m3/scx2_scx0_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx2_scx0_during_m3_1_cgb04c.png",
+    "source_sha256": "f55e0c27df38be1ece7f969cb9ff464852c0f987cbf7add8c8e38378ad40b321",
+    "screen_sha256": "9f5017b98ecb4b6525643846991e91a8846b09aa9aac9a4792c4bacbbfee11f0"
+  },
+  "scx_during_m3/scx2_scx0_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx2_scx0_during_m3_1_dmg08.png",
+    "source_sha256": "994de09c4f402007b0aa3a43f1c2fa7e23920c9ac04cce0b57833cdd7bd9f4ef",
+    "screen_sha256": "687a1add552a6359f3ad6c767969a5e7ba0bcca35cac86f9c6f75d5357b2026b"
+  },
+  "scx_during_m3/scx2_scx1_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx2_scx1_during_m3_1_cgb04c.png",
+    "source_sha256": "f55e0c27df38be1ece7f969cb9ff464852c0f987cbf7add8c8e38378ad40b321",
+    "screen_sha256": "9f5017b98ecb4b6525643846991e91a8846b09aa9aac9a4792c4bacbbfee11f0"
+  },
+  "scx_during_m3/scx2_scx1_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx2_scx1_during_m3_1_dmg08.png",
+    "source_sha256": "b277d513c7bcb0f1f98a617f12bdbcf4d74661a6249105f0ca0a3021c825bed6",
+    "screen_sha256": "d2fd8aa960d5e1fb84f170539bf0832b9b9f3d7b382ef873b805964c562aada8"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_1_cgb04c.png",
+    "source_sha256": "130f80a0f339d7f8f55502c19db1dbf85542bab7580733c4d93514f01dd5faff",
+    "screen_sha256": "0fde934a8d9fe322d7db8cba7d2d5a91ec6fb0cd8d9e8cf4cf12118b5b26a59e"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_1_dmg08.png",
+    "source_sha256": "a842194d1d86966ce0a8eed61a0fed85b4eb73cd079f1f78cc72f858b04633cf",
+    "screen_sha256": "f3844e947392ab4dcea5694bc2067a54de22583d4f32861e3d831c59a8c4721d"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_2_cgb04c.png",
+    "source_sha256": "a3a0f174ab41ecff2e59cd8d039467e5ab198059c210bcc271c3ac8eb9c43698",
+    "screen_sha256": "b033a8f343f83757125ea9df44306fde95e818750bb5c98aff09eb5d33492491"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_2_dmg08.png",
+    "source_sha256": "e48fd7649fd413208c7e7556e01eba105c114a6589f10760a2036721e8528fa4",
+    "screen_sha256": "adb1afec94bca500caf622ce57dbe8f98e67eeab84f141a3752cc763a10b6c3a"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_3_cgb04c.png",
+    "source_sha256": "27f5360edc7cfe5afde6fa7e91cc08424ee182d66b8ac5963bde2d98f7cdc01e",
+    "screen_sha256": "b089cc02cd4e92245c5b8885fc0151d8870adfca9f158b94fce502296d0fecd1"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_3_dmg08.png",
+    "source_sha256": "d2600f26a90237423b272316db31bdeb36ef68e79a97b9b6a244bbf5f7cc225f",
+    "screen_sha256": "aa6b90074a0632fc53f5a4876818526b4e8e6143b69f38f0dfe37367b916fbc1"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_4_cgb04c.png",
+    "source_sha256": "f08868cae4750e8fe152748f6fcdbf3e490c5f766d2920475d8d19603ba2a021",
+    "screen_sha256": "babde52b5d21aab04e0db7d01165cbb716b92062221655d58fa80528ff7e9494"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_4_dmg08.png",
+    "source_sha256": "630cba40353e1c5e887bc7d64bf670224a40919d60f3a861919db0a65da1fdfa",
+    "screen_sha256": "800abed11d31f95feacba26870f8ee6eb8edb872256aa8cd9e0aef8a32e18e4c"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_5_cgb04c.png",
+    "source_sha256": "227496cd846dc35513ce789b335582db64eca00b47d103e11f406186978ce4d2",
+    "screen_sha256": "e4f2e9c32649e4235f49969840654a9e0941bdccf94d6496c1aa038859104c28"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_5_dmg08.png",
+    "source_sha256": "4d98f0fd75f305c523a90678cee7343874662d751736366790a349500f6b7d4b",
+    "screen_sha256": "3cef55bf1f4a180bdb4772f4f930be49829290d9b71bec2d80bab8ab86c276c6"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_6_cgb04c.png",
+    "source_sha256": "7e12702cff7a984644ce8e9536e4e169abec6a8aa455153ec590972d3e85b07b",
+    "screen_sha256": "76864b3a093785e7fccf20b043a2f88a8e8062795ca70d487b0ba867321aae34"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_6_dmg08.png",
+    "source_sha256": "0e725855e4cf1c2efb329a72c1b77385590a175d7fb4503d1c1d918e30f2a29f",
+    "screen_sha256": "e29bab0fcdb41a1635b499aebd79de391479f7490bfe2e45d618b8ea81d9c38f"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "130f80a0f339d7f8f55502c19db1dbf85542bab7580733c4d93514f01dd5faff",
+    "screen_sha256": "0fde934a8d9fe322d7db8cba7d2d5a91ec6fb0cd8d9e8cf4cf12118b5b26a59e"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "57cf7cf7c2c859f3bf91e1bdc6db37af498d59c1a2d4791af7ea02685f2b8ef9",
+    "screen_sha256": "4b323add23371089dbedccc20850ca77968376d1dd6ff61740223d8f6bdaa1a8"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "f80aea0836e580ad922b3926efcdec407bfd935771cac63049e7d2e3dddd2bb4",
+    "screen_sha256": "c38cff555ee49da5f3fc5bee7d3cb71ac76255a8a97239bb0d008c451946a249"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "27f5360edc7cfe5afde6fa7e91cc08424ee182d66b8ac5963bde2d98f7cdc01e",
+    "screen_sha256": "b089cc02cd4e92245c5b8885fc0151d8870adfca9f158b94fce502296d0fecd1"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "27f5360edc7cfe5afde6fa7e91cc08424ee182d66b8ac5963bde2d98f7cdc01e",
+    "screen_sha256": "b089cc02cd4e92245c5b8885fc0151d8870adfca9f158b94fce502296d0fecd1"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "64b0bcadc54919c0c53d0d1d249d623772052ec72339b77a6ece49f6a2f1d13f",
+    "screen_sha256": "ff4abfcef5b086c190615a0f5e563d14ffa79a53d1a0895f2f097bb38ea5af6b"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "ec9e6130bf5dbc1538673752c6cba45897af5479ecd7a0dda0d9c710753dafe7",
+    "screen_sha256": "243186f86c97b53c51bb0fc7f45880efaee67a2d3f8b98b804151ea1521fdde0"
+  },
+  "scx_during_m3/scx_0060c0/scx_during_m3_ds_8_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0060c0/scx_during_m3_ds_8_cgb04c.png",
+    "source_sha256": "227496cd846dc35513ce789b335582db64eca00b47d103e11f406186978ce4d2",
+    "screen_sha256": "e4f2e9c32649e4235f49969840654a9e0941bdccf94d6496c1aa038859104c28"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_1_cgb04c.png",
+    "source_sha256": "aece8a0180e28fa54237e4dafa5a431eb41c6481ddbdd06e577887801c3c8380",
+    "screen_sha256": "7702ff6e149d50d6d1a74ec5ad3b4f12e9b82de185b368c475840a79639b8083"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_1_dmg08.png",
+    "source_sha256": "23bc39df8827080822397dc72f0ac5d88b3df9e85362b2de9170ab43fa659b99",
+    "screen_sha256": "ac2c3b3470956503f4ce0db42fb4452fbb78956a20a81f3b4a5988c66efd312e"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_2_cgb04c.png",
+    "source_sha256": "8cfca74fb5c7389ff8a4915ee47534d8966e8d5a55e21bf853a318ebbe072bd6",
+    "screen_sha256": "95cbce366f39e67966f46bfaa0c2701a0591a6aa577595feee84cdd122619495"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_2_dmg08.png",
+    "source_sha256": "25a88d8c3402a88d2da396e80a5e447da14b7a6e2f94544e308b9d2ca3bdd9c9",
+    "screen_sha256": "111965c52c4afd4c07fceea218ccf4f6d2f2adac5b3a58ef0c471126fed797ed"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_3_cgb04c.png",
+    "source_sha256": "27f5360edc7cfe5afde6fa7e91cc08424ee182d66b8ac5963bde2d98f7cdc01e",
+    "screen_sha256": "b089cc02cd4e92245c5b8885fc0151d8870adfca9f158b94fce502296d0fecd1"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_3_dmg08.png",
+    "source_sha256": "d2600f26a90237423b272316db31bdeb36ef68e79a97b9b6a244bbf5f7cc225f",
+    "screen_sha256": "aa6b90074a0632fc53f5a4876818526b4e8e6143b69f38f0dfe37367b916fbc1"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_4_cgb04c.png",
+    "source_sha256": "f08868cae4750e8fe152748f6fcdbf3e490c5f766d2920475d8d19603ba2a021",
+    "screen_sha256": "babde52b5d21aab04e0db7d01165cbb716b92062221655d58fa80528ff7e9494"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_4_dmg08.png",
+    "source_sha256": "630cba40353e1c5e887bc7d64bf670224a40919d60f3a861919db0a65da1fdfa",
+    "screen_sha256": "800abed11d31f95feacba26870f8ee6eb8edb872256aa8cd9e0aef8a32e18e4c"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_5_cgb04c.png",
+    "source_sha256": "227496cd846dc35513ce789b335582db64eca00b47d103e11f406186978ce4d2",
+    "screen_sha256": "e4f2e9c32649e4235f49969840654a9e0941bdccf94d6496c1aa038859104c28"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_5_dmg08.png",
+    "source_sha256": "4d98f0fd75f305c523a90678cee7343874662d751736366790a349500f6b7d4b",
+    "screen_sha256": "3cef55bf1f4a180bdb4772f4f930be49829290d9b71bec2d80bab8ab86c276c6"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_6_cgb04c.png",
+    "source_sha256": "7e12702cff7a984644ce8e9536e4e169abec6a8aa455153ec590972d3e85b07b",
+    "screen_sha256": "76864b3a093785e7fccf20b043a2f88a8e8062795ca70d487b0ba867321aae34"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_6_dmg08.png",
+    "source_sha256": "0e725855e4cf1c2efb329a72c1b77385590a175d7fb4503d1c1d918e30f2a29f",
+    "screen_sha256": "e29bab0fcdb41a1635b499aebd79de391479f7490bfe2e45d618b8ea81d9c38f"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "aece8a0180e28fa54237e4dafa5a431eb41c6481ddbdd06e577887801c3c8380",
+    "screen_sha256": "7702ff6e149d50d6d1a74ec5ad3b4f12e9b82de185b368c475840a79639b8083"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "3da245fcea3230749d47cfbb3b8929bc5ae761a9b604dc4d2354c82aca06e894",
+    "screen_sha256": "6c28582297074bff40ec87fd23c0f4244aa687fc1a645b45c4274ad9f877e9e7"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "f80aea0836e580ad922b3926efcdec407bfd935771cac63049e7d2e3dddd2bb4",
+    "screen_sha256": "c38cff555ee49da5f3fc5bee7d3cb71ac76255a8a97239bb0d008c451946a249"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "27f5360edc7cfe5afde6fa7e91cc08424ee182d66b8ac5963bde2d98f7cdc01e",
+    "screen_sha256": "b089cc02cd4e92245c5b8885fc0151d8870adfca9f158b94fce502296d0fecd1"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "27f5360edc7cfe5afde6fa7e91cc08424ee182d66b8ac5963bde2d98f7cdc01e",
+    "screen_sha256": "b089cc02cd4e92245c5b8885fc0151d8870adfca9f158b94fce502296d0fecd1"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "64b0bcadc54919c0c53d0d1d249d623772052ec72339b77a6ece49f6a2f1d13f",
+    "screen_sha256": "ff4abfcef5b086c190615a0f5e563d14ffa79a53d1a0895f2f097bb38ea5af6b"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "ec9e6130bf5dbc1538673752c6cba45897af5479ecd7a0dda0d9c710753dafe7",
+    "screen_sha256": "243186f86c97b53c51bb0fc7f45880efaee67a2d3f8b98b804151ea1521fdde0"
+  },
+  "scx_during_m3/scx_0063c0/scx_during_m3_ds_8_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0063c0/scx_during_m3_ds_8_cgb04c.png",
+    "source_sha256": "227496cd846dc35513ce789b335582db64eca00b47d103e11f406186978ce4d2",
+    "screen_sha256": "e4f2e9c32649e4235f49969840654a9e0941bdccf94d6496c1aa038859104c28"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_1_cgb04c.png",
+    "source_sha256": "130f80a0f339d7f8f55502c19db1dbf85542bab7580733c4d93514f01dd5faff",
+    "screen_sha256": "0fde934a8d9fe322d7db8cba7d2d5a91ec6fb0cd8d9e8cf4cf12118b5b26a59e"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_1_dmg08.png",
+    "source_sha256": "a842194d1d86966ce0a8eed61a0fed85b4eb73cd079f1f78cc72f858b04633cf",
+    "screen_sha256": "f3844e947392ab4dcea5694bc2067a54de22583d4f32861e3d831c59a8c4721d"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_2_cgb04c.png",
+    "source_sha256": "98d0ca652180bf9aad327b1c8c5abfca518b760e0ddbb923c083244d2bcf3747",
+    "screen_sha256": "4787609a002f18f1685689d70e00fdaacf3c4536f778c3006692e2da1d431f8f"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_2_dmg08.png",
+    "source_sha256": "6de5fbd34dffa39b42f1c43fc9075ace34b8530e2444a00953c99d16abd37a16",
+    "screen_sha256": "8385edaa95185aac722dc359d3da0b661df8fb93c37835e8d82761ef065864cd"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_3_cgb04c.png",
+    "source_sha256": "ab30b3b12d594bf71587e65a981582a5253814000d40c851067ba7eab5dd9531",
+    "screen_sha256": "e89de7fde143a657fd0582d05e123639c3264c9c97833dc90cdbc8c4a6b6d14e"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_3_dmg08.png",
+    "source_sha256": "27da784a18fc4754a2e6f05b64448af54bccd27e36e14ae330a68e38b15590bc",
+    "screen_sha256": "a71f3d4810acda5f385f7fe9702ffdc4c2a4ddd29903220d4257aa2a794de5b6"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_4_cgb04c.png",
+    "source_sha256": "ad19d856db3a97f6e706e8edf2b79152f7d1749faa21f6e116c9ef03e3ba9973",
+    "screen_sha256": "93f18c578a793c19166414ed537108c47384e5029d38362ac468a195c958cde1"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_4_dmg08.png",
+    "source_sha256": "7382c020ab1405250be4a0cefb3a9508769578fcb3c612b2f2614983fbf44171",
+    "screen_sha256": "84153ace2538ca421b12fa3506d78b66f84991e96921942c6f41d96ef80c48e2"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_5_cgb04c.png",
+    "source_sha256": "8aef483a3beda128eadca6d49d55c0f99553fd2fafeb17894f6f9e25746f28f6",
+    "screen_sha256": "ea528b7927638de2e80703107616140fe128e8423e10cc131b9dfaaf0d655d9d"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_5_dmg08.png",
+    "source_sha256": "cecab125c6af20b5edf3afba62fae1c20cdccd83a1867c5acbdf787c665c293a",
+    "screen_sha256": "897953ab7e6b4a966f88df1fe2df5fbdad462995052c69b0f36c00f0abc48de8"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_6_cgb04c.png",
+    "source_sha256": "1828a8fd5fadcf763b23a8d417eebb4c1a53ac974c3d2f2e6bd3d6924dac5278",
+    "screen_sha256": "ce693a8f2e676e1c128254c3ede96c59d74d9af62f723a711e2f2026d3311bb3"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_6_dmg08.png",
+    "source_sha256": "2456f1a5cc20c2e779a7307d63368dc7e3b02147b1240cde2a75ac1f45d45438",
+    "screen_sha256": "085d141f1185333b8f11779dbd2862f69a43db3892734049aa59dfcdee66a186"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "130f80a0f339d7f8f55502c19db1dbf85542bab7580733c4d93514f01dd5faff",
+    "screen_sha256": "0fde934a8d9fe322d7db8cba7d2d5a91ec6fb0cd8d9e8cf4cf12118b5b26a59e"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "172368afe8b0e34cdb631598cd157a037b18aaf7e76770ae1d854b3fad3176b4",
+    "screen_sha256": "4049d39ebaa271ee5353d10e903c06487e120f64e90299d7789c069911e76ea8"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "0596941019503fd269ac6d0ef43d256068ae3e1a77b232f06e8c7faca2fc9114",
+    "screen_sha256": "dbf0b41360c73bf2af832258d15bfeff34d12fcb4c8ecd8913290d50a3c5b187"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "8f44b4a8d04a50dc9ba3fdb05d126556d15057963f393853824be38979d942ce",
+    "screen_sha256": "53aee146b70d58d048d280a0170e92a728f0bfff19797635b287704e0a6e5ec1"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "8f44b4a8d04a50dc9ba3fdb05d126556d15057963f393853824be38979d942ce",
+    "screen_sha256": "53aee146b70d58d048d280a0170e92a728f0bfff19797635b287704e0a6e5ec1"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "cd2a1ef885565f0dcd3b91ba988b47ee2632c447b233d199c69d4f4b2f339ffe",
+    "screen_sha256": "d1d15409e78a35defb65c1e0c9ca83a3707ab4fe2c61ded17a611f8167ac0e73"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "09c3b28fb99d1bb85d522d05a1b1cace83a7eecab9d7ac91d6441cb23ae94ec1",
+    "screen_sha256": "602c7531f9f112c0b0fb104bb0adeb1a5753e10fcd724898fbb0601ed104f97b"
+  },
+  "scx_during_m3/scx_0360c0/scx_during_m3_ds_8_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0360c0/scx_during_m3_ds_8_cgb04c.png",
+    "source_sha256": "8aef483a3beda128eadca6d49d55c0f99553fd2fafeb17894f6f9e25746f28f6",
+    "screen_sha256": "ea528b7927638de2e80703107616140fe128e8423e10cc131b9dfaaf0d655d9d"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_1_cgb04c.png",
+    "source_sha256": "aece8a0180e28fa54237e4dafa5a431eb41c6481ddbdd06e577887801c3c8380",
+    "screen_sha256": "7702ff6e149d50d6d1a74ec5ad3b4f12e9b82de185b368c475840a79639b8083"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_1_dmg08.png",
+    "source_sha256": "23bc39df8827080822397dc72f0ac5d88b3df9e85362b2de9170ab43fa659b99",
+    "screen_sha256": "ac2c3b3470956503f4ce0db42fb4452fbb78956a20a81f3b4a5988c66efd312e"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_2_cgb04c.png",
+    "source_sha256": "ac1e3a17f31997f1d255cc775bcee6b1a3daa3f7831c2ec57c2b8aec267ee6c2",
+    "screen_sha256": "d4a15e9651b60507c5057140f2e9a3560ce109213e6e61552cb9e777d5620052"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_2_dmg08.png",
+    "source_sha256": "63326c17c24f36b8cd057a6f08a1c076e36dd91bf5d649572ff4e814a1e5ac35",
+    "screen_sha256": "5af718e9b4956b22c4d1eff24dc3428aa046fc849976267a2faa9f370232f18c"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_3_cgb04c.png",
+    "source_sha256": "f2dc49e544cd8eb00eaaab86d928f17abadec2c804a3150a504c88403e9f18df",
+    "screen_sha256": "e8a3cc003b82428884da9e0ce4139a89d5d053618997f843b8d450d08c7e1925"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_3_dmg08.png",
+    "source_sha256": "4b55152941cf8211aa8d10ab94f9fd64a497e5f7fba509b5d8aff8a99f8371f5",
+    "screen_sha256": "4480b75c311527c9cc7015076b0f47db01f4b0edc10f16f085d177aee788808c"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_4_cgb04c.png",
+    "source_sha256": "23a6380e1c2e5f218d58b5f7fbc2a91469b031cef9383c19a2876e14068bfbb1",
+    "screen_sha256": "89509ff9f7581ef5904daa70a68540936e840c18a5b569774c46bd029c15ed09"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_4_dmg08.png",
+    "source_sha256": "e449c988ac0d253f4c13a99f130494e3cd131fe17cef1acccd79f000dfd21618",
+    "screen_sha256": "c0245a386c96e7b8a7bbd3bf27fdeafe99ff2ef3a20851b533dad9e7ae05ed08"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_5_cgb04c.png",
+    "source_sha256": "2a69c7964b97a345d8edaa527b4deb5fae4683d7db19b2a7948496365ead9646",
+    "screen_sha256": "d389157fa0221d1103a83cf745928d6f1a3b981f58c2e3ad34a099b5e1ea45c6"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_5_dmg08.png",
+    "source_sha256": "d5e92001bd0608759944fc3a82d2e91e68f8b4cb1bac193a6ef502ac7369984c",
+    "screen_sha256": "ca2ab6a57995db2565261fecc64d6fe3036f192b570c4153d146ee0699850485"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_6_cgb04c.png",
+    "source_sha256": "14b1e361318e4b04202038ff1e2af7d2f32f93ce6f9ceb67cd2899bdd0f98899",
+    "screen_sha256": "51969042f2b2a1865368213361fdcb4f5835c8734e46cef89b2128cdf0a3c02b"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_6_dmg08.png",
+    "source_sha256": "8687a8d6e829ba568d41aaac9de97c7fd855b85e155e811514340c10550495ed",
+    "screen_sha256": "00732933939482f13eaee8c72ae57894467ab1a1d8baa898bce8a12b892e3a19"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "aece8a0180e28fa54237e4dafa5a431eb41c6481ddbdd06e577887801c3c8380",
+    "screen_sha256": "7702ff6e149d50d6d1a74ec5ad3b4f12e9b82de185b368c475840a79639b8083"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "ec762016ba5e890bd55a86e6c222bb3ea9d419471578ac70f61dd5108a50579c",
+    "screen_sha256": "7b72408c56a9ef13bb3482bfc57158c28db290de4dda8851933b9581bd581b65"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "5f5c6be17a135de9aba70defcf0be9b04e7f66ce055319ede73b1256856d1945",
+    "screen_sha256": "7ea07ab04f2c7c43a8f5eaa97ccdc091949a64dc3c8e438cc874ac6f35e0eeaa"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "f2dc49e544cd8eb00eaaab86d928f17abadec2c804a3150a504c88403e9f18df",
+    "screen_sha256": "e8a3cc003b82428884da9e0ce4139a89d5d053618997f843b8d450d08c7e1925"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "f2dc49e544cd8eb00eaaab86d928f17abadec2c804a3150a504c88403e9f18df",
+    "screen_sha256": "e8a3cc003b82428884da9e0ce4139a89d5d053618997f843b8d450d08c7e1925"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "5fe033a44b43dae92c11d45a26733b4dd5dc3bdc956729371b579cedac06234a",
+    "screen_sha256": "6bae024fa51cbf2dee072cd7d11d117240d4a7202294230f3a8fe2eb7fb9275c"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "6de63d2ee2d15e3df9834842f889ea8d268799028bac42cf6ef0f6dcaa44aa44",
+    "screen_sha256": "35b83ed9aafd419b17c12033ea8031536e41f47148123eccf51ae7e34a5fb6e9"
+  },
+  "scx_during_m3/scx_0363c0/scx_during_m3_ds_8_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0363c0/scx_during_m3_ds_8_cgb04c.png",
+    "source_sha256": "2a69c7964b97a345d8edaa527b4deb5fae4683d7db19b2a7948496365ead9646",
+    "screen_sha256": "d389157fa0221d1103a83cf745928d6f1a3b981f58c2e3ad34a099b5e1ea45c6"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_1_cgb04c.png",
+    "source_sha256": "f65ae360c086314df9a6f0ef146443e013d4006958ddcf853d55b87c4628a71c",
+    "screen_sha256": "9a7408b702411fe0556af7ee8bf26031c01071f35b19d55554a30c58b4bd3e34"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_1_dmg08.png",
+    "source_sha256": "332059d5e27c669e40bd0957990eabb423d9d155378c221fea263edb1e2e8c24",
+    "screen_sha256": "6afaa6c1e4cd7ceeb26bd62a9d53604de324e16f52afde6ef9d81cbdb95e7039"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_2_cgb04c.png",
+    "source_sha256": "1e6c3b6dabd5db306313c31e073fad02ec5a57dec8dc7958f45598dbc4f06a98",
+    "screen_sha256": "8a432100f2c406229f03085420de22af38f9f02d760238687bbe3facc71f0245"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_2_dmg08.png",
+    "source_sha256": "c79de2b435f5149d88d9cafa7b4b7d5442509113c2bd710482a2257f0ab584c7",
+    "screen_sha256": "6703e234a826d19a53c4c682fd7f9da55cb7442d19265772ed946be2e9a554d0"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_3_cgb04c.png",
+    "source_sha256": "bcfb82a5e52bdf0955fd041c7f3c44db62463de60dac51bd84159d8150555473",
+    "screen_sha256": "267da89e1b11282ba0153b24e2bee15d655993d37ae65d80ddfe89e557668014"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_3_dmg08.png",
+    "source_sha256": "2b94e565d760ab852342217a9d4828cc4899a6c30d317ce57c373083353424a2",
+    "screen_sha256": "b8f9850350417a8ae454fd9f0108819ec45ae7269b74cacdf02b1a51a5ba0704"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_4_cgb04c.png",
+    "source_sha256": "23a6380e1c2e5f218d58b5f7fbc2a91469b031cef9383c19a2876e14068bfbb1",
+    "screen_sha256": "89509ff9f7581ef5904daa70a68540936e840c18a5b569774c46bd029c15ed09"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_4_dmg08.png",
+    "source_sha256": "e449c988ac0d253f4c13a99f130494e3cd131fe17cef1acccd79f000dfd21618",
+    "screen_sha256": "c0245a386c96e7b8a7bbd3bf27fdeafe99ff2ef3a20851b533dad9e7ae05ed08"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_5_cgb04c.png",
+    "source_sha256": "2a69c7964b97a345d8edaa527b4deb5fae4683d7db19b2a7948496365ead9646",
+    "screen_sha256": "d389157fa0221d1103a83cf745928d6f1a3b981f58c2e3ad34a099b5e1ea45c6"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_5_dmg08.png",
+    "source_sha256": "d5e92001bd0608759944fc3a82d2e91e68f8b4cb1bac193a6ef502ac7369984c",
+    "screen_sha256": "ca2ab6a57995db2565261fecc64d6fe3036f192b570c4153d146ee0699850485"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_6_cgb04c.png",
+    "source_sha256": "14b1e361318e4b04202038ff1e2af7d2f32f93ce6f9ceb67cd2899bdd0f98899",
+    "screen_sha256": "51969042f2b2a1865368213361fdcb4f5835c8734e46cef89b2128cdf0a3c02b"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_6_dmg08.png",
+    "source_sha256": "8687a8d6e829ba568d41aaac9de97c7fd855b85e155e811514340c10550495ed",
+    "screen_sha256": "00732933939482f13eaee8c72ae57894467ab1a1d8baa898bce8a12b892e3a19"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "f65ae360c086314df9a6f0ef146443e013d4006958ddcf853d55b87c4628a71c",
+    "screen_sha256": "9a7408b702411fe0556af7ee8bf26031c01071f35b19d55554a30c58b4bd3e34"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "98fa1480746f686da6f84b758589825f99cc1a1911997b6aee7d33852b7c456a",
+    "screen_sha256": "a82c7f3069ad14f5f510e9e332a47bbf9897030dd91f383b6293f5a62495823c"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "a8c51ddd76e66df46e4c4524aef30071db412828b3dbca14f590d16b909c00f7",
+    "screen_sha256": "653ab09f999b9b6f45219a07cc63a933475ecffc39c68caa7085d42c006e90ff"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "f2dc49e544cd8eb00eaaab86d928f17abadec2c804a3150a504c88403e9f18df",
+    "screen_sha256": "e8a3cc003b82428884da9e0ce4139a89d5d053618997f843b8d450d08c7e1925"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "f2dc49e544cd8eb00eaaab86d928f17abadec2c804a3150a504c88403e9f18df",
+    "screen_sha256": "e8a3cc003b82428884da9e0ce4139a89d5d053618997f843b8d450d08c7e1925"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "5fe033a44b43dae92c11d45a26733b4dd5dc3bdc956729371b579cedac06234a",
+    "screen_sha256": "6bae024fa51cbf2dee072cd7d11d117240d4a7202294230f3a8fe2eb7fb9275c"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "6de63d2ee2d15e3df9834842f889ea8d268799028bac42cf6ef0f6dcaa44aa44",
+    "screen_sha256": "35b83ed9aafd419b17c12033ea8031536e41f47148123eccf51ae7e34a5fb6e9"
+  },
+  "scx_during_m3/scx_0367c0/scx_during_m3_ds_8_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0367c0/scx_during_m3_ds_8_cgb04c.png",
+    "source_sha256": "2a69c7964b97a345d8edaa527b4deb5fae4683d7db19b2a7948496365ead9646",
+    "screen_sha256": "d389157fa0221d1103a83cf745928d6f1a3b981f58c2e3ad34a099b5e1ea45c6"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_1_cgb04c.png",
+    "source_sha256": "ffaae88cfe15cf981157ecf068d79f292aea973c27034c352d39d6a8daf39dd7",
+    "screen_sha256": "4d7f0857d6eb50a25146f08e9461e7c8403698ad1fe3f6eaa53d349baca4e224"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_1_dmg08.png",
+    "source_sha256": "7a038cea61173b7f8d708f0ec6d676cfc515762fcf0da2c16fd6186b9e7b9ee5",
+    "screen_sha256": "9c0fe4ec6802d0e979787535690a12a64784eaf1cffd373201458510d72edf98"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_2_cgb04c.png",
+    "source_sha256": "61661bc76b0359d7b2ad22801c1738d1d187776cb542d8f47de91d68e4146553",
+    "screen_sha256": "8c1082d9d63c64e6b96bdbd3a874874589cd466c3dee7e4c54a2fdff16d780ee"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_2_dmg08.png",
+    "source_sha256": "13cfd4c9034a802c275de80a8f0117a02cf7655a65d8d04747d0fdd432886612",
+    "screen_sha256": "1e09f48bfc21258642e9222744cbe6365090c315a20a63bde16600d17852289c"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_3_cgb04c.png",
+    "source_sha256": "a750afef18fa609b50e024e71b316327241e035cb9b9fe3965be2b339410b275",
+    "screen_sha256": "0dcd9c330cd65fc6f942f3b55cdb122c64bc55b421c6f7d12d94b60a8630c438"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_3_dmg08.png",
+    "source_sha256": "4763dbe69c356535b0205bf553803dbbc3ab5c93af6230b60d7eb16af08ccbf6",
+    "screen_sha256": "419fca72bc5d3240db0c837079fc343567be5659e0522132440f233656a89286"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_4_cgb04c.png",
+    "source_sha256": "31204e78693766da0e218ec45f47dc5f88f8e2a97bc7ce710523dc7fec4b8ce3",
+    "screen_sha256": "f81f21f4337a6a72435c174b6fa010c7b7699d7adc81e70a171fd6fd9f14192e"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_4_dmg08.png",
+    "source_sha256": "97f5adc9dc19c1aa98a3322430e359cc31dd199af749b56f2bd6e9807dc76122",
+    "screen_sha256": "40c1d06c6e4d4c2e789317817763df09e0dcdd95ea1ebaf75a43005efcc5b93a"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_5_cgb04c.png",
+    "source_sha256": "9417898b19b6a96d0586788ade065d0ea6a17a3665c830a9699d222ddbf7fb87",
+    "screen_sha256": "d07eeeb9ddec4c96e4d282c66da3ffeb8d8f4cae7100f133ba9d818845df3fe8"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_5_dmg08.png",
+    "source_sha256": "69f9c19121a2db3366a20cf14453d1997c1785ebba3777852adc8ffe54e7b88e",
+    "screen_sha256": "b04addda9b6c5d40138f34364f2cac942e9cce15fbe83bc69d4093fdc3b0a494"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_6_cgb04c.png",
+    "source_sha256": "68c6f52bbc57e751d191b8a566a49cb8797a555f20122a1c344f3362a797f2a2",
+    "screen_sha256": "82cc1e410271181f4ed72f47c6ecf736dad2cfdb77b2e8563a79feb1de75bd98"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_6_dmg08.png",
+    "source_sha256": "cd2ade69d523d6b98853e3c2c579ce66a1f987f036997e4234032d32a16e555c",
+    "screen_sha256": "a9da73aa0472454bfcdf60709a34e3ddcf0c4d08217389ae4057ba3b09e8a0da"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "ffaae88cfe15cf981157ecf068d79f292aea973c27034c352d39d6a8daf39dd7",
+    "screen_sha256": "4d7f0857d6eb50a25146f08e9461e7c8403698ad1fe3f6eaa53d349baca4e224"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "8ed0858c0bcd49bf0cc05b37d4746ae07733b348a0d3ef91064205320ffbf2fc",
+    "screen_sha256": "658596631bc66ebcb620069636571ef90bf9995d86adf989c9d8c87f27d60db7"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "63e82b276a8fe1847eaa30f27fb72a07f150db439f877a78071db5639d7adf9f",
+    "screen_sha256": "64fd7b24ab676e63d571e7f43ea88966a1c5ada47cc8873bf2da910587d6acae"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "a750afef18fa609b50e024e71b316327241e035cb9b9fe3965be2b339410b275",
+    "screen_sha256": "0dcd9c330cd65fc6f942f3b55cdb122c64bc55b421c6f7d12d94b60a8630c438"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "185d7f48ab443fa0aecaa66f39a71b9ad4e87ff230892d9520e6ad30e990f697",
+    "screen_sha256": "b9730df24137718f54a2a9b757f973d69727bd99703519dbe8f1516a2a43c8c6"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "b3f12ecb96591a2d7afa9cd3777fd8704eddee7bb4a2b59e4c8e8892e3375495",
+    "screen_sha256": "b07ae948c1859a84fd6a7fbc192a0de3d013c64126f9793922732364f29e1463"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "9926eb5bac1afb7333313ec836f4dd047aaaa648644f59f2563a6113634b952d",
+    "screen_sha256": "82b73d0a63b1c043dc9ffaca71d345786d86d629e66788cd8cccfcd27d51e03b"
+  },
+  "scx_during_m3/scx_0761c0/scx_during_m3_ds_8_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_0761c0/scx_during_m3_ds_8_cgb04c.png",
+    "source_sha256": "9417898b19b6a96d0586788ade065d0ea6a17a3665c830a9699d222ddbf7fb87",
+    "screen_sha256": "d07eeeb9ddec4c96e4d282c66da3ffeb8d8f4cae7100f133ba9d818845df3fe8"
+  },
+  "scx_during_m3/scx_attrib_during_m3_spx0.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_attrib_during_m3_spx0.png",
+    "source_sha256": "310f145018fe185d9501e140f80fade7478c2b589235759a43a4f8b4d550a870",
+    "screen_sha256": "08a8b9433c4b808588632168bd6d4f9d93aa7ef0c3c5a67ba0b7855775dde96e"
+  },
+  "scx_during_m3/scx_attrib_during_m3_spx1.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_attrib_during_m3_spx1.png",
+    "source_sha256": "fd7ceec14bdcfb28bdabe6ef76aed3cbb7b1172b8bfce6800f48fa3c32a0a2d1",
+    "screen_sha256": "781971e5c1e6a1b830e42a98389af8d636620c8b2fbcd379153d903409867087"
+  },
+  "scx_during_m3/scx_attrib_during_m3_spx1_ds_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_attrib_during_m3_spx1_ds_cgb04c.png",
+    "source_sha256": "5156da2b97a18ba678e37bd00e5c11005d5770913de99c27c4470bd45ba1dd83",
+    "screen_sha256": "5c89d4b8c5b7ec94fde8c418f2093798775578c71dff5e666f460562ecd620a7"
+  },
+  "scx_during_m3/scx_attrib_during_m3_spx2_ds_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_attrib_during_m3_spx2_ds_cgb04c.png",
+    "source_sha256": "5af87f0533d21674d472071d82478842c211c898222c1629a57ad970be94069a",
+    "screen_sha256": "113d209b6c9744c3515c7de7b8bc7527e509f9a373ce9eac57f323ef9f06e468"
+  },
+  "scx_during_m3/scx_during_m3_spx0_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx0_cgb04c.png",
+    "source_sha256": "864e7a07971d37a5b635dc0d46f092a4a7f3ad5d26daf481cec403b49e985f54",
+    "screen_sha256": "d8d38820c85a864f143221aa9a649e3dbcb3b48528280e95d5e2d72fd771898f"
+  },
+  "scx_during_m3/scx_during_m3_spx0_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx0_dmg08.png",
+    "source_sha256": "2e27af159ffe1d0417831559f93473b41d9ac1b33458d412fb55096e97e04bab",
+    "screen_sha256": "a6cabcfd1ef07b8994e1d9414893c6cf4c2307c727da0bcd3f62b736a1f7b458"
+  },
+  "scx_during_m3/scx_during_m3_spx1_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx1_cgb04c.png",
+    "source_sha256": "26b6222af9bac5e9f8cf9e7011d15143e7139a3b34e96023b3208a277ec6172b",
+    "screen_sha256": "ee2f594287574153b7d65522fa3addfdd69d100cdec99ac4d3c9ea714fadcaec"
+  },
+  "scx_during_m3/scx_during_m3_spx1_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx1_dmg08.png",
+    "source_sha256": "2e27af159ffe1d0417831559f93473b41d9ac1b33458d412fb55096e97e04bab",
+    "screen_sha256": "a6cabcfd1ef07b8994e1d9414893c6cf4c2307c727da0bcd3f62b736a1f7b458"
+  },
+  "scx_during_m3/scx_during_m3_spx2_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx2_cgb04c.png",
+    "source_sha256": "3547243ff1b6bc3323f3f8881b5de7d385a37a3a2cc17efac514ae694ff21b28",
+    "screen_sha256": "5dfb8cc1bca7a3712125d90f74f23beaaf34b90738d72cf77fb4496bed8e98c1"
+  },
+  "scx_during_m3/scx_during_m3_spx2_dmg08.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx2_dmg08.png",
+    "source_sha256": "99208a4da494163fb8ea46fd9895d08120997e0f5853e653d205918b1d4cb96d",
+    "screen_sha256": "4a09f365debf253a2ee14373dd477dcdb91a8e3e4d70000905ce0cdee3d895e4"
+  },
+  "scx_during_m3/scx_during_m3_spx2_ds_cgb04c.screen": {
+    "source": "roms/gambatte/scx_during_m3/scx_during_m3_spx2_ds_cgb04c.png",
+    "source_sha256": "0796431921879c0e26e8323f7220ff9d951925564909ed77252691da85b88378",
+    "screen_sha256": "e05f237d4511379eaf7704b15b7c28a378a9ceee29ad265c99add6844666fa2f"
+  },
+  "scy/scx3/scy_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_1_cgb04c.png",
+    "source_sha256": "1b552dd41bb2860eb53a4401bd0ccbf31fffc8666ba3b75afd5f057f7996b822",
+    "screen_sha256": "a990d68cd679b981d822b7a04162dd1fc418e3d910847c7884023b4252634d9f"
+  },
+  "scy/scx3/scy_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_1_dmg08.png",
+    "source_sha256": "08fd3482a2ecd62b2dc07d518e07faf7ebd4c0f4a77c44cacb8702e3c4d09128",
+    "screen_sha256": "a990d68cd679b981d822b7a04162dd1fc418e3d910847c7884023b4252634d9f"
+  },
+  "scy/scx3/scy_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_2_cgb04c.png",
+    "source_sha256": "a6863965fe91703a0841d4cd4278bac4d03b6112592257a5ef96c6562aee4683",
+    "screen_sha256": "a881410b696a686a92061448498e2dae13e84c5fed51fb7a6154cd0cdd66cca6"
+  },
+  "scy/scx3/scy_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_2_dmg08.png",
+    "source_sha256": "222657337e4451917a0f8d366af45bd572508b630c5b47e5e1002a53ab7b3810",
+    "screen_sha256": "e571893e70b9cbeb24642c82beaabce008e6e2fe97e0cd0202a3ce6a483b7d46"
+  },
+  "scy/scx3/scy_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_3_cgb04c.png",
+    "source_sha256": "2538439c83071c97bd483e3f0fc38750d07676b0f1830093752f27a54c316b09",
+    "screen_sha256": "e4d10655a8111357ef7ff406623763d9b635a0264127e6a381d137a9e00cee50"
+  },
+  "scy/scx3/scy_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_3_dmg08.png",
+    "source_sha256": "0ef930cfafa027ce69444eb888d3951a13f1072c1e2ee6639e6fca11db8f9ab6",
+    "screen_sha256": "e4d10655a8111357ef7ff406623763d9b635a0264127e6a381d137a9e00cee50"
+  },
+  "scy/scx3/scy_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_4_cgb04c.png",
+    "source_sha256": "4c143f0b2ab955e0f2d8d4ba7e0fc755059f3834eda17ad4f8c840308a6cf136",
+    "screen_sha256": "fadc24a675e382c098d1997cfd93457003bd427a12ace82cf3f97b316419a014"
+  },
+  "scy/scx3/scy_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_4_dmg08.png",
+    "source_sha256": "adc9d9b85426290a0a35300d0104f521de9907bda69f79194ca9bab7cbcaeb75",
+    "screen_sha256": "be6b841be8ff13c2aef37422ccc169d307c5f3ce857ed7d59c83dec86e02b480"
+  },
+  "scy/scx3/scy_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_5_cgb04c.png",
+    "source_sha256": "44b14f67ac38dae4dc68b87ef5f8f52dd5ec95489d4d87fae27902ea007100dc",
+    "screen_sha256": "419d5731573c2948937a11e182de3eafb732d22f6ebb8d1435a0d4afca344d3c"
+  },
+  "scy/scx3/scy_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_5_dmg08.png",
+    "source_sha256": "8ac17ba094a354cebc10294884c729680d6080541c1135cdeb4e40340e81778f",
+    "screen_sha256": "419d5731573c2948937a11e182de3eafb732d22f6ebb8d1435a0d4afca344d3c"
+  },
+  "scy/scx3/scy_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_6_cgb04c.png",
+    "source_sha256": "962df26c2fb13f22322d060f02560d3483366fb056bb5a27ac83b905962986ac",
+    "screen_sha256": "1e381990fb9055968c06ac3c540b471898159bf3b46385442c4be873594a7212"
+  },
+  "scy/scx3/scy_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scy/scx3/scy_during_m3_6_dmg08.png",
+    "source_sha256": "1c7cf73ddf8766c6c734d3f5c767b0090d2f57bc7ce56833a5df78ee66d59ee6",
+    "screen_sha256": "b0ff1f15c2697c1a35e29d660ade7a4610b7fdc2628668f7e18f8ac2598e4de3"
+  },
+  "scy/scy_during_m3_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_1_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scy/scy_during_m3_1_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_1_dmg08.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scy/scy_during_m3_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_2_cgb04c.png",
+    "source_sha256": "81efbb7d22fc20c97e5bd66b3c86e50e9f74474a55c9d1b34cf3eefcb2ad259e",
+    "screen_sha256": "e0d3d1895ea06df226c2c82d6cee99241924fc401f0cecfcf8d80c4481b85b1f"
+  },
+  "scy/scy_during_m3_2_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_2_dmg08.png",
+    "source_sha256": "ddb7375243325d29f64365d31ccc92af6ad9a68aba7692d1592ab8a68e46ebc0",
+    "screen_sha256": "83a50cf463320d9412b82a3e83935de6261c00bec1b26887e0fd40d7f33eb41f"
+  },
+  "scy/scy_during_m3_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_3_cgb04c.png",
+    "source_sha256": "d8364c60abb9175ef409bc9cc4a86681986e9b3f5aeb85e6d97545189dd60aab",
+    "screen_sha256": "eedae9f7722e325ba5782038da1c2847446bd889f82dde75328aecdd8cb7e535"
+  },
+  "scy/scy_during_m3_3_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_3_dmg08.png",
+    "source_sha256": "10a0ba1b9831c0b419ba9484adf5443202888ff67b339bbd6d7621b8d21ac17f",
+    "screen_sha256": "eedae9f7722e325ba5782038da1c2847446bd889f82dde75328aecdd8cb7e535"
+  },
+  "scy/scy_during_m3_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_4_cgb04c.png",
+    "source_sha256": "5ac2f3834f6446bbfe1f51a7cfb4059e7283ced0b0a2b9461b80ad5fbdfd2cde",
+    "screen_sha256": "3b0a9aff6b52f2e9d6b2f822001a679820617ec62fc200917d228517280dbd18"
+  },
+  "scy/scy_during_m3_4_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_4_dmg08.png",
+    "source_sha256": "6a59fc95da391dbacdf7cabd4362dba099a81c5d868b53ecc756fe94f24e9177",
+    "screen_sha256": "6049e019ebdf12cd670a20b6fb8bf1175bf5f3fe1d7e74840395ac510348ab42"
+  },
+  "scy/scy_during_m3_5_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_5_cgb04c.png",
+    "source_sha256": "d09820e6b64f26109827740fa4b18b22e84914a3b7fc9fef2f908c0fe5dc4ccf",
+    "screen_sha256": "22dc1d63596857796265e688f6d674cffe9247443b6da34ff362b671e31573b0"
+  },
+  "scy/scy_during_m3_5_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_5_dmg08.png",
+    "source_sha256": "437cc49801ff89ed13df62d675b3c99ed7049086c5c8f3d772ba3e9ee30b2488",
+    "screen_sha256": "22dc1d63596857796265e688f6d674cffe9247443b6da34ff362b671e31573b0"
+  },
+  "scy/scy_during_m3_6_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_6_cgb04c.png",
+    "source_sha256": "44a71f7126e11ccbd75f8b9ef6cb78d5c29208a67dd49b264c42161c8330de3f",
+    "screen_sha256": "540275cb42d0d6bfd5c2a9a71e82e1f69b598e1c915173620c43d3a47de2e9cb"
+  },
+  "scy/scy_during_m3_6_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_6_dmg08.png",
+    "source_sha256": "058445a3709fbc4b963b550a0afd57913f380bd2981a507ea58b40feb66c48a4",
+    "screen_sha256": "ed9c65b62821e1fb93d7ffabe959f70988e40aab2760c304ec827827aa504deb"
+  },
+  "scy/scy_during_m3_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_1_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "scy/scy_during_m3_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_2_cgb04c.png",
+    "source_sha256": "b4b35baa7e9cf45d0a82012e2338c2f3803036b774401a3ccdf98981e9473e14",
+    "screen_sha256": "3fd3145585e14dc998d94c900d8b5ffdf840fa5e14da7b644429008d18b69d4d"
+  },
+  "scy/scy_during_m3_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_3_cgb04c.png",
+    "source_sha256": "60ca7cfdec515a206b3e2f79d5884597c2d0e9d5c954e3caf4bd8b63b21e7cbc",
+    "screen_sha256": "bfef8b2884760263353ce95ab4944ed352ecd3010bd77ff06a85e54a5875ae60"
+  },
+  "scy/scy_during_m3_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_4_cgb04c.png",
+    "source_sha256": "28f7292e733350106ebf57d5379aead52f261edd0adec06363621308f868d870",
+    "screen_sha256": "c82eb075b37bf506ba2cd727fca7fd9d21b8372123af352b64e830300c98f6c9"
+  },
+  "scy/scy_during_m3_ds_5_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_5_cgb04c.png",
+    "source_sha256": "d8364c60abb9175ef409bc9cc4a86681986e9b3f5aeb85e6d97545189dd60aab",
+    "screen_sha256": "eedae9f7722e325ba5782038da1c2847446bd889f82dde75328aecdd8cb7e535"
+  },
+  "scy/scy_during_m3_ds_6_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_6_cgb04c.png",
+    "source_sha256": "598f2cfd36a320bb27970a4846d8443ddc13d8a91d3ebffb25a6f37204d1d2d8",
+    "screen_sha256": "96186c594975a69c4eb3bfb9b5d8e78090b518f57ff72c3051583a4d0ef1a487"
+  },
+  "scy/scy_during_m3_ds_7_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_ds_7_cgb04c.png",
+    "source_sha256": "ea08f21926e26615b3ed41da8ade4122908b73edb0627755b019d6c1e1fe8915",
+    "screen_sha256": "6c89f76f26ffef8371bb0418c3dcad865f09a3aaa93b9e5d8d859f97d5030f96"
+  },
+  "scy/scy_during_m3_spx08_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_1_cgb04c.png",
+    "source_sha256": "afaf914ed99618699ea5e69f25182da1e5f3dcd8fe804fdc0a627596c5ff23c4",
+    "screen_sha256": "9aeaf8a7845950bc2e5160e8124e4364da552f8a755f6e17efe72a061337d52a"
+  },
+  "scy/scy_during_m3_spx08_1_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_1_dmg08.png",
+    "source_sha256": "5cc1d884551d487913051d1532d9dbf1496c69e309be8f17ee1b79bf0651dbc0",
+    "screen_sha256": "7f8434edc218ffd9b922f1799427dd2e31df3cb7b031cb60050685d4c9239bc2"
+  },
+  "scy/scy_during_m3_spx08_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_2_cgb04c.png",
+    "source_sha256": "28dce907fcb5d3081add10284713c6cada72e4123b73b3f9e0c1ebc126699340",
+    "screen_sha256": "459fa11968a86b26bdee6b687de38660cf8d67d2167f2ed9439ffe5e4884437f"
+  },
+  "scy/scy_during_m3_spx08_2_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_2_dmg08.png",
+    "source_sha256": "eaedee828b1217b48bfd43698d9cb21cc1210eeaa30b7ada257d61149ae54faf",
+    "screen_sha256": "ba43ce7904f9357293e135d9d47499a6f79248bd77d49bc7affb0305904e802f"
+  },
+  "scy/scy_during_m3_spx08_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_3_cgb04c.png",
+    "source_sha256": "a4d88a0330f29baea597d492faabc2d4f756db277022a2ee338f0a45ca87d801",
+    "screen_sha256": "d6e8947c7b0cb1e9855d76646d2e63b021bb15e47d4535079d49bed5a27801c4"
+  },
+  "scy/scy_during_m3_spx08_3_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_3_dmg08.png",
+    "source_sha256": "18114e34ba562580c1ea71099b83e0507710c05c85dde4f1d68b8ad269061919",
+    "screen_sha256": "c10adc5178bc6f621d4a2fb7e5d01ca1ff6f36bae0ed0ee02809e59dedd50190"
+  },
+  "scy/scy_during_m3_spx08_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_4_cgb04c.png",
+    "source_sha256": "c27d5873610cdd37103b7a30a76c9a1eb01d5b12d317f1d9820d3b91ad1df6ed",
+    "screen_sha256": "5d963847b0afec7124b0d946118b54c001fbfef651df28f3645a2c88717574b1"
+  },
+  "scy/scy_during_m3_spx08_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_ds_1_cgb04c.png",
+    "source_sha256": "8358c49a862462b542569fb1dbf0873b9b1d0e95fd1bfb32f384d52cbade3352",
+    "screen_sha256": "1b8091da11d93e97760fa5c20cc0fbbc6442000918cfee1b89e9309dac73703a"
+  },
+  "scy/scy_during_m3_spx08_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_ds_2_cgb04c.png",
+    "source_sha256": "232acaa213a9ed15ecc97158651eedea7e9b020f008223a8becdd5128f872150",
+    "screen_sha256": "95251750394ef0404333adb1c8117bde59db95c0a55c2c6592dfd4af8cebf074"
+  },
+  "scy/scy_during_m3_spx08_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_ds_3_cgb04c.png",
+    "source_sha256": "f1c63e6df043812cc95ad1e669ce9328fa11337b39e0b9cdb6b03ed9026936b5",
+    "screen_sha256": "ba908f437e68a5da15a6dcff950b82a6e39da20551989af92b31882f0591a32b"
+  },
+  "scy/scy_during_m3_spx08_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx08_ds_4_cgb04c.png",
+    "source_sha256": "9c7dabe46fb12fc5c1642cec9cb12de960f7f05bcdb4013df4cc6dc671ca6321",
+    "screen_sha256": "241826f369f34c52897bd3ed6e92f4cc0594f0091fefc8f2fc62b76cf0f180f4"
+  },
+  "scy/scy_during_m3_spx09_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_1_cgb04c.png",
+    "source_sha256": "d896a8d79478a0ca11efbd0be226cdce4a30a03805d1e3716f831e19a1ed29c1",
+    "screen_sha256": "ae214af333a63462a52c3779799cdaa8a4f3bd9461f88bb0ae70ef396277bb16"
+  },
+  "scy/scy_during_m3_spx09_1_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_1_dmg08.png",
+    "source_sha256": "bfbcccb4a7c9ebb4f9645960a3fbf775a22ed8732ec0507fcf0d83b57ce51260",
+    "screen_sha256": "54b736754b15577e742b2e47a17d9ebd9e0591007fbfbfddac6cffa81353c7b5"
+  },
+  "scy/scy_during_m3_spx09_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_2_cgb04c.png",
+    "source_sha256": "1a3dc22ecdab8388c2130afe4773fae829b4e65b19b082cf790b08a00ac4f2d1",
+    "screen_sha256": "e4e907cf6c50300e09d32682c858641fa26abfe7180eeea0e5f6459b7627d627"
+  },
+  "scy/scy_during_m3_spx09_2_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_2_dmg08.png",
+    "source_sha256": "69b7e30bba7f3e6712a5df5ab3332243cd34805cb42090c06be63c4055d90b0e",
+    "screen_sha256": "a70d9cb023aff0e1ec2af10d6ffef4c4482764e912789ce32ce683167eba733f"
+  },
+  "scy/scy_during_m3_spx09_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_3_cgb04c.png",
+    "source_sha256": "c859f20452c07d3cf9c38d9d3cbe59f50304456ac4b5fd8c672d4d18342a50e5",
+    "screen_sha256": "3e18c2676b2306263caef82d9a2dc56f35afaa93e85446c3be1f0e162711bb1c"
+  },
+  "scy/scy_during_m3_spx09_3_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_3_dmg08.png",
+    "source_sha256": "f197af353bb076a3f865889b72270a53935718441bcd5423c088e33960489f3f",
+    "screen_sha256": "781cea6b92ffc8c7803bcbaf797910072f890cede4061b82642693cb0ed87b18"
+  },
+  "scy/scy_during_m3_spx09_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_4_cgb04c.png",
+    "source_sha256": "fbee7d857d8857b54a6c78c97692a19228f0922ad310837d30013e73cc2c0c31",
+    "screen_sha256": "715eb7374a691b343ddd0d6ad64c317a2a6cc4d3c3dc68b06e6423171b0cbb4e"
+  },
+  "scy/scy_during_m3_spx09_ds_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_ds_1_cgb04c.png",
+    "source_sha256": "a019576473ff167b154819240868f69b779afdd1af2316890e93e9ef8cdd1f52",
+    "screen_sha256": "fa7e5c2ae4e83d36daba302f30839b231cd08f36fe617fa6d6901422f9e60f8c"
+  },
+  "scy/scy_during_m3_spx09_ds_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_ds_2_cgb04c.png",
+    "source_sha256": "0baa115a74879698a43d62b92bb33417eb4c4637ad06e1696a11d574649e9945",
+    "screen_sha256": "f46651f47a914e7ce27d7bb914a6015d4b677ab6f1af8469b24166b44a32f3d7"
+  },
+  "scy/scy_during_m3_spx09_ds_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_ds_3_cgb04c.png",
+    "source_sha256": "8f50df66e71e0237ab86220782f62310e8a1fef9725e242cce4ef6621d31905a",
+    "screen_sha256": "2d9b1c22c5e2d67dbce70557e7ea4c5439d6e5b7fe1a10730a22a84fcf8cded4"
+  },
+  "scy/scy_during_m3_spx09_ds_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx09_ds_4_cgb04c.png",
+    "source_sha256": "e9381c0297b5e890003de7c0479ed3fdf2412375b76b66df77f36fcb9031d5a9",
+    "screen_sha256": "12d9e54f845494dac1e0d7023ad3b0e2abcbbdf0cc01ee421b6c89eb4e09d9dc"
+  },
+  "scy/scy_during_m3_spx0A_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_1_cgb04c.png",
+    "source_sha256": "b84e15fff55e0f6dac166a2a828df15d23a3266b9e0c19c637d50111f6e85944",
+    "screen_sha256": "5cd579baadebf6d3d065bdc5593362f69dfa8f200381e8e14aca6539a9d195e2"
+  },
+  "scy/scy_during_m3_spx0A_1_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_1_dmg08.png",
+    "source_sha256": "906c2003db3adad5a8404bb7061f211d52500a518bd585989525a58d3b3a06be",
+    "screen_sha256": "78334c25350695ba59221ea37d5663dc0994a1ba7d54ea2d0299c29acf0948f9"
+  },
+  "scy/scy_during_m3_spx0A_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_2_cgb04c.png",
+    "source_sha256": "c740f2eeb41df043199ca9b5b20ef76e451952641107698b294d6297404d70aa",
+    "screen_sha256": "453c8715a4d1bf566b06d969fc85ce639babc88b1f0ce51ab217a85471bde25a"
+  },
+  "scy/scy_during_m3_spx0A_2_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_2_dmg08.png",
+    "source_sha256": "04962e284c12c36459ac0f0426feee993ca169186e2a31b940ed4cb3905f9ce0",
+    "screen_sha256": "50f1b6a5b4a07dc832562dcf7029b21dc7864effaaf02c154bfa48296a951e02"
+  },
+  "scy/scy_during_m3_spx0A_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_3_cgb04c.png",
+    "source_sha256": "8b3ebd045c593267159986d1659e2f7558fe3dc29c6595e8685a51a013617725",
+    "screen_sha256": "de131532e756c95b093297ff205ad25c001472e9fd9cfe6e6e8ec25c2c86c440"
+  },
+  "scy/scy_during_m3_spx0A_3_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_3_dmg08.png",
+    "source_sha256": "faed06d0ce427b39f5bfa8609a7805e802fa398075ef0083e3ce5c235af9939d",
+    "screen_sha256": "d8dc9eabe4cc727a43a5cb2e804c98cef7de82513d3d9d9648d51b4e38461665"
+  },
+  "scy/scy_during_m3_spx0A_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0A_4_cgb04c.png",
+    "source_sha256": "ccdd7e93b30ecb26ed7dbb4dd174a27dffc556fd40edaee57a1f56dfaac365d1",
+    "screen_sha256": "e1d1d3c61e2e7f8210367fc23ddd76d6bf85fc693794bf0a6fc9d5e257d502a3"
+  },
+  "scy/scy_during_m3_spx0B_1_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_1_cgb04c.png",
+    "source_sha256": "3a6c490329f257bdb70c55a47ad4766708d15b73221a6607d68bb9a854b17cba",
+    "screen_sha256": "58df30fe65594fa9222da79c067e53d2997bb6b43acecf1f9d41ebfc4274f380"
+  },
+  "scy/scy_during_m3_spx0B_1_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_1_dmg08.png",
+    "source_sha256": "309c79357c84ff5e55dd31ac69d8139d924f9e20ac670fa820f9e56aeed10bf5",
+    "screen_sha256": "cabbbae89a0a3a80ae401ce4fbe74f36cfd6612c8ccd9cfaae4729353110e17c"
+  },
+  "scy/scy_during_m3_spx0B_2_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_2_cgb04c.png",
+    "source_sha256": "4fb0414d2d58e1f6b5beca803c3d0c6ecb0b1e7184acf61655a4fb84d3c5d146",
+    "screen_sha256": "5fce619150011090bf7b6edeb7d0b366ff17b1abd2ed7c28419098e035955a41"
+  },
+  "scy/scy_during_m3_spx0B_2_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_2_dmg08.png",
+    "source_sha256": "0bf99b6690b2830b6645781a506665646ee2ee4b065e14846b5ecc4c6d9322e8",
+    "screen_sha256": "5fce619150011090bf7b6edeb7d0b366ff17b1abd2ed7c28419098e035955a41"
+  },
+  "scy/scy_during_m3_spx0B_3_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_3_cgb04c.png",
+    "source_sha256": "8cbc74532c9fba3578cc9222e94990c614fc3a1d4a8e2cf48bd53417fa275b59",
+    "screen_sha256": "68f461d855c19bcccf58499e9abca58a6da01a72d0da3065ab12c8e47c4337da"
+  },
+  "scy/scy_during_m3_spx0B_3_dmg08.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_3_dmg08.png",
+    "source_sha256": "042a0cca5833966dc485ce2238e8ba6ac04a947d1dd654503ebe1a80961db467",
+    "screen_sha256": "97da4354bcec633a867d9dce983c710ee94ad8e75254d3f5648590e965fefbf1"
+  },
+  "scy/scy_during_m3_spx0B_4_cgb04c.screen": {
+    "source": "roms/gambatte/scy/scy_during_m3_spx0B_4_cgb04c.png",
+    "source_sha256": "7192bf4c26f139dac812d6347d44b3abe428f3ba0e79a1fe788c7975e74e4a21",
+    "screen_sha256": "901a918559972486e919d9245c8713f6c84f478f0e9cc409d3579558cfbe0e60"
+  },
+  "window/on_screen/late_wx_ds_1.screen": {
+    "source": "roms/gambatte/window/on_screen/late_wx_ds_1.png",
+    "source_sha256": "18d3669bdec029208654fdace4a29b09c69440b068b5dfde1daea92da0a8dbcf",
+    "screen_sha256": "441ee63067e1324378a6defbb81a4ecc928146c33824ad8fb79d92f4a1e1b84c"
+  },
+  "window/on_screen/late_wx_ds_2.screen": {
+    "source": "roms/gambatte/window/on_screen/late_wx_ds_2.png",
+    "source_sha256": "db36a996eb85906acd437061ea9314358d041dd84ffa3a68e4f0fdccab29ee38",
+    "screen_sha256": "fc7bc70fa8de6eb76d3a6c47669324e70f084c326e0ea1166224c516b5c4e642"
+  },
+  "window/on_screen/weon_wx18_weoff_weon_wx80_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/weon_wx18_weoff_weon_wx80_cgb04c.png",
+    "source_sha256": "d208d89372028b739b754e73a432c78a7654d8c84d480d9ceb1016fec6b93da3",
+    "screen_sha256": "bdac299fc23d2aa3fab26d139d9e9e1cd1f0c8de0d608b2d416ab245fa35aca0"
+  },
+  "window/on_screen/weon_wx18_weoff_weon_wx80_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/weon_wx18_weoff_weon_wx80_dmg08.png",
+    "source_sha256": "0fe33f13d66838d1c27b21feda6369ef034ab922c254d08bf22f2bf41a78fb2f",
+    "screen_sha256": "bdac299fc23d2aa3fab26d139d9e9e1cd1f0c8de0d608b2d416ab245fa35aca0"
+  },
+  "window/on_screen/wx17_weoff_wxA5_weon_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wx17_weoff_wxA5_weon_cgb04c.png",
+    "source_sha256": "154a9890a0242996ae026601619cece81875ca28d5d90b98066741bb262510e8",
+    "screen_sha256": "107982f50d5582f248d9685847597dfabb5fdd9ef623b70fc45b56b4f87fc89f"
+  },
+  "window/on_screen/wx17_weoff_wxA5_weon_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wx17_weoff_wxA5_weon_dmg08.png",
+    "source_sha256": "9132eca14059821e32ccf1cc83cd7134d578437504d360bf6137272526776e76",
+    "screen_sha256": "50d5748c52d69e710705383e9b809319fcaf10f6531118b1023691846366523a"
+  },
+  "window/on_screen/wx17_wxA5_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wx17_wxA5_cgb04c.png",
+    "source_sha256": "b041c76fb4a3a28442b2af679f620324d7470db051e5fb7ecb932de342f0b009",
+    "screen_sha256": "0585bf73472bdadd17293c18f6cbfc025326e579351822cc5daec3a1821a03f2"
+  },
+  "window/on_screen/wx17_wxA5_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wx17_wxA5_dmg08.png",
+    "source_sha256": "da2ef23a2c5d3a223e1b0683ea662024f97510435dddca4af8473d244f329e9c",
+    "screen_sha256": "0585bf73472bdadd17293c18f6cbfc025326e579351822cc5daec3a1821a03f2"
+  },
+  "window/on_screen/wxA5_weoff_at_xposA5_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA5_weoff_at_xposA5_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA5_weoff_at_xposA5_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA5_weoff_at_xposA5_dmg08.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA6_3_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_3_cgb04c.png",
+    "source_sha256": "f4d15f85a55dba92d5707e9b8eea91b96483a79876ac7245e8630886f7646772",
+    "screen_sha256": "96af034d2a0d8cacdf84662f3e673c28def34d392d1ffd5dd13e9922248ea4da"
+  },
+  "window/on_screen/wxA6_3_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_3_dmg08.png",
+    "source_sha256": "d2657770db33c3a3a59259efccef8152c38319c93d83b919470253805065b365",
+    "screen_sha256": "de141072cfd6f97fc5c0237ef2340ee76dae8639fe0a2c183741ef4d07876ef3"
+  },
+  "window/on_screen/wxA6_late_we_reenable_1_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_1_cgb04c.png",
+    "source_sha256": "7d5e5785eaecede7dbd63696256e9d4451dda8a4aa4cba14c722450ef79edef6",
+    "screen_sha256": "5258073aa4c3a8c951d207aeabe1acec7aa46c5d8e848e69c264b925c86c14f9"
+  },
+  "window/on_screen/wxA6_late_we_reenable_1_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_1_dmg08.png",
+    "source_sha256": "090088999799e832992be17bf890b7bb08f66a745ca18e610c946f2f995ad22e",
+    "screen_sha256": "53d5d877758b7b09cfc62a2fd901dce2a47dff5b67b0753509e2a134f9f46c79"
+  },
+  "window/on_screen/wxA6_late_we_reenable_2_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_2_cgb04c.png",
+    "source_sha256": "7d5e5785eaecede7dbd63696256e9d4451dda8a4aa4cba14c722450ef79edef6",
+    "screen_sha256": "5258073aa4c3a8c951d207aeabe1acec7aa46c5d8e848e69c264b925c86c14f9"
+  },
+  "window/on_screen/wxA6_late_we_reenable_2_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_2_dmg08.png",
+    "source_sha256": "090088999799e832992be17bf890b7bb08f66a745ca18e610c946f2f995ad22e",
+    "screen_sha256": "53d5d877758b7b09cfc62a2fd901dce2a47dff5b67b0753509e2a134f9f46c79"
+  },
+  "window/on_screen/wxA6_late_we_reenable_3_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_3_cgb04c.png",
+    "source_sha256": "7d5e5785eaecede7dbd63696256e9d4451dda8a4aa4cba14c722450ef79edef6",
+    "screen_sha256": "5258073aa4c3a8c951d207aeabe1acec7aa46c5d8e848e69c264b925c86c14f9"
+  },
+  "window/on_screen/wxA6_late_we_reenable_3_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_3_dmg08.png",
+    "source_sha256": "4472b68842b1601e047295dea55abebe291152932d6692df8f4a77df074abe9f",
+    "screen_sha256": "01fa1718fd2ce0760d54b92e3312556b45d562db10f815b9ef0fee1477d06a51"
+  },
+  "window/on_screen/wxA6_late_we_reenable_4_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_4_cgb04c.png",
+    "source_sha256": "7d5e5785eaecede7dbd63696256e9d4451dda8a4aa4cba14c722450ef79edef6",
+    "screen_sha256": "5258073aa4c3a8c951d207aeabe1acec7aa46c5d8e848e69c264b925c86c14f9"
+  },
+  "window/on_screen/wxA6_late_we_reenable_4_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_late_we_reenable_4_dmg08.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA6_scx7_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_scx7_cgb04c.png",
+    "source_sha256": "f4d15f85a55dba92d5707e9b8eea91b96483a79876ac7245e8630886f7646772",
+    "screen_sha256": "96af034d2a0d8cacdf84662f3e673c28def34d392d1ffd5dd13e9922248ea4da"
+  },
+  "window/on_screen/wxA6_scx7_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_scx7_dmg08.png",
+    "source_sha256": "627986f11b0e761c8f4782a31fe119309075b3cefa7010c4d5dc9bbea4761a6b",
+    "screen_sha256": "07895c263522aad643277676601a1438f0eb7bce5ff1dd622539f5800198fe0e"
+  },
+  "window/on_screen/wxA6_weoff_at_xposA6_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_weoff_at_xposA6_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA6_weoff_at_xposA6_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_weoff_at_xposA6_dmg08.png",
+    "source_sha256": "8cb02a622342101de261e74bdd2c19e499f6ae85de786a1692edbc546c460d8a",
+    "screen_sha256": "c32a124b65b72bbca2c018b16903a1af1907c88d0dac9cdd4ba6273ced2dc87b"
+  },
+  "window/on_screen/wxA6_wy00_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy00_cgb04c.png",
+    "source_sha256": "ef15f92fe0e9ead8ce52843f5aa66d38f41121a428b570fad555535519726ebc",
+    "screen_sha256": "41c1795590b28497c8cf44df5f5b33c1fdf782ab55d73a44e9aec9e857f0e58b"
+  },
+  "window/on_screen/wxA6_wy00_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy00_dmg08.png",
+    "source_sha256": "9926ae7d44575ffeae8127095fd220f894b63c8033cb146ec626d539d1f6b472",
+    "screen_sha256": "ac2ea719a6a0672a024f8909f0dc7da5a77dd0fc8e2485b8c7327f3fa5fbaca1"
+  },
+  "window/on_screen/wxA6_wy01_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_cgb04c.png",
+    "source_sha256": "77a12e30035c7a805fe17890d7943e88426fc8e7d3e5696672cf9a50dc179d16",
+    "screen_sha256": "19d5ae1bb423fa8d3d399c79c331bad52571c747dad6a288415a25dd45e48f1a"
+  },
+  "window/on_screen/wxA6_wy01_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_dmg08.png",
+    "source_sha256": "92368ba6b7a5abf5a18128b445b34fe67cfaa63ab25393f85f7e77940e88f91d",
+    "screen_sha256": "2304dbc05a21b0d91402a62d8c8d2d6990b223ab470c93a5c029ea3b51f1b4eb"
+  },
+  "window/on_screen/wxA6_wy01_weoff_ly02_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_weoff_ly02_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA6_wy01_weoff_ly02_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_weoff_ly02_dmg08.png",
+    "source_sha256": "2346c18c4370f9ee3f0fcc106e7fe2d0cc8e5ea3e0bcbc1482c4a73e85c8fa73",
+    "screen_sha256": "441ee63067e1324378a6defbb81a4ecc928146c33824ad8fb79d92f4a1e1b84c"
+  },
+  "window/on_screen/wxA6_wy01_weoff_ly02_weon_ly60_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_weoff_ly02_weon_ly60_cgb04c.png",
+    "source_sha256": "3dad9a088a22d4305bb89edbd8fb49e29246d2df1f0a916df4824fbc1f9c1099",
+    "screen_sha256": "84fbc42b4e88cb7d9374d36cd9d2a2556dc1dca4bd69b7306d3168b72616520f"
+  },
+  "window/on_screen/wxA6_wy01_weoff_ly02_weon_ly60_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_weoff_ly02_weon_ly60_dmg08.png",
+    "source_sha256": "50f97c51597550863e5db002e56e1d5de290447a3214a22061a192ccc79cb6c6",
+    "screen_sha256": "ccbfce114b92f5b8fa94b9ad8068fa7b1b89f2d1f9ef59178adc1570b3022e16"
+  },
+  "window/on_screen/wxA6_wy01_wxA5_ly02_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_wxA5_ly02_cgb04c.png",
+    "source_sha256": "4c0b5b53646004d537e3b08c9ddb7ff55439337887b99e236ba76abe031e8eca",
+    "screen_sha256": "d6c1f1a026c8b2202b1afb348857df1ed5042dea226af76a12125837a8ca9da2"
+  },
+  "window/on_screen/wxA6_wy01_wxA5_ly02_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_wxA5_ly02_dmg08.png",
+    "source_sha256": "339fb8df0a749d5da688c7022cb4bf428ac781cabde8fa3b0777ce75e1b9fe85",
+    "screen_sha256": "313aba0c90546daadb1aa87b74dd64fb3526c1141b69eba8acf9e36b1f6ec5a5"
+  },
+  "window/on_screen/wxA6_wy01_wxA7_ly02_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_wxA7_ly02_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA6_wy01_wxA7_ly02_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy01_wxA7_ly02_dmg08.png",
+    "source_sha256": "6a47330054c948e3e23afa0b12c35744d15ab9907fe3cb2597bea4e2d06f797d",
+    "screen_sha256": "1831d09fac5e2a2c925fc77b5f0ea425e5c37c6d323ef275cddbba3778c99a20"
+  },
+  "window/on_screen/wxA6_wy8F_cgb04c.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy8F_cgb04c.png",
+    "source_sha256": "ee0868d4bd6a7cdead89a4e0323a016f098742a203644c48765926a3c7c3b3cb",
+    "screen_sha256": "fc25121efb4a45f650f86e5ba6acb8f0916478fe3c99ae04f5dbf1102a650462"
+  },
+  "window/on_screen/wxA6_wy8F_dmg08.screen": {
+    "source": "roms/gambatte/window/on_screen/wxA6_wy8F_dmg08.png",
+    "source_sha256": "2346c18c4370f9ee3f0fcc106e7fe2d0cc8e5ea3e0bcbc1482c4a73e85c8fa73",
+    "screen_sha256": "441ee63067e1324378a6defbb81a4ecc928146c33824ad8fb79d92f4a1e1b84c"
+  }
+}

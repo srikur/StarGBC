@@ -7,8 +7,7 @@
 #include "Interrupts.h"
 
 struct Joypad {
-    explicit Joypad(Interrupts &interrupts) : interrupts_(interrupts) {
-    }
+    explicit Joypad(Interrupts &interrupts) : interrupts_(interrupts) {}
 
     [[nodiscard]] uint8_t GetJoypadState() const;
 
@@ -63,4 +62,4 @@ private:
     uint8_t sgbCurrentPlayer_{0};
 };
 
-#endif //STARGBC_JOYPAD_H
+#endif // STARGBC_JOYPAD_H

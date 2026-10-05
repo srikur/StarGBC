@@ -34,6 +34,9 @@ private:
     static constexpr int GB_SCREEN_H = 144;
     static constexpr int WINDOW_SCALE = 3;
     static constexpr int MAX_AUDIO_QUEUE_BYTES = AUDIO_SAMPLE_RATE * 2 * sizeof(float) / 15;
+    static constexpr int AUDIO_TARGET_QUEUE_FRAMES = AUDIO_SAMPLE_RATE / 20;
+
+    void UpdateWindowTitle();
 
     SDL_AppResult HandleKeyDown(const SDL_KeyboardEvent &key);
 
@@ -64,4 +67,8 @@ private:
     bool throttled_{true};
     int speedMultiplier_{1};
     std::chrono::steady_clock::time_point nextFrameTime_{};
+    std::chrono::steady_clock::time_point lastPresentTime_{};
+    std::chrono::steady_clock::time_point lastTitleTime_{};
+    uint32_t framesSinceTitle_{0};
+    std::chrono::nanoseconds unthrottledPresentInterval_{std::chrono::milliseconds(8)};
 };

@@ -12,17 +12,25 @@ void Timer::RecomputeTickCache(const Speed speed) {
 }
 
 void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed speed) {
-    if (address == 0xFF04) WriteDIV(speed == Speed::Double);
-    else if (address == 0xFF05) WriteTIMA(value);
-    else if (address == 0xFF06) WriteTMA(value);
-    else if (address == 0xFF07) WriteTAC(value);
+    if (address == 0xFF04)
+        WriteDIV(speed == Speed::Double);
+    else if (address == 0xFF05)
+        WriteTIMA(value);
+    else if (address == 0xFF06)
+        WriteTMA(value);
+    else if (address == 0xFF07)
+        WriteTAC(value);
 }
 
 [[nodiscard]] uint8_t Timer::ReadByte(const uint16_t address) const {
-    if (address == 0xFF04) return divCounter >> 8;
-    if (address == 0xFF05) return tima;
-    if (address == 0xFF06) return tma;
-    if (address == 0xFF07) return tac | 0xF8;
+    if (address == 0xFF04)
+        return divCounter >> 8;
+    if (address == 0xFF05)
+        return tima;
+    if (address == 0xFF06)
+        return tma;
+    if (address == 0xFF07)
+        return tac | 0xF8;
     return 0xFF;
 }
 
@@ -34,18 +42,17 @@ void Timer::WriteDIV(const bool doubleSpeed, const bool duringStop) {
     // Resetting DIV while the DIV-APU bit is high is a falling edge and
     // fires the frame sequencer
     const int frameSeqBit = audio_.IsDMG() || !doubleSpeed ? 12 : 13;
-    if ((divCounter & (1u << frameSeqBit)) &&
-        !(duringStop && (divCounter & ((1u << (frameSeqBit + 1)) - 1)) == (1u << frameSeqBit))) {
+    if ((divCounter & (1u << frameSeqBit)) && !(duringStop && (divCounter & ((1u << (frameSeqBit + 1)) - 1)) == (1u << frameSeqBit))) {
         audio_.TickFrameSequencer(!doubleSpeed);
     }
 
     const auto oldCounter = divCounter;
     divCounter = 0;
 
-    const bool delayedStopEdge = duringStop &&
-        ((tac & 3) == 0 || (audio_.GetModel() == Model::CGBE && (tac & 3) != 1)) &&
-        (oldCounter & ((1u << (bit + 1)) - 1)) == (1u << bit);
-    if (oldSignal && !delayedStopEdge) IncrementTIMA();
+    const bool delayedStopEdge = duringStop && ((tac & 3) == 0 || (audio_.GetModel() == Model::CGBE && (tac & 3) != 1)) &&
+                                 (oldCounter & ((1u << (bit + 1)) - 1)) == (1u << bit);
+    if (oldSignal && !delayedStopEdge)
+        IncrementTIMA();
 }
 
 void Timer::WriteTAC(uint8_t value) {
@@ -60,11 +67,13 @@ void Timer::WriteTAC(uint8_t value) {
     const int newBit = TimerBit(tac);
     const bool newSignal = newEnabled && (divCounter & (1u << newBit));
 
-    if (oldSignal && !newSignal) IncrementTIMA();
+    if (oldSignal && !newSignal)
+        IncrementTIMA();
 }
 
 void Timer::WriteTIMA(const uint8_t value) {
-    if (reloadActive) return;
+    if (reloadActive)
+        return;
     if (overflowPending) {
         overflowPending = false;
         overflowDelay = 0;
@@ -74,16 +83,21 @@ void Timer::WriteTIMA(const uint8_t value) {
 
 void Timer::WriteTMA(const uint8_t value) {
     tma = value;
-    if (reloadActive) tima = value;
+    if (reloadActive)
+        tima = value;
 }
 
 int Timer::TimerBit(const uint8_t tacMode) const {
     switch (tacMode & 0x03) {
-        case 0x00: return 9; // 4096 Hz
-        case 0x01: return 3; // 262144 Hz
-        case 0x02: return 5; // 65536 Hz
-        case 0x03: return 7; // 16384 Hz
-        default: ;
+        case 0x00:
+            return 9; // 4096 Hz
+        case 0x01:
+            return 3; // 262144 Hz
+        case 0x02:
+            return 5; // 65536 Hz
+        case 0x03:
+            return 7; // 16384 Hz
+        default:;
     }
     return 9;
 }
@@ -97,7 +111,8 @@ void Timer::IncrementTIMA() {
 
 bool Timer::SaveState(std::ofstream &stateFile) const {
     try {
-        if (!stateFile.is_open()) return false;
+        if (!stateFile.is_open())
+            return false;
         stateFile.write(reinterpret_cast<const char *>(&divCounter), sizeof(divCounter));
         stateFile.write(reinterpret_cast<const char *>(&tima), sizeof(tima));
         stateFile.write(reinterpret_cast<const char *>(&tma), sizeof(tma));
@@ -110,7 +125,8 @@ bool Timer::SaveState(std::ofstream &stateFile) const {
 
 bool Timer::LoadState(std::ifstream &stateFile) {
     try {
-        if (!stateFile.is_open()) return false;
+        if (!stateFile.is_open())
+            return false;
         stateFile.read(reinterpret_cast<char *>(&divCounter), sizeof(divCounter));
         stateFile.read(reinterpret_cast<char *>(&tima), sizeof(tima));
         stateFile.read(reinterpret_cast<char *>(&tma), sizeof(tma));

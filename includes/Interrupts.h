@@ -1,8 +1,8 @@
 #ifndef STARGBC_INTERRUPTS_H
 #define STARGBC_INTERRUPTS_H
 
-#include "Common.h"
 #include <array>
+#include "Common.h"
 
 struct Interrupts {
     uint8_t interruptEnable{0x00};
@@ -22,7 +22,8 @@ struct Interrupts {
     void SetAfter(InterruptType, uint8_t dots, bool visibleEarly = false, uint8_t visibleDelay = 0);
 
     void Tick() {
-        if (delaysPending_) TickPending();
+        if (delaysPending_)
+            TickPending();
     }
 
     void TickPending();
@@ -38,4 +39,4 @@ struct Interrupts {
     [[nodiscard]] bool IsSet(InterruptType) const;
 };
 
-#endif //STARGBC_INTERRUPTS_H
+#endif // STARGBC_INTERRUPTS_H

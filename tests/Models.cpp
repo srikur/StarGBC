@@ -1,11 +1,12 @@
-#include "Gameboy.h"
 #include <doctest/doctest.h>
+#include "Gameboy.h"
 
 namespace {
     template<class T>
     consteval std::meta::info member(const std::string_view name) {
         for (const auto m : std::meta::members_of(^^T, std::meta::access_context::unchecked())) {
-            if (std::meta::has_identifier(m) && std::meta::identifier_of(m) == name) return m;
+            if (std::meta::has_identifier(m) && std::meta::identifier_of(m) == name)
+                return m;
         }
         throw "Test member not found";
     }
@@ -15,12 +16,12 @@ namespace {
 
     GameboySettings settings(const Model model, const bool color = false) {
         return {
-            .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
-            .model = model,
-            .noBootrom = true,
+                .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
+                .model = model,
+                .noBootrom = true,
         };
     }
-}
+} // namespace
 
 TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") {
     for (const uint8_t opcode : {0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD}) {
@@ -66,17 +67,12 @@ TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
 }
 
 TEST_CASE("models: unused OAM follows revision-specific address decoding") {
-    for (const auto model : {
-             Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB,
-             Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA
-         }) {
+    for (const auto model : {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Gameboy gameboy(settings(model)); // Includes CGB hardware in DMG compatibility mode.
         auto &bus = gameboy.[:busMember:];
         bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
         const auto read = [&](uint16_t address) { return bus.ReadByte(address, ComponentSource::CPU); };
-        const auto write = [&](uint16_t address, uint8_t value) {
-            bus.WriteByte(address, value, ComponentSource::CPU);
-        };
+        const auto write = [&](uint16_t address, uint8_t value) { bus.WriteByte(address, value, ComponentSource::CPU); };
         write(0xFEA0, 0x12);
         write(0xFEB8, 0x34);
         write(0xFEC0, 0x56);
@@ -111,10 +107,7 @@ TEST_CASE("models: unused OAM follows revision-specific address decoding") {
 }
 
 TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
-    for (const auto model : {
-             Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC,
-             Model::CGBD, Model::CGBE, Model::AGBA
-         }) {
+    for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
@@ -137,17 +130,15 @@ TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
 }
 
 TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
-    for (const auto model : {
-             Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB,
-             Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA
-         }) {
+    for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);
         audio.WriteByte(0xFF26, 0x80, true); // Odd DIV-APU step.
         audio.ch1.lengthTimer.lengthTimer = 62;
         audio.ch2.lengthTimer.lengthTimer = 62;
         audio.ch4.lengthTimer.lengthTimer = 62;
-        for (const uint16_t address : {0xFF14, 0xFF19, 0xFF23}) audio.WriteByte(address, 0, false);
+        for (const uint16_t address : {0xFF14, 0xFF19, 0xFF23})
+            audio.WriteByte(address, 0, false);
         const bool early = model == Model::CGB0 || model == Model::CGBA || model == Model::CGBB;
         CHECK(audio.ch1.lengthTimer.lengthTimer == (early ? 63 : 62));
         CHECK(audio.ch2.lengthTimer.lengthTimer == (early ? 63 : 62));
@@ -187,7 +178,8 @@ TEST_CASE("models: early CGB envelope writes pass through an intermediate value"
         prepare(audio.ch1);
         prepare(audio.ch2);
         prepare(audio.ch4);
-        for (const uint16_t address : {0xFF12, 0xFF17, 0xFF21}) audio.WriteByte(address, 0x20, false);
+        for (const uint16_t address : {0xFF12, 0xFF17, 0xFF21})
+            audio.WriteByte(address, 0x20, false);
         const bool early = model == Model::CGB0 || model == Model::CGBB || model == Model::CGBC;
         CHECK(audio.ch1.envelope.currentVolume == (early ? 3 : 2));
         CHECK(audio.ch2.envelope.currentVolume == (early ? 3 : 2));

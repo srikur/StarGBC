@@ -30,8 +30,7 @@ public:
     // t-cycle ticker per second
     static constexpr uint64_t RTC_TICKS_PER_SECOND = 4194304;
 
-    explicit RealTimeClock(const bool realRTC) : realRTC_{realRTC} {
-    }
+    explicit RealTimeClock(const bool realRTC) : realRTC_{realRTC} {}
 
     void Tick();
 
@@ -44,7 +43,8 @@ public:
     // Called every T-cycle; inline so the idle path is a counter bump.
     // Rolls the rtc over every emulated second
     void Update() {
-        if (!halted_) counter_++;
+        if (!halted_)
+            counter_++;
         if (counter_ == RTC_TICKS_PER_SECOND) {
             counter_ = 0;
             Tick();

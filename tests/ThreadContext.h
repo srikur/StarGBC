@@ -5,7 +5,7 @@
 #include <thread>
 
 static size_t maxThreads = std::thread::hardware_concurrency();
-static std::shared_ptr<std::counting_semaphore<> > threadSemaphore;
+static std::shared_ptr<std::counting_semaphore<>> threadSemaphore;
 
 
 struct ThreadPermit {
@@ -13,4 +13,4 @@ struct ThreadPermit {
     ~ThreadPermit() { threadSemaphore->release(); }
 };
 
-#endif //STARGBC_THREADCONTEXT_H
+#endif // STARGBC_THREADCONTEXT_H

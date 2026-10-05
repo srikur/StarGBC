@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Reflection.h"
 #include "Model.h"
+#include "Reflection.h"
 
 #include <array>
 #include <chrono>
@@ -9,12 +9,12 @@
 #include <exception>
 #include <fstream>
 #include <memory>
+#include <meta>
 #include <print>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
-#include <meta>
-#include <ranges>
 
 static constexpr uint8_t SCREEN_WIDTH = 160;
 static constexpr uint8_t SCREEN_HEIGHT = 144;
@@ -64,14 +64,9 @@ enum class Keys {
     Start = 0x80,
 };
 
-enum class Speed {
-    Regular = 0x01,
-    Double = 0x02
-};
+enum class Speed { Regular = 0x01, Double = 0x02 };
 
-enum class InterruptState {
-    M1, M2, M3, M4, M5, M6
-};
+enum class InterruptState { M1, M2, M3, M4, M5, M6 };
 
 enum class InterruptType {
     VBlank,
@@ -81,13 +76,10 @@ enum class InterruptType {
     Joypad,
 };
 
-enum class ComponentSource {
-    CPU, DMA, PPU, HDMA
-};
+enum class ComponentSource { CPU, DMA, PPU, HDMA };
 
 template<typename T>
-concept BusLike = requires(T bus, uint16_t addr, uint8_t val, ComponentSource source)
-{
+concept BusLike = requires(T bus, uint16_t addr, uint8_t val, ComponentSource source) {
     { bus.ReadByte(addr, source) } -> std::same_as<uint8_t>;
     { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };
@@ -111,9 +103,7 @@ class UnreachableCodeException final : public GameboyException {
     UnreachableCodeException() = default;
 
 public:
-    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) {
-        this->message();
-    }
+    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) { this->message(); }
 };
 
 class FatalErrorException final : public GameboyException {
@@ -128,7 +118,5 @@ class FatalErrorException final : public GameboyException {
     FatalErrorException() = default;
 
 public:
-    explicit FatalErrorException(std::string message) : message_(std::move(message)) {
-        this->message();
-    }
+    explicit FatalErrorException(std::string message) : message_(std::move(message)) { this->message(); }
 };

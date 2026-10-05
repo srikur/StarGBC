@@ -33,9 +33,7 @@ public:
 
     void MarkRamDirty() { ramDirty_ = true; }
 
-    [[nodiscard]] uint16_t GlobalChecksum() const {
-        return static_cast<uint16_t>(gameRom_[0x14E]) << 8 | gameRom_[0x14F];
-    }
+    [[nodiscard]] uint16_t GlobalChecksum() const { return static_cast<uint16_t>(gameRom_[0x14E]) << 8 | gameRom_[0x14F]; }
 
     [[nodiscard]] bool BankingStateValid() const { return ramBank <= 0x0F; }
 
@@ -76,9 +74,7 @@ private:
 
     static std::string RemoveExtension(const std::string &filename);
 
-    enum class MBC {
-        None, MBC1, MBC2, MBC3, MBC5
-    };
+    enum class MBC { None, MBC1, MBC2, MBC3, MBC5 };
 
     RealTimeClock &rtc_;
 

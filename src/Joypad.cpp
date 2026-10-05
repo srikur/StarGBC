@@ -21,14 +21,13 @@ uint8_t Joypad::GetJoypadState() const {
 }
 
 void Joypad::SetJoypadState(const uint8_t value) {
-    if (sgb_) SgbWrite(value);
+    if (sgb_)
+        SgbWrite(value);
     select_ = value;
     UpdateKeyFlag();
 }
 
-void Joypad::ConfigureSgb(const bool enabled) {
-    sgb_ = enabled;
-}
+void Joypad::ConfigureSgb(const bool enabled) { sgb_ = enabled; }
 
 void Joypad::SgbWrite(const uint8_t value) {
     // Byte counts, not bits: header byte 0's low 3 bits give the packet count for this command
@@ -48,7 +47,8 @@ void Joypad::SgbWrite(const uint8_t value) {
             sgbReadyForPulse_ = true;
             break;
         case 2: // "0" bit / stop bit
-            if (!sgbReadyForPulse_ || !sgbReadyForWrite_) return;
+            if (!sgbReadyForPulse_ || !sgbReadyForWrite_)
+                return;
             if (sgbReadyForStop_) {
                 if (sgbCommandIndex_ == commandSize) {
                     SgbCommandReady();
@@ -67,7 +67,8 @@ void Joypad::SgbWrite(const uint8_t value) {
             }
             break;
         case 1: // "1" bit
-            if (!sgbReadyForPulse_ || !sgbReadyForWrite_) return;
+            if (!sgbReadyForPulse_ || !sgbReadyForWrite_)
+                return;
             if (sgbReadyForStop_) {
                 // A "1" where the stop bit belongs corrupts the whole command
                 sgbReadyForPulse_ = false;
@@ -84,17 +85,18 @@ void Joypad::SgbWrite(const uint8_t value) {
             }
             break;
         case 0: // Reset pulse
-            if (!sgbReadyForPulse_) return;
+            if (!sgbReadyForPulse_)
+                return;
             sgbReadyForWrite_ = true;
             sgbReadyForPulse_ = false;
-            if ((sgbCommandIndex_ & (kSgbPacketSize * 8 - 1)) != 0 || sgbCommandIndex_ == 0 ||
-                sgbReadyForStop_) {
+            if ((sgbCommandIndex_ & (kSgbPacketSize * 8 - 1)) != 0 || sgbCommandIndex_ == 0 || sgbReadyForStop_) {
                 sgbCommandIndex_ = 0;
                 std::memset(sgbCommand_, 0, sizeof(sgbCommand_));
                 sgbReadyForStop_ = false;
             }
             break;
-        default: break;
+        default:
+            break;
     }
 }
 
@@ -124,9 +126,7 @@ void Joypad::KeyDown(Keys key) {
     interrupts_.Set(InterruptType::Joypad, false);
 }
 
-void Joypad::KeyUp(Keys key) {
-    SetMatrix(GetMatrix() | static_cast<uint8_t>(key));
-}
+void Joypad::KeyUp(Keys key) { SetMatrix(GetMatrix() | static_cast<uint8_t>(key)); }
 
 void Joypad::SetSelect(const uint8_t value) {
     select_ = value;
@@ -138,7 +138,8 @@ bool Joypad::KeyPressed() const { return keyPressed_; }
 void Joypad::ClearKeyPressed() { keyPressed_ = false; }
 
 bool Joypad::SaveState(std::ofstream &f) const {
-    if (!f.is_open()) return false;
+    if (!f.is_open())
+        return false;
     f.write(reinterpret_cast<const char *>(&matrix_), sizeof matrix_);
     f.write(reinterpret_cast<const char *>(&select_), sizeof select_);
     f.write(reinterpret_cast<const char *>(&keyPressed_), sizeof keyPressed_);
@@ -146,7 +147,8 @@ bool Joypad::SaveState(std::ofstream &f) const {
 }
 
 bool Joypad::LoadState(std::ifstream &f) {
-    if (!f.is_open()) return false;
+    if (!f.is_open())
+        return false;
     f.read(reinterpret_cast<char *>(&matrix_), sizeof matrix_);
     f.read(reinterpret_cast<char *>(&select_), sizeof select_);
     f.read(reinterpret_cast<char *>(&keyPressed_), sizeof keyPressed_);

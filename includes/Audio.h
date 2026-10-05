@@ -70,9 +70,7 @@ struct Sweep {
         step = v & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80); }
 };
 
 struct Envelope {
@@ -97,9 +95,7 @@ struct Envelope {
         sweepPace = value & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace); }
 
     void SetClock(bool value, bool dir, uint8_t volume);
 
@@ -114,13 +110,12 @@ struct Length {
     uint8_t dutyCycle{0};
 
     void Write(const uint8_t value, const bool audioEnabled) {
-        if (audioEnabled) dutyCycle = value >> 6 & 0x03;
+        if (audioEnabled)
+            dutyCycle = value >> 6 & 0x03;
         lengthTimer = value & 0x3F;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(dutyCycle << 6 | 0x3F);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(dutyCycle << 6 | 0x3F); }
 };
 
 struct Noise {
@@ -134,9 +129,7 @@ struct Noise {
         clockDivider = value & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const {
-        return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider);
-    }
+    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider); }
 };
 
 // Deliberately non-virtual: channels are only ever used as their concrete
@@ -146,10 +139,10 @@ struct Channel {
     bool dacEnabled{false};
 
     static constexpr uint8_t DUTY_PATTERNS[4][8] = {
-        {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
-        {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
-        {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
-        {0, 1, 1, 1, 1, 1, 1, 0} // 75%
+            {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
+            {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
+            {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
+            {0, 1, 1, 1, 1, 1, 1, 0} // 75%
     };
 };
 
@@ -358,6 +351,8 @@ class Audio {
     [[=NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
     [[=NotStateAware]] std::array<float, 4> lastMixOutputs_{};
     [[=NotStateAware]] bool hasEarlyPcmGlitch_{false};
+    [[=NotStateAware]] std::array<double, 2> mixLevel_{};
+    [[=NotStateAware]] uint64_t mixLevelChanges_{0};
     // APU ticks deferred by the master loop; materialized by CatchUp() before
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
@@ -372,11 +367,13 @@ class Audio {
 public:
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
     void OnSpeedSwitch(bool doubleSpeed) {
-        if (doubleSpeed && audioEnabled) speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
+        if (doubleSpeed && audioEnabled)
+            speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
     }
 
     explicit Audio(const bool noAudio = false) : emulatorAudioDisabled(noAudio) {
-        if (emulatorAudioDisabled) return;
+        if (emulatorAudioDisabled)
+            return;
         sampleBuffer.resize(AUDIO_BUFFER_SIZE * 2); // *2 for stereo
         highpassRate = std::pow(0.999958, APU_CLOCK_RATE / AUDIO_SAMPLE_RATE);
         InitBandLimitedTable();
@@ -412,7 +409,8 @@ public:
     void Tick() { ++pendingTicks_; }
 
     void CatchUp() {
-        if (pendingTicks_ > 0) CatchUpWork();
+        if (pendingTicks_ > 0)
+            CatchUpWork();
     }
 
     void CatchUpWork();
@@ -432,6 +430,11 @@ public:
     void GenerateSample();
 
     [[nodiscard]] size_t GetSamplesAvailable() const { return samplesAvailable; }
+
+    [[nodiscard]] uint64_t GetMixLevelChanges() {
+        CatchUp();
+        return mixLevelChanges_;
+    }
 
     size_t ReadSamples(float *output, size_t numSamples);
 

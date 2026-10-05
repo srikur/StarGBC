@@ -8,7 +8,6 @@ from pathlib import Path
 import struct
 import zlib
 
-
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "tests/expected/age-test-roms"
 
@@ -25,7 +24,8 @@ def read_png(path):
         payload = data[offset + 8:offset + 8 + length]
         if tag == b"IHDR":
             width, height, depth, kind, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
-            if (width, height, depth, compression, filtering, interlace) != (160, 144, 8, 0, 0, 0) or kind not in (2, 6):
+            if (width, height, depth, compression, filtering, interlace) != (160, 144, 8, 0, 0, 0) or kind not in (2,
+                                                                                                                   6):
                 raise ValueError(f"Expected a noninterlaced 160x144 RGB/RGBA PNG: {path}")
         elif tag == b"IDAT":
             compressed.extend(payload)

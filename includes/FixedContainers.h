@@ -35,7 +35,8 @@ public:
     constexpr void push_back(const T &value) {
         assert(count_ < Capacity);
         std::size_t idx = head_ + count_;
-        if (idx >= Capacity) idx -= Capacity;
+        if (idx >= Capacity)
+            idx -= Capacity;
         data_[idx] = value;
         ++count_;
     }

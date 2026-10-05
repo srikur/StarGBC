@@ -25,7 +25,8 @@ TEST_CASE("interrupts: simultaneous sources retain independent propagation times
     interrupts.Tick();
     CHECK(interrupts.interruptVisiblePending == 1);
     CHECK_FALSE(interrupts.IsSet(InterruptType::VBlank));
-    for (unsigned dot = 4; dot < 8; ++dot) interrupts.Tick();
+    for (unsigned dot = 4; dot < 8; ++dot)
+        interrupts.Tick();
     CHECK(interrupts.IsSet(InterruptType::VBlank));
     CHECK(interrupts.IsSet(InterruptType::LCDStat));
     CHECK(interrupts.interruptVisiblePending == 0);
