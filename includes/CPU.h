@@ -121,7 +121,7 @@ private:
     Interrupts &interrupts_;
     Registers &regs_;
 
-    [[= NotStateAware]] bool embeddedBootrom_{false};
+    [[=NotStateAware]] bool embeddedBootrom_{false};
 
     uint16_t pc_{0x0000};
     uint16_t sp_{0x0000};

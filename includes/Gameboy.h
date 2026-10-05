@@ -75,8 +75,8 @@ public:
     void ClearAudioBuffer() { audio_.ClearBuffer(); }
 
 private:
-    [[= NotStateAware]] std::string romPath_;
-    [[= NotStateAware]] std::string biosPath_;
+    [[=NotStateAware]] std::string romPath_;
+    [[=NotStateAware]] std::string biosPath_;
 
     RealTimeClock rtc_; // init in constructor
     Cartridge cartridge_; // init in constructor

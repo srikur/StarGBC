@@ -11,7 +11,7 @@ enum class Model : uint8_t {
     Auto,
     DMG0,
     DMGA,
-    DMGB[[= StarParse::Alias{"DMG"}]],
+    DMGB[[=StarParse::Alias{"DMG"}]],
     DMGC,
     MGB,
     SGB,
@@ -21,11 +21,11 @@ enum class Model : uint8_t {
     CGBB,
     CGBC,
     CGBD,
-    CGBE[[= StarParse::Alias{"CGB"}]],
+    CGBE[[=StarParse::Alias{"CGB"}]],
     AGB0,
-    AGBA[[= StarParse::Alias{"AGB"}]],
+    AGBA[[=StarParse::Alias{"AGB"}]],
     AGBAE,
-    AGBB[[= StarParse::Alias{"AGS"}]],
+    AGBB[[=StarParse::Alias{"AGS"}]],
     AGBBE,
 };
 

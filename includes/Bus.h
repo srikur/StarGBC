@@ -87,5 +87,5 @@ public:
     uint8_t psw73{0x00}; // undocumented $FF73
     uint8_t psw74{0x00}; // undocumented $FF74, CGB mode only
     uint8_t pgb75{0x00}; // undocumented $FF75, bits 4-6 writable
-    [[= NotStateAware]] std::vector<uint8_t> bootrom;
+    [[=NotStateAware]] std::vector<uint8_t> bootrom;
 };

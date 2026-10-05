@@ -21,13 +21,13 @@ public:
     // key changes, which also covers LoadState restoring a different tac.
     // 0xFF is unreachable for tac (WriteTAC masks to 0x07), so it forces the
     // first recompute.
-    [[= NotStateAware]] uint8_t cachedTac_{0xFF};
-    [[= NotStateAware]] Speed cachedSpeed_{Speed::Regular};
+    [[=NotStateAware]] uint8_t cachedTac_{0xFF};
+    [[=NotStateAware]] Speed cachedSpeed_{Speed::Regular};
     // A falling edge of bit b happens exactly when the incremented counter's
     // low b+1 bits are zero; a toggle when its low b bits are zero
-    [[= NotStateAware]] uint16_t timerFallMask_{0};
-    [[= NotStateAware]] uint16_t frameSeqBitMask_{0};
-    [[= NotStateAware]] uint16_t frameSeqToggleMask_{0};
+    [[=NotStateAware]] uint16_t timerFallMask_{0};
+    [[=NotStateAware]] uint16_t frameSeqBitMask_{0};
+    [[=NotStateAware]] uint16_t frameSeqToggleMask_{0};
     Audio &audio_;
     Interrupts &interrupts_;
 

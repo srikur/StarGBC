@@ -33,16 +33,16 @@ SDLFrontend::~SDLFrontend() {
     SDL_Quit();
 }
 
-struct[[= StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
-    [[ = StarParse::Positional{0}, = StarParse::Required ]] std::string rom_path;
-    [[= StarParse::Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
-    [[= StarParse::Opt{"Start without speed limitations"}]] bool unthrottled{false};
-    [[= StarParse::Opt{"Use real time clock"}]] bool real_rtc{false};
-    [[= StarParse::Opt{"Start emulator paused"}]] bool debug_start{false};
-    [[= StarParse::Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
-    [[= StarParse::Opt{"Disable audio"}]] bool no_audio{false};
-    [[ = StarParse::Opt{'b', "Bios path"}, = StarParse::Alias{"bios"} ]] std::string bios_path;
-    [[= StarParse::Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
+struct[[=StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
+    [[=StarParse::Positional{0}, =StarParse::Required]] std::string rom_path;
+    [[=StarParse::Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
+    [[=StarParse::Opt{"Start without speed limitations"}]] bool unthrottled{false};
+    [[=StarParse::Opt{"Use real time clock"}]] bool real_rtc{false};
+    [[=StarParse::Opt{"Start emulator paused"}]] bool debug_start{false};
+    [[=StarParse::Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
+    [[=StarParse::Opt{"Disable audio"}]] bool no_audio{false};
+    [[=StarParse::Opt{'b', "Bios path"}, =StarParse::Alias{"bios"}]] std::string bios_path;
+    [[=StarParse::Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
 };
 
 SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {

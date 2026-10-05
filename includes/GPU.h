@@ -143,7 +143,7 @@ public:
     bool initialSCXSet{false};
 
     std::array<uint8_t, VRAM_SIZE> vram{};
-    [[= NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
+    [[=NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
     std::array<uint8_t, 0xA0> oam{};
     std::array<uint8_t, 0x60> extraOam{}; // CGB 0-D RAM behind FEA0-FEFF
     uint8_t lyc = 0; // 0xFF45
@@ -163,7 +163,7 @@ public:
     uint32_t scanlineCounter = 0; // current dot in scanline
 
     bool vblank = false;
-    [[= NotStateAware]] bool frameReady = true;
+    [[=NotStateAware]] bool frameReady = true;
     bool statTriggered{false};
     bool lycInterruptLine_{false};
     bool m2IrqRaisedEarly{false};
@@ -207,19 +207,19 @@ public:
     // quiet HBlank/VBlank dots (advance scanlineCounter, nothing else);
     // lcdOffIdle_ means the LCD is off with no delayed writes in flight. Any
     // register write, speed switch, or state load clears both.
-    [[= NotStateAware]] uint32_t idleDots_{0};
-    [[= NotStateAware]] bool lcdOffIdle_{false};
+    [[=NotStateAware]] uint32_t idleDots_{0};
+    [[=NotStateAware]] bool lcdOffIdle_{false};
     // Mode-2 variant: the rest of an OAM-scan line where only TickOAMScan and
     // the dot counter matter (STAT/LYC state is provably constant)
-    [[= NotStateAware]] uint32_t scanFastDots_{0};
+    [[=NotStateAware]] uint32_t scanFastDots_{0};
     // CGB non-compat mode-3 condensed dots (pixel pipeline only)
-    [[= NotStateAware]] bool mode3Quiet_{false};
+    [[=NotStateAware]] bool mode3Quiet_{false};
     // Count of unprocessed spriteBuffer entries; skips the per-dot trigger scan
-    [[= NotStateAware]] uint8_t spritesPending_{0};
+    [[=NotStateAware]] uint8_t spritesPending_{0};
     // Superset of this line's sprite trigger X positions (never cleared per
     // sprite, so a stale bit only costs a scan)
-    [[= NotStateAware]] std::array<uint32_t, 5> spriteXBits_{};
-    [[= NotStateAware]] bool spriteNegX_{false};
+    [[=NotStateAware]] std::array<uint32_t, 5> spriteXBits_{};
+    [[=NotStateAware]] bool spriteNegX_{false};
     uint8_t clockPause_{0};
     bool doubleSpeed{false};
     uint8_t mode3EndDelay_{0};
@@ -229,12 +229,12 @@ public:
     Model model = Model::DMGB;
     // Cached IsCgb(model): read dozens of times per dot, and the compiler
     // cannot hoist the range compares across non-inlined calls
-    [[= NotStateAware]] bool isCgb_{false};
-    [[= NotStateAware]] bool colorCorrection_{true};
+    [[=NotStateAware]] bool isCgb_{false};
+    [[=NotStateAware]] bool colorCorrection_{true};
     // Color-corrected ARGB for every CGB palette entry (8 palettes x 4
     // colors), maintained on palette-RAM writes instead of per pixel
-    [[= NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
-    [[= NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
+    [[=NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
+    [[=NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
     bool dmgCompat{false};

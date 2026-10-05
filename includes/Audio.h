@@ -317,8 +317,8 @@ class Audio {
     enum class SkipState : uint8_t { Inactive, Skip, Skipped };
 
     bool audioEnabled{false};
-    [[= NotStateAware]] bool emulatorAudioDisabled{false};
-    [[= NotStateAware]] Model model_{Model::CGBE};
+    [[=NotStateAware]] bool emulatorAudioDisabled{false};
+    [[=NotStateAware]] Model model_{Model::CGBE};
     // Free-running DIV event counter (SameBoy's div_divider): incremented
     // before dispatch, so odd values clock the lengths, &3==3 the sweep and
     // &7==7 the envelope countdowns
@@ -331,32 +331,32 @@ class Audio {
     // Host-side output machinery, not APU hardware state: the sample ring
     // buffer refills after a load, the resampler/highpass state is transient,
     // and blSteps/highpassRate are constants rebuilt by the constructor
-    [[= NotStateAware]] std::vector<float> sampleBuffer{};
-    [[= NotStateAware]] size_t bufferWritePos{0};
-    [[= NotStateAware]] size_t bufferReadPos{0};
-    [[= NotStateAware]] size_t samplesAvailable{0};
+    [[=NotStateAware]] std::vector<float> sampleBuffer{};
+    [[=NotStateAware]] size_t bufferWritePos{0};
+    [[=NotStateAware]] size_t bufferReadPos{0};
+    [[=NotStateAware]] size_t samplesAvailable{0};
     // Integer decimation accumulator: += 48000 per APU tick, emits a sample on
     // overflow past 4194304 (= 2^22). The band-limited kernel phase is the
     // fractional position scaled to BL_PHASES, i.e. acc * 2^7 / 2^22 = acc >> 15
-    [[= NotStateAware]] uint32_t sampleAcc_{0};
+    [[=NotStateAware]] uint32_t sampleAcc_{0};
 
-    [[= NotStateAware]] std::array<BandLimited, 4> bandLimited{};
-    [[= NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
-    [[= NotStateAware]] double highpassLeft{0.0};
-    [[= NotStateAware]] double highpassRight{0.0};
-    [[= NotStateAware]] double highpassRate{0.0};
+    [[=NotStateAware]] std::array<BandLimited, 4> bandLimited{};
+    [[=NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
+    [[=NotStateAware]] double highpassLeft{0.0};
+    [[=NotStateAware]] double highpassRight{0.0};
+    [[=NotStateAware]] double highpassRate{0.0};
     // Last-seen mixing inputs; when unchanged, every BandLimitedUpdate would
     // see an exact-zero delta, so GenerateSample skips the level computation.
     // 0xFFFFFFFF is unreachable (nr50 occupies the top packed byte).
-    [[= NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
-    [[= NotStateAware]] std::array<float, 4> lastMixOutputs_{};
-    [[= NotStateAware]] bool hasEarlyPcmGlitch_{false};
-    [[= NotStateAware]] std::array<double, 2> mixLevel_{};
-    [[= NotStateAware]] uint64_t mixLevelChanges_{0};
+    [[=NotStateAware]] uint32_t lastMixRegs_{0xFFFFFFFFu};
+    [[=NotStateAware]] std::array<float, 4> lastMixOutputs_{};
+    [[=NotStateAware]] bool hasEarlyPcmGlitch_{false};
+    [[=NotStateAware]] std::array<double, 2> mixLevel_{};
+    [[=NotStateAware]] uint64_t mixLevelChanges_{0};
     // APU ticks deferred by the master loop; materialized by CatchUp() before
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
-    [[= NotStateAware]] uint32_t pendingTicks_{0};
+    [[=NotStateAware]] uint32_t pendingTicks_{0};
 
     void InitBandLimitedTable();
 

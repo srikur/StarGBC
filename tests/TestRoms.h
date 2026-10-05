@@ -699,9 +699,9 @@ static void checkRomCase() {
             name += " [" + model + "]";
         }
         names.push_back(std::move(name));
-        doctest::detail::regTest(doctest::detail::TestCase(checkRomCase, "romTestcases", static_cast<unsigned>(i),
-                                                           doctest::detail::TestSuite() * "rom") *
-                                 names.back().c_str());
+        doctest::detail::regTest(
+                doctest::detail::TestCase(checkRomCase, "romTestcases", static_cast<unsigned>(i), doctest::detail::TestSuite() * "rom") *
+                names.back().c_str());
     }
     return true;
 }();

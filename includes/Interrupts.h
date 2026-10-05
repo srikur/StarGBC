@@ -15,7 +15,7 @@ struct Interrupts {
     bool interruptDelay{false};
     // True whenever any entry of the two delay arrays is nonzero, so the
     // per-dot Tick can skip the scan in the (overwhelmingly common) idle case
-    [[= NotStateAware]] bool delaysPending_{false};
+    [[=NotStateAware]] bool delaysPending_{false};
 
     void Set(InterruptType, bool);
 
