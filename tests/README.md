@@ -1,6 +1,6 @@
 ## Test ROM Performance
 
-Current Performance: (2936/4372)
+Current Performance: (2942/4372)
 
 | Test                                                                                               | StarGBC            |
 |----------------------------------------------------------------------------------------------------|--------------------|
@@ -4136,16 +4136,16 @@ Current Performance: (2936/4372)
 | hacktix/bully.gb (DMG)                                                                             | :white_check_mark: |
 | hacktix/bully.gb (GBC)                                                                             | :white_check_mark: |
 | hacktix/strikethrough.gb                                                                           | :white_check_mark: |
-| little-things-gb/firstwhite.gb                                                                     | :grey_question:    |
-| little-things-gb/tellinglys.gb                                                                     | :grey_question:    |
-| magentests/bg_oam_priority.gbc                                                                     | :grey_question:    |
-| magentests/hblank_vram_dma.gbc                                                                     | :grey_question:    |
-| magentests/key0_lock_after_boot.gbc                                                                | :grey_question:    |
-| magentests/mbc_oob_sram_mbc1.gbc                                                                   | :grey_question:    |
-| magentests/mbc_oob_sram_mbc3.gbc                                                                   | :grey_question:    |
-| magentests/mbc_oob_sram_mbc5.gbc                                                                   | :grey_question:    |
-| magentests/oam_internal_priority.gbc                                                               | :grey_question:    |
-| magentests/ppu_disabled_state.gbc                                                                  | :grey_question:    |
+| little-things-gb/firstwhite.gb                                                                     | :x:                |
+| little-things-gb/tellinglys.gb                                                                     | :white_check_mark: |
+| magentests/bg_oam_priority.gbc                                                                     | :white_check_mark: |
+| magentests/hblank_vram_dma.gbc                                                                     | :x:                |
+| magentests/key0_lock_after_boot.gbc                                                                | :white_check_mark: |
+| magentests/mbc_oob_sram_mbc1.gbc                                                                   | :white_check_mark: |
+| magentests/mbc_oob_sram_mbc3.gbc                                                                   | :x:                |
+| magentests/mbc_oob_sram_mbc5.gbc                                                                   | :x:                |
+| magentests/oam_internal_priority.gbc                                                               | :white_check_mark: |
+| magentests/ppu_disabled_state.gbc                                                                  | :white_check_mark: |
 | mbc3-tester/mbc3-tester.gb                                                                         | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m2_win_en_toggle.gb (DMG)                                               | :white_check_mark: |
 | mealybug-tearoom-tests/ppu/m3_bgp_change.gb (DMG)                                                  | :white_check_mark: |
