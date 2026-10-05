@@ -46,6 +46,38 @@ static bool mooneyePassed(const Gameboy &gameboy) {
     return regs.GetBC() == 0x0305 && regs.GetDE() == 0x080D && regs.GetHL() == 0x1522;
 }
 
+static const doctest::TestCaseData *currentTestCase = nullptr;
+
+struct CurrentTestCaseListener : doctest::IReporter {
+    explicit CurrentTestCaseListener(const doctest::ContextOptions &) {}
+    void test_case_start(const doctest::TestCaseData &tc) override { currentTestCase = &tc; }
+    void report_query(const doctest::QueryData &) override {}
+    void test_run_start() override {}
+    void test_run_end(const doctest::TestRunStats &) override {}
+    void test_case_reenter(const doctest::TestCaseData &) override {}
+    void test_case_end(const doctest::CurrentTestCaseStats &) override {}
+    void test_case_exception(const doctest::TestCaseException &) override {}
+    void subcase_start(const doctest::SubcaseSignature &) override {}
+    void subcase_end() override {}
+    void log_assert(const doctest::AssertData &) override {}
+    void log_message(const doctest::MessageData &) override {}
+    void test_case_skipped(const doctest::TestCaseData &) override {}
+};
+
+DOCTEST_REGISTER_LISTENER("current-test-case", 0, CurrentTestCaseListener);
+
+template<const auto &Cases, auto Check>
+static bool registerTableCases(const char *file, const char *suite) {
+    const auto run = [] {
+        const auto entry = std::ranges::find(Cases, currentTestCase->m_line, [](const auto &tc) { return tc.line; });
+        Check(static_cast<size_t>(entry - std::ranges::begin(Cases)));
+    };
+    for (const auto &tc : Cases) {
+        doctest::detail::regTest(doctest::detail::TestCase(run, file, tc.line, doctest::detail::TestSuite() * suite) * tc.name);
+    }
+    return true;
+}
+
 static std::vector<uint32_t> readBinaryFile(const std::string &path) {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs.is_open()) {

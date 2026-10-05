@@ -4,7 +4,6 @@ use warnings;
 use File::Basename qw(basename dirname);
 use File::Path qw(make_path);
 
-my $ROMS_PLACEHOLDER = 'STRING_REPLACE_GBMICROTEST_ROMS';
 my $CASES_PLACEHOLDER = 'GBMICROTEST_EXPANSION_CASES';
 
 die "usage: $0 <rom-list.txt> <template.h> <output.h>\n" unless @ARGV == 3;
@@ -17,7 +16,7 @@ while (my $line = <$list>) {
     next if $line eq '' || $line =~ /^#/;
     die "$listPath:$.: '$line' can't be written as a C++ string literal\n" if $line =~ /["\\]/;
     die "$listPath:$.: duplicate ROM '$line'\n" if $seen{$line}++;
-    push @roms, $line;
+    push @roms, {rom => $line, line => $.};
 }
 close($list);
 die "$listPath: no ROMs listed\n" unless @roms;
@@ -28,42 +27,18 @@ my @output = (
         . " and tests/" . basename($listPath) . ".\n",
     "// Do not edit: change those files instead.\n",
 );
-my ($romsReplaced, $casesReplaced) = (0, 0);
+my $casesReplaced = 0;
 while (my $line = <$template>) {
-    if ($line =~ /^\s*#\s*(define|undef)\s+\Q$ROMS_PLACEHOLDER\E\s*$/) {
-        # Take the blank line that set the directive apart along with it
-        if ($1 eq 'undef') {
-            pop @output if @output && $output[-1] =~ /^\s*$/;
-        }
-        else {
-            my $next = <$template>;
-            if (defined $next && $next !~ /^\s*$/) {
-                $line = $next;
-                redo;
-            }
-        }
-    }
-    elsif ($line =~ /^\s*#\s*define\s+\Q$CASES_PLACEHOLDER\E\s*$/) {
-        push @output, map {"GBMICRO_TEST($_, \"" . basename($roms[$_]) . "\")\n"} 0 .. $#roms;
+    if ($line =~ /^(\s*)#\s*define\s+\Q$CASES_PLACEHOLDER\E\s*$/) {
+        my $indent = $1;
+        push @output, map {"${indent}GBMICROTEST_CASE(\"$_->{rom}\", \"" . basename($_->{rom}) . "\", $_->{line})\n"} @roms;
         ++$casesReplaced;
-    }
-    elsif ($line =~ /^(\s*)(.*)\b\Q$ROMS_PLACEHOLDER\E\b/) {
-        my ($indent, $prefix) = ($1, $2);
-        my $entryIndent = $prefix eq '' ? $indent : "$indent    ";
-        my $entries = join('', map {"$entryIndent\"$_\",\n"} @roms);
-        $entries = "\n$entries$indent" unless $prefix eq '';
-        $line =~ s/^\s*// if $prefix eq '';
-        $line =~ s/\b\Q$ROMS_PLACEHOLDER\E\b\s*\n?/$entries/;
-        push @output, $line;
-        ++$romsReplaced;
     }
     else {
         push @output, $line;
     }
 }
 close($template);
-die "$templatePath: expected exactly one use of '$ROMS_PLACEHOLDER', found $romsReplaced\n"
-    unless $romsReplaced == 1;
 die "$templatePath: expected exactly one '#define $CASES_PLACEHOLDER' line, found $casesReplaced\n"
     unless $casesReplaced == 1;
 

@@ -71,35 +71,41 @@ static GbMicrotestResult runGbMicrotest(const std::string &rom) {
     }
 }
 
-#define STRING_REPLACE_GBMICROTEST_ROMS
+struct GbMicrotestCase {
+    const char *rom;
+    const char *name;
+    unsigned line; // in GbMicrotest.txt
+};
 
-static const std::vector<std::string> gbMicrotestRoms = {STRING_REPLACE_GBMICROTEST_ROMS};
+#define GBMICROTEST_CASE(ROM, NAME, LINE) {ROM, "gbmicrotest: " NAME, LINE},
 
-#undef STRING_REPLACE_GBMICROTEST_ROMS
+static constexpr GbMicrotestCase gbMicrotestCases[] = {
+#define GBMICROTEST_EXPANSION_CASES
+};
+
+#undef GBMICROTEST_CASE
 
 static auto &gbMicrotestFutures() {
     using SF = std::shared_future<GbMicrotestResult>;
     static std::vector<SF> futures = [] {
         std::vector<SF> tmp;
-        tmp.reserve(gbMicrotestRoms.size());
+        tmp.reserve(std::size(gbMicrotestCases));
 
-        for (const auto &rom : gbMicrotestRoms) {
+        for (const auto &tc : gbMicrotestCases) {
             tmp.emplace_back(
-                    std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [rom] { return runGbMicrotest(rom); }).share());
+                    std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [tc] { return runGbMicrotest(tc.rom); }).share());
         }
         return tmp;
     }();
     return futures;
 }
 
-#define GBMICRO_TEST(IDX, ROM_STR)                                                                                                                   \
-    TEST_CASE("gbmicrotest: " ROM_STR *doctest::test_suite("gbmicrotest")) {                                                                         \
-        const auto &result = gbMicrotestFutures()[IDX].get();                                                                                        \
-        CHECK_MESSAGE(result.passed, result.details);                                                                                                \
-    }
+static void checkGbMicrotestCase(const size_t idx) {
+    const auto &result = gbMicrotestFutures()[idx].get();
+    CHECK_MESSAGE(result.passed, result.details);
+}
 
-#define GBMICROTEST_EXPANSION_CASES
-
-#undef GBMICRO_TEST
+[[maybe_unused]] static const bool gbMicrotestCasesRegistered =
+        registerTableCases<gbMicrotestCases, checkGbMicrotestCase>("tests/GbMicrotest.txt", "gbmicrotest");
 
 #endif // STARGBC_GBMICROTEST_H

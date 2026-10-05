@@ -6,8 +6,7 @@ use File::Path qw(make_path);
 use File::Spec;
 use FindBin qw($Bin);
 
-my $CASES_PLACEHOLDER = 'STRING_REPLACE_GAMBATTE_CASES';
-my $TESTS_PLACEHOLDER = 'GAMBATTE_EXPANSION_CASES';
+my $CASES_PLACEHOLDER = 'GAMBATTE_EXPANSION_CASES';
 my $ROM_ROOT = 'roms/gambatte/';
 my $MODEL_HEADER = File::Spec->catfile($Bin, File::Spec->updir, 'includes', 'Model.h');
 
@@ -42,7 +41,7 @@ while (my $line = <$list>) {
             . join(', ', map {lc} sort keys %models) . ")\n";
     my $name = ($rom =~ s/^\Q$ROM_ROOT\E//r) . " [" . lc($model) . "]";
     die "$listPath:$.: duplicate case '$name'\n" if $seen{$name}++;
-    push @cases, {rom => $rom, expected => $expected, model => $model, name => $name};
+    push @cases, {rom => $rom, expected => $expected, model => $model, name => $name, line => $.};
 }
 close($list);
 die "$listPath: no cases listed\n" unless @cases;
@@ -53,32 +52,11 @@ my @output = (
         . " and tests/" . basename($listPath) . ".\n",
     "// Do not edit: change those files instead.\n",
 );
-my ($casesReplaced, $testsReplaced) = (0, 0);
+my $casesReplaced = 0;
 while (my $line = <$template>) {
-    if ($line =~ /^\s*#\s*(define|undef)\s+\Q$CASES_PLACEHOLDER\E\s*$/) {
-        if ($1 eq 'undef') {
-            pop @output if @output && $output[-1] =~ /^\s*$/;
-        }
-        else {
-            my $next = <$template>;
-            if (defined $next && $next !~ /^\s*$/) {
-                $line = $next;
-                redo;
-            }
-        }
-    }
-    elsif ($line =~ /^\s*#\s*define\s+\Q$TESTS_PLACEHOLDER\E\s*$/) {
-        push @output, map {"GAMBATTE_TEST($_, \"$cases[$_]{name}\")\n"} 0 .. $#cases;
-        ++$testsReplaced;
-    }
-    elsif ($line =~ /^(\s*)(.*)\b\Q$CASES_PLACEHOLDER\E\b/) {
-        my ($indent, $prefix) = ($1, $2);
-        my $entryIndent = $prefix eq '' ? $indent : "$indent    ";
-        my $entries = join('', map {"$entryIndent\{\"$_->{rom}\", \"$_->{expected}\", Model::$_->{model}},\n"} @cases);
-        $entries = "\n$entries$indent" unless $prefix eq '';
-        $line =~ s/^\s*// if $prefix eq '';
-        $line =~ s/\b\Q$CASES_PLACEHOLDER\E\b\s*\n?/$entries/;
-        push @output, $line;
+    if ($line =~ /^(\s*)#\s*define\s+\Q$CASES_PLACEHOLDER\E\s*$/) {
+        my $indent = $1;
+        push @output, map {"${indent}GAMBATTE_CASE(\"$_->{rom}\", \"$_->{expected}\", $_->{model}, \"$_->{name}\", $_->{line})\n"} @cases;
         ++$casesReplaced;
     }
     else {
@@ -86,10 +64,8 @@ while (my $line = <$template>) {
     }
 }
 close($template);
-die "$templatePath: expected exactly one use of '$CASES_PLACEHOLDER', found $casesReplaced\n"
+die "$templatePath: expected exactly one '#define $CASES_PLACEHOLDER' line, found $casesReplaced\n"
     unless $casesReplaced == 1;
-die "$templatePath: expected exactly one '#define $TESTS_PLACEHOLDER' line, found $testsReplaced\n"
-    unless $testsReplaced == 1;
 
 make_path(dirname($outputPath));
 open(my $out, '>', $outputPath) or die "$outputPath: $!\n";

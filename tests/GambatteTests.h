@@ -11,10 +11,12 @@
 static constexpr unsigned GAMBATTE_FRAME_LIMIT = 15;
 
 struct GambatteCase {
-    std::string rom;
+    const char *rom;
     // .screen path, "out:<hex>" for a result printed as hex tiles, or "audio:<0|1>" for silent/audible
-    std::string expected;
+    const char *expected;
     Model model;
+    const char *name;
+    unsigned line; // in GambatteTests.txt
 };
 
 struct GambatteResult {
@@ -22,11 +24,13 @@ struct GambatteResult {
     std::string details;
 };
 
-#define STRING_REPLACE_GAMBATTE_CASES
+#define GAMBATTE_CASE(ROM, EXPECTED, MODEL, NAME, LINE) {ROM, EXPECTED, Model::MODEL, "gambatte: " NAME, LINE},
 
-static const std::vector<GambatteCase> gambatte_roms = {STRING_REPLACE_GAMBATTE_CASES};
+static constexpr GambatteCase gambatteCases[] = {
+#define GAMBATTE_EXPANSION_CASES
+};
 
-#undef STRING_REPLACE_GAMBATTE_CASES
+#undef GAMBATTE_CASE
 
 static constexpr std::array<std::array<uint8_t, 8>, 16> GAMBATTE_HEX_TILES{{
         {0x00, 0x7F, 0x41, 0x41, 0x41, 0x41, 0x41, 0x7F}, // 0
@@ -65,7 +69,7 @@ static char readGambatteHexTile(const uint32_t *screen, const size_t index) {
 
 static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
     ThreadPermit _permit;
-    const std::string label = gambatte_case.rom + " [" + std::string(ModelName(gambatte_case.model)) + "]";
+    const std::string label = std::string(gambatte_case.rom) + " [" + std::string(ModelName(gambatte_case.model)) + "]";
     try {
         const auto gameboy = Gameboy::init({
                 .romName = gambatte_case.rom,
@@ -114,9 +118,9 @@ static auto &gambatteFutures() {
     using SF = std::shared_future<GambatteResult>;
     static std::vector<SF> futures = [] {
         std::vector<SF> tmp;
-        tmp.reserve(gambatte_roms.size());
+        tmp.reserve(std::size(gambatteCases));
 
-        for (const auto &rom : gambatte_roms) {
+        for (const auto &rom : gambatteCases) {
             tmp.emplace_back(
                     std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [rom] { return runGambatteTest(rom); }).share());
         }
@@ -125,14 +129,12 @@ static auto &gambatteFutures() {
     return futures;
 }
 
-#define GAMBATTE_TEST(IDX, ROM_STR)                                                                                                                  \
-    TEST_CASE("gambatte: " ROM_STR *doctest::test_suite("gambatte")) {                                                                               \
-        const auto &result = gambatteFutures()[IDX].get();                                                                                           \
-        CHECK_MESSAGE(result.passed, result.details);                                                                                                \
-    }
+static void checkGambatteCase(const size_t idx) {
+    const auto &result = gambatteFutures()[idx].get();
+    CHECK_MESSAGE(result.passed, result.details);
+}
 
-#define GAMBATTE_EXPANSION_CASES
-
-#undef GAMBATTE_TEST
+[[maybe_unused]] static const bool gambatteCasesRegistered =
+        registerTableCases<gambatteCases, checkGambatteCase>("tests/GambatteTests.txt", "gambatte");
 
 #endif // STARGBC_GAMBATTETESTS_H
