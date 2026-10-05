@@ -93,7 +93,7 @@ static auto &gbMicrotestFutures() {
 }
 
 #define GBMICRO_TEST(IDX, ROM_STR)                                                                                                                   \
-    TEST_CASE("gbmicrotest: " ROM_STR) {                                                                                                             \
+    TEST_CASE("gbmicrotest: " ROM_STR *doctest::test_suite("gbmicrotest")) {                                                                         \
         const auto &result = gbMicrotestFutures()[IDX].get();                                                                                        \
         CHECK_MESSAGE(result.passed, result.details);                                                                                                \
     }

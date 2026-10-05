@@ -68,7 +68,7 @@ static auto &gambatteFutures() {
 }
 
 #define GAMBATTE_TEST(IDX, ROM_STR)                                                                                                                  \
-    TEST_CASE("gambatte: " ROM_STR) {                                                                                                                \
+    TEST_CASE("gambatte: " ROM_STR *doctest::test_suite("gambatte")) {                                                                               \
         const auto &result = gambatteFutures()[IDX].get();                                                                                           \
         CHECK_MESSAGE(result.passed, result.details);                                                                                                \
     }

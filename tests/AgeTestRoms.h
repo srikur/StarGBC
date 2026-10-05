@@ -91,7 +91,7 @@ static const std::vector<std::shared_future<AgeTestResult>> &ageTestFutures() {
 }
 
 #define AGE_TEST(INDEX, ROM, MODEL, REFERENCE)                                                                                                       \
-    TEST_CASE("age: " ROM " [" #MODEL "]") {                                                                                                         \
+    TEST_CASE("age: " ROM " [" #MODEL "]" * doctest::test_suite("age")) {                                                                            \
         const auto &result = ageTestFutures()[INDEX].get();                                                                                          \
         CHECK_MESSAGE(result.passed, result.details);                                                                                                \
     }

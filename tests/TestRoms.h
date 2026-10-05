@@ -2,6 +2,8 @@
 #define STARGBC_TESTROMS_H
 
 #include <Gameboy.h>
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <fstream>
 #include <future>
@@ -608,7 +610,7 @@ static std::vector<Case> modelRomCases() {
     return cases;
 }
 
-TEST_CASE("model ROMs: Mooneye startup and HALT, SameSuite early CGB audio") {
+TEST_CASE("model ROMs: Mooneye startup and HALT, SameSuite early CGB audio" * doctest::test_suite("rom")) {
     const auto cases = modelRomCases();
     std::vector<std::future<bool>> results;
     for (const auto &tc : cases) {
@@ -637,7 +639,7 @@ static auto &romFutures() {
 }
 
 #define ROM_TEST(IDX, ROM_STR)                                                                                                                       \
-    TEST_CASE("rom: " ROM_STR) {                                                                                                                     \
+    TEST_CASE("rom: " ROM_STR *doctest::test_suite("rom")) {                                                                                         \
         auto &futures = romFutures();                                                                                                                \
         CHECK_MESSAGE(futures[IDX].get(), "failed: " ROM_STR);                                                                                       \
     }
@@ -967,9 +969,24 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     std::string benchRom;
     Model benchModel = Model::Auto;
 
+    static constexpr std::array<std::pair<std::string_view, std::string_view>, 4> kSuiteFlags{{
+            {"--roms", "rom"},
+            {"--age", "age"},
+            {"--gbmicrotest", "gbmicrotest"},
+            {"--gambatte", "gambatte"},
+    }};
+    std::string suites;
+    bool suiteFilterGiven = false;
+
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        if (constexpr std::string_view kBench = "--bench="; arg.rfind(kBench, 0) == 0) {
+        if (const auto suite = std::ranges::find(kSuiteFlags, arg, &std::pair<std::string_view, std::string_view>::first);
+            suite != kSuiteFlags.end()) {
+            if (!suites.empty()) {
+                suites += ',';
+            }
+            suites += suite->second;
+        } else if (constexpr std::string_view kBench = "--bench="; arg.rfind(kBench, 0) == 0) {
             benchRom = arg.substr(kBench.size());
         } else if (constexpr std::string_view kBenchModel = "--bench-model="; arg.rfind(kBenchModel, 0) == 0) {
             const auto parsed = ModelFromName(arg.substr(kBenchModel.size()));
@@ -998,8 +1015,15 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 return EXIT_FAILURE;
             }
         } else {
+            suiteFilterGiven |=
+                    arg.starts_with("--test-suite=") || arg.starts_with("-ts=") || arg.starts_with("--dt-test-suite=") || arg.starts_with("--dt-ts=");
             doctest_args.push_back(argv[i]);
         }
+    }
+
+    if (!suites.empty() && suiteFilterGiven) {
+        std::cerr << "--roms/--age/--gbmicrotest/--gambatte can't be combined with --test-suite" << std::endl;
+        return EXIT_FAILURE;
     }
 
     if (!benchRom.empty()) {
@@ -1011,6 +1035,10 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     }
     threadSemaphore = std::make_shared<std::counting_semaphore<>>(maxThreads);
     parallelRomTests = doctest_args.size() == 1;
+    const std::string suiteFilter = "--test-suite=" + suites;
+    if (!suites.empty()) {
+        doctest_args.push_back(const_cast<char *>(suiteFilter.c_str()));
+    }
 
     doctest::Context ctx;
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());
