@@ -27,6 +27,9 @@ class RealTimeClock {
     };
 
 public:
+    static constexpr size_t kSaveFooterSize = 48;
+    static constexpr size_t kSaveFooterMinSize = 44;
+
     // t-cycle ticker per second
     static constexpr uint64_t RTC_TICKS_PER_SECOND = 4194304;
 
@@ -54,6 +57,10 @@ public:
     void Load(std::ifstream &stateFile);
 
     void Save(std::ofstream &stateFile) const;
+
+    void LoadSaveFooter(std::ifstream &saveFile);
+
+    void WriteSaveFooter(std::ofstream &saveFile) const;
 
     Clock realClock_{};
     Clock latchedClock_{};

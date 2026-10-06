@@ -39,6 +39,40 @@ void RealTimeClock::Save(std::ofstream &stateFile) const {
     stateFile.write(reinterpret_cast<const char *>(&realClock_.dayUpper_), sizeof(realClock_.dayUpper_));
 }
 
+void RealTimeClock::LoadSaveFooter(std::ifstream &saveFile) {
+    auto readRegister = [&]() -> uint8_t {
+        uint8_t bytes[4]{};
+        saveFile.read(reinterpret_cast<char *>(bytes), sizeof(bytes));
+        return bytes[0]; // every register fits in the low byte
+    };
+    for (Clock *clock : {&realClock_, &latchedClock_}) {
+        clock->seconds_ = readRegister();
+        clock->minutes_ = readRegister();
+        clock->hours_ = readRegister();
+        clock->dayLower_ = readRegister();
+        clock->dayUpper_ = readRegister();
+    }
+    halted_ = realClock_.dayUpper_ & 0x40;
+    RecalculateZeroTime();
+}
+
+void RealTimeClock::WriteSaveFooter(std::ofstream &saveFile) const {
+    auto writeLE = [&](uint64_t value, const size_t size) {
+        for (size_t i = 0; i < size; i++, value >>= 8) {
+            const auto byte = static_cast<char>(value & 0xFF);
+            saveFile.write(&byte, 1);
+        }
+    };
+    for (const Clock &clock : {realClock_, latchedClock_}) {
+        writeLE(clock.seconds_, 4);
+        writeLE(clock.minutes_, 4);
+        writeLE(clock.hours_, 4);
+        writeLE(clock.dayLower_, 4);
+        writeLE(clock.dayUpper_, 4);
+    }
+    writeLE(NowSeconds(), 8);
+}
+
 void RealTimeClock::Tick() {
     if (halted_)
         return;
