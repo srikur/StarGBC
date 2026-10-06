@@ -13,11 +13,15 @@
 class Bus {
 public:
     explicit Bus(Joypad &joypad, Memory &memory, Timer &timer, Cartridge &cartridge, Serial &serial, DMA &dma, Audio &audio, Interrupts &interrupts,
-                 GPU &gpu) :
-        joypad_(joypad), memory_(memory), timer_(timer), cartridge_(cartridge), serial_(serial), dma_(dma), audio_(audio), interrupts_(interrupts),
-        gpu_(gpu) {}
+                 GPU &gpu) : joypad_(joypad), memory_(memory), timer_(timer), cartridge_(cartridge), serial_(serial), dma_(dma), audio_(audio),
+                             interrupts_(interrupts),
+                             gpu_(gpu) {}
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
+
+    [[nodiscard]] uint8_t DebugPeek(uint16_t address) const;
+
+    void DebugPoke(uint16_t address, uint8_t value) const;
 
     [[nodiscard]] int DmaBusFor(uint16_t) const;
 

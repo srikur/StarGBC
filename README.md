@@ -17,6 +17,7 @@
 3. [Ninja](https://github.com/ninja-build/ninja)
 4. [spdlog](https://github.com/gabime/spdlog)
 5. [starparse](https://github.com/srikur/starparse)
+6. [Lua](https://www.lua.org/) 5.5.1 (optional, enabled by default)
 
 All library dependencies are downloaded and built automatically at configure
 time via CMake's FetchContent. Only CMake 4+ and Ninja need to be installed.
@@ -45,3 +46,13 @@ The physical model stays fixed when a Color or Advance runs a monochrome
 cartridge. `auto` selects DMG-B for monochrome cartridges and CGB-E for Color
 cartridges. The aliases `dmg`, `cgb`, `agb`, and `ags` select DMG-B, CGB-E,
 AGB-A, and AGB-B respectively.
+
+## Lua scripting
+
+Run gameplay automation and memory inspection scripts:
+
+```bash
+build/release/Release/StarGBC --script scripting/examples/autofire.lua game.gbc
+```
+
+Use Shift+F5 to start or stop the selected script; F5 reloads it while running.

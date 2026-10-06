@@ -1,0 +1,3 @@
+add_library(StarGBC_Scripting STATIC src/LuaRuntime.cpp src/LuaBindings.cpp)
+target_include_directories(StarGBC_Scripting PUBLIC include PRIVATE src)
+target_link_libraries(StarGBC_Scripting PUBLIC StarGBC_Core PRIVATE stargbc_lua)
