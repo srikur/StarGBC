@@ -37,20 +37,25 @@ SDLFrontend::~SDLFrontend() {
     SDL_Quit();
 }
 
-struct[[=StarParse::Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
-    [[=StarParse::Positional{0}, =StarParse::Required]] std::string rom_path;
-    [[=StarParse::Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
-    [[=StarParse::Opt{"Start without speed limitations"}]] bool unthrottled{false};
-    [[=StarParse::Opt{"Use real time clock"}]] bool real_rtc{false};
-    [[=StarParse::Opt{"Start emulator paused"}]] bool debug_start{false};
-    [[=StarParse::Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
-    [[=StarParse::Opt{"Disable audio"}]] bool no_audio{false};
-    [[=StarParse::Opt{'b', "Bios path"}, =StarParse::Alias{"bios"}]] std::string bios_path;
-    [[=StarParse::Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
-    [[= StarParse::Opt{"Lua script to start/stop with Shift+F5"}]] std::string script;
-    [[=StarParse::Opt{"Lua instructions per frame"}]] uint64_t script_instruction_budget{1'000'000};
-    [[=StarParse::Opt{"Lua memory limit in MiB"}]] uint64_t script_memory_mib{32};
-};
+namespace {
+    using namespace StarParse;
+
+    struct[[=Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
+        [[=Positional{0}, =Required]] std::string rom_path;
+        [[=Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
+        [[=Opt{"Start without speed limitations"}]] bool unthrottled{false};
+        [[=Opt{"Use real time clock"}]] bool real_rtc{false};
+        [[=Opt{"Start emulator paused"}]] bool debug_start{false};
+        [[=Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
+        [[=Opt{"Disable audio"}]] bool no_audio{false};
+        [[=Opt{"Window size scale"}, =Alias{"scale"}, =Range{1, 5}]] int window_scale{3};
+        [[=Opt{'b', "Bios path"}, =Alias{"bios"}]] std::string bios_path;
+        [[=Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
+        [[=Opt{"Lua script to start/stop with Shift+F5"}]] std::string script;
+        [[=Opt{"Lua instructions per frame"}]] uint64_t script_instruction_budget{1'000'000};
+        [[=Opt{"Lua memory limit in MiB"}]] uint64_t script_memory_mib{32};
+    };
+}
 
 SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     SDL_SetAppMetadata(kAppName.data(), kAppVersion.data(), kAppIdentifier.data());
@@ -71,6 +76,7 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     throttled_ = !args->unthrottled;
     audioEnabled_ = !args->no_audio;
     scriptPath_ = args->script;
+    windowScale_ = args->window_scale;
 #ifndef STARGBC_ENABLE_LUA
     if (!scriptPath_.empty()) {
         SDL_Log("This build does not include Lua scripting support");
@@ -88,7 +94,8 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer(kAppName.data(), GB_SCREEN_W * WINDOW_SCALE, GB_SCREEN_H * WINDOW_SCALE, SDL_WINDOW_RESIZABLE, &window_,
+    if (!SDL_CreateWindowAndRenderer(kAppName.data(), GB_SCREEN_W * windowScale_, GB_SCREEN_H * windowScale_, SDL_WINDOW_RESIZABLE,
+                                     &window_,
                                      &renderer_)) {
         SDL_Log("CreateWindowAndRenderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -392,21 +399,23 @@ void SDLFrontend::SaveScreenshot() const {
         std::ofstream file(romPath_ + ".screen", std::ios::binary | std::ios::trunc);
         if (!file.is_open())
             throw std::runtime_error("Could not open " + romPath_ + ".screen");
-        file.write(reinterpret_cast<const char *>(gameboy_->GetScreenData()), GB_SCREEN_W * GB_SCREEN_H * 4);
+        file.write(reinterpret_cast<const char *>(gameboy_->GetScreenData()), GB_SCREEN_W * GB_SCREEN_H * windowScale_);
         std::fprintf(stderr, "Saved screen to %s.screen\n", romPath_.c_str());
     } catch (const std::exception &e) {
         std::fprintf(stderr, "Failed to save screen: %s\n", e.what());
     }
 }
 
-struct SaveStateHeader {
-    std::array<char, 8> magic;
-    uint64_t stateSize;
-    uint32_t version;
-    uint16_t cartChecksum;
-    uint8_t model;
-    uint8_t reserved;
-};
+namespace {
+    struct SaveStateHeader {
+        std::array<char, 8> magic;
+        uint64_t stateSize;
+        uint32_t version;
+        uint16_t cartChecksum;
+        uint8_t model;
+        uint8_t reserved;
+    };
+}
 
 static_assert(sizeof(SaveStateHeader) == 24 && std::has_unique_object_representations_v<SaveStateHeader>);
 
