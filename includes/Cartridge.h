@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <functional>
+#include <optional>
 #include "RealTimeClock.h"
 
 class Cartridge {
@@ -27,6 +28,10 @@ public:
 
     void WriteByte(uint16_t address, uint8_t value);
 
+    [[nodiscard]] uint8_t DebugPeek(uint16_t address) const;
+
+    void DebugPoke(uint16_t address, uint8_t value);
+
     bool SaveState(std::ofstream &stateFile) const;
 
     bool LoadState(std::ifstream &stateFile);
@@ -38,7 +43,11 @@ public:
     [[nodiscard]] bool BankingStateValid() const { return ramBank <= 0x0F; }
 
 private:
+    [[nodiscard]] std::optional<size_t> DebugRamOffset(uint16_t address) const;
+
     void ReadFile(const std::string &file);
+
+    [[nodiscard]] bool HasRtc() const;
 
     void LoadRam(uint32_t size);
 

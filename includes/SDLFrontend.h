@@ -8,6 +8,10 @@
 
 #include "Audio.h"
 #include "Gameboy.h"
+#include "EmulationSession.h"
+#ifdef STARGBC_ENABLE_LUA
+#include "LuaRuntime.h"
+#endif
 
 class SDLFrontend {
 public:
@@ -59,6 +63,12 @@ private:
     SDL_Texture *texture_{nullptr};
     SDL_AudioStream *audioStream_{nullptr};
     std::unique_ptr<Gameboy> gameboy_;
+    std::unique_ptr<EmulationSession> session_;
+#ifdef STARGBC_ENABLE_LUA
+    std::unique_ptr<LuaRuntime> lua_;
+#endif
+    std::string scriptPath_;
+    uint64_t audioStateGeneration_{0};
     std::string romPath_;
     std::vector<float> audioBuffer_;
     bool useNearest_{true};

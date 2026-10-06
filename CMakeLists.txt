@@ -38,6 +38,11 @@ FetchContent_Declare(starparse
         EXCLUDE_FROM_ALL SYSTEM)
 FetchContent_MakeAvailable(SDL3 spdlog doctest starparse)
 
+option(STARGBC_ENABLE_LUA "Build Lua scripting support" ON)
+if(STARGBC_ENABLE_LUA)
+    include(scripting/cmake/Lua.cmake)
+endif()
+
 if(STARGBC_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON CACHE BOOL
         "Enable link-time optimization in Release builds")
@@ -61,4 +66,9 @@ endif()
 
 add_subdirectory(bootrom)
 add_subdirectory(src)
+if(STARGBC_ENABLE_LUA)
+    add_subdirectory(scripting)
+    target_link_libraries(StarGBC PRIVATE StarGBC_Scripting)
+    target_compile_definitions(StarGBC PRIVATE STARGBC_ENABLE_LUA=1)
+endif()
 add_subdirectory(tests)

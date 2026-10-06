@@ -20,14 +20,19 @@ std::string Cartridge::RemoveExtension(const std::string &filename) {
     return lastdot == std::string::npos ? filename : filename.substr(0, lastdot);
 }
 
+bool Cartridge::HasRtc() const { return gameRom_[0x147] == 0x0F || gameRom_[0x147] == 0x10; }
+
 void Cartridge::LoadRam(const uint32_t size) {
-    std::ifstream ifs(savepath_, std::ios::binary);
+    std::ifstream ifs(savepath_, std::ios::binary | std::ios::ate);
     if (!ifs.is_open()) {
         std::fill_n(gameRam_.begin(), size, 0);
         return;
     }
-    rtc_.Load(ifs);
+    const auto fileSize = static_cast<size_t>(ifs.tellg());
+    ifs.seekg(0);
     ifs.read(reinterpret_cast<char *>(gameRam_.data()), size);
+    if (HasRtc() && fileSize >= size + RealTimeClock::kSaveFooterMinSize)
+        rtc_.LoadSaveFooter(ifs);
     ifs.close();
 }
 
@@ -184,9 +189,11 @@ bool Cartridge::IsLikelyMulticart() const {
         return false;
     }
 
-    static constexpr std::array<uint8_t, 48> logo = {0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
-                                                     0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
-                                                     0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E};
+    static constexpr std::array<uint8_t, 48> logo = {
+        0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+        0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+        0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
+    };
 
     constexpr std::size_t bankSize = 0x4000;
     constexpr std::size_t bankLogoOfs = 0x0104;
@@ -270,8 +277,9 @@ void Cartridge::Save() const {
     if (!file.is_open())
         throw std::runtime_error("Could not open " + savepath_);
 
-    rtc_.Save(file);
     file.write(reinterpret_cast<const char *>(gameRam_.data()), gameRamSize);
+    if (HasRtc())
+        rtc_.WriteSaveFooter(file);
 }
 
 uint8_t Cartridge::ReadByte(const uint16_t address) const {
@@ -387,12 +395,14 @@ void Cartridge::WriteByteMBC1(const uint16_t address, const uint8_t value) {
             const bool newEnable = (value & 0x0F) == 0x0A;
             HandleRamEnableEdge(newEnable);
             ramEnabled = newEnable;
-        } break;
+        }
+        break;
         case 0x2000 ... 0x3FFF: {
             bank1 = value & 0x1F;
             if (bank1 == 0)
                 bank1 = 1;
-        } break;
+        }
+        break;
         case 0x4000 ... 0x5FFF:
             bank2 = value & 0x03;
             break;
@@ -429,7 +439,8 @@ void Cartridge::WriteByteMBC2(const uint16_t address, const uint8_t value) {
                 gameRam_[(address - 0xA000) % gameRamSize] = value & 0xF;
                 ramDirty_ = true;
             }
-        } break;
+        }
+        break;
         default:
             break;
     }
@@ -441,7 +452,8 @@ void Cartridge::WriteByteMBC3(const uint16_t address, const uint8_t value) {
             const bool newEnable = (value & 0x0F) == 0x0A;
             HandleRamEnableEdge(newEnable);
             ramEnabled = newEnable;
-        } break;
+        }
+        break;
         case 0x2000 ... 0x3FFF:
             romBank = value ? value : 1;
             break;
@@ -472,7 +484,8 @@ void Cartridge::WriteByteMBC5(const uint16_t address, const uint8_t value) {
             const bool newEnable = (value & 0x0F) == 0x0A;
             HandleRamEnableEdge(newEnable);
             ramEnabled = newEnable;
-        } break;
+        }
+        break;
         case 0x2000 ... 0x2FFF:
             romBank = (romBank & 0x100) | value;
             break;
@@ -487,7 +500,8 @@ void Cartridge::WriteByteMBC5(const uint16_t address, const uint8_t value) {
                 if (rumbleCallback_)
                     rumbleCallback_(rumbleOn_);
             }
-        } break;
+        }
+        break;
         case 0xA000 ... 0xBFFF:
             if (ramEnabled && gameRamSize != 0) {
                 gameRam_[ramBank * 0x2000ULL + address - 0xA000] = value;
