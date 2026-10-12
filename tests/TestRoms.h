@@ -18,6 +18,7 @@
 #include "ThreadContext.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Report.h"
+#include "diagnostics/Artifacts.h"
 
 struct Bootroms {
     const char *dmg0Bootrom = "roms/dmg0_boot.bin";
@@ -36,6 +37,8 @@ static constexpr Bootroms bootroms{};
 static unsigned romFrames = 0;
 static bool parallelRomTests = true;
 static std::unique_ptr<diagnostics::Report> testReport;
+static std::filesystem::path failureDirectory;
+static std::string testExecutableHash;
 
 static consteval std::meta::info testGameboyMember(const std::string_view name) {
     for (const auto m : std::meta::nonstatic_data_members_of(^^Gameboy, std::meta::access_context::unchecked())) {
@@ -48,6 +51,17 @@ static consteval std::meta::info testGameboyMember(const std::string_view name) 
 static bool mooneyePassed(const Gameboy &gameboy) {
     const auto &regs = gameboy.[:testGameboyMember("registers_"):];
     return regs.GetBC() == 0x0305 && regs.GetDE() == 0x080D && regs.GetHL() == 0x1522;
+}
+
+static diagnostics::TerminalState terminalState(Gameboy &gameboy) {
+    auto &cpu = gameboy.[:testGameboyMember("cpu_"):];
+    const auto &registers = gameboy.[:testGameboyMember("registers_"):];
+    const auto &interrupts = gameboy.[:testGameboyMember("interrupts_"):];
+    const auto &gpu = gameboy.[:testGameboyMember("gpu_"):];
+    return {.pc = cpu.pc(), .sp = cpu.sp(), .af = registers.GetAF(), .bc = registers.GetBC(),
+            .de = registers.GetDE(), .hl = registers.GetHL(), .interruptEnable = interrupts.interruptEnable,
+            .interruptFlag = interrupts.interruptFlag, .lcdc = gpu.lcdc, .ly = gpu.currentLine,
+            .dot = static_cast<uint16_t>(gpu.scanlineCounter), .halted = cpu.IsHalted(), .stopped = cpu.stopped(), .locked = cpu.locked()};
 }
 
 static const doctest::TestCaseData *currentTestCase = nullptr;
@@ -846,9 +860,11 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
         if (!ctx.shouldExit()) {
             if (reportPath.empty())
                 reportPath = diagnostics::DefaultReportPath();
+            failureDirectory = reportPath.parent_path() / "failures";
+            testExecutableHash = diagnostics::FileHash(argv[0]);
             testReport = std::make_unique<diagnostics::Report>(reportPath, diagnostics::RunIdentity{
                     .executable = argv[0],
-                    .executableHash = diagnostics::FileHash(argv[0]),
+                    .executableHash = testExecutableHash,
                     .compiler = __VERSION__,
                     .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             std::cerr << "Diagnostics results: " << reportPath << '\n';

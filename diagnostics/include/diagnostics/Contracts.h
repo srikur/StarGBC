@@ -27,6 +27,7 @@ namespace diagnostics {
         std::string bootrom;
         std::string reference;
         std::string configuration;
+        std::string cartridgeSave;
     };
 
     struct RunIdentity {

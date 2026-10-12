@@ -55,6 +55,8 @@ public:
 
     [[nodiscard]] bool locked() const { return locked_; }
 
+    [[nodiscard]] bool IsHalted() const { return halted_; }
+
     void SampleHaltInterrupts() {
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
         haltPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;

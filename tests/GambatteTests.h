@@ -74,70 +74,103 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
             .budgetTicks = GAMBATTE_FRAME_LIMIT * diagnostics::RunFrameTicks,
             .expected = gambatte_case.expected,
             .details = label};
-    try {
+    std::unique_ptr<Gameboy> gameboy;
+    std::vector<uint32_t> expectedPixels;
+    diagnostics::TerminalState terminal;
+    auto savePath = std::filesystem::path(gambatte_case.rom);
+    savePath.replace_extension(".sav");
+    const bool hasSave = std::filesystem::exists(savePath);
+    const auto evaluate = [&] {
+        result.inputs.cartridgeSave = hasSave ? diagnostics::FileHash(savePath) : "absent";
         result.inputs.rom = diagnostics::FileHash(gambatte_case.rom);
         result.inputs.bootrom = "none";
         result.inputs.reference = variant == "screen" ? diagnostics::FileHash(gambatte_case.expected) : diagnostics::TextHash(expected);
         result.inputs.configuration = diagnostics::TextHash(result.test.model + "|skip-bootrom|virtual-rtc|color-correction-off|15-intervals|gambatte-v1");
-        const auto gameboy = Gameboy::init({
+        gameboy = Gameboy::init({
                 .romName = gambatte_case.rom,
                 .model = gambatte_case.model,
                 .noBootrom = true,
                 .colorCorrection = false,
         });
-
-        for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame) {
+        for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame)
             gameboy->RunFrame();
-        }
         auto &audio = gameboy->[:testGameboyMember("audio_"):];
         const uint64_t mixChangesBefore = audio.GetMixLevelChanges();
         gameboy->RunFrame();
-        const bool audible = audio.GetMixLevelChanges() != mixChangesBefore;
+        terminal = terminalState(*gameboy);
+        terminal.audioBeginTick = (GAMBATTE_FRAME_LIMIT - 1) * diagnostics::RunFrameTicks;
+        terminal.audioEndTick = GAMBATTE_FRAME_LIMIT * diagnostics::RunFrameTicks;
+        terminal.mixerLevelChanges = audio.GetMixLevelChanges() - mixChangesBefore;
+        const bool audible = terminal.mixerLevelChanges != 0;
         result.position.tick = result.budgetTicks;
+        result.position.ly = terminal.ly;
+        result.position.dot = terminal.dot;
         result.completion = diagnostics::Completion::FixedInterval;
         result.outcome = diagnostics::Outcome::AssertionFailure;
-
         if (gameboy->[:testGameboyMember("bus_"):].bootromRunning) {
             result.outcome = diagnostics::Outcome::Timeout;
             result.completion = diagnostics::Completion::Deadline;
             result.details += ": bootrom still running after 15 intervals";
-            return result;
+            return;
         }
-
         if (expected.starts_with("audio:")) {
             const bool wantAudible = expected.back() == '1';
             result.actual = audible ? "audio:1" : "audio:0";
             if (audible != wantAudible) {
                 result.details += wantAudible ? ": expected audio, but output was silent" : ": expected silence, but output was audible";
-                return result;
+                return;
             }
         } else if (expected.starts_with("out:")) {
-            const std::string_view digits = expected.substr(4);
-            std::string read;
+            const auto digits = expected.substr(4);
+            if (digits.empty() || digits.size() > 20)
+                throw std::invalid_argument("Gambatte output must occupy 1..20 tiles");
+            expectedPixels.assign(gameboy->GetScreenData(), gameboy->GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT);
             for (size_t i = 0; i < digits.size(); ++i) {
-                read += readGambatteHexTile(gameboy->GetScreenData(), i);
+                terminal.decodedDigits += readGambatteHexTile(gameboy->GetScreenData(), i);
+                const auto digit = std::string_view("0123456789ABCDEF").find(digits[i]);
+                if (digit == std::string_view::npos)
+                    throw std::invalid_argument("Invalid Gambatte hex digit");
+                for (size_t y = 0; y < 8; ++y)
+                    for (size_t x = 0; x < 8; ++x)
+                        expectedPixels[y * SCREEN_WIDTH + i * 8 + x] = (GAMBATTE_HEX_TILES[digit][y] & (0x80 >> x)) ? 0 : 0xFFFFFF;
             }
-            result.actual = "out:" + read;
-            if (read != digits) {
-                result.details += ": expected " + std::string(digits) + ", screen shows " + read;
-                return result;
+            result.actual = "out:" + terminal.decodedDigits;
+            if (terminal.decodedDigits != digits) {
+                result.details += ": expected " + std::string(digits) + ", screen shows " + terminal.decodedDigits;
+                return;
             }
         } else {
-            const std::vector<uint32_t> expected_result = readBinaryFile(gambatte_case.expected);
-            result.actual = diagnostics::Sha256(std::as_bytes(std::span(gameboy->GetScreenData(), expected_result.size())));
-            if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expected_result.size()), expected_result)) {
+            expectedPixels = readBinaryFile(gambatte_case.expected);
+            result.actual = diagnostics::Sha256(std::as_bytes(std::span(gameboy->GetScreenData(), expectedPixels.size())));
+            if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expectedPixels.size()), expectedPixels)) {
                 result.details += ": screen does not match " + std::string(gambatte_case.expected);
-                return result;
+                return;
             }
         }
         result.outcome = diagnostics::Outcome::Pass;
-        return result;
-    } catch (const std::exception &e) {
+    };
+    try {
+        evaluate();
+    } catch (const std::exception &error) {
         result.outcome = diagnostics::Outcome::InfrastructureError;
         result.completion = diagnostics::Completion::Exception;
-        result.details += ": " + std::string(e.what());
-        return result;
+        result.details += ": " + std::string(error.what());
     }
+    if (!result.Passed() && !failureDirectory.empty()) {
+        const diagnostics::Reproduction reproduction{
+                .test = result.test, .inputs = result.inputs,
+                .rom = gambatte_case.rom,
+                .reference = variant == "screen" ? gambatte_case.expected : "",
+                .cartridgeSave = hasSave ? savePath.string() : "",
+                .expectation = gambatte_case.expected, .intervals = GAMBATTE_FRAME_LIMIT,
+                .noBootrom = true, .colorCorrection = false,
+                .normalization = variant == "digits" ? "gambatte-digits-f8-mask-compared-tiles-only-v1" : "gambatte-rgb5-to-stargbc-uncorrected-v1",
+                .completion = "FixedInterval", .executableHash = testExecutableHash};
+        diagnostics::WriteFailureBundle(failureDirectory / diagnostics::TextHash(result.test.id), result, reproduction, terminal,
+                                        gameboy ? std::span(gameboy->GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT) : std::span<const uint32_t>{},
+                                        expectedPixels, variant == "digits" ? 0xF8F8F8 : 0xFFFFFFFF);
+    }
+    return result;
 }
 
 static auto &gambatteFutures() {
