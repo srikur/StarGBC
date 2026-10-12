@@ -13,6 +13,7 @@ namespace diagnostics {
     };
 
     enum class Component : uint8_t { CPU, Bus, Interrupt, PPU, Timer, DMA, APU, Input, Control };
+
     enum class EventKind : uint8_t {
         InstructionBegin, InstructionEnd, BusRead, BusWrite, Halt, Stop, InterruptSample,
         InterruptRequest, InterruptVisible, InterruptAccept, InterruptVector,
@@ -21,9 +22,13 @@ namespace diagnostics {
         TimerEdge, TimerOverflow, TimerReload, AudioRegister, AudioTrigger, AudioSequencer,
         AudioMix, InputApplied, Branch, Overflow, FramebufferClear
     };
+
     enum class FetchStage : uint8_t { Map, Attributes, BackgroundLow, BackgroundHigh, SpriteOam, SpriteLow, SpriteHigh };
+
     enum class StallReason : uint8_t { FifoStarvation, SpriteFetch, SpriteAlignment };
+
     enum class DiscardReason : uint8_t { FineScroll, WindowClipping, WindowRestart };
+
     enum class Initiator : uint8_t { CPU, DMA, PPU, HDMA, Peripheral, Debugger, Replay };
 
     struct Event {
@@ -54,7 +59,9 @@ namespace diagnostics {
         uint64_t sequence{};
         uint64_t branch{};
         void *conditionOwner{};
+
         bool (*condition)(void *, const Event &) noexcept{};
+
         std::optional<Event> stopEvent;
 
         void Dispatch(Event event) noexcept {
@@ -69,28 +76,34 @@ namespace diagnostics {
                   const uint32_t detail = 0, const Initiator initiator = Initiator::Peripheral, const bool blocked = false,
                   const uint16_t bank = 0) noexcept {
             if (callback || condition)
-                Dispatch({.position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
-                          .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
-                          .blocked = blocked, .value = value, .detail = detail});
+                Dispatch({
+                    .position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
+                    .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
+                    .blocked = blocked, .value = value, .detail = detail
+                });
         }
 
         void EmitDeferred(const uint64_t tick, const Component component, const EventKind kind, const uint32_t value,
                           const uint32_t detail = 0) noexcept {
             if (callback || condition)
-                Dispatch({.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
-                          .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
-                          .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail});
+                Dispatch({
+                    .position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
+                    .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
+                    .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail
+                });
         }
 
-        void Restore(const ExecutionPosition restored) noexcept {
+        void Restore(const ExecutionPosition &restored) noexcept {
             stopEvent.reset();
             const auto parent = branch++;
             const auto previousTick = position.tick;
             position = restored;
             if (callback || condition)
-                Dispatch({.position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
-                          .component = Component::Control, .kind = EventKind::Branch,
-                          .relatedTick = previousTick, .parentBranch = parent});
+                Dispatch({
+                    .position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
+                    .component = Component::Control, .kind = EventKind::Branch,
+                    .relatedTick = previousTick, .parentBranch = parent
+                });
         }
     };
 }

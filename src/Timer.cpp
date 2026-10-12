@@ -99,7 +99,7 @@ int Timer::TimerBit(const uint8_t tacMode) const {
             return 5; // 65536 Hz
         case 0x03:
             return 7; // 16384 Hz
-        default:;
+        default: ;
     }
     return 9;
 }

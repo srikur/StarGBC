@@ -11,7 +11,10 @@ namespace {
     }
 }
 
-TEST_CASE("diagnostics: repeated inspection preserves deferred audio and subsequent execution") {
+TEST_CASE (
+"diagnostics: repeated inspection preserves deferred audio and subsequent execution"
+)
+ {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
         Gameboy observed(settings);
@@ -44,7 +47,10 @@ TEST_CASE("diagnostics: repeated inspection preserves deferred audio and subsequ
     }
 }
 
-TEST_CASE("diagnostics: register inspection distinguishes stored pending and CPU-visible values") {
+TEST_CASE (
+"diagnostics: register inspection distinguishes stored pending and CPU-visible values"
+)
+ {
     Gameboy gameboy({.romName = "roms/acid/dmg-acid2.gb", .model = Model::DMGB, .noBootrom = true});
     auto &gpu = gameboy.[:inspectionTestMember<Gameboy>("gpu_"):];
     gpu.windowX = 3;

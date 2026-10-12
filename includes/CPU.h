@@ -70,11 +70,13 @@ public:
     void ObserveWith(diagnostics::ObservationContext *context) { observations_ = context; }
 
     [[nodiscard]] CpuInspection Inspect() const {
-        return {.pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
-                .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
-                .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
-                .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
-                .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_};
+        return {
+            .pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
+            .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
+            .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
+            .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
+            .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_
+        };
     }
 
     void SampleHaltInterrupts() {

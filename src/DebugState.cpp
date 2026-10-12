@@ -13,11 +13,12 @@ namespace {
 
 AudioDebugOutput Audio::CaptureDebugOutput() const {
     AudioDebugOutput state{
-            .sampleCount = sampleBuffer.size(), .writePosition = bufferWritePos, .readPosition = bufferReadPos,
-            .available = samplesAvailable, .sampleAccumulator = sampleAcc_, .resampler = bandLimited,
-            .highpassLeft = highpassLeft, .highpassRight = highpassRight, .lastMixRegisters = lastMixRegs_,
-            .lastMixOutputs = lastMixOutputs_, .mixLevel = mixLevel_, .mixChanges = mixLevelChanges_,
-            .pendingTicks = pendingTicks_, .pendingFirstTick = pendingFirstTick_, .emissionTick = emissionTick_};
+        .sampleCount = sampleBuffer.size(), .writePosition = bufferWritePos, .readPosition = bufferReadPos,
+        .available = samplesAvailable, .sampleAccumulator = sampleAcc_, .resampler = bandLimited,
+        .highpassLeft = highpassLeft, .highpassRight = highpassRight, .lastMixRegisters = lastMixRegs_,
+        .lastMixOutputs = lastMixOutputs_, .mixLevel = mixLevel_, .mixChanges = mixLevelChanges_,
+        .pendingTicks = pendingTicks_, .pendingFirstTick = pendingFirstTick_, .emissionTick = emissionTick_
+    };
     std::ranges::copy(sampleBuffer, state.samples.begin());
     return state;
 }

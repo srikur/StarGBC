@@ -1,9 +1,9 @@
 import importlib.util
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('references', ROOT / 'scripts/compare-references.py')

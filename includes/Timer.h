@@ -38,7 +38,7 @@ public:
     // the common case two edge tests on register-resident values
     void Tick(const Speed speed) {
         if (tac != cachedTac_ || speed != cachedSpeed_) [[unlikely]]
-            RecomputeTickCache(speed);
+                RecomputeTickCache(speed);
 
         if (apuEventDelay && --apuEventDelay == 0) {
             if (apuEventSecondary)

@@ -107,7 +107,7 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentS
 }
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
-    const auto value = ReadByteValue<false>(address, source);
+    const auto value = ReadByteValue < false > (address, source);
     if (observations)
         observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusRead, address, value, 0,
                            static_cast<diagnostics::Initiator>(source), AccessBlocked(address, source, false), DebugBank(address));
@@ -116,7 +116,7 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
 
 uint16_t Bus::DebugBank(const uint16_t address) const {
     if (address < 0x8000) {
-        if (bootromRunning && address < bootrom.size() && (address < 0x100 || (IsCgb(gpu_.model) && address >= 0x200)))
+        if (bootromRunning &&address<bootrom.size() && (address < 0x100 || (IsCgb(gpu_.model) && address >= 0x200)))
             return 0xFFFF;
         return cartridge_.DebugBank(address);
     }
@@ -136,16 +136,18 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
         address <= 0xFDFF && DmaBusFor(address) == DmaBusFor(dma_.startAddress))
         return true;
     if (address >= 0x8000 && address < 0xA000)
-        return source == ComponentSource::CPU ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked())
-                                              : gpu_.stat.mode == GPUMode::MODE_3;
+        return source == ComponentSource::CPU
+                   ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked())
+                   : gpu_.stat.mode == GPUMode::MODE_3;
     if (address >= 0xFE00 && address <= 0xFEFF)
-        return source == ComponentSource::CPU ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked())
-                                              : gpu_.stat.mode == GPUMode::MODE_3;
+        return source == ComponentSource::CPU
+                   ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked())
+                   : gpu_.stat.mode == GPUMode::MODE_3;
     return false;
 }
 
 uint8_t Bus::InspectRead(const uint16_t address, const ComponentSource source) const {
-    return ReadByteValue<true>(address, source);
+    return ReadByteValue < true > (address, source);
 }
 
 template<bool Inspect>
@@ -278,12 +280,12 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
                                static_cast<diagnostics::Initiator>(source), blocked);
     }
     WriteByteValue(address, value, source);
-    if (observations && hdmaOwned != gpu_.hdma.ShouldHaltCPU())
-        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
-                           gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
-    if (observations && address == 0xFF0F)
-        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
-                           0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+    if (observations &&hdmaOwned != gpu_.hdma.ShouldHaltCPU())
+    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
+                       gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
+    if (observations &&address == 0xFF0F)
+    observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
+                       0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
 }
 
 void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const ComponentSource source) {
@@ -444,9 +446,9 @@ void Bus::UpdateDMAWork() {
     if (dma_.ticks <= DMA::STARTUP_CYCLES)
         return; // OAM still accessible here
 
-    if (observations && dma_.ticks == DMA::STARTUP_CYCLES + 1)
-        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
-                           diagnostics::Initiator::DMA);
+    if (observations &&dma_.ticks == DMA::STARTUP_CYCLES + 1)
+    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
+                       diagnostics::Initiator::DMA);
     gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
     if (observations)
         observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, 0xFE00 + dma_.currentByte,

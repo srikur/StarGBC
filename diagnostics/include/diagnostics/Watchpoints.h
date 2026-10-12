@@ -21,12 +21,19 @@ namespace diagnostics {
 
     public:
         explicit Watchpoints(ObservationContext &context);
+
         ~Watchpoints();
+
         Watchpoints(const Watchpoints &) = delete;
+
         Watchpoints &operator=(const Watchpoints &) = delete;
+
         void Add(Watchpoint condition);
+
         void BreakAt(uint16_t pc, std::optional<uint16_t> bank = {});
+
         void ReadAt(Range<uint16_t> addresses);
+
         void WriteAt(Range<uint16_t> addresses);
     };
 }

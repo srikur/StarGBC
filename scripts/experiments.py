@@ -3,8 +3,8 @@ import argparse
 import concurrent.futures
 import itertools
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BINARY = ROOT / 'build/release/Release/StarGBC_Experiment'

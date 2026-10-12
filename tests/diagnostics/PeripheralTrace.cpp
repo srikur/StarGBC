@@ -12,12 +12,18 @@ namespace {
     }
 
     auto only(const diagnostics::Component component, const diagnostics::EventKind kind) {
-        return diagnostics::EventFilter{.components = uint64_t{1} << static_cast<unsigned>(component),
-                                        .kinds = uint64_t{1} << static_cast<unsigned>(kind)};
+        return diagnostics::EventFilter{
+            .components = uint64_t{1} << static_cast<unsigned>(component),
+            .kinds = uint64_t{1} << static_cast<unsigned>(kind)
+        };
     }
 }
 
-TEST_CASE("diagnostics: trigger retains bounded history and following events including a filtered trigger") {
+TEST_CASE (
+
+"diagnostics: trigger retains bounded history and following events including a filtered trigger"
+)
+ {
     auto capture = only(diagnostics::Component::Bus, diagnostics::EventKind::BusRead);
     auto match = only(diagnostics::Component::Bus, diagnostics::EventKind::BusWrite);
     diagnostics::TraceRecorder recorder(4, capture);
@@ -46,7 +52,11 @@ TEST_CASE("diagnostics: trigger retains bounded history and following events inc
     CHECK(immediate.Events().size() == 1);
 }
 
-TEST_CASE("diagnostics: timer overflow and reload retain their distinct modeled ticks") {
+TEST_CASE (
+
+"diagnostics: timer overflow and reload retain their distinct modeled ticks"
+)
+ {
     Audio audio;
     audio.SetModel(Model::DMGB);
     Interrupts interrupts;
@@ -72,7 +82,11 @@ TEST_CASE("diagnostics: timer overflow and reload retain their distinct modeled 
     CHECK(timer.tima == 37);
 }
 
-TEST_CASE("diagnostics: delayed PPU writes become visible to the fetcher at their apply tick") {
+TEST_CASE (
+
+"diagnostics: delayed PPU writes become visible to the fetcher at their apply tick"
+)
+ {
     Interrupts interrupts;
     GPU gpu(interrupts);
     gpu.SetModel(Model::DMGB);
@@ -97,7 +111,11 @@ TEST_CASE("diagnostics: delayed PPU writes become visible to the fetcher at thei
     CHECK(events[0].position.tick == 24);
 }
 
-TEST_CASE("diagnostics: OAM DMA transfer records identify source destination and ownership") {
+TEST_CASE (
+
+"diagnostics: OAM DMA transfer records identify source destination and ownership"
+)
+ {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     auto &bus = gameboy.[:peripheralMember<Gameboy>("bus_"):];
     auto &cpu = gameboy.[:peripheralMember<Gameboy>("cpu_"):];
@@ -124,7 +142,11 @@ TEST_CASE("diagnostics: OAM DMA transfer records identify source destination and
     }
 }
 
-TEST_CASE("diagnostics: deferred audio retains modeled mixer ticks and inspection emits nothing") {
+TEST_CASE (
+
+"diagnostics: deferred audio retains modeled mixer ticks and inspection emits nothing"
+)
+ {
     std::array<std::vector<diagnostics::Event>, 2> results;
     for (const bool defer : {false, true}) {
         Audio audio;
@@ -159,7 +181,11 @@ TEST_CASE("diagnostics: deferred audio retains modeled mixer ticks and inspectio
     }
 }
 
-TEST_CASE("diagnostics: general DMA records both bus ownership edges and all sixteen destination writes") {
+TEST_CASE (
+
+"diagnostics: general DMA records both bus ownership edges and all sixteen destination writes"
+)
+ {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     auto &bus = gameboy.[:peripheralMember<Gameboy>("bus_"):];
     gameboy.[:peripheralMember<Gameboy>("cpu_"):].Lock();

@@ -53,9 +53,9 @@ void Interrupts::TickPending() {
             interruptVisiblePending &= ~mask;
         }
         remaining |= interruptSetDelays[i] | interruptVisibleDelays[i];
-        if (observations && previousFlags != (interruptFlag | interruptVisiblePending))
-            observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
-                               0xFF0F, interruptFlag | interruptVisiblePending | 0xE0);
+        if (observations &&previousFlags != (interruptFlag | interruptVisiblePending))
+        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
+                           0xFF0F, interruptFlag | interruptVisiblePending | 0xE0);
     }
     delaysPending_ = remaining != 0;
 }

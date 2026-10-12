@@ -12,7 +12,10 @@ namespace {
     }
 }
 
-TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardware and pixels") {
+TEST_CASE (
+"diagnostics: tracing disabled observed and captured preserves hardware and pixels"
+)
+ {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
         Gameboy disabled(settings);
@@ -46,7 +49,10 @@ TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardwar
     }
 }
 
-TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and retain banks") {
+TEST_CASE (
+"diagnostics: bus records distinguish blocked reads from stored FF and retain banks"
+)
+ {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     diagnostics::TraceRecorder recorder(64);
     gameboy.ObserveWith(&recorder.Context());
@@ -71,7 +77,10 @@ TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and
     CHECK(recorder.Metadata().observed == count);
 }
 
-TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and restore branches retain time") {
+TEST_CASE (
+"diagnostics: interrupt sampling uses CPU phases at both speeds and restore branches retain time"
+)
+ {
     for (const bool doubleSpeed : {false, true}) {
         Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
         if (doubleSpeed) {
@@ -103,7 +112,10 @@ TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and re
     }
 }
 
-TEST_CASE("diagnostics: trace filters combine component kind address PC bank line dot and time") {
+TEST_CASE (
+"diagnostics: trace filters combine component kind address PC bank line dot and time"
+)
+ {
     diagnostics::EventFilter filter{
             .components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::Bus),
             .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::BusRead),

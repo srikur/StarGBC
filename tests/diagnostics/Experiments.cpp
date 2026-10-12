@@ -4,16 +4,22 @@
 
 namespace {
     class ExperimentDirectory {
-        std::filesystem::path directory_{std::filesystem::temp_directory_path() /
-                ("stargbc-experiment-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))};
+        std::filesystem::path directory_{
+            std::filesystem::temp_directory_path() /
+            ("stargbc-experiment-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))
+        };
         unsigned index_{};
+
     public:
         ~ExperimentDirectory() { std::filesystem::remove_all(directory_); }
         std::filesystem::path Next() { return directory_ / std::to_string(index_++); }
     };
 }
 
-TEST_CASE("diagnostics: timer phase experiments preserve the reload latch across both speeds") {
+TEST_CASE (
+"diagnostics: timer phase experiments preserve the reload latch across both speeds"
+)
+ {
     ExperimentDirectory directory;
     for (const bool doubleSpeed : {false, true}) {
         std::array<uint32_t, 3> values{};
@@ -29,7 +35,10 @@ TEST_CASE("diagnostics: timer phase experiments preserve the reload latch across
     }
 }
 
-TEST_CASE("diagnostics: overlapping transparent sprites have repeatable CPU and component experiments") {
+TEST_CASE (
+"diagnostics: overlapping transparent sprites have repeatable CPU and component experiments"
+)
+ {
     ExperimentDirectory directory;
     for (const auto mode : {diagnostics::ExperimentMode::Component, diagnostics::ExperimentMode::WholeMachine}) {
         const diagnostics::Scenario scenario{.mode = mode, .family = diagnostics::ExperimentFamily::Sprites, .model = Model::CGBC};
@@ -43,7 +52,10 @@ TEST_CASE("diagnostics: overlapping transparent sprites have repeatable CPU and 
     }
 }
 
-TEST_CASE("diagnostics: window phases and clipping remain observable in both experiment modes") {
+TEST_CASE (
+"diagnostics: window phases and clipping remain observable in both experiment modes"
+)
+ {
     ExperimentDirectory directory;
     for (const auto mode : {diagnostics::ExperimentMode::Component, diagnostics::ExperimentMode::WholeMachine})
         for (const uint8_t wx : {0, 5, 7}) {
@@ -53,7 +65,10 @@ TEST_CASE("diagnostics: window phases and clipping remain observable in both exp
         }
 }
 
-TEST_CASE("diagnostics: STAT experiments separate peripheral requests from CPU acceptance") {
+TEST_CASE (
+"diagnostics: STAT experiments separate peripheral requests from CPU acceptance"
+)
+ {
     ExperimentDirectory directory;
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         const auto result = diagnostics::RunExperiment({.mode = diagnostics::ExperimentMode::WholeMachine,
@@ -64,7 +79,10 @@ TEST_CASE("diagnostics: STAT experiments separate peripheral requests from CPU a
     }
 }
 
-TEST_CASE("diagnostics: DMA experiments execute timed reads from HRAM and copy all source bytes") {
+TEST_CASE (
+"diagnostics: DMA experiments execute timed reads from HRAM and copy all source bytes"
+)
+ {
     ExperimentDirectory directory;
     for (const auto mode : {diagnostics::ExperimentMode::Component, diagnostics::ExperimentMode::WholeMachine})
         for (const bool doubleSpeed : {false, true}) {

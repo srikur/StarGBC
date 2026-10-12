@@ -6,6 +6,7 @@
 #include "diagnostics/Observation.h"
 
 enum class ExecutionPolicy { Optimized, Ordinary };
+
 enum class ExecutionStopReason { TickBudget, InstructionBoundary, Halted, Stopped, Locked, Condition };
 
 struct ExecutionResult {

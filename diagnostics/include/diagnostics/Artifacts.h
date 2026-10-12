@@ -63,8 +63,10 @@ namespace diagnostics {
     };
 
     [[nodiscard]] PixelDifference ComparePixels(std::span<const uint32_t> actual, std::span<const uint32_t> expected,
-                                               uint32_t width, uint32_t height, uint32_t mask = 0xFFFFFFFF);
+                                                uint32_t width, uint32_t height, uint32_t mask = 0xFFFFFFFF);
+
     void WriteBitmap(const std::filesystem::path &path, std::span<const uint32_t> pixels, uint32_t width, uint32_t height);
+
     void WriteFailureBundle(const std::filesystem::path &directory, Result &result, Reproduction reproduction,
                             const TerminalState &state, std::span<const uint32_t> actual, std::span<const uint32_t> expected = {},
                             uint32_t mask = 0xFFFFFFFF);

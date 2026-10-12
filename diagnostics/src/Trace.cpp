@@ -63,9 +63,11 @@ namespace diagnostics {
     }
 
     TraceMetadata TraceRecorder::Metadata() const {
-        return {.capacity = events_.size(), .retained = size_, .observed = observed_, .overwritten = overwritten_, .filter = filter_,
-                .executableHash = executableHash_, .romHash = romHash_, .configuration = configuration_,
-                .trigger = trigger_, .triggerEvent = triggerEvent_, .captureComplete = captureComplete_};
+        return {
+            .capacity = events_.size(), .retained = size_, .observed = observed_, .overwritten = overwritten_, .filter = filter_,
+            .executableHash = executableHash_, .romHash = romHash_, .configuration = configuration_,
+            .trigger = trigger_, .triggerEvent = triggerEvent_, .captureComplete = captureComplete_
+        };
     }
 
     void TraceRecorder::Identify(std::string executableHash, std::string romHash, std::string configuration) {

@@ -18,11 +18,11 @@ namespace diagnostics {
         uint64_t components{~uint64_t{0}};
         uint64_t kinds{~uint64_t{0}};
         Range<uint64_t> ticks;
-        std::optional<Range<uint16_t>> addresses;
-        std::optional<Range<uint16_t>> pcs;
+        std::optional<Range<uint16_t> > addresses;
+        std::optional<Range<uint16_t> > pcs;
         std::optional<uint16_t> pcBank;
-        std::optional<Range<uint8_t>> lines;
-        std::optional<Range<uint16_t>> dots;
+        std::optional<Range<uint8_t> > lines;
+        std::optional<Range<uint16_t> > dots;
 
         [[nodiscard]] bool Matches(const Event &event) const noexcept;
     };
@@ -67,16 +67,24 @@ namespace diagnostics {
         bool captureComplete_{};
 
         void Record(const Event &event) noexcept;
+
         void Append(const Event &event, size_t limit) noexcept;
 
     public:
         explicit TraceRecorder(size_t capacity, EventFilter filter = {});
+
         TraceRecorder(const TraceRecorder &) = delete;
+
         TraceRecorder &operator=(const TraceRecorder &) = delete;
+
         [[nodiscard]] ObservationContext &Context() { return context_; }
+
         [[nodiscard]] TraceMetadata Metadata() const;
+
         [[nodiscard]] std::vector<Event> Events() const;
+
         void SetCaptureEnabled(const bool enabled) { enabled_ = enabled; }
+
         void Clear() {
             begin_ = size_ = observed_ = overwritten_ = 0;
             trigger_.reset();
@@ -84,10 +92,15 @@ namespace diagnostics {
             followingRemaining_ = 0;
             captureComplete_ = false;
         }
+
         void Identify(std::string executableHash, std::string romHash, std::string configuration);
+
         void Arm(CaptureTrigger trigger);
+
         [[nodiscard]] bool CaptureComplete() const { return captureComplete_; }
+
         void WriteJsonLines(const std::filesystem::path &path) const;
+
         void WriteBinary(const std::filesystem::path &path) const;
     };
 }

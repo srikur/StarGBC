@@ -6,8 +6,8 @@ import json
 import subprocess
 import tempfile
 import time
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 
 def read_report(path):

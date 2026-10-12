@@ -6,8 +6,10 @@
 static constexpr uint32_t kFrameCyclesCGB = Gameboy::FRAME_CYCLES_DMG * 2;
 
 diagnostics::ExecutionPosition Gameboy::ExecutionPosition() const {
-    return {.tick = timelineTicks_, .frame = gpu_.displayFrames_, .dot = static_cast<uint16_t>(gpu_.scanlineCounter),
-            .ly = gpu_.currentLine, .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3)};
+    return {
+        .tick = timelineTicks_, .frame = gpu_.displayFrames_, .dot = static_cast<uint16_t>(gpu_.scanlineCounter),
+        .ly = gpu_.currentLine, .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3)
+    };
 }
 
 void Gameboy::SynchronizeObservationPosition() {
@@ -51,8 +53,8 @@ void Gameboy::ObserveInput(const uint8_t previous) {
     const auto buttons = PressedButtons();
     if (buttons == previous)
         return;
-    if (inputSink_ && inputSink_->applied)
-        inputSink_->applied(inputSink_->owner, timelineTicks_, buttons);
+    if (inputSink_ &&inputSink_->applied)
+    inputSink_->applied(inputSink_->owner, timelineTicks_, buttons);
     if (observations_) {
         SynchronizeObservationPosition();
         observations_->Emit(diagnostics::Component::Input, diagnostics::EventKind::InputApplied, 0xFF00, buttons, previous);
@@ -314,7 +316,8 @@ ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolic
     audio_.SetOptimizedExecution(optimized);
     uint64_t remaining = ticks;
     while (remaining > 0) {
-        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
+        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (
+                masterCycles & 1) == 0) [[likely]] {
             if (bus_.speed == Speed::Regular && remaining >= 8) {
                 if (masterCycles >= CGB_CYCLES_PER_SECOND)
                     masterCycles -= CGB_CYCLES_PER_SECOND;

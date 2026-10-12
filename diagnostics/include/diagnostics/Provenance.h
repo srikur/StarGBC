@@ -42,20 +42,33 @@ namespace diagnostics {
         std::string romHash_;
 
         void Output(const PixelExplanation &pixel) noexcept;
+
         void Pipeline(const PixelPipelineEvent &event) noexcept;
+
         void Recolor(const PixelRecolor &event) noexcept;
 
     public:
         explicit ProvenanceRecorder(PixelRegion region = {}, size_t pixelCapacity = 160, size_t eventCapacity = 4096);
+
         ProvenanceRecorder(const ProvenanceRecorder &) = delete;
+
         ProvenanceRecorder &operator=(const ProvenanceRecorder &) = delete;
+
         [[nodiscard]] PixelProvenanceContext &Context() { return context_; }
+
         void Identify(std::string build, std::string romHash);
+
         [[nodiscard]] ProvenanceMetadata Metadata() const;
+
         [[nodiscard]] std::vector<PixelExplanation> Pixels() const;
+
         [[nodiscard]] std::vector<PixelPipelineEvent> PipelineEvents() const;
+
         [[nodiscard]] std::vector<PixelRecolor> Recolors() const;
-        [[nodiscard]] std::optional<PixelExplanation> Query(uint16_t x, uint16_t y, std::optional<uint64_t> frame = {}, std::optional<uint64_t> branch = {}) const;
+
+        [[nodiscard]] std::optional<PixelExplanation> Query(uint16_t x, uint16_t y, std::optional<uint64_t> frame = {},
+                                                            std::optional<uint64_t> branch = {}) const;
+
         void WriteJson(const std::filesystem::path &path) const;
     };
 }

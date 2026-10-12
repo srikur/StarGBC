@@ -11,6 +11,7 @@
 
 namespace {
     using namespace StarParse;
+
     struct[[=Program{"StarGBC_Reference", "Optional reference-core observations", "1"}]] Arguments {
         [[=Positional{0}]] std::string rom;
         [[=Opt{"Print the pinned adapter capabilities"}]] bool capabilities{};
@@ -24,6 +25,7 @@ namespace {
         [[=Opt{"Maximum retained events"}, =Range{1, 1'000'000}]] unsigned trace_capacity{1000000};
         [[=Opt{"Output basename for observations, traces and framebuffer"}]] std::string output;
     };
+
     struct Header {
         uint32_t schemaVersion{1};
         std::string record{"reference"};
@@ -38,6 +40,7 @@ namespace {
         std::string initialCartridgeRam{"ZeroFilled"};
         std::string rtc{"VirtualZero"};
     };
+
     struct Sample {
         std::string record{"sample"};
         uint64_t requestedTick{};
@@ -47,6 +50,7 @@ namespace {
         diagnostics::ReferenceRegisters registers;
         std::string framebufferHash;
     };
+
     struct Complete {
         std::string record{"complete"};
         uint64_t requestedTick{};
@@ -58,11 +62,21 @@ namespace {
 
 int main(const int argc, char **argv) {
     const auto arguments = StarParse::parse_or_exit<Arguments>(argc, argv);
-    if (arguments.help_requested()) { std::print("{}", arguments.help()); return 0; }
-    if (arguments.version_requested()) { std::print("{}", arguments.version()); return 0; }
+    if (arguments.help_requested()) {
+        std::print("{}", arguments.help());
+        return 0;
+    }
+    if (arguments.version_requested()) {
+        std::print("{}", arguments.version());
+        return 0;
+    }
     try {
         const auto capabilities = diagnostics::Capabilities();
-        if (arguments->capabilities) { diagnostics::WriteJson(std::cout, capabilities); std::cout << '\n'; return 0; }
+        if (arguments->capabilities) {
+            diagnostics::WriteJson(std::cout, capabilities);
+            std::cout << '\n';
+            return 0;
+        }
         if (arguments->rom.empty() || arguments->output.empty() || arguments->ticks > 8388608ULL * 3600 ||
             (!arguments->no_bootrom && arguments->bios.empty()) || (arguments->no_bootrom && !arguments->bios.empty()))
             throw std::invalid_argument("Specify ROM, output, bounded ticks and exactly one explicit boot or skip-boot option");
@@ -76,9 +90,14 @@ int main(const int argc, char **argv) {
         const auto bootHash = arguments->no_bootrom ? "skip" : diagnostics::FileHash(arguments->bios);
         std::ofstream output(arguments->output + ".jsonl");
         output.exceptions(std::ios::failbit | std::ios::badbit);
-        const auto write = [&](const auto &record) { diagnostics::WriteJson(output, record); output << '\n'; };
-        write(Header{.capabilities = capabilities, .settings = settings, .executableHash = diagnostics::FileHash(argv[0]),
-                     .romHash = romHash, .bootromHash = bootHash, .requestedTicks = arguments->ticks, .sampleTicks = arguments->sample_ticks});
+        const auto write = [&](const auto &record) {
+            diagnostics::WriteJson(output, record);
+            output << '\n';
+        };
+        write(Header{
+            .capabilities = capabilities, .settings = settings, .executableHash = diagnostics::FileHash(argv[0]),
+            .romHash = romHash, .bootromHash = bootHash, .requestedTicks = arguments->ticks, .sampleTicks = arguments->sample_ticks
+        });
         uint64_t kinds{};
         for (const auto kind : capabilities.events)
             kinds |= uint64_t{1} << static_cast<unsigned>(kind);
@@ -90,9 +109,11 @@ int main(const int argc, char **argv) {
         uint64_t actual{}, count{};
         const auto sample = [&](const uint64_t requested) {
             const auto pixels = adapter->Pixels();
-            write(Sample{.requestedTick = requested, .actualTick = actual, .overshootTicks = actual - requested,
-                         .frames = adapter->Frames(), .registers = adapter->Registers(),
-                         .framebufferHash = diagnostics::Sha256(std::as_bytes(pixels))});
+            write(Sample{
+                .requestedTick = requested, .actualTick = actual, .overshootTicks = actual - requested,
+                .frames = adapter->Frames(), .registers = adapter->Registers(),
+                .framebufferHash = diagnostics::Sha256(std::as_bytes(pixels))
+            });
             ++count;
         };
         sample(0);

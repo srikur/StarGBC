@@ -46,6 +46,7 @@ static std::filesystem::path failureDirectory;
 static std::string testExecutableHash;
 
 enum class TestObservationMode { Disabled, Observe, Capture };
+
 static TestObservationMode testObservationMode{TestObservationMode::Disabled};
 static size_t testTraceCapacity{65536};
 static diagnostics::EventFilter testTraceFilter;
@@ -94,7 +95,7 @@ public:
 };
 
 struct CatalogSelection {
-    std::set<std::string, std::less<>> ids;
+    std::set<std::string, std::less<> > ids;
     std::optional<Model> model;
     std::string subsystem;
     std::set<std::string> suites;
@@ -120,10 +121,12 @@ static bool mooneyePassed(const Gameboy &gameboy) {
 
 static diagnostics::TerminalState terminalState(Gameboy &gameboy) {
     const auto state = gameboy.Inspect();
-    return {.pc = state.cpu.pc, .sp = state.cpu.sp, .af = state.cpu.af, .bc = state.cpu.bc,
-            .de = state.cpu.de, .hl = state.cpu.hl, .interruptEnable = state.interrupts.enable,
-            .interruptFlag = state.interrupts.storedFlags, .lcdc = gameboy.InspectRegister(0xFF40).stored, .ly = state.ppu.ly,
-            .dot = static_cast<uint16_t>(state.ppu.dot), .halted = state.cpu.halted, .stopped = state.cpu.stopped, .locked = state.cpu.locked};
+    return {
+        .pc = state.cpu.pc, .sp = state.cpu.sp, .af = state.cpu.af, .bc = state.cpu.bc,
+        .de = state.cpu.de, .hl = state.cpu.hl, .interruptEnable = state.interrupts.enable,
+        .interruptFlag = state.interrupts.storedFlags, .lcdc = gameboy.InspectRegister(0xFF40).stored, .ly = state.ppu.ly,
+        .dot = static_cast<uint16_t>(state.ppu.dot), .halted = state.cpu.halted, .stopped = state.cpu.stopped, .locked = state.cpu.locked
+    };
 }
 
 static const doctest::TestCaseData *currentTestCase = nullptr;
@@ -135,22 +138,27 @@ struct CurrentTestCaseListener : doctest::IReporter {
     void test_case_start(const doctest::TestCaseData &tc) override { currentTestCase = &tc; }
     void report_query(const doctest::QueryData &) override {}
     void test_run_start() override {}
+
     void test_run_end(const doctest::TestRunStats &) override {
         if (testReport)
             testReport->Write(diagnostics::RunCompletion{.cases = cases_, .failed = failed_});
     }
+
     void test_case_reenter(const doctest::TestCaseData &) override {}
+
     void test_case_end(const doctest::CurrentTestCaseStats &stats) override {
         ++cases_;
         failed_ += !stats.testCaseSuccess;
         if (testReport)
             testReport->Write(diagnostics::AssertionResult{
-                    .name = currentTestCase->m_name,
-                    .suite = currentTestCase->m_test_suite,
-                    .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
-                    .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
-                    .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)});
+                .name = currentTestCase->m_name,
+                .suite = currentTestCase->m_test_suite,
+                .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
+                .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
+                .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)
+            });
     }
+
     void test_case_exception(const doctest::TestCaseException &) override {}
     void subcase_start(const doctest::SubcaseSignature &) override {}
     void subcase_end() override {}
@@ -159,7 +167,14 @@ struct CurrentTestCaseListener : doctest::IReporter {
     void test_case_skipped(const doctest::TestCaseData &) override {}
 };
 
-DOCTEST_REGISTER_LISTENER("current-test-case", 0, CurrentTestCaseListener);
+DOCTEST_REGISTER_LISTENER (
+
+"current-test-case"
+,
+0
+,
+CurrentTestCaseListener
+);
 
 struct SelectedCasesReporter : CurrentTestCaseListener {
     using CurrentTestCaseListener::CurrentTestCaseListener;
@@ -170,7 +185,14 @@ struct SelectedCasesReporter : CurrentTestCaseListener {
     }
 };
 
-DOCTEST_REGISTER_REPORTER("diagnostics-selection", 0, SelectedCasesReporter);
+DOCTEST_REGISTER_REPORTER (
+
+"diagnostics-selection"
+,
+0
+,
+SelectedCasesReporter
+);
 
 template<const auto &Cases, auto Check>
 static bool registerTableCases(const char *file, const char *suite) {
@@ -212,10 +234,10 @@ static int runBenchmark(const std::string &rom, const Model model, const unsigne
     try {
         TestObservationSession observations;
         const auto gameboy = Gameboy::init({
-                .romName = rom,
-                .biosPath = "",
-                .model = model,
-                .executionPolicy = testExecutionPolicy,
+            .romName = rom,
+            .biosPath = "",
+            .model = model,
+            .executionPolicy = testExecutionPolicy,
         });
         observations.Attach(*gameboy);
         constexpr double kGbFrameHz = 4194304.0 / 70224.0;
@@ -226,7 +248,7 @@ static int runBenchmark(const std::string &rom, const Model model, const unsigne
         const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - start;
         const double fps = frames * 1000.0 / elapsed.count();
         std::cout << rom << " [" << ModelName(model) << "] " << frames << " frames in " << elapsed.count() << " ms | " << fps << " fps | "
-                  << fps / kGbFrameHz << "x realtime" << std::endl;
+                << fps / kGbFrameHz << "x realtime" << std::endl;
         return EXIT_SUCCESS;
     } catch (const std::exception &e) {
         std::cerr << "Benchmark failed for " << rom << ": " << e.what() << std::endl;
@@ -243,12 +265,14 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     Model benchModel = Model::Auto;
     std::filesystem::path reportPath;
 
-    static constexpr std::array<std::pair<std::string_view, std::string_view>, 4> kSuiteFlags{{
+    static constexpr std::array<std::pair<std::string_view, std::string_view>, 4> kSuiteFlags{
+        {
             {"--roms", "rom"},
             {"--age", "age"},
             {"--gbmicrotest", "gbmicrotest"},
             {"--gambatte", "gambatte"},
-    }};
+        }
+    };
     std::string suites;
     bool suiteFilterGiven = false;
 
@@ -279,8 +303,11 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 std::cerr << "--observations requires disabled, observe or capture\n";
                 return EXIT_FAILURE;
             }
-            testObservationMode = mode == "disabled" ? TestObservationMode::Disabled
-                                                    : mode == "observe" ? TestObservationMode::Observe : TestObservationMode::Capture;
+            testObservationMode = mode == "disabled"
+                                      ? TestObservationMode::Disabled
+                                      : mode == "observe"
+                                            ? TestObservationMode::Observe
+                                            : TestObservationMode::Capture;
         } else if (arg.starts_with("--trace-capacity=")) {
             try {
                 constexpr auto prefix = std::string_view("--trace-capacity=");
@@ -392,7 +419,7 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
         return runBenchmark(benchRom, benchModel, romFrames ? romFrames : 3000);
     }
 
-    threadSemaphore = std::make_shared<std::counting_semaphore<>>(maxThreads);
+    threadSemaphore = std::make_shared<std::counting_semaphore<> >(maxThreads);
     if (catalogSelection.Active() && doctest_args.size() != 1) {
         std::cerr << "Use catalog selectors without doctest filters\n";
         return EXIT_FAILURE;
@@ -424,10 +451,11 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             failureDirectory = reportPath.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
             testReport = std::make_unique<diagnostics::Report>(reportPath, diagnostics::RunIdentity{
-                    .executable = argv[0],
-                    .executableHash = testExecutableHash,
-                    .compiler = __VERSION__,
-                    .arguments = std::vector<std::string>(argv + 1, argv + argc)});
+                                                                   .executable = argv[0],
+                                                                   .executableHash = testExecutableHash,
+                                                                   .compiler = __VERSION__,
+                                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)
+                                                               });
             std::cerr << "Diagnostics results: " << reportPath << '\n';
             testWorkers = std::make_unique<TestWorkers>(maxThreads);
         }

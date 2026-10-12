@@ -13,7 +13,10 @@ namespace {
     }
 }
 
-TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sampled outputs") {
+TEST_CASE (
+"diagnostics: optimized execution agrees with ordinary hardware and sampled outputs"
+)
+ {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         CAPTURE(model);
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
@@ -34,7 +37,10 @@ TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sa
     }
 }
 
-TEST_CASE("diagnostics: ordered observation capture bounds events and rejects incomplete plans") {
+TEST_CASE (
+"diagnostics: ordered observation capture bounds events and rejects incomplete plans"
+)
+ {
     const auto directory = std::filesystem::temp_directory_path() / ("stargbc-comparison-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(directory);
     const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};

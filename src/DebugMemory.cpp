@@ -79,7 +79,7 @@ void Cartridge::DebugPoke(const uint16_t address, const uint8_t value) {
 
 uint8_t Bus::DebugPeek(uint16_t address) const {
     if (address < 0x8000) {
-        if (bootromRunning && address < bootrom.size() && (address < 0x100 || (IsCgb(gpu_.model) && address >= 0x200)))
+        if (bootromRunning &&address<bootrom.size() && (address < 0x100 || (IsCgb(gpu_.model) && address >= 0x200)))
             return bootrom[address];
         return cartridge_.DebugPeek(address);
     }

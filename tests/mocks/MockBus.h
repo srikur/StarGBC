@@ -7,7 +7,6 @@
 #include "Instructions.h"
 
 struct MockBus {
-
     uint8_t ReadByte(const uint16_t address, const ComponentSource source) { return memory_.contains(address) ? memory_[address] : 0x00; }
 
     void WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) { memory_[address] = value; }

@@ -412,7 +412,8 @@ void Cartridge::WriteByteMBC1(const uint16_t address, const uint8_t value) {
             mode = value & 0x01;
             break;
         case 0xA000 ... 0xBFFF:
-            if (ramEnabled && gameRamSize > 0) {
+            if (ramEnabled &&gameRamSize> 0)
+            {
                 gameRam_[(HandleRamBank() * 0x2000ULL + (address - 0xA000))] = value;
                 ramDirty_ = true;
             }
@@ -437,7 +438,8 @@ void Cartridge::WriteByteMBC2(const uint16_t address, const uint8_t value) {
             break;
         }
         case 0xA000 ... 0xBFFF: {
-            if (ramEnabled && gameRamSize > 0) {
+            if (ramEnabled &&gameRamSize > 0)
+            {
                 gameRam_[(address - 0xA000) % gameRamSize] = value & 0xF;
                 ramDirty_ = true;
             }
@@ -497,7 +499,8 @@ void Cartridge::WriteByteMBC5(const uint16_t address, const uint8_t value) {
         case 0x4000 ... 0x5FFF: {
             const bool rumbleRequest = (value & 0x10) != 0;
             ramBank = value & 0x0F;
-            if (hasRumble_ && rumbleRequest != rumbleOn_) {
+            if (hasRumble_ &&rumbleRequest != rumbleOn_)
+            {
                 rumbleOn_ = rumbleRequest;
                 if (rumbleCallback_)
                     rumbleCallback_(rumbleOn_);
@@ -505,7 +508,8 @@ void Cartridge::WriteByteMBC5(const uint16_t address, const uint8_t value) {
         }
         break;
         case 0xA000 ... 0xBFFF:
-            if (ramEnabled && gameRamSize != 0) {
+            if (ramEnabled &&gameRamSize!= 0)
+            {
                 gameRam_[ramBank * 0x2000ULL + address - 0xA000] = value;
                 ramDirty_ = true;
             }

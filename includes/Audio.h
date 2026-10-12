@@ -141,10 +141,10 @@ struct Channel {
     bool dacEnabled{false};
 
     static constexpr uint8_t DUTY_PATTERNS[4][8] = {
-            {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
-            {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
-            {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
-            {0, 1, 1, 1, 1, 1, 1, 0} // 75%
+        {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
+        {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
+        {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
+        {0, 1, 1, 1, 1, 1, 1, 0} // 75%
     };
 };
 
@@ -362,7 +362,11 @@ class Audio {
     [[=NotStateAware]] uint32_t sampleAcc_{0};
 
     [[=NotStateAware]] std::array<BandLimited, 4> bandLimited{};
-    [[=NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
+    [[=NotStateAware]] std::array<std::array < double, BL_WIDTH>
+    ,
+    BL_PHASES
+    >
+    blSteps {};
     [[=NotStateAware]] double highpassLeft{0.0};
     [[=NotStateAware]] double highpassRight{0.0};
     [[=NotStateAware]] double highpassRate{0.0};
@@ -396,6 +400,7 @@ public:
     }
 
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
+
     void OnSpeedSwitch(bool doubleSpeed) {
         if (doubleSpeed && audioEnabled)
             speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
@@ -421,12 +426,15 @@ public:
         model_ = model;
         hasEarlyPcmGlitch_ = HasEarlyCgbPcmGlitch(model);
     }
+
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
 
     [[nodiscard]] AudioDebugOutput CaptureDebugOutput() const;
+
     [[nodiscard]] bool ValidDebugOutput(const AudioDebugOutput &state) const;
+
     void RestoreDebugOutput(const AudioDebugOutput &state);
 
     [[nodiscard]] AudioInspection Inspect() const;

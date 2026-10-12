@@ -31,17 +31,29 @@ namespace diagnostics {
     }
 
     void Watchpoints::BreakAt(const uint16_t pc, const std::optional<uint16_t> bank) {
-        Add({.events = {.components = uint64_t{1} << static_cast<unsigned>(Component::CPU),
-                        .kinds = uint64_t{1} << static_cast<unsigned>(EventKind::InstructionBegin), .pcs = {{pc, pc}}, .pcBank = bank}});
+        Add({
+            .events = {
+                .components = uint64_t{1} << static_cast<unsigned>(Component::CPU),
+                .kinds = uint64_t{1} << static_cast<unsigned>(EventKind::InstructionBegin), .pcs = {{pc, pc}}, .pcBank = bank
+            }
+        });
     }
 
     void Watchpoints::ReadAt(const Range<uint16_t> addresses) {
-        Add({.events = {.components = uint64_t{1} << static_cast<unsigned>(Component::Bus),
-                        .kinds = uint64_t{1} << static_cast<unsigned>(EventKind::BusRead), .addresses = addresses}});
+        Add({
+            .events = {
+                .components = uint64_t{1} << static_cast<unsigned>(Component::Bus),
+                .kinds = uint64_t{1} << static_cast<unsigned>(EventKind::BusRead), .addresses = addresses
+            }
+        });
     }
 
     void Watchpoints::WriteAt(const Range<uint16_t> addresses) {
-        Add({.events = {.components = uint64_t{1} << static_cast<unsigned>(Component::Bus),
-                        .kinds = uint64_t{1} << static_cast<unsigned>(EventKind::BusWrite), .addresses = addresses}});
+        Add({
+            .events = {
+                .components = uint64_t{1} << static_cast<unsigned>(Component::Bus),
+                .kinds = uint64_t{1} << static_cast<unsigned>(EventKind::BusWrite), .addresses = addresses
+            }
+        });
     }
 }

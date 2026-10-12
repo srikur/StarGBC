@@ -19,6 +19,8 @@ struct MicrotestDiagnostic {
 };
 
 static constexpr MicrotestDiagnostic microtestDiagnostics[] = {
+
+
 #include "MicrotestCases.inc"
 };
 

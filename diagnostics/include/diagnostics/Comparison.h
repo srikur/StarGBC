@@ -25,6 +25,7 @@ namespace diagnostics {
     };
 
     [[nodiscard]] CanonicalObservation CaptureObservation(Gameboy &machine);
+
     void WriteObservations(const std::filesystem::path &path, Gameboy &machine, ReplayPlayer *replay,
                            const InputFingerprint &initial, std::string replayHash, const ObservationPlan &plan);
 }

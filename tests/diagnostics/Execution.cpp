@@ -19,7 +19,10 @@ namespace {
     }
 }
 
-TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted execution at both speeds") {
+TEST_CASE (
+"diagnostics: arbitrary bounded stepping matches uninterrupted execution at both speeds"
+)
+ {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         for (const bool doubleSpeed : {false, true}) {
             if (doubleSpeed && IsDmg(model))
@@ -52,7 +55,10 @@ TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted executi
     }
 }
 
-TEST_CASE("diagnostics: instruction stepping treats CB opcodes as one instruction and bounds idle CPUs") {
+TEST_CASE (
+"diagnostics: instruction stepping treats CB opcodes as one instruction and bounds idle CPUs"
+)
+ {
     Gameboy gameboy({.romName = "roms/acid/dmg-acid2.gb", .model = Model::DMGB, .noBootrom = true});
     auto &cpu = gameboy.[:executionTestMember<Gameboy>("cpu_"):];
     cpu.pc(0xC001);
@@ -81,7 +87,10 @@ TEST_CASE("diagnostics: instruction stepping treats CB opcodes as one instructio
     CHECK(gameboy.AdvanceTicks(17).stopTick == begin + 17);
 }
 
-TEST_CASE("diagnostics: timeline survives scheduler wrap and rejects overflowing deadlines") {
+TEST_CASE (
+"diagnostics: timeline survives scheduler wrap and rejects overflowing deadlines"
+)
+ {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     gameboy.[:executionTestMember<Gameboy>("masterCycles"):] = Gameboy::CGB_CYCLES_PER_SECOND - 2;
     gameboy.[:executionTestMember<Gameboy>("timelineTicks_"):] = uint64_t{1} << 32;

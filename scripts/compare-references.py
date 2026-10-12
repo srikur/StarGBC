@@ -2,9 +2,9 @@
 import argparse
 import importlib.util
 import json
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location('execution_comparison', Path(__file__).with_name('compare-executions.py'))
 execution = importlib.util.module_from_spec(spec)

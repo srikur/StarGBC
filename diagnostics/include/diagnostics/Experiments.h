@@ -9,7 +9,9 @@
 
 namespace diagnostics {
     enum class ExperimentMode { Component, WholeMachine };
+
     enum class ExperimentFamily { Window, Sprites, Stat, TimerReload, Dma };
+
     enum class ExperimentBasis { InternalInvariant, HardwareMeasurement, ReferenceComparison, Hypothesis };
 
     struct Scenario {

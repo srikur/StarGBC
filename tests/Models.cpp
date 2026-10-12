@@ -16,14 +16,18 @@ namespace {
 
     GameboySettings settings(const Model model, const bool color = false) {
         return {
-                .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
-                .model = model,
-                .noBootrom = true,
+            .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
+            .model = model,
+            .noBootrom = true,
         };
     }
 } // namespace
 
-TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") {
+TEST_CASE (
+
+"cpu: illegal opcodes lock execution while peripherals keep running"
+)
+ {
     for (const uint8_t opcode : {0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD}) {
         CAPTURE(opcode);
         Gameboy gameboy(settings(Model::DMGB));
@@ -49,7 +53,11 @@ TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") 
     }
 }
 
-TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
+TEST_CASE (
+
+"models: cartridge compatibility preserves the silicon revision"
+)
+ {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBD, Model::CGBE, Model::AGB0, Model::AGBBE}) {
         Gameboy dmgCart(settings(model));
         Gameboy cgbCart(settings(model, true));
@@ -66,7 +74,11 @@ TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
     CHECK_FALSE(dmgHardware.IsInCgbMode());
 }
 
-TEST_CASE("models: unused OAM follows revision-specific address decoding") {
+TEST_CASE (
+
+"models: unused OAM follows revision-specific address decoding"
+)
+ {
     for (const auto model : {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Gameboy gameboy(settings(model)); // Includes CGB hardware in DMG compatibility mode.
         auto &bus = gameboy.[:busMember:];
@@ -106,7 +118,11 @@ TEST_CASE("models: unused OAM follows revision-specific address decoding") {
     }
 }
 
-TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
+TEST_CASE (
+
+"models: CGB-D latches the background row across both bitplanes"
+)
+ {
     for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Interrupts interrupts;
         GPU gpu(interrupts);
@@ -129,7 +145,11 @@ TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
     }
 }
 
-TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
+TEST_CASE (
+
+"models: early CGB length writes differ from CGB-C and later"
+)
+ {
     for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);
@@ -149,7 +169,11 @@ TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
     }
 }
 
-TEST_CASE("models: save states retain extra OAM and reject a different revision") {
+TEST_CASE (
+
+"models: save states retain extra OAM and reject a different revision"
+)
+ {
     Gameboy early(settings(Model::CGBB));
     Gameboy late(settings(Model::CGBE));
     auto &bus = early.[:busMember:];
@@ -165,7 +189,11 @@ TEST_CASE("models: save states retain extra OAM and reject a different revision"
     CHECK(late.SaveState() == lateBefore);
 }
 
-TEST_CASE("models: early CGB envelope writes pass through an intermediate value") {
+TEST_CASE (
+
+"models: early CGB envelope writes pass through an intermediate value"
+)
+ {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);

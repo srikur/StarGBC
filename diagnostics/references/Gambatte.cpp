@@ -22,14 +22,19 @@ namespace diagnostics {
                 if (!context_ || offset < 0)
                     return;
                 const auto bank = machine_.getAddrBank(static_cast<unsigned short>(address));
-                context_->Dispatch({.position = {.tick = ticks_ + static_cast<uint64_t>(offset) * 4, .frame = UINT64_MAX,
-                                    .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
-                                    .pc = kind == EventKind::InstructionBegin ? static_cast<uint16_t>(address) : uint16_t{UINT16_MAX},
-                                    .pcBank = kind == EventKind::InstructionBegin ? static_cast<uint16_t>(bank) : uint16_t{UINT16_MAX},
-                                    .address = static_cast<uint16_t>(address), .bank = static_cast<uint16_t>(bank),
-                                    .component = kind == EventKind::InstructionBegin ? Component::CPU : Component::Bus,
-                                    .kind = kind, .initiator = Initiator::CPU});
+                context_->Dispatch({
+                    .position = {
+                        .tick = ticks_ + static_cast<uint64_t>(offset) * 4, .frame = UINT64_MAX,
+                        .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX
+                    },
+                    .pc = kind == EventKind::InstructionBegin ? static_cast<uint16_t>(address) : uint16_t{UINT16_MAX},
+                    .pcBank = kind == EventKind::InstructionBegin ? static_cast<uint16_t>(bank) : uint16_t{UINT16_MAX},
+                    .address = static_cast<uint16_t>(address), .bank = static_cast<uint16_t>(bank),
+                    .component = kind == EventKind::InstructionBegin ? Component::CPU : Component::Bus,
+                    .kind = kind, .initiator = Initiator::CPU
+                });
             }
+
         public:
             void Load(const ReferenceSettings &settings) override {
                 std::ifstream input(settings.rom, std::ios::binary);
@@ -59,12 +64,26 @@ namespace diagnostics {
                     colors_[color] = 0xFF000000 | expand(color & 31) << 16 | expand((color >> 5) & 31) << 8 | expand((color >> 10) & 31);
                 machine_.setCgbPalette(colors_.data());
             }
+
             void ObserveWith(ObservationContext *context) override {
                 context_ = context;
-                machine_.setExecCallback(context ? +[](const int32_t address, const int64_t offset) { active_->EventAt(EventKind::InstructionBegin, address, offset); } : nullptr);
-                machine_.setReadCallback(context ? +[](const int32_t address, const int64_t offset) { active_->EventAt(EventKind::BusRead, address, offset); } : nullptr);
-                machine_.setWriteCallback(context ? +[](const int32_t address, const int64_t offset) { active_->EventAt(EventKind::BusWrite, address, offset); } : nullptr);
+                machine_.setExecCallback(context
+                                             ? +[](const int32_t address, const int64_t offset) {
+                                                 active_->EventAt(EventKind::InstructionBegin, address, offset);
+                                             }
+                                             : nullptr);
+                machine_.setReadCallback(context
+                                             ? +[](const int32_t address, const int64_t offset) {
+                                                 active_->EventAt(EventKind::BusRead, address, offset);
+                                             }
+                                             : nullptr);
+                machine_.setWriteCallback(context
+                                              ? +[](const int32_t address, const int64_t offset) {
+                                                  active_->EventAt(EventKind::BusWrite, address, offset);
+                                              }
+                                              : nullptr);
             }
+
             uint64_t AdvanceTo(const uint64_t deadline) override {
                 active_ = this;
                 while (ticks_ < deadline) {
@@ -79,28 +98,37 @@ namespace diagnostics {
                 active_ = nullptr;
                 return ticks_;
             }
+
             ReferenceRegisters Registers() override {
-                std::array<int, 10> values{};
+                std::array < int, 10 > values{};
                 machine_.getRegs(values.data());
                 const auto pair = [&](const unsigned high, const unsigned low) { return static_cast<uint16_t>((values[high] << 8) | values[low]); };
                 return {static_cast<uint16_t>(values[0]), static_cast<uint16_t>(values[1]), pair(2, 7), pair(3, 4), pair(5, 6), pair(8, 9)};
             }
+
             std::span<const uint32_t> Pixels() const override { return pixels_; }
             uint64_t Frames() const override { return frames_; }
         };
     }
+
     ReferenceCapabilities Capabilities() {
-        return {.name = "Gambatte", .repository = "https://github.com/pokemon-speedrunning/gambatte-core",
-                .revision = "5a41a68c25402421fb1983ddadc9faf2418ddb0f", .models = {"DMGB", "CGBC"},
-                .startup = {"ExplicitBootrom", "SkipBootrom"}, .resolutionTicks = 4,
-                .executionGranularity = "runFor sample budget; actual samples determine elapsed ticks", .maximumOvershootTicks = 8259,
-                .events = {EventKind::InstructionBegin, EventKind::BusRead, EventKind::BusWrite},
-                .banks = true, .instructionPhase = "Immediately before the opcode fetch callback; prefetched dispatch may omit a second callback",
-                .audio = "2,097,152 Hz stereo PCM; resampler and mixer observations are not shared",
-                .limitations = {"DMGB and CGBC map to generic DMG/CGB families; this API cannot select exact silicon revisions",
-                                "DMGB requires a monochrome cartridge header", "Bank observations describe cartridge mappings and do not identify boot ROM interception",
-                                "Bus callbacks supply addresses and timing, but no values; no side-effecting externalRead is used",
-                                "No external inputs or cartridge saves in this adapter protocol", "Power-on RAM and skip-boot state are core-specific"}};
+        return {
+            .name = "Gambatte", .repository = "https://github.com/pokemon-speedrunning/gambatte-core",
+            .revision = "5a41a68c25402421fb1983ddadc9faf2418ddb0f", .models = {"DMGB", "CGBC"},
+            .startup = {"ExplicitBootrom", "SkipBootrom"}, .resolutionTicks = 4,
+            .executionGranularity = "runFor sample budget; actual samples determine elapsed ticks", .maximumOvershootTicks = 8259,
+            .events = {EventKind::InstructionBegin, EventKind::BusRead, EventKind::BusWrite},
+            .banks = true, .instructionPhase = "Immediately before the opcode fetch callback; prefetched dispatch may omit a second callback",
+            .audio = "2,097,152 Hz stereo PCM; resampler and mixer observations are not shared",
+            .limitations = {
+                "DMGB and CGBC map to generic DMG/CGB families; this API cannot select exact silicon revisions",
+                "DMGB requires a monochrome cartridge header",
+                "Bank observations describe cartridge mappings and do not identify boot ROM interception",
+                "Bus callbacks supply addresses and timing, but no values; no side-effecting externalRead is used",
+                "No external inputs or cartridge saves in this adapter protocol", "Power-on RAM and skip-boot state are core-specific"
+            }
+        };
     }
+
     std::unique_ptr<ReferenceAdapter> MakeReferenceAdapter() { return std::make_unique<GambatteAdapter>(); }
 }

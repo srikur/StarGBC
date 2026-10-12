@@ -24,7 +24,7 @@ namespace diagnostics {
             std::string record{"sample"};
             CanonicalObservation state;
             std::string eventHash;
-            std::optional<std::vector<Event>> events;
+            std::optional<std::vector<Event> > events;
         };
 
         struct ObservationEnd {
@@ -60,10 +60,15 @@ namespace diagnostics {
             throw std::invalid_argument("Observation capture exceeds the sample or interval limit");
         std::ofstream output(path);
         output.exceptions(std::ios::failbit | std::ios::badbit);
-        const auto write = [&](const auto &value) { WriteJson(output, value); output << '\n'; };
-        write(ObservationHeader{.initial = initial, .replayHash = std::move(replayHash), .plan = plan,
-              .hardwareFormat = "reflection-state-" + std::to_string(kGameboyStateSize),
-              .scheduler = plan.events ? "PerTickForObservations" : "RequestedPolicy"});
+        const auto write = [&](const auto &value) {
+            WriteJson(output, value);
+            output << '\n';
+        };
+        write(ObservationHeader{
+            .initial = initial, .replayHash = std::move(replayHash), .plan = plan,
+            .hardwareFormat = "reflection-state-" + std::to_string(kGameboyStateSize),
+            .scheduler = plan.events ? "PerTickForObservations" : "RequestedPolicy"
+        });
         const auto advance = [&](const uint64_t ticks) {
             return replay ? replay->AdvanceTicks(ticks, plan.policy) : machine.AdvanceTicks(ticks, plan.policy);
         };
