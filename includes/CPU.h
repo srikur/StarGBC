@@ -58,6 +58,8 @@ public:
 
     [[nodiscard]] bool IsHalted() const { return halted_; }
 
+    [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
+
     [[nodiscard]] CpuInspection Inspect() const {
         return {.pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
                 .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
@@ -152,6 +154,7 @@ private:
     uint8_t interruptBit{0x00};
     uint8_t interruptMask{0x00};
     bool instrRunning{false};
+    [[=NotStateAware]] uint64_t instructionsCompleted_{};
 };
 
 #endif // STARGBC_CPU_H

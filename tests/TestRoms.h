@@ -35,6 +35,7 @@ struct Bootroms {
 
 static constexpr Bootroms bootroms{};
 static unsigned romFrames = 0;
+static ExecutionPolicy testExecutionPolicy{ExecutionPolicy::Optimized};
 static std::unique_ptr<diagnostics::Report> testReport;
 static std::filesystem::path failureDirectory;
 static std::string testExecutableHash;
@@ -152,6 +153,7 @@ static bool runRomTest(const std::string &rom, const std::string &expected_scree
                 .romName = rom,
                 .biosPath = bios,
                 .model = model,
+                .executionPolicy = testExecutionPolicy,
         });
 
         const auto passed = [&] {
@@ -775,6 +777,7 @@ static int runBenchmark(const std::string &rom, const Model model, const unsigne
                 .romName = rom,
                 .biosPath = "",
                 .model = model,
+                .executionPolicy = testExecutionPolicy,
         });
         constexpr double kGbFrameHz = 4194304.0 / 70224.0;
         const auto start = std::chrono::steady_clock::now();
@@ -824,6 +827,13 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 std::cerr << "--results requires a file path\n";
                 return EXIT_FAILURE;
             }
+        } else if (arg.starts_with("--execution=")) {
+            const auto policy = arg.substr(std::string_view("--execution=").size());
+            if (policy != "ordinary" && policy != "optimized") {
+                std::cerr << "--execution requires ordinary or optimized\n";
+                return EXIT_FAILURE;
+            }
+            testExecutionPolicy = policy == "ordinary" ? ExecutionPolicy::Ordinary : ExecutionPolicy::Optimized;
         } else if (arg.starts_with("--case-id=")) {
             const auto id = arg.substr(std::string_view("--case-id=").size());
             if (id.empty()) {

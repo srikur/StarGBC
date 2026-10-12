@@ -26,6 +26,7 @@ static AgeTestResult runAgeTest(const AgeTestCase &test) {
                 .romName = test.rom,
                 .biosPath = IsCgb(test.model) ? bootroms.cgbBootrom : bootroms.dmgBootrom,
                 .model = test.model,
+                .executionPolicy = testExecutionPolicy,
         });
         const auto expected =
                 test.reference.empty() ? std::vector<uint32_t>{} : readBinaryFile("tests/expected/age-test-roms/" + test.reference + ".screen");

@@ -1,6 +1,7 @@
 #include "Gameboy.h"
 
 #include <fstream>
+#include <limits>
 
 static constexpr uint32_t kFrameCyclesCGB = Gameboy::FRAME_CYCLES_DMG * 2;
 
@@ -212,26 +213,67 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     return 1;
 }
 
-void Gameboy::RunFrame() {
-    uint32_t remaining = kFrameCyclesCGB;
+ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolicy policy) {
+    if (ticks > std::numeric_limits<uint64_t>::max() - timelineTicks_)
+        throw std::out_of_range("Timeline deadline overflows master ticks");
+    const auto begin = timelineTicks_;
+    const auto instructions = cpu_.InstructionsCompleted();
+    uint64_t remaining = ticks;
     while (remaining > 0) {
-        if (!cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
+        if (policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
             if (bus_.speed == Speed::Regular && remaining >= 8) {
                 if (masterCycles >= CGB_CYCLES_PER_SECOND)
                     masterCycles -= CGB_CYCLES_PER_SECOND;
-                remaining -= AdvanceMCycle();
+                const auto consumed = AdvanceMCycle();
+                remaining -= consumed;
+                timelineTicks_ += consumed;
                 continue;
             }
             if (bus_.speed == Speed::Double && remaining >= 4) {
                 if (masterCycles >= CGB_CYCLES_PER_SECOND)
                     masterCycles -= CGB_CYCLES_PER_SECOND;
-                remaining -= AdvanceMCycleDouble();
+                const auto consumed = AdvanceMCycleDouble();
+                remaining -= consumed;
+                timelineTicks_ += consumed;
                 continue;
             }
         }
-        remaining -= AdvanceCycles(remaining);
+        const auto consumed = AdvanceCycles(static_cast<uint32_t>(std::min<uint64_t>(remaining, 2)));
+        remaining -= consumed;
+        timelineTicks_ += consumed;
     }
-    // Deferred APU ticks never cross a frame boundary, so between-frames
-    // observers (sample drain, save states) always see current state
-    audio_.CatchUp();
+    if (ticks)
+        audio_.CatchUp();
+    return {ExecutionStopReason::TickBudget, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions};
+}
+
+ExecutionResult Gameboy::StepInstruction(const uint64_t maxTicks) {
+    if (maxTicks > std::numeric_limits<uint64_t>::max() - timelineTicks_)
+        throw std::out_of_range("Instruction deadline overflows master ticks");
+    const auto begin = timelineTicks_;
+    const auto instructions = cpu_.InstructionsCompleted();
+    const auto stoppedReason = [&]() -> std::optional<ExecutionStopReason> {
+        const auto cpu = cpu_.Inspect();
+        if (cpu.locked)
+            return ExecutionStopReason::Locked;
+        if (cpu.stopped)
+            return ExecutionStopReason::Stopped;
+        if (cpu.halted)
+            return ExecutionStopReason::Halted;
+        return std::nullopt;
+    };
+    if (const auto reason = stoppedReason())
+        return {*reason, begin, begin, 0};
+    while (timelineTicks_ - begin < maxTicks) {
+        static_cast<void>(AdvanceTicks(1));
+        if (cpu_.InstructionsCompleted() != instructions)
+            return {ExecutionStopReason::InstructionBoundary, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions};
+        if (const auto reason = stoppedReason())
+            return {*reason, begin, timelineTicks_, 0};
+    }
+    return {ExecutionStopReason::TickBudget, begin, timelineTicks_, 0};
+}
+
+void Gameboy::RunFrame() {
+    static_cast<void>(AdvanceTicks(kFrameCyclesCGB, executionPolicy_));
 }

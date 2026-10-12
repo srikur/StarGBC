@@ -112,7 +112,7 @@ RegisterInspection Gameboy::InspectRegister(const uint16_t address) const {
 
 MachineInspection Gameboy::Inspect() const {
     MachineInspection result{
-            .model = GetModel(), .speed = bus_.speed, .cgbMode = bus_.cgbMode, .bootromRunning = bus_.bootromRunning,
+            .tick = timelineTicks_, .model = GetModel(), .speed = bus_.speed, .cgbMode = bus_.cgbMode, .bootromRunning = bus_.bootromRunning,
             .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3), .cpu = cpu_.Inspect(),
             .interrupts = {.enable = interrupts_.interruptEnable, .storedFlags = interrupts_.interruptFlag,
                            .cpuVisibleFlags = static_cast<uint8_t>(interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0),

@@ -18,6 +18,10 @@ namespace {
         [[=Opt{"Skip boot ROM execution"}]] bool no_bootrom{};
         [[=Opt{"Disable color correction"}]] bool raw_color{};
         [[=Opt{"Fixed RunFrame intervals before inspection"}, =Range{0, 1'000'000}]] unsigned intervals{};
+        [[=Opt{"Master ticks to advance after the intervals"}]] uint64_t ticks{};
+        [[=Opt{"Scheduler execution policy"}]] ExecutionPolicy policy{ExecutionPolicy::Ordinary};
+        [[=Opt{"Step to the next completed instruction"}]] bool step_instruction{};
+        [[=Opt{"Maximum master ticks for instruction stepping"}]] uint64_t deadline_ticks{140'448};
         [[=Opt{"Register address to inspect"}]] std::optional<uint16_t> register_address;
         [[=Opt{"JSON output file; stdout when omitted"}]] std::string output;
     };
@@ -27,6 +31,7 @@ namespace {
         std::string romHash;
         MachineInspection machine;
         std::optional<RegisterInspection> selectedRegister;
+        std::optional<ExecutionResult> execution;
     };
 }
 
@@ -42,10 +47,15 @@ int main(const int argc, char **argv) {
     }
     try {
         Gameboy machine({.romName = arguments->rom, .biosPath = arguments->bios, .model = arguments->model,
-                         .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color});
+                         .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color, .executionPolicy = arguments->policy});
         for (unsigned interval = 0; interval < arguments->intervals; ++interval)
             machine.RunFrame();
-        InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect()};
+        std::optional<ExecutionResult> execution;
+        if (arguments->ticks)
+            execution = machine.AdvanceTicks(arguments->ticks, arguments->policy);
+        if (arguments->step_instruction)
+            execution = machine.StepInstruction(arguments->deadline_ticks);
+        InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect(), .execution = execution};
         if (arguments->register_address)
             report.selectedRegister = machine.InspectRegister(*arguments->register_address);
         if (arguments->output.empty()) {

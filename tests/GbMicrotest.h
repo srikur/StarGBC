@@ -22,6 +22,7 @@ static GbMicrotestResult runGbMicrotest(const std::string &rom) {
                 .romName = rom,
                 .biosPath = bootroms.dmgBootrom,
                 .model = Model::DMGB,
+                .executionPolicy = testExecutionPolicy,
         });
 
         const auto &hram = gameboy->[:testGameboyMember("memory_"):].hram_;

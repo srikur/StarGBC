@@ -9,6 +9,7 @@
 
 #include "CPU.h"
 #include "Common.h"
+#include "Execution.h"
 #include "Memory.h"
 
 struct GameboySettings {
@@ -19,6 +20,7 @@ struct GameboySettings {
     bool realRTC{false};
     bool noAudio{false};
     bool colorCorrection{true};
+    ExecutionPolicy executionPolicy{ExecutionPolicy::Optimized};
 };
 
 class Gameboy {
@@ -35,7 +37,7 @@ public:
                                                         gpu_(interrupts_, settings.colorCorrection),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
                                                         cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_),
-                                                        instructions_(registers_, interrupts_) {}
+                                                        instructions_(registers_, interrupts_), executionPolicy_(settings.executionPolicy) {}
 
     Gameboy(const Gameboy &other) = delete;
 
@@ -50,6 +52,12 @@ public:
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) { return std::make_unique<Gameboy>(settings); }
 
     void RunFrame();
+
+    [[nodiscard]] ExecutionResult AdvanceTicks(uint64_t ticks, ExecutionPolicy policy = ExecutionPolicy::Ordinary);
+
+    [[nodiscard]] ExecutionResult StepInstruction(uint64_t maxTicks);
+
+    [[nodiscard]] uint64_t TimelineTicks() const { return timelineTicks_; }
 
     [[nodiscard]] bool ConsumeFrame();
 
@@ -118,6 +126,8 @@ private:
 
     uint32_t masterCycles{0x00000000};
     uint8_t cpuTickPhase_{0x00};
+    uint64_t timelineTicks_{};
+    [[=NotStateAware]] ExecutionPolicy executionPolicy_{ExecutionPolicy::Optimized};
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 

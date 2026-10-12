@@ -91,6 +91,7 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
                 .model = gambatte_case.model,
                 .noBootrom = true,
                 .colorCorrection = false,
+                .executionPolicy = testExecutionPolicy,
         });
         for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame)
             gameboy->RunFrame();

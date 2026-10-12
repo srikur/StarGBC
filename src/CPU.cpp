@@ -217,6 +217,8 @@ void CPU<BusT>::BeginMCycle() {
 template<BusLike BusT>
 void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
     prefixed = currentInstruction >> 8 == 0xCB;
+    if (!prefixed)
+        ++instructionsCompleted_;
     currentInstruction = nextInstruction_;
     mCycleCounter_ = 1;
     if (haltBug_) {

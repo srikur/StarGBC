@@ -124,6 +124,7 @@ struct AudioInspection {
 };
 
 struct MachineInspection {
+    uint64_t tick{};
     Model model{};
     Speed speed{};
     bool cgbMode{};
