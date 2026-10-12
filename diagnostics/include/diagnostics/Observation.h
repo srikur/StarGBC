@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 namespace diagnostics {
     struct ExecutionPosition {
@@ -52,21 +53,32 @@ namespace diagnostics {
         uint16_t pcBank{};
         uint64_t sequence{};
         uint64_t branch{};
+        void *conditionOwner{};
+        bool (*condition)(void *, const Event &) noexcept{};
+        std::optional<Event> stopEvent;
+
+        void Dispatch(Event event) noexcept {
+            event.sequence = sequence++;
+            if (callback)
+                callback(owner, event);
+            if (!stopEvent && condition && condition(conditionOwner, event))
+                stopEvent = event;
+        }
 
         void Emit(const Component component, const EventKind kind, const uint16_t address = 0, const uint32_t value = 0,
                   const uint32_t detail = 0, const Initiator initiator = Initiator::Peripheral, const bool blocked = false,
                   const uint16_t bank = 0) noexcept {
-            if (callback)
-                callback(owner, {.position = position, .sequence = sequence++, .branch = branch, .pc = pc, .pcBank = pcBank,
+            if (callback || condition)
+                Dispatch({.position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
                                  .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
                                  .blocked = blocked, .value = value, .detail = detail});
         }
 
         void EmitDeferred(const uint64_t tick, const Component component, const EventKind kind, const uint32_t value,
                           const uint32_t detail = 0) noexcept {
-            if (callback)
-                callback(owner, {.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
-                                 .sequence = sequence++, .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
+            if (callback || condition)
+                Dispatch({.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
+                                 .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
                                  .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail});
         }
 
@@ -74,8 +86,8 @@ namespace diagnostics {
             const auto parent = branch++;
             const auto previousTick = position.tick;
             position = restored;
-            if (callback)
-                callback(owner, {.position = position, .sequence = sequence++, .branch = branch, .pc = pc, .pcBank = pcBank,
+            if (callback || condition)
+                Dispatch({.position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
                                  .component = Component::Control, .kind = EventKind::Branch,
                                  .relatedTick = previousTick, .parentBranch = parent});
         }

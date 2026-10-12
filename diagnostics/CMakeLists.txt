@@ -1,4 +1,4 @@
-add_library(StarGBC_Diagnostics STATIC src/Contracts.cpp src/Hash.cpp src/Report.cpp src/Artifacts.cpp src/Trace.cpp)
+add_library(StarGBC_Diagnostics STATIC src/Contracts.cpp src/Hash.cpp src/Report.cpp src/Artifacts.cpp src/Trace.cpp src/Watchpoints.cpp)
 target_include_directories(StarGBC_Diagnostics PUBLIC include)
 
 add_executable(StarGBC_Debug tools/Debug.cpp)

@@ -57,6 +57,10 @@ public:
 
     [[nodiscard]] ExecutionResult StepInstruction(uint64_t maxTicks);
 
+    [[nodiscard]] ConditionalExecutionResult RunUntil(std::span<const RunCondition> conditions, uint64_t maxTicks);
+
+    [[nodiscard]] diagnostics::ObservationContext *Observations() const { return observations_; }
+
     [[nodiscard]] uint64_t TimelineTicks() const { return timelineTicks_; }
 
     void ObserveWith(diagnostics::ObservationContext *context);

@@ -9,6 +9,7 @@
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
 #include "diagnostics/Trace.h"
+#include "diagnostics/Watchpoints.h"
 
 namespace {
     using namespace StarParse;
@@ -25,6 +26,19 @@ namespace {
         [[=Opt{"Step to the next completed instruction"}]] bool step_instruction{};
         [[=Opt{"Maximum master ticks for instruction stepping"}]] uint64_t deadline_ticks{140'448};
         [[=Opt{"Register address to inspect"}]] std::optional<uint16_t> register_address;
+        [[=Opt{"Break on an instruction address at its first machine cycle"}]] std::optional<uint16_t> break_pc;
+        [[=Opt{"Instruction bank for the PC breakpoint"}]] std::optional<uint16_t> break_bank;
+        [[=Opt{"Stop after a read of this address"}]] std::optional<uint16_t> watch_read;
+        [[=Opt{"Stop after a write to this address"}]] std::optional<uint16_t> watch_write;
+        [[=Opt{"Stop after this event kind"}]] std::optional<diagnostics::EventKind> watch_event;
+        [[=Opt{"Required event value"}]] std::optional<uint32_t> watch_value;
+        [[=Opt{"Register used by a value or change condition"}]] std::optional<uint16_t> until_register;
+        [[=Opt{"Required CPU-visible register value"}]] std::optional<uint8_t> until_value;
+        [[=Opt{"Stop when the selected register changes"}]] bool until_changed{};
+        [[=Opt{"Register comparison mask"}]] uint8_t until_mask{0xFF};
+        [[=Opt{"Stop at this PPU mode"}]] std::optional<unsigned> until_mode;
+        [[=Opt{"Stop at this display scanline"}]] std::optional<unsigned> until_ly;
+        [[=Opt{"Stop at this display dot"}]] std::optional<unsigned> until_dot;
         [[=Opt{"JSON output file; stdout when omitted"}]] std::string output;
         [[=Opt{"Trace output basename; writes JSONL and binary"}]] std::string trace;
         [[=Opt{"Maximum retained events"}, =Range{1, 1'000'000}]] unsigned trace_capacity{65536};
@@ -50,6 +64,7 @@ namespace {
         MachineInspection machine;
         std::optional<RegisterInspection> selectedRegister;
         std::optional<ExecutionResult> execution;
+        std::optional<ConditionalExecutionResult> conditional;
     };
 }
 
@@ -66,8 +81,27 @@ int main(const int argc, char **argv) {
     try {
         Gameboy machine({.romName = arguments->rom, .biosPath = arguments->bios, .model = arguments->model,
                          .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color, .executionPolicy = arguments->policy});
+        const bool hasWatchpoint = arguments->break_pc || arguments->watch_read || arguments->watch_write || arguments->watch_event;
+        if ((arguments->break_bank && !arguments->break_pc) || (arguments->watch_value && !arguments->watch_event))
+            throw std::invalid_argument("Bank and event values require their breakpoint or event condition");
+        if (arguments->until_register.has_value() != (arguments->until_value.has_value() || arguments->until_changed) ||
+            (arguments->until_value && arguments->until_changed))
+            throw std::invalid_argument("A register condition requires its address and either a value or change detection");
+        if (arguments->until_mode.value_or(0) > 3 || arguments->until_ly.value_or(0) > 153 || arguments->until_dot.value_or(0) > 455)
+            throw std::invalid_argument("PPU condition is outside its hardware range");
+        std::vector<RunCondition> conditions;
+        if (arguments->until_register)
+            conditions.push_back({arguments->until_changed ? ConditionKind::RegisterChange : ConditionKind::RegisterValue,
+                                  *arguments->until_register, arguments->until_value.value_or(0), arguments->until_mask});
+        if (arguments->until_mode)
+            conditions.push_back({ConditionKind::PpuMode, 0, *arguments->until_mode});
+        if (arguments->until_ly)
+            conditions.push_back({ConditionKind::Line, 0, *arguments->until_ly});
+        if (arguments->until_dot)
+            conditions.push_back({ConditionKind::Dot, 0, *arguments->until_dot});
         std::unique_ptr<diagnostics::TraceRecorder> recorder;
-        if (!arguments->trace.empty()) {
+        std::unique_ptr<diagnostics::Watchpoints> watchpoints;
+        if (!arguments->trace.empty() || hasWatchpoint) {
             if (arguments->trace_begin > arguments->trace_end)
                 throw std::invalid_argument("Trace interval is reversed");
             diagnostics::EventFilter filter{.ticks = {arguments->trace_begin, arguments->trace_end}};
@@ -96,6 +130,19 @@ int main(const int argc, char **argv) {
             std::ostringstream configuration;
             diagnostics::WriteJson(configuration, *arguments);
             recorder->Identify(diagnostics::FileHash(argv[0]), diagnostics::FileHash(arguments->rom), configuration.str());
+            recorder->SetCaptureEnabled(!arguments->trace.empty());
+            if (hasWatchpoint) {
+                watchpoints = std::make_unique<diagnostics::Watchpoints>(recorder->Context());
+                if (arguments->break_pc)
+                    watchpoints->BreakAt(*arguments->break_pc, arguments->break_bank);
+                if (arguments->watch_read)
+                    watchpoints->ReadAt({*arguments->watch_read, *arguments->watch_read});
+                if (arguments->watch_write)
+                    watchpoints->WriteAt({*arguments->watch_write, *arguments->watch_write});
+                if (arguments->watch_event)
+                    watchpoints->Add({.events = {.kinds = uint64_t{1} << static_cast<unsigned>(*arguments->watch_event)},
+                                      .value = arguments->watch_value});
+            }
             machine.ObserveWith(&recorder->Context());
         }
         for (unsigned interval = 0; interval < arguments->intervals; ++interval)
@@ -105,10 +152,14 @@ int main(const int argc, char **argv) {
             execution = machine.AdvanceTicks(arguments->ticks, arguments->policy);
         if (arguments->step_instruction)
             execution = machine.StepInstruction(arguments->deadline_ticks);
-        InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect(), .execution = execution};
+        std::optional<ConditionalExecutionResult> conditional;
+        if (hasWatchpoint || !conditions.empty())
+            conditional = machine.RunUntil(conditions, arguments->deadline_ticks);
+        InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect(),
+                                .execution = execution, .conditional = conditional};
         if (arguments->register_address)
             report.selectedRegister = machine.InspectRegister(*arguments->register_address);
-        if (recorder) {
+        if (recorder && !arguments->trace.empty()) {
             recorder->WriteJsonLines(arguments->trace + ".jsonl");
             recorder->WriteBinary(arguments->trace + ".trace");
             machine.ObserveWith(nullptr);
