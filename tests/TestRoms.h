@@ -22,6 +22,7 @@
 #include "diagnostics/Trace.h"
 #include "diagnostics/Checkpoint.h"
 #include "diagnostics/Replay.h"
+#include "diagnostics/Provenance.h"
 
 struct Bootroms {
     const char *dmg0Bootrom = "roms/dmg0_boot.bin";
@@ -48,25 +49,38 @@ static TestObservationMode testObservationMode{TestObservationMode::Disabled};
 static size_t testTraceCapacity{65536};
 static diagnostics::EventFilter testTraceFilter;
 static bool testCheckpointFailures{};
+static std::optional<uint8_t> testProvenanceLine;
 
 class TestObservationSession {
     std::optional<diagnostics::TraceRecorder> recorder_;
     Gameboy *machine_{};
     diagnostics::InputFingerprint checkpointInputs_;
+    std::optional<diagnostics::ProvenanceRecorder> provenance_;
 
 public:
     void Attach(Gameboy &gameboy) {
         machine_ = &gameboy;
         if (testCheckpointFailures)
             checkpointInputs_ = diagnostics::IdentifyInitialInputs(gameboy, gameboy.InitialSettings());
+        if (testProvenanceLine) {
+            provenance_.emplace(diagnostics::PixelRegion{.y = {*testProvenanceLine, *testProvenanceLine}});
+            gameboy.RecordPixelsWith(&provenance_->Context());
+        }
         if (testObservationMode == TestObservationMode::Disabled)
             return;
-        recorder_.emplace(testTraceCapacity, testTraceFilter);
+        auto filter = testTraceFilter;
+        if (testProvenanceLine && !filter.lines)
+            filter.lines = {*testProvenanceLine, *testProvenanceLine};
+        recorder_.emplace(testTraceCapacity, filter);
         recorder_->SetCaptureEnabled(testObservationMode == TestObservationMode::Capture);
         gameboy.ObserveWith(&recorder_->Context());
     }
 
     void Export(const std::filesystem::path &directory, const diagnostics::Result &result) {
+        if (provenance_) {
+            provenance_->Identify(std::string(Gameboy::CoreBuildIdentity()), result.inputs.rom);
+            provenance_->WriteJson(directory / "provenance.json");
+        }
         if (testCheckpointFailures && machine_)
             diagnostics::WriteCheckpoint(directory / "terminal.checkpoint", *machine_,
                                          {.build = std::string(Gameboy::CoreBuildIdentity()), .inputs = checkpointInputs_});
@@ -920,6 +934,18 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             }
             if (!count) {
                 std::cerr << "Case ID file is empty\n";
+                return EXIT_FAILURE;
+            }
+        } else if (arg.starts_with("--provenance-line=")) {
+            try {
+                const auto text = std::string(arg.substr(std::string_view("--provenance-line=").size()));
+                size_t consumed{};
+                const auto line = std::stoul(text, &consumed);
+                if (line > 143 || consumed != text.size())
+                    throw std::invalid_argument("invalid display line");
+                testProvenanceLine = line;
+            } catch (...) {
+                std::cerr << "--provenance-line requires a display line from 0 through 143\n";
                 return EXIT_FAILURE;
             }
         } else if (arg == "--checkpoint-failures") {

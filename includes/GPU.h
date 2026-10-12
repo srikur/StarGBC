@@ -3,6 +3,7 @@
 #include "FixedContainers.h"
 #include "HDMA.h"
 #include "Interrupts.h"
+#include "diagnostics/PixelProvenance.h"
 
 struct Pixel {
     uint8_t color{0x00};
@@ -75,10 +76,15 @@ public:
     explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : colorCorrection_(colorCorrection), interrupts_(interrupts) {}
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+    [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
 
     void SetMode(GPUMode mode);
     void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
     void ObserveStall(diagnostics::StallReason reason) const;
+    void RecordSpriteCandidate(unsigned slot, uint8_t bit, uint8_t color, diagnostics::SpriteDecision decision);
+    [[nodiscard]] diagnostics::PixelDecision ExplainSelection(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+    void RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel &selected, bool bgEnable, uint32_t color);
+    void RecordRecolor(uint16_t offset, uint16_t address, const Pixel &selected, diagnostics::PixelDecision decision);
 
     static constexpr uint32_t DMG_SHADE[4] = {
             0xFFFFFFFFu, // FF FF FF FF

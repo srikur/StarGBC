@@ -11,6 +11,8 @@
 #include "diagnostics/Trace.h"
 #include "diagnostics/Watchpoints.h"
 #include "diagnostics/Replay.h"
+#include "diagnostics/Provenance.h"
+#include "diagnostics/Artifacts.h"
 
 namespace {
     using namespace StarParse;
@@ -46,6 +48,14 @@ namespace {
         [[=Opt{"Replay a verified timestamped input log"}]] std::string replay_inputs;
         [[=Opt{"Record the buttons actually applied to the machine"}]] std::string record_inputs;
         [[=Opt{"Schedule buttons as decimal tick:mask; repeat for more inputs"}]] std::vector<std::string> input_at;
+        [[=Opt{"Pixel provenance JSON output file"}]] std::string provenance;
+        [[=Opt{"Capture all display lines instead of one selected line"}]] bool provenance_whole_frame{};
+        [[=Opt{"Maximum retained pixel pipeline and recolor events"}]] std::optional<unsigned> pixel_event_capacity;
+        [[=Opt{"Horizontal coordinate to explain"}]] std::optional<uint16_t> pixel_x;
+        [[=Opt{"Vertical coordinate to explain and line to capture"}]] std::optional<uint16_t> pixel_y;
+        [[=Opt{"Capture and query only this displayed frame counter"}]] std::optional<uint64_t> pixel_frame;
+        [[=Opt{"First provenance capture tick"}]] uint64_t pixel_begin{};
+        [[=Opt{"Last provenance capture tick"}]] uint64_t pixel_end{UINT64_MAX};
         [[=Opt{"Trace output basename; writes JSONL and binary"}]] std::string trace;
         [[=Opt{"Maximum retained events"}, =Range{1, 1'000'000}]] unsigned trace_capacity{65536};
         [[=Opt{"First captured master tick"}]] uint64_t trace_begin{};
@@ -73,6 +83,8 @@ namespace {
         std::optional<ConditionalExecutionResult> conditional;
         diagnostics::InputFingerprint initialInputs;
         uint64_t replayCursor{};
+        std::optional<diagnostics::PixelExplanation> selectedPixel;
+        std::optional<diagnostics::ProvenanceMetadata> provenance;
     };
 }
 
@@ -201,6 +213,23 @@ int main(const int argc, char **argv) {
             }
             machine.ObserveWith(&recorder->Context());
         }
+        std::unique_ptr<diagnostics::ProvenanceRecorder> pixels;
+        if (arguments->pixel_x.has_value() != arguments->pixel_y.has_value())
+            throw std::invalid_argument("A pixel query requires both coordinates");
+        if (arguments->pixel_x.value_or(0) > 159 || arguments->pixel_y.value_or(0) > 143)
+            throw std::invalid_argument("Pixel query is outside the display");
+        if (!arguments->provenance.empty() || arguments->pixel_x) {
+            diagnostics::PixelRegion region{.y = {arguments->pixel_y.value_or(0), arguments->pixel_y.value_or(0)},
+                                            .ticks = {arguments->pixel_begin, arguments->pixel_end}};
+            if (arguments->provenance_whole_frame)
+                region.y = {0, 143};
+            if (arguments->pixel_frame)
+                region.frames = {*arguments->pixel_frame, *arguments->pixel_frame};
+            pixels = std::make_unique<diagnostics::ProvenanceRecorder>(region, 160 * (region.y.last - region.y.first + 1),
+                      arguments->pixel_event_capacity.value_or(arguments->provenance_whole_frame ? 65536 : 4096));
+            pixels->Identify(std::string(Gameboy::CoreBuildIdentity()), initialInputs.rom);
+            machine.RecordPixelsWith(&pixels->Context());
+        }
         if (!arguments->checkpoint_load.empty()) {
             if (replay)
                 replay->RestoreCheckpoint(arguments->checkpoint_load, checkpointIdentity);
@@ -237,6 +266,17 @@ int main(const int argc, char **argv) {
         }
         if (inputRecorder)
             diagnostics::WriteInputLog(arguments->record_inputs, inputRecorder->Log());
+        if (pixels) {
+            report.provenance = pixels->Metadata();
+            if (arguments->pixel_x)
+                report.selectedPixel = pixels->Query(*arguments->pixel_x, *arguments->pixel_y, arguments->pixel_frame);
+            if (!arguments->provenance.empty()) {
+                pixels->WriteJson(arguments->provenance);
+                diagnostics::WriteBitmap(arguments->provenance + ".bmp", std::span(machine.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT),
+                                          SCREEN_WIDTH, SCREEN_HEIGHT);
+            }
+            machine.RecordPixelsWith(nullptr);
+        }
         if (arguments->register_address)
             report.selectedRegister = machine.InspectRegister(*arguments->register_address);
         if (recorder && !arguments->trace.empty()) {

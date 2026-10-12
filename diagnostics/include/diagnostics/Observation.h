@@ -19,7 +19,7 @@ namespace diagnostics {
         RegisterWrite, RegisterApply, PpuMode, WindowActivate, TileFetch, FifoPush, FifoPop,
         PixelDiscard, PixelStall, PixelOutput, PixelRecolor, DmaOwnership, DmaTransfer,
         TimerEdge, TimerOverflow, TimerReload, AudioRegister, AudioTrigger, AudioSequencer,
-        AudioMix, InputApplied, Branch, Overflow
+        AudioMix, InputApplied, Branch, Overflow, FramebufferClear
     };
     enum class FetchStage : uint8_t { Map, Attributes, BackgroundLow, BackgroundHigh, SpriteOam, SpriteLow, SpriteHigh };
     enum class StallReason : uint8_t { FifoStarvation, SpriteFetch, SpriteAlignment };

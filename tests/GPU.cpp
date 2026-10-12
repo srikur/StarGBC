@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <doctest/doctest.h>
 #include <string_view>
+#include "diagnostics/Provenance.h"
 
 namespace {
     struct LineResult {
@@ -63,12 +64,13 @@ namespace {
     };
 
     void checkObjectOverlap(Model model, bool coordinatePriority, std::initializer_list<ObjectPixels> objects, unsigned startX,
-                            std::string_view expected) {
+                            std::string_view expected, diagnostics::PixelProvenanceContext *provenance = nullptr) {
         CAPTURE(ModelName(model));
         CAPTURE(coordinatePriority);
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
+        gpu.provenance = provenance;
         gpu.objectPriority = coordinatePriority;
         gpu.lcdc = 0x93;
         gpu.currentLine = 10;
@@ -98,8 +100,11 @@ namespace {
             }
             ++index;
         }
-        for (unsigned dot = 0; dot < 456 && gpu.pixelsDrawn < SCREEN_WIDTH; ++dot)
+        for (unsigned dot = 0; dot < 456 && gpu.pixelsDrawn < SCREEN_WIDTH; ++dot) {
+            if (provenance)
+                provenance->position = {.tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
             gpu.Update();
+        }
         REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
         constexpr uint32_t cgbColors[] = {0xFF000000, 0xFFFFFFFF, 0xFF848484, 0xFF424242};
         for (unsigned x = 0; x < SCREEN_WIDTH; ++x) {
@@ -110,7 +115,8 @@ namespace {
         }
     }
 
-    unsigned checkWindowLine(Model model, bool doubleSpeed, bool compatibility, uint8_t wx, uint8_t scx) {
+    unsigned checkWindowLine(Model model, bool doubleSpeed, bool compatibility, uint8_t wx, uint8_t scx,
+                             diagnostics::PixelProvenanceContext *provenance = nullptr) {
         CAPTURE(ModelName(model));
         CAPTURE(doubleSpeed);
         CAPTURE(compatibility);
@@ -119,6 +125,7 @@ namespace {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
+        gpu.provenance = provenance;
         gpu.doubleSpeed = doubleSpeed;
         gpu.dmgCompat = compatibility;
         gpu.lcdc = 0xF1;
@@ -145,6 +152,8 @@ namespace {
         for (unsigned tile = 0; tile < 32; ++tile)
             gpu.vram[0x1C00 + tile] = 1 + tile % 2;
         for (unsigned dot = 0; dot < 456; ++dot) {
+            if (provenance)
+                provenance->position = {.tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
             gpu.Update();
             if (gpu.stat.mode == GPUMode::MODE_0)
                 break;
@@ -252,4 +261,44 @@ TEST_CASE("ppu: compatibility windows clip by WX and preserve the WX zero scroll
             checkWindowLine(Model::CGBE, false, true, wx, scx);
         }
     }
+}
+
+TEST_CASE("diagnostics: Crystal sprite overlap provenance identifies transparent priority candidates") {
+    diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
+    checkObjectOverlap(Model::CGBC, false, {{24, "10101010"}, {20, "22222222"}}, 12, "222212121010", &recorder.Context());
+    const auto pixel = recorder.Query(17, 10);
+    REQUIRE(pixel);
+    REQUIRE(pixel->selected.valid);
+    CHECK(pixel->selected.source == diagnostics::PixelSource::Sprite);
+    CHECK(pixel->selected.oamIndex == 1);
+    CHECK(pixel->selected.color == 2);
+    REQUIRE(pixel->sprites.count == 2);
+    CHECK(std::ranges::any_of(std::span(pixel->sprites.candidates).first(pixel->sprites.count), [](const auto &candidate) {
+        return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 && candidate.decision == diagnostics::SpriteDecision::Transparent;
+    }));
+    CHECK(pixel->selected.lowTick < pixel->selected.highTick);
+    CHECK(pixel->selected.highTick <= pixel->emission.tick);
+    CHECK(pixel->selected.lowRead == 0);
+    CHECK(pixel->selected.highRead == 255);
+    CHECK(pixel->finalColor == 0xFF848484);
+}
+
+TEST_CASE("diagnostics: Crystal window provenance explains clipped window pixels independently of SCX delay") {
+    diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
+    const auto observedTiming = checkWindowLine(Model::CGBC, false, false, 5, 3, &recorder.Context());
+    CHECK(observedTiming == checkWindowLine(Model::CGBC, false, false, 5, 3));
+    const auto pixel = recorder.Query(0, 10);
+    REQUIRE(pixel);
+    REQUIRE(pixel->selected.valid);
+    CHECK(pixel->selected.source == diagnostics::PixelSource::Window);
+    CHECK(pixel->selected.mapAddress == 0x9C00);
+    CHECK(pixel->selected.tile == 1);
+    CHECK(pixel->selected.bit == 5);
+    CHECK(pixel->selected.color == 2);
+    const auto events = recorder.PipelineEvents();
+    CHECK(std::ranges::count_if(events, [](const auto &event) {
+        return event.reason == diagnostics::PipelineReason::WindowClipping;
+    }) == 2);
+    CHECK(pixel->selected.lowTick < pixel->selected.highTick);
+    CHECK(pixel->selected.highTick < pixel->emission.tick);
 }

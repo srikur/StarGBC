@@ -70,6 +70,8 @@ public:
 
     void ObserveWith(diagnostics::ObservationContext *context);
 
+    void RecordPixelsWith(diagnostics::PixelProvenanceContext *context);
+
     [[nodiscard]] diagnostics::ExecutionPosition ExecutionPosition() const;
 
     [[nodiscard]] bool ConsumeFrame();
@@ -261,6 +263,12 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
         observations_->pc = cpu_.InstructionAddress();
         observations_->pcBank = cpu_.InstructionBank();
         observations_->Restore(ExecutionPosition());
+    }
+    if (gpu_.provenance) {
+        gpu_.provenance->ResetPipeline();
+        gpu_.provenance->position = ExecutionPosition();
+        gpu_.provenance->branch = observations_ ? observations_->branch : gpu_.provenance->branch + 1;
+        gpu_.provenance->Pipeline(gpu_.pixelsDrawn, gpu_.currentLine, diagnostics::PipelineReason::RestoredWithoutHistory);
     }
     return true;
 }

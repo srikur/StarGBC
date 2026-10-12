@@ -11,11 +11,16 @@ diagnostics::ExecutionPosition Gameboy::ExecutionPosition() const {
 }
 
 void Gameboy::SynchronizeObservationPosition() {
-    if (!observations_)
+    if (!observations_ && !gpu_.provenance)
         return;
-    observations_->position = ExecutionPosition();
-    observations_->pc = cpu_.InstructionAddress();
-    observations_->pcBank = cpu_.InstructionBank();
+    const auto position = ExecutionPosition();
+    if (observations_) {
+        observations_->position = position;
+        observations_->pc = cpu_.InstructionAddress();
+        observations_->pcBank = cpu_.InstructionBank();
+    }
+    if (gpu_.provenance)
+        gpu_.provenance->position = position;
 }
 
 void Gameboy::ObserveWith(diagnostics::ObservationContext *context) {
@@ -26,6 +31,15 @@ void Gameboy::ObserveWith(diagnostics::ObservationContext *context) {
     timer_.observations = context;
     gpu_.observations = context;
     audio_.ObserveWith(context);
+    SynchronizeObservationPosition();
+}
+
+void Gameboy::RecordPixelsWith(diagnostics::PixelProvenanceContext *context) {
+    gpu_.provenance = context;
+    if (context) {
+        context->ResetPipeline();
+        context->branch = observations_ ? observations_->branch : 0;
+    }
     SynchronizeObservationPosition();
 }
 
@@ -294,7 +308,7 @@ ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolic
     const auto instructions = cpu_.InstructionsCompleted();
     uint64_t remaining = ticks;
     while (remaining > 0) {
-        if (!observations_ && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
+        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
             if (bus_.speed == Speed::Regular && remaining >= 8) {
                 if (masterCycles >= CGB_CYCLES_PER_SECOND)
                     masterCycles -= CGB_CYCLES_PER_SECOND;

@@ -23,6 +23,12 @@ void GPU::Observe(const diagnostics::EventKind kind, const uint16_t address, con
 
 void GPU::ObserveStall(const diagnostics::StallReason reason) const {
     Observe(diagnostics::EventKind::PixelStall, pixelsDrawn, static_cast<uint32_t>(reason), backgroundQueue.size());
+    if (provenance) {
+        const auto explanation = reason == diagnostics::StallReason::FifoStarvation ? diagnostics::PipelineReason::FifoStarvation :
+                                 reason == diagnostics::StallReason::SpriteAlignment ? diagnostics::PipelineReason::SpriteAlignment :
+                                 diagnostics::PipelineReason::SpriteFetch;
+        provenance->Pipeline(pixelsDrawn, currentLine, explanation);
+    }
 }
 
 void GPU::SetMode(const GPUMode mode) {
@@ -45,6 +51,8 @@ bool GPU::StatLineHigh() const {
 }
 
 void GPU::ResetScanlineState(const bool clearBuffer) {
+    if (provenance)
+        provenance->ResetPipeline();
     initialSCXSet = false;
     mode3EndDelay_ = 0;
     mode3EndDot_ = 0;
@@ -497,6 +505,10 @@ void GPU::OutputPixel(const bool lcdcAhead) {
     }
 
     if (initialScrollXDiscard_ > 0) {
+        if (provenance)
+            provenance->Pipeline(pixelsDrawn, currentLine, isFetchingWindow_ ? diagnostics::PipelineReason::WindowClipping :
+                                                                                 diagnostics::PipelineReason::FineScroll,
+                                 provenance->PopBackground());
         Observe(diagnostics::EventKind::PixelDiscard, pixelsDrawn, backgroundQueue.front().color,
                 static_cast<uint32_t>(isFetchingWindow_ ? diagnostics::DiscardReason::WindowClipping : diagnostics::DiscardReason::FineScroll));
         backgroundQueue.pop_front();
@@ -526,6 +538,8 @@ void GPU::OutputPixel(const bool lcdcAhead) {
     screenData[currentLine * SCREEN_WIDTH + pixelsDrawn] = ResolveColor(finalPixel);
     Observe(diagnostics::EventKind::PixelOutput, currentLine * SCREEN_WIDTH + pixelsDrawn,
             screenData[currentLine * SCREEN_WIDTH + pixelsDrawn], finalPixel.color | (finalPixel.isSprite << 8) | (finalPixel.cgbPalette << 16));
+    if (provenance)
+        RecordPixel(bgPixel, spritePixel, finalPixel, bgWinEnable, screenData[currentLine * SCREEN_WIDTH + pixelsDrawn]);
     backgroundPalette = palette;
     if (isCgb_ && dmgCompat) {
         // Only the CGB dmgCompat mid-mode-3 BGP patch-up reads these
@@ -628,6 +642,8 @@ void GPU::TickMode3() {
             if (fetcherState_ == FetcherState::GetTileDataHigh && fetcherDelay_ == 0) {
                 Fetcher_StepBackgroundFetch();
             }
+            if (provenance)
+                provenance->savedBackgroundFetch = provenance->backgroundFetch;
             savedBgFetcherState_ = fetcherState_;
             savedBgFetcherDelay_ = fetcherDelay_;
             savedBgTileNum_ = fetcherTileNum_;
@@ -644,6 +660,8 @@ void GPU::TickMode3() {
         Fetcher_StepSpriteFetch();
         if (!spriteFetchActive_) {
             // Sprite fetch finished — resume the interrupted background fetch in place
+            if (provenance)
+                provenance->backgroundFetch = provenance->savedBackgroundFetch;
             fetcherState_ = savedBgFetcherState_;
             fetcherDelay_ = savedBgFetcherDelay_;
             fetcherTileNum_ = savedBgTileNum_;
@@ -766,6 +784,10 @@ void GPU::CheckForWindowTrigger() {
         if (!backgroundQueue.empty())
             Observe(diagnostics::EventKind::PixelDiscard, pixelsDrawn, backgroundQueue.size(),
                     static_cast<uint32_t>(diagnostics::DiscardReason::WindowRestart));
+        if (provenance) {
+            while (provenance->backgroundCount)
+                provenance->Pipeline(pixelsDrawn, currentLine, diagnostics::PipelineReason::WindowRestart, provenance->PopBackground());
+        }
         backgroundQueue.clear();
         fetcherState_ = FetcherState::GetTile;
         fetcherDelay_ = 0;
@@ -783,6 +805,8 @@ void GPU::CheckForWindowTrigger() {
         // tile-number read (the dot our model refills the FIFO), and the rest
         // of the line shifts right by one dot. Priority sprites show through
         // it since it mixes as background color 0
+        if (provenance)
+            provenance->PushBackground({.valid = true, .source = diagnostics::PixelSource::WindowGlitch, .mapTick = provenance->position.tick}, true);
         backgroundQueue.push_front(Pixel{
                 .color = 0,
                 .dmgPalette = backgroundPalette ? obp1Palette : obp0Palette,
@@ -813,6 +837,14 @@ void GPU::Fetcher_StepBackgroundFetch() {
             if (isCgb_)
                 backgroundTileAttributes_ = GetAttrsFrom(vram[tileMapAddress - 0x6000]);
             fetcherTileNum_ = vram[tileMapAddress - 0x8000];
+            if (provenance)
+                provenance->backgroundFetch = {.valid = true,
+                        .source = isFetchingWindow_ ? diagnostics::PixelSource::Window : diagnostics::PixelSource::Background,
+                        .mapAddress = tileMapAddress, .tile = fetcherTileNum_,
+                        .attributes = isCgb_ ? vram[tileMapAddress - 0x6000] : uint8_t{0},
+                        .bank = static_cast<uint8_t>(isCgb_ && backgroundTileAttributes_.vramBank),
+                        .palette = backgroundTileAttributes_.paletteNumberCGB, .priority = backgroundTileAttributes_.priority,
+                        .mapTick = provenance->position.tick};
             Observe(diagnostics::EventKind::TileFetch, tileMapAddress, fetcherTileNum_, static_cast<uint32_t>(diagnostics::FetchStage::Map));
             if (isCgb_)
                 Observe(diagnostics::EventKind::TileFetch, tileMapAddress, vram[tileMapAddress - 0x6000],
@@ -854,6 +886,14 @@ void GPU::Fetcher_StepBackgroundFetch() {
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelBit) & 1;
                 const uint8_t color = (bitHigh << 1) | bitLow;
 
+                if (provenance) {
+                    auto origin = provenance->backgroundFetch;
+                    origin.bit = pixelBit;
+                    origin.color = color;
+                    origin.lowData = fetcherTileDataLow_;
+                    origin.highData = fetcherTileDataHigh_;
+                    provenance->PushBackground(origin);
+                }
                 backgroundQueue.push_back(Pixel{
                         .color = color,
                         .dmgPalette = dmgPalette,
@@ -902,6 +942,13 @@ void GPU::Fetcher_StepSpriteFetch() {
             Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tileIndex,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteOam));
             sprite.attributes = GetAttrsFrom(oam[oamAddress + 1]);
+            if (provenance)
+                provenance->spriteFetch = {.valid = true, .source = diagnostics::PixelSource::Sprite,
+                        .mapAddress = static_cast<uint16_t>(0xFE00 + oamAddress), .tile = sprite.tileIndex,
+                        .attributes = oam[oamAddress + 1], .bank = static_cast<uint8_t>(isCgb_ && sprite.attributes.vramBank),
+                        .palette = isCgb_ && !dmgCompat ? sprite.attributes.paletteNumberCGB : static_cast<uint8_t>(sprite.attributes.paletteNumberDMG),
+                        .oamIndex = static_cast<uint8_t>(sprite.spriteNum / 2), .spriteX = sprite.x, .spriteY = sprite.y,
+                        .priority = sprite.attributes.priority, .mapTick = provenance->position.tick};
             fetcherTileNum_ = sprite.tileIndex;
             fetcherState_ = GetTileDataLow;
             spriteFetchIsFirst_ = !spriteFetchedThisLine_;
@@ -914,6 +961,13 @@ void GPU::Fetcher_StepSpriteFetch() {
             const bool bank1 = (isCgb_) && sprite.attributes.vramBank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
             fetcherTileDataLow_ = vram[tileAddress - base];
+            if (provenance) {
+                auto &origin = provenance->spriteFetch;
+                origin.lowAddress = tileAddress;
+                origin.lowRow = (tileAddress & 15) / 2;
+                origin.lowRead = origin.lowData = fetcherTileDataLow_;
+                origin.lowTick = provenance->position.tick;
+            }
             Observe(diagnostics::EventKind::TileFetch, tileAddress, fetcherTileDataLow_,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteLow), bank1);
             fetcherState_ = GetTileDataHigh;
@@ -925,6 +979,13 @@ void GPU::Fetcher_StepSpriteFetch() {
             const bool bank1 = (isCgb_) && sprite.attributes.vramBank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
             fetcherTileDataHigh_ = vram[(tileAddress + 1) - base];
+            if (provenance) {
+                auto &origin = provenance->spriteFetch;
+                origin.highAddress = tileAddress + 1;
+                origin.highRow = (tileAddress & 15) / 2;
+                origin.highRead = origin.highData = fetcherTileDataHigh_;
+                origin.highTick = provenance->position.tick;
+            }
             Observe(diagnostics::EventKind::TileFetch, tileAddress + 1, fetcherTileDataHigh_,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteHigh), bank1);
             if (isCgb_)
@@ -949,19 +1010,37 @@ void GPU::Fetcher_StepSpriteFetch() {
             const auto xPos = sprite.x;
             unsigned mergedPixels{};
             const int clip = xPos < 0 ? -xPos : 0; // leftmost tile pixels lost off the screen edge
+            if (provenance) {
+                for (int i = 0; i < std::min(clip, 8); ++i) {
+                    auto origin = provenance->spriteFetch;
+                    origin.bit = attrs.xflip ? i : 7 - i;
+                    origin.color = ((fetcherTileDataLow_ >> origin.bit) & 1) | (((fetcherTileDataHigh_ >> origin.bit) & 1) << 1);
+                    provenance->Pipeline(pixelsDrawn, currentLine, diagnostics::PipelineReason::SpriteClipping, origin);
+                }
+                if (spriteFetchAbort_)
+                    for (int i = 0; i < 8 - clip; ++i)
+                        RecordSpriteCandidate(i, attrs.xflip ? i + clip : 7 - i - clip, 0, diagnostics::SpriteDecision::Aborted);
+            }
             for (int i = 0; !spriteFetchAbort_ && i < 8 - clip; i++) {
                 const auto pixelIndex = attrs.xflip ? i + clip : 7 - (i + clip);
                 const uint8_t bitLow = (fetcherTileDataLow_ >> pixelIndex) & 1;
                 const uint8_t bitHigh = (fetcherTileDataHigh_ >> pixelIndex) & 1;
                 const uint8_t color = (bitHigh << 1) | bitLow;
-                if (color == 0)
-                    continue; // transparent OBJ pixels shouldn't replace anther OBJ
+                if (color == 0) {
+                    if (provenance)
+                        RecordSpriteCandidate(i, pixelIndex, color, diagnostics::SpriteDecision::Transparent);
+                    continue;
+                }
                 const auto &current = spriteArray[(spriteArrayHead_ + i) & 7];
                 // only CGB check needed since DMG priority resolved by the sprite fetch order
                 const bool hasHigherPriority = isCgb_ && !objectPriority && sprite.spriteNum < current.spriteNum;
-                if (!hasHigherPriority && current.color != 0 && !current.isPlaceholder)
+                if (!hasHigherPriority && current.color != 0 && !current.isPlaceholder) {
+                    if (provenance)
+                        RecordSpriteCandidate(i, pixelIndex, color, diagnostics::SpriteDecision::KeptEarlier);
                     continue;
-
+                }
+                if (provenance)
+                    RecordSpriteCandidate(i, pixelIndex, color, diagnostics::SpriteDecision::Replaced);
                 ++mergedPixels;
                 spriteArray[(spriteArrayHead_ + i) & 7] = Pixel{
                         .color = color,
@@ -1038,6 +1117,20 @@ uint8_t GPU::ReadBackgroundTileData(const bool high) {
     const auto address = CalculateTileDataAddress() + (high ? 1 : 0);
     const uint16_t base = isCgb_ && backgroundTileAttributes_.vramBank ? 0x6000 : 0x8000;
     const uint8_t data = vram[address - base];
+    if (provenance) {
+        auto &origin = provenance->backgroundFetch;
+        if (high) {
+            origin.highAddress = address;
+            origin.highRow = (address & 15) / 2;
+            origin.highRead = origin.highData = data;
+            origin.highTick = provenance->position.tick;
+        } else {
+            origin.lowAddress = address;
+            origin.lowRow = (address & 15) / 2;
+            origin.lowRead = origin.lowData = data;
+            origin.lowTick = provenance->position.tick;
+        }
+    }
     Observe(diagnostics::EventKind::TileFetch, address, data,
             static_cast<uint32_t>(high ? diagnostics::FetchStage::BackgroundHigh : diagnostics::FetchStage::BackgroundLow), base == 0x6000);
     if (isCgb_) {
@@ -1341,6 +1434,11 @@ void GPU::ApplyLCDC(const uint8_t value) {
         scanlineCounter = currentLine = 0;
         SetMode(GPUMode::MODE_0);
         screenData.fill(0);
+        Observe(diagnostics::EventKind::FramebufferClear, 0xFF40, 0, lcdc);
+        if (provenance && provenance->recolor)
+            provenance->recolor(provenance->owner, {.position = provenance->position, .branch = provenance->branch,
+                    .offset = UINT16_MAX, .registerAddress = 0xFF40, .registerValue = lcdc, .selectionChanged = true,
+                    .color = 0, .selectedSource = diagnostics::PixelSource::Backdrop, .decision = diagnostics::PixelDecision::DisplayCleared});
         frameReady = true;
         hblank = true;
         hdma.hblankBlockFinished = false;
@@ -1371,6 +1469,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                     cgbTileDataBus_ = oldSelect ? (backgroundDataReadHigh_ ? fetcherTileDataHigh_ : fetcherTileDataLow_) : cgbPreviousTileDataBus_;
                     if (!oldSelect || !(fetcherTileNum_ & 0x80)) {
                         const auto data = oldSelect ? fetcherTileNum_ : cgbPreviousTileDataBus_;
+                        if (provenance)
+                            provenance->backgroundFetch.overrideTick = provenance->position.tick;
                         if (backgroundDataReadHigh_)
                             fetcherTileDataHigh_ = data;
                         else
@@ -1408,6 +1508,10 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 if (updatePixel) {
                     screenData[currentLine * SCREEN_WIDTH + pixelsDrawn - 1] =
                             MixPixel(outputBackground_, outputSprite_, Bit<LCDC_BG_WINDOW_ENABLE>(lcdc));
+                    if (provenance)
+                        RecordRecolor(currentLine * SCREEN_WIDTH + pixelsDrawn - 1, 0xFF40,
+                                      SelectPixel(outputBackground_, outputSprite_, Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)),
+                                      ExplainSelection(outputBackground_, outputSprite_, Bit<LCDC_BG_WINDOW_ENABLE>(lcdc)));
                     Observe(diagnostics::EventKind::PixelRecolor, currentLine * SCREEN_WIDTH + pixelsDrawn - 1,
                             screenData[currentLine * SCREEN_WIDTH + pixelsDrawn - 1], 0xFF40);
                 }
@@ -1488,6 +1592,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 for (unsigned i = 0; i < pendingPixels; ++i) {
                     if (recentPixelOffsets_[i] != 0xFFFF && !recentPixels_[i].isSprite) {
                         screenData[recentPixelOffsets_[i]] = GetBackgroundColor(recentPixels_[i].color, 0);
+                        if (provenance)
+                            RecordRecolor(recentPixelOffsets_[i], 0xFF47, recentPixels_[i], diagnostics::PixelDecision::SpriteTransparent);
                         Observe(diagnostics::EventKind::PixelRecolor, recentPixelOffsets_[i], screenData[recentPixelOffsets_[i]], 0xFF47);
                     }
                 }

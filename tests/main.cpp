@@ -7,12 +7,12 @@
 
 int main(const int argc, char **argv) {
     if (argc > 1 && std::string_view(argv[1]) == "--reproduce-gambatte") {
-        if (argc != 8 && argc != 11) {
-            std::cerr << "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH [TRACE_CAPACITY TRACE_BEGIN TRACE_END]\n";
+        if (argc != 8 && argc != 11 && argc != 12) {
+            std::cerr << "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH [TRACE_CAPACITY TRACE_BEGIN TRACE_END [PROVENANCE_LINE]]\n";
             return EXIT_FAILURE;
         }
         try {
-            if (argc == 11) {
+            if (argc >= 11) {
                 const auto number = [](const char *argument) {
                     const std::string text(argument);
                     size_t consumed{};
@@ -26,6 +26,12 @@ int main(const int argc, char **argv) {
                 if (!testTraceCapacity || testTraceCapacity > 1'000'000 || testTraceFilter.ticks.first > testTraceFilter.ticks.last)
                     throw std::invalid_argument("Invalid reproduction trace capacity or interval");
                 testObservationMode = TestObservationMode::Capture;
+                if (argc == 12) {
+                    const auto line = number(argv[11]);
+                    if (line > 143)
+                        throw std::invalid_argument("Provenance requires a display line from 0 through 143");
+                    testProvenanceLine = line;
+                }
             }
             const auto model = ModelFromName(argv[3]);
             if (!model || *model == Model::Auto)

@@ -50,7 +50,7 @@ def compare_reports(before, after):
     return {"schemaVersion": 1, "counts": {k: len(v) for k, v in groups.items()}, **groups}
 
 
-def reproduce(bundle, executable, output, trace_capacity=0, trace_begin=0, trace_end=2**64-1):
+def reproduce(bundle, executable, output, trace_capacity=0, trace_begin=0, trace_end=2**64-1, provenance_line=None):
     bundle = bundle.resolve()
     spec = json.loads((bundle / "reproduction.json").read_text())
     original = json.loads((bundle / "result.json").read_text())
@@ -78,10 +78,16 @@ def reproduce(bundle, executable, output, trace_capacity=0, trace_begin=0, trace
     expectation = str(bundle / spec["reference"]) if spec["reference"] else spec["expectation"]
     command = [str(executable.resolve()), "--reproduce-gambatte", str(bundle / spec["rom"]), spec["test"]["model"],
                expectation, spec["test"]["id"], str(output), spec["inputs"].get("cartridgeSave", "absent")]
+    if provenance_line is not None:
+        if not 0 <= provenance_line <= 143:
+            raise ValueError("Invalid provenance line")
+        trace_capacity = trace_capacity or 65536
     if trace_capacity:
         if not 1 <= trace_capacity <= 1_000_000 or not 0 <= trace_begin <= trace_end < 2**64:
             raise ValueError("Invalid trace capacity or interval")
         command.extend(map(str, (trace_capacity, trace_begin, trace_end)))
+        if provenance_line is not None:
+            command.append(str(provenance_line))
     process = subprocess.run(command, check=False, capture_output=True, text=True)
     if process.returncode not in (0, 1):
         raise ValueError(f"Reproduction process failed: {process.stderr}")
@@ -104,6 +110,8 @@ def run_selected(args):
             print("No previous failures to rerun")
             return 0
     command = [str(args.binary.resolve()), "--gambatte", f"--max-threads={args.workers}", f"--results={args.output.resolve()}"]
+    if args.provenance_line is not None:
+        command.append(f"--provenance-line={args.provenance_line}")
     if args.model:
         command.append(f"--model={args.model}")
     if args.subsystem:
@@ -119,7 +127,7 @@ def run_selected(args):
         reruns = []
         for result in results.values():
             if result["outcome"] != "Pass":
-                reruns.append(reproduce(Path(result["artifacts"][0]), args.binary, None, args.trace_capacity, args.trace_begin, args.trace_end))
+                reruns.append(reproduce(Path(result["artifacts"][0]), args.binary, None, args.trace_capacity, args.trace_begin, args.trace_end, args.provenance_line))
         args.output.with_name("diagnostic-reruns.json").write_text(json.dumps(reruns, indent=2) + "\n")
     return process.returncode
 
@@ -182,6 +190,7 @@ def main():
         traced.add_argument("--trace-capacity", type=int, default=65536 if traced is run else 0)
         traced.add_argument("--trace-begin", type=int, default=0)
         traced.add_argument("--trace-end", type=int, default=2**64-1)
+        traced.add_argument("--provenance-line", type=int, choices=range(144))
     args = parser.parse_args()
     if args.command == "import-legacy":
         records = legacy_baseline(args.xml, args.executable)
@@ -199,7 +208,7 @@ def main():
         print(json.dumps(report["counts"]))
         return int(bool(report["newlyFailing"] or report["missing"] or report["materiallyChanged"]))
     elif args.command == "reproduce":
-        report = reproduce(args.bundle, args.binary, args.output, args.trace_capacity, args.trace_begin, args.trace_end)
+        report = reproduce(args.bundle, args.binary, args.output, args.trace_capacity, args.trace_begin, args.trace_end, args.provenance_line)
         print(json.dumps(report))
         return int(not report["reproduced"])
     elif args.command == "run":
