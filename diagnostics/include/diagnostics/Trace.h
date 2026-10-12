@@ -27,6 +27,12 @@ namespace diagnostics {
         [[nodiscard]] bool Matches(const Event &event) const noexcept;
     };
 
+    struct CaptureTrigger {
+        EventFilter match;
+        size_t historyEvents{};
+        size_t followingEvents{};
+    };
+
     struct TraceMetadata {
         uint32_t schemaVersion{1};
         std::string record{"trace"};
@@ -38,6 +44,9 @@ namespace diagnostics {
         std::string executableHash;
         std::string romHash;
         std::string configuration;
+        std::optional<CaptureTrigger> trigger;
+        std::optional<Event> triggerEvent;
+        bool captureComplete{};
     };
 
     class TraceRecorder {
@@ -52,8 +61,13 @@ namespace diagnostics {
         std::string executableHash_;
         std::string romHash_;
         std::string configuration_;
+        std::optional<CaptureTrigger> trigger_;
+        std::optional<Event> triggerEvent_;
+        size_t followingRemaining_{};
+        bool captureComplete_{};
 
         void Record(const Event &event) noexcept;
+        void Append(const Event &event, size_t limit) noexcept;
 
     public:
         explicit TraceRecorder(size_t capacity, EventFilter filter = {});
@@ -64,6 +78,8 @@ namespace diagnostics {
         [[nodiscard]] std::vector<Event> Events() const;
         void SetCaptureEnabled(const bool enabled) { enabled_ = enabled; }
         void Identify(std::string executableHash, std::string romHash, std::string configuration);
+        void Arm(CaptureTrigger trigger);
+        [[nodiscard]] bool CaptureComplete() const { return captureComplete_; }
         void WriteJsonLines(const std::filesystem::path &path) const;
         void WriteBinary(const std::filesystem::path &path) const;
     };

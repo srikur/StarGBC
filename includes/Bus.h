@@ -59,7 +59,11 @@ public:
     void RunHDMA() const {
         if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_)
             return;
+        const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork();
+        if (observations && wasOwned != gpu_.hdma.ShouldHaltCPU())
+            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
+                               gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
     }
 
     void RunHDMAWork() const;

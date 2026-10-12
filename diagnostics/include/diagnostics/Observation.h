@@ -20,6 +20,9 @@ namespace diagnostics {
         TimerEdge, TimerOverflow, TimerReload, AudioRegister, AudioTrigger, AudioSequencer,
         AudioMix, InputApplied, Branch, Overflow
     };
+    enum class FetchStage : uint8_t { Map, Attributes, BackgroundLow, BackgroundHigh, SpriteOam, SpriteLow, SpriteHigh };
+    enum class StallReason : uint8_t { FifoStarvation, SpriteFetch, SpriteAlignment };
+    enum class DiscardReason : uint8_t { FineScroll, WindowClipping, WindowRestart };
     enum class Initiator : uint8_t { CPU, DMA, PPU, HDMA, Peripheral, Debugger, Replay };
 
     struct Event {
@@ -57,6 +60,14 @@ namespace diagnostics {
                 callback(owner, {.position = position, .sequence = sequence++, .branch = branch, .pc = pc, .pcBank = pcBank,
                                  .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
                                  .blocked = blocked, .value = value, .detail = detail});
+        }
+
+        void EmitDeferred(const uint64_t tick, const Component component, const EventKind kind, const uint32_t value,
+                          const uint32_t detail = 0) noexcept {
+            if (callback)
+                callback(owner, {.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
+                                 .sequence = sequence++, .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
+                                 .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail});
         }
 
         void Restore(const ExecutionPosition restored) noexcept {

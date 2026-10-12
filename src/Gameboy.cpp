@@ -23,6 +23,9 @@ void Gameboy::ObserveWith(diagnostics::ObservationContext *context) {
     cpu_.ObserveWith(context);
     bus_.observations = context;
     interrupts_.observations = context;
+    timer_.observations = context;
+    gpu_.observations = context;
+    audio_.ObserveWith(context);
     SynchronizeObservationPosition();
 }
 

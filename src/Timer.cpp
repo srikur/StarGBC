@@ -20,6 +20,8 @@ void Timer::WriteByte(const uint16_t address, const uint8_t value, const Speed s
         WriteTMA(value);
     else if (address == 0xFF07)
         WriteTAC(value);
+    if (observations)
+        observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::RegisterApply, address, ReadByte(address), reloadActive);
 }
 
 [[nodiscard]] uint8_t Timer::ReadByte(const uint16_t address) const {
@@ -103,7 +105,11 @@ int Timer::TimerBit(const uint8_t tacMode) const {
 }
 
 void Timer::IncrementTIMA() {
+    if (observations)
+        observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::TimerEdge, 0xFF05, static_cast<uint8_t>(tima + 1), divCounter);
     if (++tima == 0) {
+        if (observations)
+            observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::TimerOverflow, 0xFF05, 0, 4);
         overflowPending = true;
         overflowDelay = 4;
     }

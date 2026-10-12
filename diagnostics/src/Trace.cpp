@@ -24,21 +24,48 @@ namespace diagnostics {
 
     void TraceRecorder::Record(const Event &event) noexcept {
         ++observed_;
-        if (!enabled_ || !filter_.Matches(event))
+        if (!enabled_ || captureComplete_)
             return;
-        if (size_ == events_.size()) {
-            events_[begin_] = event;
+        if (trigger_ && !triggerEvent_ && trigger_->match.Matches(event)) {
+            triggerEvent_ = event;
+            followingRemaining_ = trigger_->followingEvents;
+            Append(event, events_.size());
+            captureComplete_ = followingRemaining_ == 0;
+            return;
+        }
+        if (!filter_.Matches(event))
+            return;
+        Append(event, trigger_ && !triggerEvent_ ? trigger_->historyEvents : events_.size());
+        if (triggerEvent_ && --followingRemaining_ == 0)
+            captureComplete_ = true;
+    }
+
+    void TraceRecorder::Append(const Event &event, const size_t limit) noexcept {
+        if (!limit) {
+            ++overwritten_;
+            return;
+        }
+        if (size_ == limit) {
             begin_ = (begin_ + 1) % events_.size();
             ++overwritten_;
         } else {
-            events_[(begin_ + size_) % events_.size()] = event;
             ++size_;
         }
+        events_[(begin_ + size_ - 1) % events_.size()] = event;
+    }
+
+    void TraceRecorder::Arm(CaptureTrigger trigger) {
+        if (observed_)
+            throw std::logic_error("Arm a trigger before recording");
+        if (trigger.historyEvents >= events_.size() || trigger.followingEvents > events_.size() - trigger.historyEvents - 1)
+            throw std::invalid_argument("Trace capacity must hold history, trigger and following events");
+        trigger_ = std::move(trigger);
     }
 
     TraceMetadata TraceRecorder::Metadata() const {
         return {.capacity = events_.size(), .retained = size_, .observed = observed_, .overwritten = overwritten_, .filter = filter_,
-                .executableHash = executableHash_, .romHash = romHash_, .configuration = configuration_};
+                .executableHash = executableHash_, .romHash = romHash_, .configuration = configuration_,
+                .trigger = trigger_, .triggerEvent = triggerEvent_, .captureComplete = captureComplete_};
     }
 
     void TraceRecorder::Identify(std::string executableHash, std::string romHash, std::string configuration) {
@@ -50,7 +77,7 @@ namespace diagnostics {
     std::vector<Event> TraceRecorder::Events() const {
         std::vector<Event> result;
         result.reserve(size_ + (overwritten_ != 0));
-        if (overwritten_) {
+        if (overwritten_ && size_) {
             auto gap = events_[begin_];
             gap.component = Component::Control;
             gap.kind = EventKind::Overflow;

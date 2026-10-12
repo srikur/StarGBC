@@ -40,7 +40,8 @@ TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardwar
         CHECK(events.front().kind == diagnostics::EventKind::Overflow);
         for (size_t i = 1; i < events.size(); ++i) {
             CHECK(events[i - 1].sequence < events[i].sequence);
-            CHECK(events[i - 1].position.tick <= events[i].position.tick);
+            if (events[i - 1].kind != diagnostics::EventKind::AudioMix && events[i].kind != diagnostics::EventKind::AudioMix)
+                CHECK(events[i - 1].position.tick <= events[i].position.tick);
         }
     }
 }

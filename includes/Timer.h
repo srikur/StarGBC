@@ -28,6 +28,7 @@ public:
     [[=NotStateAware]] uint16_t timerFallMask_{0};
     [[=NotStateAware]] uint16_t frameSeqBitMask_{0};
     [[=NotStateAware]] uint16_t frameSeqToggleMask_{0};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
     Audio &audio_;
     Interrupts &interrupts_;
 
@@ -48,6 +49,8 @@ public:
         reloadActive = false;
         if (overflowPending && --overflowDelay == 0) {
             tima = tma;
+            if (observations)
+                observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::TimerReload, 0xFF05, tima, divCounter);
             // DMG exposes IF before the request reaches the CPU wake/dispatch path
             interrupts_.SetAfter(InterruptType::Timer, audio_.IsDMG() ? 4 : 0, audio_.IsDMG());
             overflowPending = false;

@@ -37,6 +37,11 @@ namespace {
         [[=Opt{"Capture only this instruction bank"}]] std::optional<uint16_t> trace_bank;
         [[=Opt{"Capture only this scanline"}]] std::optional<uint8_t> trace_ly;
         [[=Opt{"Capture only this scanline dot"}]] std::optional<uint16_t> trace_dot;
+        [[=Opt{"Trigger on this event kind"}]] std::optional<diagnostics::EventKind> trigger_kind;
+        [[=Opt{"Trigger on this address"}]] std::optional<uint16_t> trigger_address;
+        [[=Opt{"Earliest trigger tick"}]] uint64_t trigger_begin{};
+        [[=Opt{"Events retained before the trigger"}]] unsigned trigger_history{256};
+        [[=Opt{"Events retained after the trigger"}]] unsigned trigger_following{256};
     };
 
     struct InspectionReport {
@@ -80,6 +85,14 @@ int main(const int argc, char **argv) {
             if (arguments->trace_dot)
                 filter.dots = {*arguments->trace_dot, *arguments->trace_dot};
             recorder = std::make_unique<diagnostics::TraceRecorder>(arguments->trace_capacity, filter);
+            if (arguments->trigger_kind || arguments->trigger_address) {
+                diagnostics::EventFilter match{.ticks = {arguments->trigger_begin, UINT64_MAX}};
+                if (arguments->trigger_kind)
+                    match.kinds = uint64_t{1} << static_cast<unsigned>(*arguments->trigger_kind);
+                if (arguments->trigger_address)
+                    match.addresses = {*arguments->trigger_address, *arguments->trigger_address};
+                recorder->Arm({match, arguments->trigger_history, arguments->trigger_following});
+            }
             std::ostringstream configuration;
             diagnostics::WriteJson(configuration, *arguments);
             recorder->Identify(diagnostics::FileHash(argv[0]), diagnostics::FileHash(arguments->rom), configuration.str());

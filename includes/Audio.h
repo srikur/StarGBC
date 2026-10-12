@@ -6,6 +6,7 @@
 
 #include "Common.h"
 #include "Inspection.h"
+#include "diagnostics/Observation.h"
 
 class Audio;
 
@@ -358,6 +359,9 @@ class Audio {
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
     [[=NotStateAware]] uint32_t pendingTicks_{0};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    [[=NotStateAware]] uint64_t pendingFirstTick_{};
+    [[=NotStateAware]] uint64_t emissionTick_{};
 
     void InitBandLimitedTable();
 
@@ -411,7 +415,16 @@ public:
     // The master loop defers APU ticks; CatchUp() materializes them before
     // every register/PCM access, frame-sequencer event, sample read, and at
     // the end of each frame, so observable ordering is exact
-    void Tick() { ++pendingTicks_; }
+    void ObserveWith(diagnostics::ObservationContext *context) {
+        CatchUp();
+        observations_ = context;
+    }
+
+    void Tick() {
+        if (observations_ && pendingTicks_ == 0)
+            pendingFirstTick_ = observations_->position.tick;
+        ++pendingTicks_;
+    }
 
     void CatchUp() {
         if (pendingTicks_ > 0)

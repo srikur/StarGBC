@@ -8,6 +8,7 @@ AudioInspection Audio::Inspect() const {
         return std::array{channel(audio.ch1), channel(audio.ch2), channel(audio.ch3), channel(audio.ch4)};
     };
     auto effective = *this;
+    effective.observations_ = nullptr;
     effective.CatchUp();
     AudioInspection result{
             .processedTicks = tickCounter, .deferredTicks = pendingTicks_, .effectiveTicks = effective.tickCounter,
@@ -22,6 +23,7 @@ AudioInspection Audio::Inspect() const {
 
 uint8_t Audio::InspectRegister(const uint16_t address) const {
     auto effective = *this;
+    effective.observations_ = nullptr;
     if (address == 0xFF76)
         return effective.ReadPCM12();
     if (address == 0xFF77)

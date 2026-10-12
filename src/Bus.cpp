@@ -31,6 +31,9 @@ uint8_t Bus::ReadDMASource(const uint16_t src) {
         returnValue = offset < 0x1000 ? memory_.wram_[offset] : memory_.wram_[(offset & 0x0FFF) + 0x1000 * memory_.wramBank_];
     }
     dmaReadByte = returnValue;
+    if (observations)
+        observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusRead, src, returnValue, 0,
+                           diagnostics::Initiator::DMA, false, DebugBank(src));
     return returnValue;
 }
 
@@ -265,6 +268,7 @@ uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source)
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
+    const bool hdmaOwned = gpu_.hdma.ShouldHaltCPU();
     if (observations) {
         const auto blocked = AccessBlocked(address, source, true);
         observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusWrite, address, value, 0,
@@ -274,6 +278,9 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
                                static_cast<diagnostics::Initiator>(source), blocked);
     }
     WriteByteValue(address, value, source);
+    if (observations && hdmaOwned != gpu_.hdma.ShouldHaltCPU())
+        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
+                           gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
     if (observations && address == 0xFF0F)
         observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
                            0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
@@ -417,6 +424,9 @@ void Bus::UpdateDMAWork() {
     if (dma_.transferComplete) {
         dma_.transferActive = false;
         dma_.transferComplete = false;
+        if (observations)
+            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, false, 0,
+                               diagnostics::Initiator::DMA);
         dma_.ticks = 0;
         dma_.currentByte = 0;
     }
@@ -434,7 +444,13 @@ void Bus::UpdateDMAWork() {
     if (dma_.ticks <= DMA::STARTUP_CYCLES)
         return; // OAM still accessible here
 
+    if (observations && dma_.ticks == DMA::STARTUP_CYCLES + 1)
+        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
+                           diagnostics::Initiator::DMA);
     gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+    if (observations)
+        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, 0xFE00 + dma_.currentByte,
+                           gpu_.oam[dma_.currentByte], dma_.startAddress + dma_.currentByte, diagnostics::Initiator::DMA);
     ++dma_.currentByte;
     if (dma_.currentByte == DMA::TOTAL_BYTES) {
         dma_.transferComplete = true;
@@ -449,6 +465,9 @@ void Bus::RunHDMAWork() const {
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
                 gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                if (observations)
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination,
+                                       gpu_.hdma.byte, gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
                 gpu_.hdma.hdmaSource++;
@@ -494,6 +513,9 @@ void Bus::RunHDMAWork() const {
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
                 gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                if (observations)
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination,
+                                       gpu_.hdma.byte, gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
                 gpu_.hdma.hdmaSource++;

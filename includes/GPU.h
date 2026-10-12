@@ -74,6 +74,12 @@ class GPU {
 public:
     explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : colorCorrection_(colorCorrection), interrupts_(interrupts) {}
 
+    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+
+    void SetMode(GPUMode mode);
+    void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
+    void ObserveStall(diagnostics::StallReason reason) const;
+
     static constexpr uint32_t DMG_SHADE[4] = {
             0xFFFFFFFFu, // FF FF FF FF
             0xFFC0C0C0u, // C0 C0 C0 FF

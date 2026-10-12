@@ -44,6 +44,7 @@ static std::string testExecutableHash;
 enum class TestObservationMode { Disabled, Observe, Capture };
 static TestObservationMode testObservationMode{TestObservationMode::Disabled};
 static size_t testTraceCapacity{65536};
+static diagnostics::EventFilter testTraceFilter;
 
 class TestObservationSession {
     std::optional<diagnostics::TraceRecorder> recorder_;
@@ -52,7 +53,7 @@ public:
     void Attach(Gameboy &gameboy) {
         if (testObservationMode == TestObservationMode::Disabled)
             return;
-        recorder_.emplace(testTraceCapacity);
+        recorder_.emplace(testTraceCapacity, testTraceFilter);
         recorder_->SetCaptureEnabled(testObservationMode == TestObservationMode::Capture);
         gameboy.ObserveWith(&recorder_->Context());
     }

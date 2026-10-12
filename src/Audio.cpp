@@ -21,6 +21,9 @@ void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
         frameSeqStep++;
     }
 
+    if (observations_)
+        observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioSequencer, 0xFF04, frameSeqStep, divWriteSingleSpeed);
+
     // 64Hz envelope step: the countdown runs freely while the clock is not
     // latched (a latched clock pauses it until the tick consumes it)
     if ((frameSeqStep & 7) == 7) {
@@ -58,6 +61,8 @@ void Audio::TickFrameSequencerSecondary() {
     CatchUp();
     if (!audioEnabled)
         return;
+    if (observations_)
+        observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioSequencer, 0xFF04, frameSeqStep, 2);
     const auto latch = [](auto &ch) {
         if (ch.enabled && ch.envelope.volumeCountdown == 0) {
             ch.envelope.volumeCountdown = ch.envelope.sweepPace;
@@ -71,6 +76,7 @@ void Audio::TickFrameSequencerSecondary() {
 
 void Audio::CatchUpWork() {
     uint32_t n = pendingTicks_;
+    emissionTick_ = pendingFirstTick_;
     pendingTicks_ = 0;
     // Loop invariants: audioEnabled and the model can only change through
     // paths that catch up first
@@ -167,6 +173,7 @@ void Audio::CatchUpWork() {
                 if (ch3.enabled)
                     ch3.period -= quiet;
             }
+            emissionTick_ += uint64_t{quiet} * 2;
             n -= quiet;
             continue;
         }
@@ -200,6 +207,7 @@ void Audio::CatchUpWork() {
             ch3.Tick();
         }
         GenerateSample();
+        emissionTick_ += 2;
         --n;
     }
 }
@@ -292,6 +300,11 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
             break;
         default:
             break;
+    }
+    if (observations_) {
+        observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioRegister, address, value, ReadAudioControl());
+        if ((value & 0x80) && (address == 0xFF14 || address == 0xFF19 || address == 0xFF1E || address == 0xFF23))
+            observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioTrigger, address, value, ReadAudioControl());
     }
 }
 
@@ -1492,6 +1505,12 @@ void Audio::GenerateSample() {
         if (level != mixLevel_) {
             mixLevel_ = level;
             ++mixLevelChanges_;
+            if (observations_) {
+                const auto left = static_cast<int32_t>(std::lround(level[0] * 15));
+                const auto right = static_cast<int32_t>(std::lround(level[1] * 15));
+                observations_->EmitDeferred(emissionTick_, diagnostics::Component::APU, diagnostics::EventKind::AudioMix,
+                                            std::bit_cast<uint32_t>(left), std::bit_cast<uint32_t>(right));
+            }
         }
     }
 
