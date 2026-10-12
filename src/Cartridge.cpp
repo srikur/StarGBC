@@ -299,7 +299,9 @@ uint8_t Cartridge::ReadByte(const uint16_t address) const {
     }
 }
 
-uint8_t Cartridge::ReadByteNone(const uint16_t address) const { return gameRom_[address]; }
+uint8_t Cartridge::ReadByteNone(const uint16_t address) const {
+    return address < 0x8000 && address < gameRom_.size() ? gameRom_[address] : 0xFF;
+}
 
 uint8_t Cartridge::ReadByteMBC1(const uint16_t address) const {
     switch (address) {
