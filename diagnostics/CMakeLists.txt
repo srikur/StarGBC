@@ -4,3 +4,5 @@ target_link_libraries(StarGBC_Diagnostics PUBLIC StarGBC_Core)
 
 add_executable(StarGBC_Debug tools/Debug.cpp)
 target_link_libraries(StarGBC_Debug PRIVATE StarGBC_Core StarGBC_Diagnostics)
+
+add_subdirectory(references)
