@@ -36,7 +36,6 @@ public:
 private:
     static constexpr int GB_SCREEN_W = 160;
     static constexpr int GB_SCREEN_H = 144;
-    static constexpr int WINDOW_SCALE = 3;
     static constexpr int MAX_AUDIO_QUEUE_BYTES = AUDIO_SAMPLE_RATE * 2 * sizeof(float) / 15;
     static constexpr int AUDIO_TARGET_QUEUE_FRAMES = AUDIO_SAMPLE_RATE / 20;
 
@@ -75,6 +74,7 @@ private:
     bool audioEnabled_{true};
     bool paused_{false};
     bool throttled_{true};
+    int windowScale_{1};
     int speedMultiplier_{1};
     std::chrono::steady_clock::time_point nextFrameTime_{};
     std::chrono::steady_clock::time_point lastPresentTime_{};
