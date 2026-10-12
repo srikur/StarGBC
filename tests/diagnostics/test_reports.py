@@ -16,6 +16,24 @@ def case(identity, outcome="Pass", reference="ref"):
 
 
 class Reports(unittest.TestCase):
+    def test_standalone_inspector_embeds_inputs_without_script_injection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "bundle"
+            bundle.mkdir()
+            value = case("</script><script>alert(1)</script>")
+            (bundle / "result.json").write_text(json.dumps(value))
+            (bundle / "actual.bmp").write_bytes(b"image bytes")
+            output = Path(directory) / "report.html"
+            exported = diagnostics.export_inspector(bundle, output)
+            html = output.read_text()
+            self.assertEqual(exported["files"], ["actual.bmp", "result.json"])
+            self.assertNotIn(value["test"]["id"], html)
+            self.assertNotIn('src="app.js"', html)
+            self.assertNotIn('href="style.css"', html)
+            self.assertIn("data:image/bmp;base64,", html)
+            payload = html.split('<script id="embedded-bundle" type="application/json">')[1].split('</script>')[0]
+            self.assertEqual(json.loads(json.loads(payload)["texts"]["result.json"]), value)
+
     def test_regression_detected_despite_improved_pass_count(self):
         before = {k: case(k, outcome) for k, outcome in (("regression", "Pass"), ("fixed1", "AssertionFailure"),
                                                         ("fixed2", "AssertionFailure"), ("missing", "Pass"),

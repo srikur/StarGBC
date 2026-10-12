@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import hashlib
 import json
 import subprocess
@@ -24,6 +25,35 @@ def read_report(path):
             raise ValueError(f"Unsupported or duplicate result: {identity}")
         cases[identity] = row
     return rows, cases
+
+
+def export_inspector(bundle, output):
+    bundle = bundle.resolve()
+    assets = Path(__file__).resolve().parents[1] / "diagnostics/inspector"
+    texts, images = {}, {}
+    for name in ("result.json", "reproduction.json", "terminal.json", "pixels.json", "provenance.json", "events.jsonl"):
+        path = bundle / name
+        if path.is_file():
+            if path.resolve().parent != bundle:
+                raise ValueError(f"Report inputs must be bundled files: {name}")
+            texts[name] = path.read_text()
+    if "result.json" not in texts:
+        raise ValueError("A failure bundle must contain result.json")
+    for name in ("actual.bmp", "expected.bmp", "difference.bmp"):
+        path = bundle / name
+        if path.is_file():
+            if path.resolve().parent != bundle:
+                raise ValueError(f"Report images must be bundled files: {name}")
+            images[name] = "data:image/bmp;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    payload = json.dumps(dict(texts=texts, images=images), separators=(",", ":")).replace("<", "\\u003c")
+    html = (assets / "index.html").read_text()
+    html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + (assets / "style.css").read_text() + '</style>')
+    html = html.replace('<script id="embedded-bundle" type="application/json"></script>',
+                        '<script id="embedded-bundle" type="application/json">' + payload + '</script>')
+    html = html.replace('<script src="app.js"></script>', '<script>' + (assets / "app.js").read_text() + '</script>')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html)
+    return dict(report=str(output.resolve()), files=sorted(texts.keys() | images.keys()))
 
 
 def compare_reports(before, after):
@@ -173,6 +203,9 @@ def main():
     comparison.add_argument("before", type=Path)
     comparison.add_argument("after", type=Path)
     comparison.add_argument("--output", type=Path)
+    inspector = sub.add_parser("inspect")
+    inspector.add_argument("bundle", type=Path)
+    inspector.add_argument("--output", type=Path, required=True)
     replay = sub.add_parser("reproduce")
     replay.add_argument("bundle", type=Path)
     replay.add_argument("--binary", type=Path, default=Path("build/release/Release/StarGBC_Tests"))
@@ -197,6 +230,8 @@ def main():
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text("".join(json.dumps(r, separators=(",", ":")) + "\n" for r in records))
         print(json.dumps(records[-1]))
+    elif args.command == "inspect":
+        print(json.dumps(export_inspector(args.bundle, args.output)))
     elif args.command == "compare":
         _, before = read_report(args.before)
         _, after = read_report(args.after)
