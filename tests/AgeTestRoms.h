@@ -82,8 +82,10 @@ static const std::vector<std::shared_future<AgeTestResult>> &ageTestFutures() {
     static const auto futures = [] {
         std::vector<std::shared_future<AgeTestResult>> result;
         for (const auto &test : ageTestCases) {
-            result.emplace_back(
-                    std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [test] { return runAgeTest(test); }).share());
+            const std::string name = "age: " + test.rom.substr(std::string_view("roms/age-test-roms/").size()) + " [" +
+                                     std::string(ModelName(test.model)) + "]";
+            result.push_back(selectedTestNames.contains(name) ? testWorkers->Submit([test] { return runAgeTest(test); })
+                                                              : std::shared_future<AgeTestResult>{});
         }
         return result;
     }();

@@ -92,8 +92,7 @@ static auto &gbMicrotestFutures() {
         tmp.reserve(std::size(gbMicrotestCases));
 
         for (const auto &tc : gbMicrotestCases) {
-            tmp.emplace_back(
-                    std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [tc] { return runGbMicrotest(tc.rom); }).share());
+            tmp.push_back(selectedTestNames.contains(tc.name) ? testWorkers->Submit([tc] { return runGbMicrotest(tc.rom); }) : SF{});
         }
         return tmp;
     }();

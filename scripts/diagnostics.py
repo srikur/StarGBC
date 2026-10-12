@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -90,6 +91,35 @@ def reproduce(bundle, executable, output):
     return result
 
 
+def run_selected(args):
+    identities = set(args.case_id)
+    if args.failed_from:
+        _, previous = read_report(args.failed_from)
+        identities.update(identity for identity, result in previous.items() if result["outcome"] != "Pass")
+        if not identities:
+            print("No previous failures to rerun")
+            return 0
+    command = [str(args.binary.resolve()), "--gambatte", f"--max-threads={args.workers}", f"--results={args.output.resolve()}"]
+    if args.model:
+        command.append(f"--model={args.model}")
+    if args.subsystem:
+        command.append(f"--subsystem={args.subsystem}")
+    with tempfile.TemporaryDirectory(prefix="stargbc-selection-") as directory:
+        if identities:
+            path = Path(directory) / "cases.txt"
+            path.write_text("".join(identity + "\n" for identity in sorted(identities)))
+            command.append(f"--case-file={path}")
+        process = subprocess.run(command, check=False)
+    if args.diagnostic_rerun:
+        _, results = read_report(args.output)
+        reruns = []
+        for result in results.values():
+            if result["outcome"] != "Pass":
+                reruns.append(reproduce(Path(result["artifacts"][0]), args.binary, None))
+        args.output.with_name("diagnostic-reruns.json").write_text(json.dumps(reruns, indent=2) + "\n")
+    return process.returncode
+
+
 def legacy_baseline(xml_path, executable):
     root = ET.parse(xml_path).getroot()
     summary = root.find("OverallResultsTestCases")
@@ -135,6 +165,15 @@ def main():
     replay.add_argument("bundle", type=Path)
     replay.add_argument("--binary", type=Path, default=Path("build/release/Release/StarGBC_Tests"))
     replay.add_argument("--output", type=Path)
+    run = sub.add_parser("run")
+    run.add_argument("--binary", type=Path, default=Path("build/release/Release/StarGBC_Tests"))
+    run.add_argument("--output", type=Path, required=True)
+    run.add_argument("--workers", type=int, default=4)
+    run.add_argument("--failed-from", type=Path)
+    run.add_argument("--case-id", action="append", default=[])
+    run.add_argument("--model")
+    run.add_argument("--subsystem")
+    run.add_argument("--diagnostic-rerun", action="store_true")
     args = parser.parse_args()
     if args.command == "import-legacy":
         records = legacy_baseline(args.xml, args.executable)
@@ -155,6 +194,8 @@ def main():
         report = reproduce(args.bundle, args.binary, args.output)
         print(json.dumps(report))
         return int(not report["reproduced"])
+    elif args.command == "run":
+        return run_selected(args)
     return 0
 
 

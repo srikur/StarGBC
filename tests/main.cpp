@@ -37,5 +37,6 @@ int main(const int argc, char **argv) {
             return 2;
         }
     }
+    runCatalogSelection = runSelectedGambatteCases;
     return ExecuteTestRoms(argc, argv);
 }

@@ -35,10 +35,20 @@ struct Bootroms {
 
 static constexpr Bootroms bootroms{};
 static unsigned romFrames = 0;
-static bool parallelRomTests = true;
 static std::unique_ptr<diagnostics::Report> testReport;
 static std::filesystem::path failureDirectory;
 static std::string testExecutableHash;
+
+struct CatalogSelection {
+    std::set<std::string, std::less<>> ids;
+    std::optional<Model> model;
+    std::string subsystem;
+
+    [[nodiscard]] bool Active() const { return !ids.empty() || model.has_value() || !subsystem.empty(); }
+};
+
+static CatalogSelection catalogSelection;
+static std::function<int()> runCatalogSelection;
 
 static consteval std::meta::info testGameboyMember(const std::string_view name) {
     for (const auto m : std::meta::nonstatic_data_members_of(^^Gameboy, std::meta::access_context::unchecked())) {
@@ -67,16 +77,20 @@ static diagnostics::TerminalState terminalState(Gameboy &gameboy) {
 static const doctest::TestCaseData *currentTestCase = nullptr;
 
 struct CurrentTestCaseListener : doctest::IReporter {
+    unsigned cases_{};
+    unsigned failed_{};
     explicit CurrentTestCaseListener(const doctest::ContextOptions &) {}
     void test_case_start(const doctest::TestCaseData &tc) override { currentTestCase = &tc; }
     void report_query(const doctest::QueryData &) override {}
     void test_run_start() override {}
-    void test_run_end(const doctest::TestRunStats &stats) override {
+    void test_run_end(const doctest::TestRunStats &) override {
         if (testReport)
-            testReport->Write(diagnostics::RunCompletion{.cases = stats.numTestCasesPassingFilters, .failed = stats.numTestCasesFailed});
+            testReport->Write(diagnostics::RunCompletion{.cases = cases_, .failed = failed_});
     }
     void test_case_reenter(const doctest::TestCaseData &) override {}
     void test_case_end(const doctest::CurrentTestCaseStats &stats) override {
+        ++cases_;
+        failed_ += !stats.testCaseSuccess;
         if (testReport)
             testReport->Write(diagnostics::AssertionResult{
                     .name = currentTestCase->m_name,
@@ -94,6 +108,17 @@ struct CurrentTestCaseListener : doctest::IReporter {
 };
 
 DOCTEST_REGISTER_LISTENER("current-test-case", 0, CurrentTestCaseListener);
+
+struct SelectedCasesReporter : CurrentTestCaseListener {
+    using CurrentTestCaseListener::CurrentTestCaseListener;
+
+    void report_query(const doctest::QueryData &query) override {
+        for (unsigned i = 0; i < query.num_data; ++i)
+            selectedTestNames.emplace(query.data[i]->m_name);
+    }
+};
+
+DOCTEST_REGISTER_REPORTER("diagnostics-selection", 0, SelectedCasesReporter);
 
 template<const auto &Cases, auto Check>
 static bool registerTableCases(const char *file, const char *suite) {
@@ -681,14 +706,24 @@ static std::vector<Case> modelRomCases() {
 
 TEST_CASE("model ROMs: Mooneye startup and HALT, SameSuite early CGB audio" * doctest::test_suite("rom")) {
     const auto cases = modelRomCases();
-    std::vector<std::future<bool>> results;
+    std::vector<std::shared_future<bool>> results;
     for (const auto &tc : cases) {
-        results.push_back(std::async(std::launch::async, [tc] { return runRomTest(tc.rom, tc.expected, tc.bios, tc.model, false); }));
+        results.push_back(testWorkers->Submit([tc] { return runRomTest(tc.rom, tc.expected, tc.bios, tc.model, false); }));
     }
     for (unsigned i = 0; i < cases.size(); ++i) {
         CHECK_MESSAGE(results[i].get(), cases[i].rom, " [", ModelName(cases[i].model), ", ",
                       cases[i].bios.empty() ? "built-in startup" : cases[i].bios, "]");
     }
+}
+
+static std::string romCaseName(const RomCase &tc) {
+    std::string name = "rom: " + std::string(tc.rom);
+    if (std::ranges::count(romTestcases, std::string_view(tc.rom), [](const RomCase &entry) { return std::string_view(entry.rom); }) > 1) {
+        std::string model(ModelName(tc.model));
+        std::ranges::transform(model, model.begin(), [](const unsigned char c) { return std::tolower(c); });
+        name += " [" + model + "]";
+    }
+    return name;
 }
 
 static auto &romFutures() {
@@ -698,9 +733,9 @@ static auto &romFutures() {
         tmp.reserve(std::size(romTestcases));
 
         for (const auto &tc : romTestcases) {
-            tmp.emplace_back(std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [tc] {
-                                 return runRomTest(tc.rom, tc.expected, tc.bios, tc.model, tc.requiresStop);
-                             }).share());
+            tmp.push_back(selectedTestNames.contains(romCaseName(tc))
+                                  ? testWorkers->Submit([tc] { return runRomTest(tc.rom, tc.expected, tc.bios, tc.model, tc.requiresStop); })
+                                  : SF{});
         }
         return tmp;
     }();
@@ -716,17 +751,9 @@ static void checkRomCase() {
 [[maybe_unused]] static const bool romCasesRegistered = [] {
     static std::vector<std::string> names; // doctest keeps pointers to the names
     names.reserve(std::size(romTestcases));
-    const auto romOf = [](const RomCase &tc) { return std::string_view(tc.rom); };
     for (size_t i = 0; i < std::size(romTestcases); ++i) {
         const auto &tc = romTestcases[i];
-        std::string name = "rom: " + std::string(tc.rom);
-        // ROMs that are run on more than one model get the model in their name
-        if (std::ranges::count(romTestcases, romOf(tc), romOf) > 1) {
-            std::string model(ModelName(tc.model));
-            std::ranges::transform(model, model.begin(), [](const unsigned char c) { return std::tolower(c); });
-            name += " [" + model + "]";
-        }
-        names.push_back(std::move(name));
+        names.push_back(romCaseName(tc));
         doctest::detail::regTest(
                 doctest::detail::TestCase(checkRomCase, "romTestcases", static_cast<unsigned>(i), doctest::detail::TestSuite() * "rom") *
                 names.back().c_str());
@@ -800,6 +827,45 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 std::cerr << "--results requires a file path\n";
                 return EXIT_FAILURE;
             }
+        } else if (arg.starts_with("--case-id=")) {
+            const auto id = arg.substr(std::string_view("--case-id=").size());
+            if (id.empty()) {
+                std::cerr << "--case-id requires an exact catalog ID\n";
+                return EXIT_FAILURE;
+            }
+            catalogSelection.ids.emplace(id);
+        } else if (arg.starts_with("--case-file=")) {
+            std::ifstream file(std::string(arg.substr(std::string_view("--case-file=").size())));
+            if (!file) {
+                std::cerr << "Cannot open case ID file\n";
+                return EXIT_FAILURE;
+            }
+            std::string id;
+            size_t count{};
+            while (std::getline(file, id)) {
+                if (!id.empty() && id.back() == '\r')
+                    id.pop_back();
+                if (!id.empty()) {
+                    catalogSelection.ids.insert(id);
+                    ++count;
+                }
+            }
+            if (!count) {
+                std::cerr << "Case ID file is empty\n";
+                return EXIT_FAILURE;
+            }
+        } else if (arg.starts_with("--model=")) {
+            catalogSelection.model = ModelFromName(arg.substr(std::string_view("--model=").size()));
+            if (!catalogSelection.model || *catalogSelection.model == Model::Auto) {
+                std::cerr << "--model requires a catalog hardware revision\n";
+                return EXIT_FAILURE;
+            }
+        } else if (arg.starts_with("--subsystem=")) {
+            catalogSelection.subsystem = arg.substr(std::string_view("--subsystem=").size());
+            if (catalogSelection.subsystem.empty()) {
+                std::cerr << "--subsystem requires a catalog tag\n";
+                return EXIT_FAILURE;
+            }
         } else if (constexpr std::string_view kBench = "--bench="; arg.rfind(kBench, 0) == 0) {
             benchRom = arg.substr(kBench.size());
         } else if (constexpr std::string_view kBenchModel = "--bench-model="; arg.rfind(kBenchModel, 0) == 0) {
@@ -811,9 +877,12 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             benchModel = *parsed;
         } else if (constexpr std::string_view kPrefix = "--max-threads="; arg.rfind(kPrefix, 0) == 0) {
             try {
-                maxThreads = std::stoul(std::string(arg.substr(kPrefix.size())));
+                size_t consumed{};
+                maxThreads = std::stoul(std::string(arg.substr(kPrefix.size())), &consumed);
+                if (consumed != arg.size() - kPrefix.size() || maxThreads == 0 || maxThreads > 256)
+                    throw std::invalid_argument("worker limit out of range");
             } catch (...) {
-                std::cerr << "Invalid value for --max-threads" << std::endl;
+                std::cerr << "Invalid value for --max-threads (expected 1..256)" << std::endl;
                 return EXIT_FAILURE;
             }
         } else if (constexpr std::string_view kFrames = "--frames="; arg.rfind(kFrames, 0) == 0) {
@@ -844,11 +913,11 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
         return runBenchmark(benchRom, benchModel, romFrames ? romFrames : 3000);
     }
 
-    if (maxThreads == 0) {
-        maxThreads = 1;
-    }
     threadSemaphore = std::make_shared<std::counting_semaphore<>>(maxThreads);
-    parallelRomTests = doctest_args.size() == 1;
+    if (catalogSelection.Active() && ((!suites.empty() && suites != "gambatte") || doctest_args.size() != 1 || romFrames)) {
+        std::cerr << "Catalog selection currently supports Gambatte; use --case-id/--model/--subsystem without doctest filters or --frames\n";
+        return EXIT_FAILURE;
+    }
     const std::string suiteFilter = "--test-suite=" + suites;
     if (!suites.empty()) {
         doctest_args.push_back(const_cast<char *>(suiteFilter.c_str()));
@@ -856,8 +925,21 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
 
     doctest::Context ctx;
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());
+    struct WorkerScope {
+        ~WorkerScope() { testWorkers.reset(); }
+    } workerScope;
     try {
         if (!ctx.shouldExit()) {
+            if (!catalogSelection.Active()) {
+                doctest::Context query;
+                auto queryArguments = doctest_args;
+                char queryFlag[] = "--list-test-cases";
+                queryArguments.push_back(queryFlag);
+                query.applyCommandLine(static_cast<int>(queryArguments.size()), queryArguments.data());
+                query.setOption("reporters", "diagnostics-selection");
+                if (query.run())
+                    throw std::runtime_error("Cannot determine selected tests");
+            }
             if (reportPath.empty())
                 reportPath = diagnostics::DefaultReportPath();
             failureDirectory = reportPath.parent_path() / "failures";
@@ -868,7 +950,10 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                     .compiler = __VERSION__,
                     .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             std::cerr << "Diagnostics results: " << reportPath << '\n';
+            testWorkers = std::make_unique<TestWorkers>(maxThreads);
         }
+        if (catalogSelection.Active())
+            return runCatalogSelection();
         return ctx.run();
     } catch (const std::exception &error) {
         std::cerr << "Diagnostics infrastructure error: " << error.what() << '\n';
