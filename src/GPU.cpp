@@ -1593,7 +1593,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             scrollX = value;
             break;
         case 0xFF44:
-            currentLine = 0;
+            // LY is read only, so writes should be ignored — fixes LY=LYC comparison in Gambatte tests
             break;
         case 0xFF45:
             lyc = value;

@@ -1,6 +1,6 @@
 ## Test ROM Performance
 
-Current Performance: (2942/4372)
+Current Performance: (2946/4372)
 
 | Test                                                                                               | StarGBC            |
 |----------------------------------------------------------------------------------------------------|--------------------|
@@ -1080,10 +1080,10 @@ Current Performance: (2942/4372)
 | gambatte/lycm2int/lycm2int_m2irq_2_dmg08_cgb04c_out3.gbc                                           | :white_check_mark: |
 | gambatte/lycm2int/m2irq_before_lycint_1_dmg08_cgb04c_out1.gbc                                      | :x:                |
 | gambatte/lycm2int/m2irq_before_lycint_2_dmg08_cgb04c_out3.gbc                                      | :white_check_mark: |
-| gambatte/lywrite/lywrite77_ly44_m3_ly_dmg08_cgb04c_out44.gbc                                       | :x:                |
-| gambatte/lywrite/lywrite77_ly44_m3_stat_dmg08_cgb04c_outC7.gbc                                     | :x:                |
-| gambatte/lywrite/lywrite77_ly97_ly_dmg08_cgb04c_out97.gbc                                          | :x:                |
-| gambatte/lywrite/lywrite77_ly97_stat_dmg08_cgb04c_outC5.gbc                                        | :x:                |
+| gambatte/lywrite/lywrite77_ly44_m3_ly_dmg08_cgb04c_out44.gbc                                       | :white_check_mark: |
+| gambatte/lywrite/lywrite77_ly44_m3_stat_dmg08_cgb04c_outC7.gbc                                     | :white_check_mark: |
+| gambatte/lywrite/lywrite77_ly97_ly_dmg08_cgb04c_out97.gbc                                          | :white_check_mark: |
+| gambatte/lywrite/lywrite77_ly97_stat_dmg08_cgb04c_outC5.gbc                                        | :white_check_mark: |
 | gambatte/m0enable/disable_1_dmg08_cgb04c_out0.gbc                                                  | :x:                |
 | gambatte/m0enable/disable_2_dmg08_out0_cgb04c_out2.gbc                                             | :white_check_mark: |
 | gambatte/m0enable/disable_3_dmg08_cgb04c_out2.gbc                                                  | :white_check_mark: |
