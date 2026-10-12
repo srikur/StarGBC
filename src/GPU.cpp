@@ -422,7 +422,7 @@ void GPU::Update() {
 void GPU::MaybeArmIdle() {
     if (!optimizedExecution)
         return;
-    if (lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_)
+    if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_)
         return;
     if ((bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
         return;

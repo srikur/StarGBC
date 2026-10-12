@@ -302,3 +302,31 @@ TEST_CASE("diagnostics: Crystal window provenance explains clipped window pixels
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick < pixel->emission.tick);
 }
+
+TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping dots") {
+    for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
+        Interrupts optimizedInterrupts, ordinaryInterrupts;
+        GPU optimized(optimizedInterrupts), ordinary(ordinaryInterrupts);
+        for (auto *gpu : {&optimized, &ordinary}) {
+            gpu->SetModel(model);
+            gpu->lcdc = 0x91;
+            gpu->currentLine = 150;
+            gpu->scanlineCounter = 455;
+            gpu->stat.mode = GPUMode::MODE_1;
+            gpu->stat.enableLYInterrupt = true;
+            gpu->lyc = 151;
+        }
+        ordinary.optimizedExecution = false;
+        for (unsigned dot = 0; dot < 460; ++dot) {
+            CAPTURE(model);
+            CAPTURE(dot);
+            optimized.Update();
+            ordinary.Update();
+            CHECK(optimized.ReadRegisters(0xFF41) == ordinary.ReadRegisters(0xFF41));
+            CHECK(optimizedInterrupts.interruptFlag == ordinaryInterrupts.interruptFlag);
+            CHECK(optimizedInterrupts.interruptVisiblePending == ordinaryInterrupts.interruptVisiblePending);
+            CHECK(optimizedInterrupts.interruptSetDelays == ordinaryInterrupts.interruptSetDelays);
+        }
+        CHECK((optimizedInterrupts.interruptFlag & 2) != 0);
+    }
+}
