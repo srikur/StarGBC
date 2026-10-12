@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "seed": 1,
+  "basis": "InternalInvariant",
+  "mode": "Component",
+  "family": "TimerReload",
+  "model": "DMGB",
+  "phase": 1,
+  "expectedValue": 37,
+  "budgetTicks": 32,
+  "basisEvidence": "Internal invariant: a TIMA write while the reload latch is active preserves the reloaded TMA value"
+}

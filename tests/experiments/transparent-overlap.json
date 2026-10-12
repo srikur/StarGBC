@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "seed": 1,
+  "basis": "InternalInvariant",
+  "mode": "WholeMachine",
+  "family": "Sprites",
+  "model": "CGBC",
+  "spriteX": 16,
+  "scx": 3,
+  "budgetTicks": 140448,
+  "basisEvidence": "Internal invariant: a zero-color earlier sprite exposes the opaque overlapping sprite; captured candidates identify both"
+}

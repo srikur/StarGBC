@@ -63,3 +63,10 @@ if (process.env.STARGBC_INSPECTOR_BUNDLE) test('captured binary trace agrees wit
   const json = inspector.parseTraceJson(fs.readFileSync(directory + '/events.jsonl', 'utf8'));
   assert.deepEqual(binary, json);
 });
+
+test('experiment reports share the pixel and trace bundle decoder', () => {
+  const result = { record: 'experiment', schemaVersion: 1, outcome: 'Pass', scenario: { mode: 'WholeMachine', family: 'Sprites', model: 'CGBC' } };
+  const bundle = inspector.decodeBundle({ 'result.json': JSON.stringify(result) });
+  assert.deepEqual(bundle.result, result);
+  assert.equal(bundle.difference, null);
+});

@@ -119,7 +119,7 @@ const StarGBCInspector = (() => {
       }
       if (!name.endsWith('.json')) continue;
       const value = parseExactJson(text);
-      if (value.record === 'result') bundle.result = value;
+      if (value.record === 'result' || value.record === 'experiment') bundle.result = value;
       else if (value.metadata?.record === 'pixel-provenance') bundle.provenance = value;
       else if ('mismatches' in value && 'first' in value) bundle.difference = value;
       else if (name === 'reproduction.json') bundle.reproduction = value;
@@ -299,11 +299,18 @@ if (typeof document !== 'undefined') {
     element('case-summary').hidden = !result;
     if (result) {
       element('outcome').textContent = result.outcome;
-      const identity = result.test.id.split('|');
-      element('case-name').textContent = `${identity.length === 5 ? identity[1] : result.test.rom} · ${result.test.model}`;
-      element('case-details').textContent = result.details;
-      element('expected-value').textContent = result.expected;
-      element('actual-value').textContent = result.actual;
+      if (result.record === 'experiment') {
+        element('case-name').textContent = `${result.scenario.mode} ${result.scenario.family} · ${result.scenario.model}`;
+        element('case-details').textContent = result.failureSignature || result.completionContract;
+        element('expected-value').textContent = result.scenario.expectedValue ?? 'Recorded event invariants';
+        element('actual-value').textContent = result.probeValue;
+      } else {
+        const identity = result.test.id.split('|');
+        element('case-name').textContent = `${identity.length === 5 ? identity[1] : result.test.rom} · ${result.test.model}`;
+        element('case-details').textContent = result.details;
+        element('expected-value').textContent = result.expected;
+        element('actual-value').textContent = result.actual;
+      }
     }
     await Promise.all(['expected', 'actual', 'difference'].map(async name => {
       const source = bundle.images[name + '.bmp'];

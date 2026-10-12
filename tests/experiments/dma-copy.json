@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "seed": 1,
+  "basis": "InternalInvariant",
+  "mode": "Component",
+  "family": "Dma",
+  "model": "CGBC",
+  "budgetTicks": 1360,
+  "basisEvidence": "Internal invariant: a completed OAM DMA produces 160 transfer events and copies every seeded source byte"
+}
