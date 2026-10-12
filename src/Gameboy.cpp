@@ -33,9 +33,41 @@ bool Gameboy::ConsumeFrame() { return std::exchange(gpu_.frameReady, false); }
 
 void Gameboy::Save() const { cartridge_.Save(); }
 
-void Gameboy::KeyUp(const Keys key) { joypad_.KeyUp(key); }
+void Gameboy::ObserveInput(const uint8_t previous) {
+    const auto buttons = PressedButtons();
+    if (buttons == previous)
+        return;
+    if (inputSink_ && inputSink_->applied)
+        inputSink_->applied(inputSink_->owner, timelineTicks_, buttons);
+    if (observations_) {
+        SynchronizeObservationPosition();
+        observations_->Emit(diagnostics::Component::Input, diagnostics::EventKind::InputApplied, 0xFF00, buttons, previous);
+    }
+}
 
-void Gameboy::KeyDown(const Keys key) { joypad_.KeyDown(key); }
+void Gameboy::KeyUp(const Keys key) {
+    const auto previous = PressedButtons();
+    joypad_.KeyUp(key);
+    ObserveInput(previous);
+}
+
+void Gameboy::KeyDown(const Keys key) {
+    const auto previous = PressedButtons();
+    joypad_.KeyDown(key);
+    ObserveInput(previous);
+}
+
+void Gameboy::ApplyButtons(const uint8_t buttons) {
+    const auto changed = buttons ^ PressedButtons();
+    for (unsigned bit = 1; bit <= 0x80; bit <<= 1) {
+        if (!(changed & bit))
+            continue;
+        if (buttons & bit)
+            KeyDown(static_cast<Keys>(bit));
+        else
+            KeyUp(static_cast<Keys>(bit));
+    }
+}
 
 const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
 

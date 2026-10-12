@@ -61,6 +61,8 @@ public:
 
     [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
 
+    void RestoreInstructionCount(const uint64_t count) { instructionsCompleted_ = count; }
+
     [[nodiscard]] uint16_t InstructionAddress() const { return instructionAddress_; }
 
     [[nodiscard]] uint16_t InstructionBank() const { return instructionBank_; }

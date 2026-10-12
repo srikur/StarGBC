@@ -70,26 +70,27 @@ namespace diagnostics {
                   const uint16_t bank = 0) noexcept {
             if (callback || condition)
                 Dispatch({.position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
-                                 .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
-                                 .blocked = blocked, .value = value, .detail = detail});
+                          .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
+                          .blocked = blocked, .value = value, .detail = detail});
         }
 
         void EmitDeferred(const uint64_t tick, const Component component, const EventKind kind, const uint32_t value,
                           const uint32_t detail = 0) noexcept {
             if (callback || condition)
                 Dispatch({.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
-                                 .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
-                                 .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail});
+                          .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
+                          .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail});
         }
 
         void Restore(const ExecutionPosition restored) noexcept {
+            stopEvent.reset();
             const auto parent = branch++;
             const auto previousTick = position.tick;
             position = restored;
             if (callback || condition)
                 Dispatch({.position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
-                                 .component = Component::Control, .kind = EventKind::Branch,
-                                 .relatedTick = previousTick, .parentBranch = parent});
+                          .component = Component::Control, .kind = EventKind::Branch,
+                          .relatedTick = previousTick, .parentBranch = parent});
         }
     };
 }

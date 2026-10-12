@@ -11,6 +11,7 @@
 #include "Common.h"
 #include "Execution.h"
 #include "Memory.h"
+#include "diagnostics/ReplayInput.h"
 
 struct GameboySettings {
     std::string romName;
@@ -30,7 +31,7 @@ public:
     static constexpr uint32_t FRAME_CYCLES_DMG = 70224;
     static constexpr std::chrono::nanoseconds FRAME_PERIOD{FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND};
 
-    explicit Gameboy(const GameboySettings &settings) : romPath_(settings.romName), biosPath_(settings.biosPath),
+    explicit Gameboy(const GameboySettings &settings) : initialSettings_(settings), romPath_(settings.romName), biosPath_(settings.biosPath),
                                                         rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
                                                         joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_),
                                                         serial_(interrupts_),
@@ -48,6 +49,10 @@ public:
     Gameboy &operator=(Gameboy &&other) = delete;
 
     ~Gameboy() = default;
+
+    [[nodiscard]] static std::string_view CoreBuildIdentity();
+
+    [[nodiscard]] const GameboySettings &InitialSettings() const { return initialSettings_; }
 
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) { return std::make_unique<Gameboy>(settings); }
 
@@ -75,6 +80,14 @@ public:
 
     void KeyDown(Keys);
 
+    void ApplyButtons(uint8_t buttons);
+
+    void RecordInputsWith(diagnostics::InputSink *sink) { inputSink_ = sink; }
+
+    [[nodiscard]] diagnostics::InputSink *InputRecording() const { return inputSink_; }
+
+    [[nodiscard]] uint64_t InstructionsCompleted() const { return cpu_.InstructionsCompleted(); }
+
     [[nodiscard]] uint8_t PressedButtons() const { return static_cast<uint8_t>(~joypad_.GetMatrix()); }
 
     [[nodiscard]] uint8_t DebugPeek(const uint16_t address) const { return bus_.DebugPeek(address); }
@@ -101,6 +114,14 @@ public:
 
     [[nodiscard]] bool LoadState(std::span<const std::byte> state);
 
+    [[nodiscard]] std::vector<std::byte> SaveDebugState() const;
+
+    [[nodiscard]] bool LoadDebugState(std::span<const std::byte> state);
+
+    [[nodiscard]] std::span<const uint8_t> BootromBytes() const { return bus_.bootrom; }
+
+    [[nodiscard]] bool UsesRealRTC() const { return rtc_.realRTC_; }
+
     [[nodiscard]] uint16_t CartChecksum() const { return cartridge_.GlobalChecksum(); }
 
     [[nodiscard]] Model GetModel() const { return gpu_.model; }
@@ -114,6 +135,7 @@ public:
     void ClearAudioBuffer() { audio_.ClearBuffer(); }
 
 private:
+    [[=NotStateAware]] GameboySettings initialSettings_;
     [[=NotStateAware]] std::string romPath_;
     [[=NotStateAware]] std::string biosPath_;
 
@@ -137,6 +159,9 @@ private:
     uint64_t timelineTicks_{};
     [[=NotStateAware]] ExecutionPolicy executionPolicy_{ExecutionPolicy::Optimized};
     [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    [[=NotStateAware]] diagnostics::InputSink *inputSink_{};
+
+    void ObserveInput(uint8_t previous);
 
     void SynchronizeObservationPosition();
 

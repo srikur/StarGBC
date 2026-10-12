@@ -10,6 +10,7 @@
 #include "diagnostics/Json.h"
 #include "diagnostics/Trace.h"
 #include "diagnostics/Watchpoints.h"
+#include "diagnostics/Replay.h"
 
 namespace {
     using namespace StarParse;
@@ -40,6 +41,11 @@ namespace {
         [[=Opt{"Stop at this display scanline"}]] std::optional<unsigned> until_ly;
         [[=Opt{"Stop at this display dot"}]] std::optional<unsigned> until_dot;
         [[=Opt{"JSON output file; stdout when omitted"}]] std::string output;
+        [[=Opt{"Restore a compatible debug checkpoint before execution"}]] std::string checkpoint_load;
+        [[=Opt{"Save a debug checkpoint after execution"}]] std::string checkpoint_save;
+        [[=Opt{"Replay a verified timestamped input log"}]] std::string replay_inputs;
+        [[=Opt{"Record the buttons actually applied to the machine"}]] std::string record_inputs;
+        [[=Opt{"Schedule buttons as decimal tick:mask; repeat for more inputs"}]] std::vector<std::string> input_at;
         [[=Opt{"Trace output basename; writes JSONL and binary"}]] std::string trace;
         [[=Opt{"Maximum retained events"}, =Range{1, 1'000'000}]] unsigned trace_capacity{65536};
         [[=Opt{"First captured master tick"}]] uint64_t trace_begin{};
@@ -65,6 +71,8 @@ namespace {
         std::optional<RegisterInspection> selectedRegister;
         std::optional<ExecutionResult> execution;
         std::optional<ConditionalExecutionResult> conditional;
+        diagnostics::InputFingerprint initialInputs;
+        uint64_t replayCursor{};
     };
 }
 
@@ -79,8 +87,56 @@ int main(const int argc, char **argv) {
         return 0;
     }
     try {
-        Gameboy machine({.romName = arguments->rom, .biosPath = arguments->bios, .model = arguments->model,
-                         .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color, .executionPolicy = arguments->policy});
+        GameboySettings settings{.romName = arguments->rom, .biosPath = arguments->bios, .model = arguments->model,
+                                 .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color, .executionPolicy = arguments->policy};
+        std::optional<diagnostics::InputLog> inputLog;
+        if (!arguments->replay_inputs.empty()) {
+            if (!arguments->input_at.empty())
+                throw std::invalid_argument("Choose a recorded input log or scheduled inputs");
+            inputLog = diagnostics::ReadInputLog(arguments->replay_inputs);
+            if (!inputLog->settings)
+                throw std::invalid_argument("Command-line replay requires recorded initial settings");
+            settings = *inputLog->settings;
+            settings.romName = arguments->rom;
+            if (!arguments->bios.empty())
+                settings.biosPath = arguments->bios;
+            if (arguments->model != Model::Auto && arguments->model != settings.model)
+                throw std::invalid_argument("Requested model differs from the recorded model");
+            settings.executionPolicy = arguments->policy;
+        }
+        Gameboy machine(settings);
+        settings.model = machine.GetModel();
+        const auto initialInputs = diagnostics::IdentifyInitialInputs(machine, settings);
+        const diagnostics::CheckpointIdentity checkpointIdentity{.build = std::string(Gameboy::CoreBuildIdentity()), .inputs = initialInputs};
+        std::unique_ptr<diagnostics::InputRecorder> inputRecorder;
+        if (!arguments->record_inputs.empty()) {
+            if (!arguments->checkpoint_load.empty())
+                throw std::invalid_argument("Record inputs from initial conditions rather than a checkpoint");
+            inputRecorder = std::make_unique<diagnostics::InputRecorder>(machine, initialInputs, 65536, settings);
+        }
+        if (!arguments->input_at.empty()) {
+            inputLog = diagnostics::InputLog{.initial = initialInputs, .settings = settings};
+            const auto number = [](const std::string &text) {
+                size_t consumed{};
+                const auto value = std::stoull(text, &consumed, 10);
+                if (text.empty() || text.front() == '-' || consumed != text.size())
+                    throw std::invalid_argument("Scheduled inputs require decimal tick:mask");
+                return value;
+            };
+            for (const auto &input : arguments->input_at) {
+                const auto colon = input.find(':');
+                if (colon == std::string::npos)
+                    throw std::invalid_argument("Scheduled inputs require decimal tick:mask");
+                const auto tick = number(input.substr(0, colon));
+                const auto buttons = number(input.substr(colon + 1));
+                if (buttons > 255)
+                    throw std::invalid_argument("Button mask exceeds eight bits");
+                inputLog->events.push_back({tick, inputLog->events.size(), static_cast<uint8_t>(buttons)});
+            }
+        }
+        std::unique_ptr<diagnostics::ReplayPlayer> replay;
+        if (inputLog)
+            replay = std::make_unique<diagnostics::ReplayPlayer>(machine, std::move(*inputLog), initialInputs);
         const bool hasWatchpoint = arguments->break_pc || arguments->watch_read || arguments->watch_write || arguments->watch_event;
         if ((arguments->break_bank && !arguments->break_pc) || (arguments->watch_value && !arguments->watch_event))
             throw std::invalid_argument("Bank and event values require their breakpoint or event condition");
@@ -145,18 +201,42 @@ int main(const int argc, char **argv) {
             }
             machine.ObserveWith(&recorder->Context());
         }
-        for (unsigned interval = 0; interval < arguments->intervals; ++interval)
-            machine.RunFrame();
+        if (!arguments->checkpoint_load.empty()) {
+            if (replay)
+                replay->RestoreCheckpoint(arguments->checkpoint_load, checkpointIdentity);
+            else
+                static_cast<void>(diagnostics::RestoreCheckpoint(arguments->checkpoint_load, machine, checkpointIdentity));
+        }
+        for (unsigned interval = 0; interval < arguments->intervals; ++interval) {
+            if (replay)
+                static_cast<void>(replay->AdvanceTicks(diagnostics::RunFrameTicks, arguments->policy));
+            else
+                machine.RunFrame();
+        }
         std::optional<ExecutionResult> execution;
         if (arguments->ticks)
-            execution = machine.AdvanceTicks(arguments->ticks, arguments->policy);
+            execution = replay ? replay->AdvanceTicks(arguments->ticks, arguments->policy) : machine.AdvanceTicks(arguments->ticks, arguments->policy);
         if (arguments->step_instruction)
-            execution = machine.StepInstruction(arguments->deadline_ticks);
+            execution = replay ? replay->StepInstruction(arguments->deadline_ticks) : machine.StepInstruction(arguments->deadline_ticks);
         std::optional<ConditionalExecutionResult> conditional;
         if (hasWatchpoint || !conditions.empty())
-            conditional = machine.RunUntil(conditions, arguments->deadline_ticks);
+            conditional = replay ? replay->RunUntil(conditions, arguments->deadline_ticks) : machine.RunUntil(conditions, arguments->deadline_ticks);
         InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect(),
-                                .execution = execution, .conditional = conditional};
+                                .execution = execution, .conditional = conditional, .initialInputs = initialInputs,
+                                .replayCursor = replay ? replay->Cursor() : 0};
+        if (!arguments->checkpoint_save.empty()) {
+            if (inputRecorder) {
+                auto recordedIdentity = checkpointIdentity;
+                recordedIdentity.replayCursor = inputRecorder->Log().events.size();
+                recordedIdentity.replayHash = diagnostics::InputLogHash(inputRecorder->Log());
+                diagnostics::WriteCheckpoint(arguments->checkpoint_save, machine, std::move(recordedIdentity));
+            } else if (replay)
+                replay->SaveCheckpoint(arguments->checkpoint_save, checkpointIdentity);
+            else
+                diagnostics::WriteCheckpoint(arguments->checkpoint_save, machine, checkpointIdentity);
+        }
+        if (inputRecorder)
+            diagnostics::WriteInputLog(arguments->record_inputs, inputRecorder->Log());
         if (arguments->register_address)
             report.selectedRegister = machine.InspectRegister(*arguments->register_address);
         if (recorder && !arguments->trace.empty()) {

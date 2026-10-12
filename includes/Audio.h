@@ -315,6 +315,25 @@ struct Channel4 final : Channel {
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
+struct AudioDebugOutput {
+    std::array<float, AUDIO_BUFFER_SIZE * 2> samples{};
+    size_t sampleCount{};
+    size_t writePosition{};
+    size_t readPosition{};
+    size_t available{};
+    uint32_t sampleAccumulator{};
+    std::array<BandLimited, 4> resampler;
+    double highpassLeft{};
+    double highpassRight{};
+    uint32_t lastMixRegisters{};
+    std::array<float, 4> lastMixOutputs{};
+    std::array<double, 2> mixLevel{};
+    uint64_t mixChanges{};
+    uint32_t pendingTicks{};
+    uint64_t pendingFirstTick{};
+    uint64_t emissionTick{};
+};
+
 class Audio {
     enum class SkipState : uint8_t { Inactive, Skip, Skipped };
 
@@ -399,6 +418,10 @@ public:
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
+
+    [[nodiscard]] AudioDebugOutput CaptureDebugOutput() const;
+    [[nodiscard]] bool ValidDebugOutput(const AudioDebugOutput &state) const;
+    void RestoreDebugOutput(const AudioDebugOutput &state);
 
     [[nodiscard]] AudioInspection Inspect() const;
 

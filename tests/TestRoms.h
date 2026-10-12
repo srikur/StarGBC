@@ -20,6 +20,8 @@
 #include "diagnostics/Report.h"
 #include "diagnostics/Artifacts.h"
 #include "diagnostics/Trace.h"
+#include "diagnostics/Checkpoint.h"
+#include "diagnostics/Replay.h"
 
 struct Bootroms {
     const char *dmg0Bootrom = "roms/dmg0_boot.bin";
@@ -45,12 +47,18 @@ enum class TestObservationMode { Disabled, Observe, Capture };
 static TestObservationMode testObservationMode{TestObservationMode::Disabled};
 static size_t testTraceCapacity{65536};
 static diagnostics::EventFilter testTraceFilter;
+static bool testCheckpointFailures{};
 
 class TestObservationSession {
     std::optional<diagnostics::TraceRecorder> recorder_;
+    Gameboy *machine_{};
+    diagnostics::InputFingerprint checkpointInputs_;
 
 public:
     void Attach(Gameboy &gameboy) {
+        machine_ = &gameboy;
+        if (testCheckpointFailures)
+            checkpointInputs_ = diagnostics::IdentifyInitialInputs(gameboy, gameboy.InitialSettings());
         if (testObservationMode == TestObservationMode::Disabled)
             return;
         recorder_.emplace(testTraceCapacity, testTraceFilter);
@@ -59,6 +67,9 @@ public:
     }
 
     void Export(const std::filesystem::path &directory, const diagnostics::Result &result) {
+        if (testCheckpointFailures && machine_)
+            diagnostics::WriteCheckpoint(directory / "terminal.checkpoint", *machine_,
+                                         {.build = std::string(Gameboy::CoreBuildIdentity()), .inputs = checkpointInputs_});
         if (recorder_ && testObservationMode == TestObservationMode::Capture) {
             recorder_->Identify(testExecutableHash, result.inputs.rom, result.inputs.configuration);
             recorder_->WriteJsonLines(directory / "events.jsonl");
@@ -911,6 +922,8 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 std::cerr << "Case ID file is empty\n";
                 return EXIT_FAILURE;
             }
+        } else if (arg == "--checkpoint-failures") {
+            testCheckpointFailures = true;
         } else if (arg.starts_with("--model=")) {
             catalogSelection.model = ModelFromName(arg.substr(std::string_view("--model=").size()));
             if (!catalogSelection.model || *catalogSelection.model == Model::Auto) {

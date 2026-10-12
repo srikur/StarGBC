@@ -60,6 +60,7 @@ namespace diagnostics {
         InputFingerprint inputs;
         Position position;
         uint64_t replayCursor{};
+        std::string replayHash;
     };
 
     struct Result {
