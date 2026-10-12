@@ -77,6 +77,13 @@ namespace diagnostics {
         [[nodiscard]] TraceMetadata Metadata() const;
         [[nodiscard]] std::vector<Event> Events() const;
         void SetCaptureEnabled(const bool enabled) { enabled_ = enabled; }
+        void Clear() {
+            begin_ = size_ = observed_ = overwritten_ = 0;
+            trigger_.reset();
+            triggerEvent_.reset();
+            followingRemaining_ = 0;
+            captureComplete_ = false;
+        }
         void Identify(std::string executableHash, std::string romHash, std::string configuration);
         void Arm(CaptureTrigger trigger);
         [[nodiscard]] bool CaptureComplete() const { return captureComplete_; }

@@ -88,7 +88,7 @@ void Audio::CatchUpWork() {
         // this advances in bulk, bit-identically. Event ticks (duty steps,
         // wave steps, noise counter increments, emissions) and any hairy
         // transient state are processed one tick at a time below.
-        uint32_t quiet = n;
+        uint32_t quiet = optimizedExecution_ ? n : 0;
         {
             // Emission: sample due when sampleAcc_ crosses the APU rate
             const uint32_t untilEmit = (APU_CLOCK_RATE_INT - sampleAcc_ + AUDIO_SAMPLE_RATE - 1) / AUDIO_SAMPLE_RATE;
@@ -1469,7 +1469,7 @@ void Audio::GenerateSample() {
     // exact-zero delta and deposit nothing, so the whole block is skippable
     const uint32_t mixRegs = static_cast<uint32_t>(nr50) << 16 | static_cast<uint32_t>(nr51) << 8 | ch1.enabled | ch1.dacEnabled << 1 |
                              ch2.enabled << 2 | ch2.dacEnabled << 3 | ch3.enabled << 4 | ch3.dacEnabled << 5 | ch4.enabled << 6 | ch4.dacEnabled << 7;
-    if (mixRegs != lastMixRegs_ || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1] ||
+    if (!optimizedExecution_ || mixRegs != lastMixRegs_ || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1] ||
         ch3.currentOutput != lastMixOutputs_[2] || ch4.currentOutput != lastMixOutputs_[3]) {
         lastMixRegs_ = mixRegs;
         lastMixOutputs_ = {ch1.currentOutput, ch2.currentOutput, ch3.currentOutput, ch4.currentOutput};

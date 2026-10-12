@@ -13,6 +13,7 @@
 #include "diagnostics/Replay.h"
 #include "diagnostics/Provenance.h"
 #include "diagnostics/Artifacts.h"
+#include "diagnostics/Comparison.h"
 
 namespace {
     using namespace StarParse;
@@ -43,6 +44,12 @@ namespace {
         [[=Opt{"Stop at this display scanline"}]] std::optional<unsigned> until_ly;
         [[=Opt{"Stop at this display dot"}]] std::optional<unsigned> until_dot;
         [[=Opt{"JSON output file; stdout when omitted"}]] std::string output;
+        [[=Opt{"Ordered canonical observations for differential comparison"}]] std::string comparison_output;
+        [[=Opt{"First differential observation tick"}]] uint64_t comparison_begin{};
+        [[=Opt{"Final differential observation tick"}]] uint64_t comparison_end{};
+        [[=Opt{"Master ticks between differential observations"}]] uint64_t sample_ticks{912};
+        [[=Opt{"Compare event histories using per-tick scheduling"}]] bool comparison_events{};
+        [[=Opt{"Include individual events in differential samples"}]] bool comparison_event_details{};
         [[=Opt{"Restore a compatible debug checkpoint before execution"}]] std::string checkpoint_load;
         [[=Opt{"Save a debug checkpoint after execution"}]] std::string checkpoint_save;
         [[=Opt{"Replay a verified timestamped input log"}]] std::string replay_inputs;
@@ -147,6 +154,7 @@ int main(const int argc, char **argv) {
             }
         }
         std::unique_ptr<diagnostics::ReplayPlayer> replay;
+        const auto replayHash = inputLog ? diagnostics::InputLogHash(*inputLog) : std::string{};
         if (inputLog)
             replay = std::make_unique<diagnostics::ReplayPlayer>(machine, std::move(*inputLog), initialInputs);
         const bool hasWatchpoint = arguments->break_pc || arguments->watch_read || arguments->watch_write || arguments->watch_event;
@@ -235,6 +243,15 @@ int main(const int argc, char **argv) {
                 replay->RestoreCheckpoint(arguments->checkpoint_load, checkpointIdentity);
             else
                 static_cast<void>(diagnostics::RestoreCheckpoint(arguments->checkpoint_load, machine, checkpointIdentity));
+        }
+        if (!arguments->comparison_output.empty()) {
+            if (arguments->intervals || arguments->ticks || arguments->step_instruction || hasWatchpoint || !conditions.empty() ||
+                !arguments->checkpoint_load.empty() || recorder || pixels)
+                throw std::invalid_argument("Differential capture requires its own initial execution and capture plan");
+            diagnostics::WriteObservations(arguments->comparison_output, machine, replay.get(), initialInputs, replayHash,
+                {.beginTick = arguments->comparison_begin, .endTick = arguments->comparison_end, .sampleTicks = arguments->sample_ticks,
+                 .policy = arguments->policy, .events = arguments->comparison_events, .eventDetails = arguments->comparison_event_details,
+                 .eventCapacity = arguments->trace_capacity});
         }
         for (unsigned interval = 0; interval < arguments->intervals; ++interval) {
             if (replay)

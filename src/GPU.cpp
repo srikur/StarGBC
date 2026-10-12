@@ -91,20 +91,20 @@ void GPU::Update() {
     interrupts_.Tick();
     // Batched-idle fast paths: a quiet HBlank/VBlank dot only advances the
     // dot counter, and an idle disabled LCD does nothing at all
-    if (idleDots_ > 0) {
+    if (optimizedExecution && idleDots_ > 0) {
         --idleDots_;
         ++scanlineCounter;
         return;
     }
-    if (lcdOffIdle_)
+    if (optimizedExecution && lcdOffIdle_)
         return;
-    if (scanFastDots_ > 0) {
+    if (optimizedExecution && scanFastDots_ > 0) {
         --scanFastDots_;
         TickOAMScan();
         ++scanlineCounter;
         return;
     }
-    if (mode3Quiet_) {
+    if (optimizedExecution && mode3Quiet_) {
         // CGB non-compat mode-3 dot with no delayed writes in flight: the
         // preamble, LY/LYC chain, STAT latch and boundary checks are all
         // provably constant; only the pixel pipeline advances
@@ -420,6 +420,8 @@ void GPU::Update() {
 // reads or writes anything except scanlineCounter, as long as no CPU register
 // write intervenes (writes call InvalidateIdle)
 void GPU::MaybeArmIdle() {
+    if (!optimizedExecution)
+        return;
     if (lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_)
         return;
     if ((bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
@@ -709,10 +711,10 @@ void GPU::TickMode3() {
 }
 
 void GPU::CheckForSpriteTrigger() {
-    if (spritesPending_ == 0 || (!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdc)) || spriteFetchActive_ || !spriteFetchQueue.empty())
+    if ((optimizedExecution && spritesPending_ == 0) || (!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdc)) || spriteFetchActive_ || !spriteFetchQueue.empty())
         return;
     // Superset filter: no pending sprite can trigger at this pixel
-    if (!(spriteXBits_[pixelsDrawn >> 5] & (1u << (pixelsDrawn & 31))) && !(pixelsDrawn == 0 && spriteNegX_)) {
+    if (optimizedExecution && !(spriteXBits_[pixelsDrawn >> 5] & (1u << (pixelsDrawn & 31))) && !(pixelsDrawn == 0 && spriteNegX_)) {
         return;
     }
     // Pixel-0 triggers for on-screen sprites hold until the first background

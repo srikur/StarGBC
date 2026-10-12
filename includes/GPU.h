@@ -77,6 +77,7 @@ public:
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
     [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
+    [[=NotStateAware]] bool optimizedExecution{true};
 
     void SetMode(GPUMode mode);
     void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;

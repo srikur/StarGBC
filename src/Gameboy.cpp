@@ -306,6 +306,12 @@ ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolic
         throw std::out_of_range("Timeline deadline overflows master ticks");
     const auto begin = timelineTicks_;
     const auto instructions = cpu_.InstructionsCompleted();
+    const bool optimized = policy == ExecutionPolicy::Optimized;
+    if (gpu_.optimizedExecution != optimized) {
+        gpu_.InvalidateIdle();
+        gpu_.optimizedExecution = optimized;
+    }
+    audio_.SetOptimizedExecution(optimized);
     uint64_t remaining = ticks;
     while (remaining > 0) {
         if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {

@@ -381,6 +381,7 @@ class Audio {
     [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
     [[=NotStateAware]] uint64_t pendingFirstTick_{};
     [[=NotStateAware]] uint64_t emissionTick_{};
+    [[=NotStateAware]] bool optimizedExecution_{true};
 
     void InitBandLimitedTable();
 
@@ -389,6 +390,11 @@ class Audio {
     void BandLimitedRead(int channel, double &outLeft, double &outRight);
 
 public:
+    void SetOptimizedExecution(const bool enabled) {
+        CatchUp();
+        optimizedExecution_ = enabled;
+    }
+
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
     void OnSpeedSwitch(bool doubleSpeed) {
         if (doubleSpeed && audioEnabled)
@@ -447,6 +453,8 @@ public:
         if (observations_ && pendingTicks_ == 0)
             pendingFirstTick_ = observations_->position.tick;
         ++pendingTicks_;
+        if (!optimizedExecution_)
+            CatchUp();
     }
 
     void CatchUp() {
