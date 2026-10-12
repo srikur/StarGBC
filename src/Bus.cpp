@@ -104,7 +104,41 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentS
 }
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
-    return ReadByteValue<false>(address, source);
+    const auto value = ReadByteValue<false>(address, source);
+    if (observations)
+        observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusRead, address, value, 0,
+                           static_cast<diagnostics::Initiator>(source), AccessBlocked(address, source, false), DebugBank(address));
+    return value;
+}
+
+uint16_t Bus::DebugBank(const uint16_t address) const {
+    if (address < 0x8000) {
+        if (bootromRunning && address < bootrom.size() && (address < 0x100 || (IsCgb(gpu_.model) && address >= 0x200)))
+            return 0xFFFF;
+        return cartridge_.DebugBank(address);
+    }
+    if (address < 0xA000)
+        return gpu_.vramBank;
+    if (address < 0xC000)
+        return cartridge_.DebugBank(address);
+    if ((address >= 0xD000 && address < 0xE000) || (address >= 0xF000 && address < 0xFE00))
+        return memory_.wramBank_;
+    return 0;
+}
+
+bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, const bool write) const {
+    if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
+        return true;
+    if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete &&
+        address <= 0xFDFF && DmaBusFor(address) == DmaBusFor(dma_.startAddress))
+        return true;
+    if (address >= 0x8000 && address < 0xA000)
+        return source == ComponentSource::CPU ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked())
+                                              : gpu_.stat.mode == GPUMode::MODE_3;
+    if (address >= 0xFE00 && address <= 0xFEFF)
+        return source == ComponentSource::CPU ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked())
+                                              : gpu_.stat.mode == GPUMode::MODE_3;
+    return false;
 }
 
 uint8_t Bus::InspectRead(const uint16_t address, const ComponentSource source) const {
@@ -231,6 +265,21 @@ uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source)
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
+    if (observations) {
+        const auto blocked = AccessBlocked(address, source, true);
+        observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusWrite, address, value, 0,
+                           static_cast<diagnostics::Initiator>(source), blocked, DebugBank(address));
+        if (address >= 0xFF00)
+            observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::RegisterWrite, address, value, 0,
+                               static_cast<diagnostics::Initiator>(source), blocked);
+    }
+    WriteByteValue(address, value, source);
+    if (observations && address == 0xFF0F)
+        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
+                           0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+}
+
+void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return;
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&

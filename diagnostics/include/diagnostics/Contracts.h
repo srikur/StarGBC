@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "Observation.h"
 
 namespace diagnostics {
     inline constexpr uint32_t SchemaVersion = 1;
@@ -41,13 +42,7 @@ namespace diagnostics {
         uint64_t runFrameTicks{RunFrameTicks};
     };
 
-    struct Position {
-        uint64_t tick{};
-        uint64_t frame{};
-        uint16_t dot{};
-        uint8_t ly{};
-        uint8_t cpuPhase{};
-    };
+    using Position = ExecutionPosition;
 
     struct TraceIdentity {
         uint32_t schemaVersion{SchemaVersion};

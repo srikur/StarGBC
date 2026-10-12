@@ -17,6 +17,7 @@ struct GbMicrotestResult {
 
 static GbMicrotestResult runGbMicrotest(const std::string &rom) {
     ThreadPermit _permit;
+    TestObservationSession observations;
     try {
         const auto gameboy = Gameboy::init({
                 .romName = rom,
@@ -24,6 +25,7 @@ static GbMicrotestResult runGbMicrotest(const std::string &rom) {
                 .model = Model::DMGB,
                 .executionPolicy = testExecutionPolicy,
         });
+        observations.Attach(*gameboy);
 
         const auto &hram = gameboy->[:testGameboyMember("memory_"):].hram_;
         const auto &bus = gameboy->[:testGameboyMember("bus_"):];

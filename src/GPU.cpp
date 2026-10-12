@@ -344,6 +344,7 @@ void GPU::Update() {
             stat.mode = GPUMode::MODE_1;
             vblank = true;
             frameReady = true;
+            ++displayFrames_;
             hblank = false;
             // On DMG the request reaches IF before the first half-cycle HALT
             // sample of the new line. CGB retains its later VBlank request.

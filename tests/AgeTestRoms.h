@@ -21,6 +21,7 @@ struct AgeTestResult {
 
 static AgeTestResult runAgeTest(const AgeTestCase &test) {
     ThreadPermit permit;
+    TestObservationSession observations;
     try {
         const auto gameboy = Gameboy::init({
                 .romName = test.rom,
@@ -28,6 +29,7 @@ static AgeTestResult runAgeTest(const AgeTestCase &test) {
                 .model = test.model,
                 .executionPolicy = testExecutionPolicy,
         });
+        observations.Attach(*gameboy);
         const auto expected =
                 test.reference.empty() ? std::vector<uint32_t>{} : readBinaryFile("tests/expected/age-test-roms/" + test.reference + ".screen");
         auto &cpu = gameboy->[:testGameboyMember("cpu_"):];

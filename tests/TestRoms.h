@@ -19,6 +19,7 @@
 #include "diagnostics/Hash.h"
 #include "diagnostics/Report.h"
 #include "diagnostics/Artifacts.h"
+#include "diagnostics/Trace.h"
 
 struct Bootroms {
     const char *dmg0Bootrom = "roms/dmg0_boot.bin";
@@ -39,6 +40,31 @@ static ExecutionPolicy testExecutionPolicy{ExecutionPolicy::Optimized};
 static std::unique_ptr<diagnostics::Report> testReport;
 static std::filesystem::path failureDirectory;
 static std::string testExecutableHash;
+
+enum class TestObservationMode { Disabled, Observe, Capture };
+static TestObservationMode testObservationMode{TestObservationMode::Disabled};
+static size_t testTraceCapacity{65536};
+
+class TestObservationSession {
+    std::optional<diagnostics::TraceRecorder> recorder_;
+
+public:
+    void Attach(Gameboy &gameboy) {
+        if (testObservationMode == TestObservationMode::Disabled)
+            return;
+        recorder_.emplace(testTraceCapacity);
+        recorder_->SetCaptureEnabled(testObservationMode == TestObservationMode::Capture);
+        gameboy.ObserveWith(&recorder_->Context());
+    }
+
+    void Export(const std::filesystem::path &directory, const diagnostics::Result &result) {
+        if (recorder_ && testObservationMode == TestObservationMode::Capture) {
+            recorder_->Identify(testExecutableHash, result.inputs.rom, result.inputs.configuration);
+            recorder_->WriteJsonLines(directory / "events.jsonl");
+            recorder_->WriteBinary(directory / "events.trace");
+        }
+    }
+};
 
 struct CatalogSelection {
     std::set<std::string, std::less<>> ids;
@@ -146,6 +172,7 @@ static std::vector<uint32_t> readBinaryFile(const std::string &path) {
 static bool runRomTest(const std::string &rom, const std::string &expected_screen, const std::string &bios, const Model model,
                        const bool requiresStop) {
     ThreadPermit _permit;
+    TestObservationSession observations;
     try {
         const std::vector<uint32_t> expectedResult = expected_screen.empty() ? std::vector<uint32_t>{} : readBinaryFile(expected_screen);
 
@@ -155,6 +182,7 @@ static bool runRomTest(const std::string &rom, const std::string &expected_scree
                 .model = model,
                 .executionPolicy = testExecutionPolicy,
         });
+        observations.Attach(*gameboy);
 
         const auto passed = [&] {
             if (gameboy->[:testGameboyMember("bus_"):].bootromRunning)
@@ -773,12 +801,14 @@ static std::optional<Model> ModelFromName(const std::string_view name) {
 // exercise, so benchmark and test builds run identical code.
 static int runBenchmark(const std::string &rom, const Model model, const unsigned frames) {
     try {
+        TestObservationSession observations;
         const auto gameboy = Gameboy::init({
                 .romName = rom,
                 .biosPath = "",
                 .model = model,
                 .executionPolicy = testExecutionPolicy,
         });
+        observations.Attach(*gameboy);
         constexpr double kGbFrameHz = 4194304.0 / 70224.0;
         const auto start = std::chrono::steady_clock::now();
         for (unsigned f = 0; f < frames; ++f) {
@@ -834,6 +864,25 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 return EXIT_FAILURE;
             }
             testExecutionPolicy = policy == "ordinary" ? ExecutionPolicy::Ordinary : ExecutionPolicy::Optimized;
+        } else if (arg.starts_with("--observations=")) {
+            const auto mode = arg.substr(std::string_view("--observations=").size());
+            if (mode != "disabled" && mode != "observe" && mode != "capture") {
+                std::cerr << "--observations requires disabled, observe or capture\n";
+                return EXIT_FAILURE;
+            }
+            testObservationMode = mode == "disabled" ? TestObservationMode::Disabled
+                                                    : mode == "observe" ? TestObservationMode::Observe : TestObservationMode::Capture;
+        } else if (arg.starts_with("--trace-capacity=")) {
+            try {
+                constexpr auto prefix = std::string_view("--trace-capacity=");
+                size_t consumed{};
+                testTraceCapacity = std::stoul(std::string(arg.substr(prefix.size())), &consumed);
+                if (consumed != arg.size() - prefix.size() || !testTraceCapacity || testTraceCapacity > 1'000'000)
+                    throw std::invalid_argument("Trace capacity out of range");
+            } catch (...) {
+                std::cerr << "--trace-capacity requires 1..1000000\n";
+                return EXIT_FAILURE;
+            }
         } else if (arg.starts_with("--case-id=")) {
             const auto id = arg.substr(std::string_view("--case-id=").size());
             if (id.empty()) {

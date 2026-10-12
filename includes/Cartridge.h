@@ -30,6 +30,8 @@ public:
 
     [[nodiscard]] uint8_t DebugPeek(uint16_t address) const;
 
+    [[nodiscard]] uint16_t DebugBank(uint16_t address) const;
+
     void DebugPoke(uint16_t address, uint8_t value);
 
     bool SaveState(std::ofstream &stateFile) const;

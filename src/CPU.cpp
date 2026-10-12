@@ -183,6 +183,21 @@ void CPU<BusT>::InitializeSystem() {
 
 template<BusLike BusT>
 void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdmaActive) {
+    if (!observations_) {
+        ExecuteMicroOpValue(instructions, hdmaActive);
+        return;
+    }
+    const auto wasHalted = halted_;
+    const auto wasStopped = stopped_;
+    ExecuteMicroOpValue(instructions, hdmaActive);
+    if (wasHalted != halted_)
+        observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, halted_);
+    if (wasStopped != stopped_)
+        observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Stop, 0, stopped_);
+}
+
+template<BusLike BusT>
+void CPU<BusT>::ExecuteMicroOpValue(Instructions<Self> &instructions, const bool hdmaActive) {
     if (hdmaActive || locked_)
         return;
     if (!instrRunning) {
@@ -199,6 +214,8 @@ void CPU<BusT>::ExecuteMicroOp(Instructions<Self> &instructions, const bool hdma
 
 template<BusLike BusT>
 void CPU<BusT>::BeginMCycle() {
+    if (observations_ && !instrRunning && !prefixed)
+        observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InstructionBegin, instructionAddress_, currentInstruction);
     ++mCycleCounter_;
     if (bus_.bootromRunning && pc_ == 0x100) {
         bus_.bootromRunning = false;
@@ -216,6 +233,9 @@ void CPU<BusT>::BeginMCycle() {
 
 template<BusLike BusT>
 void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
+    if (observations_ && currentInstruction >> 8 != 0xCB)
+        observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InstructionEnd,
+                            instructionAddress_, prefixed ? 0xCB00 | currentInstruction : currentInstruction);
     prefixed = currentInstruction >> 8 == 0xCB;
     if (!prefixed)
         ++instructionsCompleted_;
@@ -225,6 +245,8 @@ void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
         haltBug_ = false;
         pc_ -= 1;
     }
+    if (!prefixed)
+        SetInstructionLocation(pc_ - 1);
     instructions.ResetState();
     instrRunning = false;
 }
@@ -303,6 +325,9 @@ bool CPU<BusT>::ProcessInterrupts() {
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));
             interruptMask = static_cast<uint8_t>(1u << interruptBit);
 
+            if (observations_)
+                observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptAccept, 0xFF0F, interruptMask, pending);
+
             pc_ -= 1;
             return true;
         }
@@ -329,6 +354,9 @@ bool CPU<BusT>::ProcessInterrupts() {
             sp_ -= 1;
             bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF), ComponentSource::CPU);
             interrupts_.interruptFlag &= ~interruptMask;
+            if (observations_)
+                observations_->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
+                                    0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
             pc_ = InterruptAddress(interruptBit);
 
             interruptState = M4;
@@ -345,6 +373,9 @@ bool CPU<BusT>::ProcessInterrupts() {
         }
         case M6: {
             prefixed = false;
+            SetInstructionLocation(pc_);
+            if (observations_)
+                observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptVector, pc_, interruptMask);
             currentInstruction = bus_.ReadByte(pc_++, ComponentSource::CPU);
             interruptState = M1;
             mCycleCounter_ = 1;

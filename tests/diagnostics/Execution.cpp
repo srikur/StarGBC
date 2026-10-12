@@ -28,8 +28,12 @@ TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted executi
             Gameboy uninterrupted(settings);
             Gameboy stepped(settings);
             if (doubleSpeed) {
-                uninterrupted.[:executionTestMember<Gameboy>("bus_"):].ChangeSpeed();
-                stepped.[:executionTestMember<Gameboy>("bus_"):].ChangeSpeed();
+                for (auto *machine : {&uninterrupted, &stepped}) {
+                    auto &bus = machine->[:executionTestMember<Gameboy>("bus_"):];
+                    bus.prepareSpeedShift = true;
+                    bus.ChangeSpeed();
+                    REQUIRE(machine->Inspect().speed == Speed::Double);
+                }
             }
             uint32_t seed = 0x53A7;
             for (unsigned interval = 0; interval < 3; ++interval) {

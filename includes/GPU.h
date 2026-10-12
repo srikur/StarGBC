@@ -164,6 +164,7 @@ public:
 
     bool vblank = false;
     [[=NotStateAware]] bool frameReady = true;
+    uint64_t displayFrames_{};
     bool statTriggered{false};
     bool lycInterruptLine_{false};
     bool m2IrqRaisedEarly{false};

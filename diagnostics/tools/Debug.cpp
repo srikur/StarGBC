@@ -2,11 +2,13 @@
 #include <iostream>
 #include <optional>
 #include <print>
+#include <sstream>
 #include <starparse/starparse.hpp>
 #include "Gameboy.h"
 #include "diagnostics/Contracts.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
+#include "diagnostics/Trace.h"
 
 namespace {
     using namespace StarParse;
@@ -24,6 +26,17 @@ namespace {
         [[=Opt{"Maximum master ticks for instruction stepping"}]] uint64_t deadline_ticks{140'448};
         [[=Opt{"Register address to inspect"}]] std::optional<uint16_t> register_address;
         [[=Opt{"JSON output file; stdout when omitted"}]] std::string output;
+        [[=Opt{"Trace output basename; writes JSONL and binary"}]] std::string trace;
+        [[=Opt{"Maximum retained events"}, =Range{1, 1'000'000}]] unsigned trace_capacity{65536};
+        [[=Opt{"First captured master tick"}]] uint64_t trace_begin{};
+        [[=Opt{"Last captured master tick"}]] uint64_t trace_end{std::numeric_limits<uint64_t>::max()};
+        [[=Opt{"Capture only this component"}]] std::optional<diagnostics::Component> trace_component;
+        [[=Opt{"Capture only this event kind"}]] std::optional<diagnostics::EventKind> trace_kind;
+        [[=Opt{"Capture only this bus or register address"}]] std::optional<uint16_t> trace_address;
+        [[=Opt{"Capture only this instruction address"}]] std::optional<uint16_t> trace_pc;
+        [[=Opt{"Capture only this instruction bank"}]] std::optional<uint16_t> trace_bank;
+        [[=Opt{"Capture only this scanline"}]] std::optional<uint8_t> trace_ly;
+        [[=Opt{"Capture only this scanline dot"}]] std::optional<uint16_t> trace_dot;
     };
 
     struct InspectionReport {
@@ -48,6 +61,30 @@ int main(const int argc, char **argv) {
     try {
         Gameboy machine({.romName = arguments->rom, .biosPath = arguments->bios, .model = arguments->model,
                          .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color, .executionPolicy = arguments->policy});
+        std::unique_ptr<diagnostics::TraceRecorder> recorder;
+        if (!arguments->trace.empty()) {
+            if (arguments->trace_begin > arguments->trace_end)
+                throw std::invalid_argument("Trace interval is reversed");
+            diagnostics::EventFilter filter{.ticks = {arguments->trace_begin, arguments->trace_end}};
+            if (arguments->trace_component)
+                filter.components = uint64_t{1} << static_cast<unsigned>(*arguments->trace_component);
+            if (arguments->trace_kind)
+                filter.kinds = uint64_t{1} << static_cast<unsigned>(*arguments->trace_kind);
+            if (arguments->trace_address)
+                filter.addresses = {*arguments->trace_address, *arguments->trace_address};
+            if (arguments->trace_pc)
+                filter.pcs = {*arguments->trace_pc, *arguments->trace_pc};
+            filter.pcBank = arguments->trace_bank;
+            if (arguments->trace_ly)
+                filter.lines = {*arguments->trace_ly, *arguments->trace_ly};
+            if (arguments->trace_dot)
+                filter.dots = {*arguments->trace_dot, *arguments->trace_dot};
+            recorder = std::make_unique<diagnostics::TraceRecorder>(arguments->trace_capacity, filter);
+            std::ostringstream configuration;
+            diagnostics::WriteJson(configuration, *arguments);
+            recorder->Identify(diagnostics::FileHash(argv[0]), diagnostics::FileHash(arguments->rom), configuration.str());
+            machine.ObserveWith(&recorder->Context());
+        }
         for (unsigned interval = 0; interval < arguments->intervals; ++interval)
             machine.RunFrame();
         std::optional<ExecutionResult> execution;
@@ -58,6 +95,11 @@ int main(const int argc, char **argv) {
         InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect(), .execution = execution};
         if (arguments->register_address)
             report.selectedRegister = machine.InspectRegister(*arguments->register_address);
+        if (recorder) {
+            recorder->WriteJsonLines(arguments->trace + ".jsonl");
+            recorder->WriteBinary(arguments->trace + ".trace");
+            machine.ObserveWith(nullptr);
+        }
         if (arguments->output.empty()) {
             diagnostics::WriteJson(std::cout, report);
             std::cout << '\n';

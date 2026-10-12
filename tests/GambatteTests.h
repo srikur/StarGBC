@@ -65,6 +65,7 @@ static char readGambatteHexTile(const uint32_t *screen, const size_t index) {
 
 static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
     ThreadPermit _permit;
+    TestObservationSession observations;
     const std::string label = std::string(gambatte_case.rom) + " [" + std::string(ModelName(gambatte_case.model)) + "]";
     const std::string_view expected = gambatte_case.expected;
     const std::string variant = expected.starts_with("audio:") ? "audio" : expected.starts_with("out:") ? "digits" : "screen";
@@ -93,6 +94,7 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
                 .colorCorrection = false,
                 .executionPolicy = testExecutionPolicy,
         });
+        observations.Attach(*gameboy);
         for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame)
             gameboy->RunFrame();
         auto &audio = gameboy->[:testGameboyMember("audio_"):];
@@ -103,9 +105,7 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
         terminal.audioEndTick = GAMBATTE_FRAME_LIMIT * diagnostics::RunFrameTicks;
         terminal.mixerLevelChanges = audio.GetMixLevelChanges() - mixChangesBefore;
         const bool audible = terminal.mixerLevelChanges != 0;
-        result.position.tick = result.budgetTicks;
-        result.position.ly = terminal.ly;
-        result.position.dot = terminal.dot;
+        result.position = gameboy->ExecutionPosition();
         result.completion = diagnostics::Completion::FixedInterval;
         result.outcome = diagnostics::Outcome::AssertionFailure;
         if (gameboy->[:testGameboyMember("bus_"):].bootromRunning) {
@@ -170,6 +170,7 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
         diagnostics::WriteFailureBundle(failureDirectory / diagnostics::TextHash(result.test.id), result, reproduction, terminal,
                                         gameboy ? std::span(gameboy->GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT) : std::span<const uint32_t>{},
                                         expectedPixels, variant == "digits" ? 0xF8F8F8 : 0xFFFFFFFF);
+        observations.Export(result.artifacts.front(), result);
     }
     return result;
 }

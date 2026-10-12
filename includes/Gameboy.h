@@ -59,6 +59,10 @@ public:
 
     [[nodiscard]] uint64_t TimelineTicks() const { return timelineTicks_; }
 
+    void ObserveWith(diagnostics::ObservationContext *context);
+
+    [[nodiscard]] diagnostics::ExecutionPosition ExecutionPosition() const;
+
     [[nodiscard]] bool ConsumeFrame();
 
     void Save() const;
@@ -128,6 +132,9 @@ private:
     uint8_t cpuTickPhase_{0x00};
     uint64_t timelineTicks_{};
     [[=NotStateAware]] ExecutionPolicy executionPolicy_{ExecutionPolicy::Optimized};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+
+    void SynchronizeObservationPosition();
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 
@@ -221,5 +228,10 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
     gpu_.InvalidateIdle();
     gpu_.RecomputeSpritePending();
     gpu_.frameReady = false;
+    if (observations_) {
+        observations_->pc = cpu_.InstructionAddress();
+        observations_->pcBank = cpu_.InstructionBank();
+        observations_->Restore(ExecutionPosition());
+    }
     return true;
 }

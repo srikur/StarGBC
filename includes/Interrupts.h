@@ -3,6 +3,7 @@
 
 #include <array>
 #include "Common.h"
+#include "diagnostics/Observation.h"
 
 struct Interrupts {
     uint8_t interruptEnable{0x00};
@@ -16,6 +17,7 @@ struct Interrupts {
     // True whenever any entry of the two delay arrays is nonzero, so the
     // per-dot Tick can skip the scan in the (overwhelmingly common) idle case
     [[=NotStateAware]] bool delaysPending_{false};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
 
     void Set(InterruptType, bool);
 

@@ -40,7 +40,15 @@ uint8_t Cartridge::DebugPeek(const uint16_t address) const {
     }
     if (address >= 0x8000)
         throw std::invalid_argument("unsupported cartridge address");
-    size_t bank = address < 0x4000 ? 0 : 1;
+    const auto bank = DebugBank(address);
+    const size_t offset = bank * 0x4000 + (address & 0x3FFF);
+    return offset < gameRom_.size() ? gameRom_[offset] : 0xFF;
+}
+
+uint16_t Cartridge::DebugBank(const uint16_t address) const {
+    if (address >= 0xA000)
+        return mbc == MBC::MBC1 ? HandleRamBank() : ramBank;
+    uint16_t bank = address < 0x4000 ? 0 : 1;
     switch (mbc) {
         case MBC::None:
             bank = address / 0x4000;
@@ -58,8 +66,7 @@ uint8_t Cartridge::DebugPeek(const uint16_t address) const {
                 bank = romBank & BankBitmask();
             break;
     }
-    const size_t offset = bank * 0x4000 + (address & 0x3FFF);
-    return offset < gameRom_.size() ? gameRom_[offset] : 0xFF;
+    return bank;
 }
 
 void Cartridge::DebugPoke(const uint16_t address, const uint8_t value) {
