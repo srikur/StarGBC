@@ -58,7 +58,7 @@ def generate(catalog, template):
     for index, case in enumerate(catalog["cases"], 1):
         name = case["rom"].removeprefix("roms/gambatte/") + f" [{case['model'].lower()}]"
         fields = [json.dumps(case[k]) for k in ("id", "rom", "expected")]
-        fields.extend((case["model"], json.dumps(name), str(index), json.dumps(case["tags"][0])))
+        fields.extend((case["model"], json.dumps(name), str(index), json.dumps(",".join(case["tags"]))))
         rows.append("GAMBATTE_CASE(" + ", ".join(fields) + ")")
     marker = "#define GAMBATTE_EXPANSION_CASES"
     if template.count(marker) != 1:

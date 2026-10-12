@@ -59,6 +59,21 @@ class Catalog(unittest.TestCase):
                 path.write_bytes(original)
 
     @unittest.skipUnless(os.environ.get('STARGBC_TEST_BINARY'), 'Native ROM runner integration')
+    def test_subsystem_selection_accepts_every_declared_tag(self):
+        binary = Path(os.environ['STARGBC_TEST_BINARY']).resolve()
+        case = next(row for row in catalog.catalogs() if row['suite'] == 'rom' and 'apu' in row['tags'])
+        with tempfile.TemporaryDirectory() as directory:
+            for index, tag in enumerate(case['tags']):
+                report = Path(directory) / str(index) / 'results.jsonl'
+                process = subprocess.run([str(binary), '--case-id=' + case['id'], '--subsystem=' + tag, '--frames=1',
+                                          '--results=' + str(report)], capture_output=True, text=True)
+                self.assertEqual(process.returncode, 1, process.stderr)
+                rows = [json.loads(line) for line in report.read_text().splitlines()]
+                results = [row for row in rows if row.get('record') == 'result']
+                self.assertEqual([row['test']['id'] for row in results], [case['id']])
+                self.assertEqual(rows[-1]['record'], 'complete')
+
+    @unittest.skipUnless(os.environ.get('STARGBC_TEST_BINARY'), 'Native ROM runner integration')
     def test_timeout_bundles_reproduce_each_remaining_suite(self):
         binary = Path(os.environ['STARGBC_TEST_BINARY']).resolve()
         cases = catalog.catalogs()

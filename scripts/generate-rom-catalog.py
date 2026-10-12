@@ -33,7 +33,7 @@ def generate(cases, output):
     rows, diagnostics = [], []
     for case in cases:
         fields = [json.dumps(case[k]) for k in ('id', 'name', 'suite', 'rom', 'bios', 'expected', 'startup', 'variant')]
-        fields += [json.dumps(case['tags'][0]), 'Model::' + case['model'], 'CatalogRunner::' + case['runner'],
+        fields += [json.dumps(','.join(case['tags'])), 'Model::' + case['model'], 'CatalogRunner::' + case['runner'],
                    str(case['budget']['value']), str(case['grouped']).lower()]
         rows.append('{' + ', '.join(fields) + '},')
         if case['runner'] == 'MicroDiagnostic':

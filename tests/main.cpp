@@ -1,4 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT
+#include <ranges>
 #include "CatalogRoms.h"
 #include "GambatteTests.gen.h"
 #include "TestRoms.h"
@@ -10,7 +11,8 @@ static int runSelectedCatalogCases() {
         unmatched.erase(test.id);
         return (catalogSelection.ids.empty() || catalogSelection.ids.contains(test.id)) &&
                (!catalogSelection.model || test.model == *catalogSelection.model) &&
-               (catalogSelection.subsystem.empty() || catalogSelection.subsystem == test.subsystem) &&
+               (catalogSelection.subsystem.empty() || std::ranges::any_of(std::string_view(test.subsystem) | std::views::split(','),
+                        [&](const auto tag) { return std::ranges::equal(tag, catalogSelection.subsystem); })) &&
                (catalogSelection.suites.empty() || catalogSelection.suites.contains(std::string(suite)));
     };
     for (const auto &test : gambatteCases)
