@@ -33,5 +33,5 @@ add_subdirectory(mocks)
 add_executable(${PROJECT_NAME}_Tests ${TEST_SOURCES} ${GBMICROTEST_GENERATED_HEADER} ${GAMBATTE_GENERATED_HEADER})
 target_include_directories(${PROJECT_NAME}_Tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR} ${GBMICROTEST_GENERATED_DIR})
-target_link_libraries(${PROJECT_NAME}_Tests PRIVATE ${PROJECT_NAME}_Core doctest::doctest)
+target_link_libraries(${PROJECT_NAME}_Tests PRIVATE ${PROJECT_NAME}_Core StarGBC_Diagnostics doctest::doctest)
 

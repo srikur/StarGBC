@@ -16,6 +16,8 @@
 
 #include <doctest/doctest.h>
 #include "ThreadContext.h"
+#include "diagnostics/Hash.h"
+#include "diagnostics/Report.h"
 
 struct Bootroms {
     const char *dmg0Bootrom = "roms/dmg0_boot.bin";
@@ -33,6 +35,7 @@ struct Bootroms {
 static constexpr Bootroms bootroms{};
 static unsigned romFrames = 0;
 static bool parallelRomTests = true;
+static std::unique_ptr<diagnostics::Report> testReport;
 
 static consteval std::meta::info testGameboyMember(const std::string_view name) {
     for (const auto m : std::meta::nonstatic_data_members_of(^^Gameboy, std::meta::access_context::unchecked())) {
@@ -54,9 +57,20 @@ struct CurrentTestCaseListener : doctest::IReporter {
     void test_case_start(const doctest::TestCaseData &tc) override { currentTestCase = &tc; }
     void report_query(const doctest::QueryData &) override {}
     void test_run_start() override {}
-    void test_run_end(const doctest::TestRunStats &) override {}
+    void test_run_end(const doctest::TestRunStats &stats) override {
+        if (testReport)
+            testReport->Write(diagnostics::RunCompletion{.cases = stats.numTestCasesPassingFilters, .failed = stats.numTestCasesFailed});
+    }
     void test_case_reenter(const doctest::TestCaseData &) override {}
-    void test_case_end(const doctest::CurrentTestCaseStats &) override {}
+    void test_case_end(const doctest::CurrentTestCaseStats &stats) override {
+        if (testReport)
+            testReport->Write(diagnostics::AssertionResult{
+                    .name = currentTestCase->m_name,
+                    .suite = currentTestCase->m_test_suite,
+                    .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
+                    .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
+                    .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)});
+    }
     void test_case_exception(const doctest::TestCaseException &) override {}
     void subcase_start(const doctest::SubcaseSignature &) override {}
     void subcase_end() override {}
@@ -747,6 +761,7 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
 
     std::string benchRom;
     Model benchModel = Model::Auto;
+    std::filesystem::path reportPath;
 
     static constexpr std::array<std::pair<std::string_view, std::string_view>, 4> kSuiteFlags{{
             {"--roms", "rom"},
@@ -765,6 +780,12 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 suites += ',';
             }
             suites += suite->second;
+        } else if (arg.starts_with("--results=")) {
+            reportPath = arg.substr(std::string_view("--results=").size());
+            if (reportPath.empty()) {
+                std::cerr << "--results requires a file path\n";
+                return EXIT_FAILURE;
+            }
         } else if (constexpr std::string_view kBench = "--bench="; arg.rfind(kBench, 0) == 0) {
             benchRom = arg.substr(kBench.size());
         } else if (constexpr std::string_view kBenchModel = "--bench-model="; arg.rfind(kBenchModel, 0) == 0) {
@@ -821,7 +842,22 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
 
     doctest::Context ctx;
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());
-    return ctx.run();
+    try {
+        if (!ctx.shouldExit()) {
+            if (reportPath.empty())
+                reportPath = diagnostics::DefaultReportPath();
+            testReport = std::make_unique<diagnostics::Report>(reportPath, diagnostics::RunIdentity{
+                    .executable = argv[0],
+                    .executableHash = diagnostics::FileHash(argv[0]),
+                    .compiler = __VERSION__,
+                    .arguments = std::vector<std::string>(argv + 1, argv + argc)});
+            std::cerr << "Diagnostics results: " << reportPath << '\n';
+        }
+        return ctx.run();
+    } catch (const std::exception &error) {
+        std::cerr << "Diagnostics infrastructure error: " << error.what() << '\n';
+        return EXIT_FAILURE;
+    }
 }
 
 #endif // STARGBC_TESTROMS_H
