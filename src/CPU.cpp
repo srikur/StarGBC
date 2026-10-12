@@ -108,7 +108,6 @@ void CPU<BusT>::InitializeSystem() {
         {0xFF52, 0xFF},
         {0xFF53, 0xFF},
         {0xFF54, 0xFF},
-        {0xFF55, 0xFF},
         {0xFF56, 0xFF},
         {0xFF57, 0xFF},
         {0xFF58, 0xFF},
@@ -166,6 +165,9 @@ void CPU<BusT>::InitializeSystem() {
         }
         bus_.WriteByte(address, effective, ComponentSource::CPU);
     }
+
+    // Prevent DMA transfer of 128 blocks due to FF55 reading 0xFF
+    bus_.gpu_.hdma.hdma5 = 0xFF;
 
     if (sgbFamily) {
         // The SGB bootrom's duration depends on the cartridge header it sends
