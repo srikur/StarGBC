@@ -1,0 +1,809 @@
+{
+  "schemaVersion": 1,
+  "roms": [
+    {
+      "rom": "roms/acid/which.gb",
+      "romHash": "28db9aa9a4afe6d119cca38f9d5d4d9621451412a5ba514119b4a50b859e1061",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/cgb_sound/cgb_sound.gb",
+      "romHash": "de2101eb718a2bf5f778df76e73a63f4598d9b471559f9a85adc26efa692053b",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/cpu_instrs/cpu_instrs.gb",
+      "romHash": "8c5e12f41e0ba5bbca796944f92ffe6de28809198682c4332e38d1b3cf56fcf2",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/dmg_sound/dmg_sound.gb",
+      "romHash": "c34e740664eb14b42c39750434e3e105fc92d774a98fb671594a48e972401630",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/mem_timing/mem_timing.gb",
+      "romHash": "791cb418fd054b482a6ada5017e2405b96c2373a0f3914c6b23afeee76fa98ce",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/mem_timing-2/mem_timing.gb",
+      "romHash": "ab9daf4c51f417c468ad0a61dab66872cf8b5a50e6eb08d989b581d15f3cf461",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/oam_bug/oam_bug.gb",
+      "romHash": "21f0e7af73e525d14ca242ba28f97d4d381a40a61b3466dd6b4cae3e502e1ea1",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blargg/oam_bug/rom_singles/7-timing_effect.gb",
+      "romHash": "b4bb86462a5701155d92ea7dafe826cbffae6faec2c48c10feef0a5f78154d6c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/blue.gb",
+      "romHash": "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/crystal.gbc",
+      "romHash": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/daid/rom_and_ram.gb",
+      "romHash": "915ee4e41db0a10e34d22af1acd9ff193bd688448eba597d53460dacfdec7ae4",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/bgtiledata/bgtiledata_spx08_ds_1.gbc",
+      "romHash": "06fac6a12f85c9b5b4c4a248cd0a59b5febb068111182df29b82fece9cfd556d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/bgtiledata/bgtiledata_spx08_ds_2.gbc",
+      "romHash": "3ce31a063dcb8935324bad1e7b57e6760ad7632e8ccfd6d1b9c0021e513db041",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/cgb_bgp_dumper.gbc",
+      "romHash": "a6f109427310304dbc82893fb84aeab6171beaf00ed925f3d856527126c50f3f",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/cgb_objp_dumper.gbc",
+      "romHash": "3588fc09ac80e6c96b170e28efa72caec75ef4513db71247831b586682b16508",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/fexx_ffxx_dumper.gbc",
+      "romHash": "0ca19d3de4ca24b74c6ec66ebdee0a2d25f17f63f867254e5b08affed1f785f0",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/fexx_read_reset_set_dumper.gbc",
+      "romHash": "0e1440191244623afefcf972d4be623151a7c17ef18716128ffac67ad9f49a8d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/halt/ime_noie_nolcdirq_readstat_dmg08_cgb_blank.gb",
+      "romHash": "e9e0d8536599a557c754e4b96a37126bb7b517611c5c3ab17d9a77dc27216af5",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/halt/lycint_dmgpalette_during_m3_1.gb",
+      "romHash": "52de1f898b63bf02b4140c732eeec3e886564851bbd672b2886247d1d31c6cfc",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/halt/lycint_dmgpalette_during_m3_2.gb",
+      "romHash": "7833644f6c6b4137cd19f78470697a6bc4be75e6ea9024c8957e502d70090621",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/halt/lycint_dmgpalette_during_m3_3.gb",
+      "romHash": "1648b828baa40fc62a4a53f9a759c689b7ef6818b39f14a0ca9aa8bb36064c83",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/halt/lycint_dmgpalette_during_m3_4.gb",
+      "romHash": "a9541b9dda74ca4b3ad797b7c666e46a41864847679239811af86c6b8a9e439d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/halt/noime_noie_nolcdirq_readstat_dmg08_cgb_blank.gb",
+      "romHash": "1a2e7e41a4f24557828397a75af5288e5ecc83c919d8a4809c74e162d32189a1",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/ioregs_reset_dumper.gbc",
+      "romHash": "cafdf47accc5035f034c43fa815d247156000f6d25741adc5718fcdcbfad8969",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/jpadirq_1.gbc",
+      "romHash": "3bf14d30cfa89a9003e406e807cfa4d01ca2e868e084f2510bbd13802ad39645",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/jpadirq_2.gbc",
+      "romHash": "5f45d91ed1ac13067a1b53fc8813f15659ceb5aa4463a64eeb2474b69cfcc7a9",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/m0enable/lycdisable_ff45_ds_2_xout0.gbc",
+      "romHash": "94c8191858889e93f0f5154a622993739627b8c29205ef53badaa9a7a056d163",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdma_src80_oambusy_dumper_1.gbc",
+      "romHash": "36645f8448ed50478e3be66dab135897772440a3ccbecbe6dd596168a3e66c52",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdma_srcC0_oambusy_dumper_1.gbc",
+      "romHash": "131053740cd657a6eb07e347554d86b0a3f3380c777f8ae1e5ead167061b0b22",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrc8000_gdmasrcC000_2xgdmalen09_oamdumper_1.gbc",
+      "romHash": "3905297172c8ad9d9994663e58d3748fd85425734a6f29788766dcd4a01a6a63",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrc8000_gdmasrcC000_2xgdmalen09_vramdumper_1.gbc",
+      "romHash": "3ec80844c41441793216c39a38c2eefb00372165e7ef09002036e801f8121c56",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrc0000_gdmalen04_oamdumper_1.gbc",
+      "romHash": "d6408a58eebf6cb3b7d8bb913b9558dffe020b21817efe4290c4e52862bd80a0",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrc0000_gdmalen04_oamdumper_ds_1.gbc",
+      "romHash": "38c90812cfd693c8d8e21395f99da186ef0162a76b6f113fb9e82a86c80a4e08",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrc0000_gdmalen13_oamdumper_ds_1.gbc",
+      "romHash": "472e5429deeaf27a8b4151c2601529a1e88df372532d96a142e9b75ec662cf75",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrc0000_gdmalen13_vramdumper_ds_1.gbc",
+      "romHash": "55f773a9ceb5c979d441489d00aef2d5ea7f3adda5e30eadd91bbee375b50851",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_2xgdmalen09_oamdumper_1.gbc",
+      "romHash": "3ea0ca8366fec2adfdc20661c33e4187410de570ebf008bc255181e80494085d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_2xgdmalen09_vramdumper_1.gbc",
+      "romHash": "57cb6d96278c694431d5431c59e997136e355c1368fd4d46809686689d9e89b9",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen09_oamdumper_1.gbc",
+      "romHash": "d5cea1d762d993b96e7284b1a72b996fb472757d645ac105086aa1de249957b7",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen09_vramdumper_1.gbc",
+      "romHash": "a85293344146d8e666b709b5342f55de7189462decd07ddc7a5752a709838fbf",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_oamdumper_1.gbc",
+      "romHash": "0ef39a3f89aa7da5b24480e18159f42eaf768d230ed215bb6252836d29531398",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_oamdumper_2.gbc",
+      "romHash": "8779d4985e7872564c4656a4b72099ae0e3d413b80d7e55d56f4d31168524699",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_oamdumper_ds_1.gbc",
+      "romHash": "5570e247ce1510dd1800dd341574ce79bb091263636ab2a5cf6a05c558f15871",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_oamdumper_ds_2.gbc",
+      "romHash": "5bae6964b6f60e7a676ada62b46836880132872c03eb00cb38828ebaf73603a6",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_oamdumper_ds_3.gbc",
+      "romHash": "b0fa8e463b923a68f25e99d9a91e3ca48439cd9c936f8d2bd600902eb862147a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_vramdumper_1.gbc",
+      "romHash": "b98d78c509d0f79ab42942d09b804fdd17d18576552dd24fc85ecbe035e88a6a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC000_gdmalen13_vramdumper_ds_1.gbc",
+      "romHash": "0b8bd0054b5bcd1b28f86ac0c2523083924e578ba44993f2794ee4e432214b66",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC0F0_gdmalen13_oamdumper_1.gbc",
+      "romHash": "ed0bad19da13b5f6081dc253c15f059d47d864c2806733ab702621b25ffbd4bb",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/oamdma/oamdmasrcC000_gdmasrcC0F0_gdmalen13_vramdumper_1.gbc",
+      "romHash": "51c379514be40a67022e98ae59f8665e241f0738ac1cacd8f690710ebb8f8e1c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_1.gb",
+      "romHash": "6e96d722aa23244cacfa5f3580ad4dc5ecf8f286b9779abda1651f09ccec56f0",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_2.gb",
+      "romHash": "a39f9b80cfd1c43c2ab24228548605834952b94cd4fb091e43c3cfa643bad034",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_3.gb",
+      "romHash": "e7e58c7fff6d1ece020dc4327a41f3bd728b88426ffe6396629c508f3720bc8f",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_4.gb",
+      "romHash": "e61ef4d12d8cfc2c1017920576b9b2337f43d68f7248ac6c6fbc2cadbec64544",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_5.gb",
+      "romHash": "8c3b185099cf87007b809e3e2ee13bff36cf5f024ec9be3556b62ee47b8ce466",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_1.gbc",
+      "romHash": "0261a8553bc2bd66f6eea91c5f05b0af8ce28e39654c97bb5d3650e238fe0a7c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_2.gbc",
+      "romHash": "0713da57410a86bbbe35871d812a58ca06f619ac36399bad11032c4f3a3b436e",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_3.gbc",
+      "romHash": "8005c84978d806693c089cb5daf62f5a6d81b5416d5f93c173ab4af705d74ab5",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_4.gbc",
+      "romHash": "ab99fd667859772a277f61d2bb99ccdc9e2351bce3b0c8795dc5c9f157ab1033",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_5.gbc",
+      "romHash": "f661b9f05f20ea2b4a3e598524c5a62649c17759bee7df9cfce4f6922dbcab12",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_6.gbc",
+      "romHash": "09e887c645cce966c92d18dc4e795df5e0a133a578c0a6984f49bbf4ae545985",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/offset_3/scx_during_m3_ds_7.gbc",
+      "romHash": "50225aa469d47b0478a8b4cc4a1321b4ed126483eaaa4ad35a7a3bc92c57ff5a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_1.gb",
+      "romHash": "849dafabd2482e845bbcbe71f580d5902c1beee4eae7005df2364560dfbd7a07",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_2.gb",
+      "romHash": "42dfb306b048e7bbdc8bae21fa06cf8254243f706bb2958950d9c2e96febbb93",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_3.gb",
+      "romHash": "d394ba24a935ee65b643a5f34b96f15d7e584df7ef73b75e887170f42a5638d7",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_4.gb",
+      "romHash": "57e2d6d91956c6b6cf52f319253598ef4ba1317988972a1b01898b82e1025cd0",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_5.gb",
+      "romHash": "eed6d9483762641deb8534c43bd3cdbdfeea40214aba1cbca617d1c15594efbd",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_1.gbc",
+      "romHash": "72e84e85eaa02766093c52f3428dc122c56f0afef70b56093bb4d3ba01297cb1",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_2.gbc",
+      "romHash": "5ad0ebe8a2ec05e752a57898d6d39040cf54d7cd368a631744a4b9c8bc96a72d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_3.gbc",
+      "romHash": "523adb15629d42c518e3e6796cf5bf185827aca9122f8703747e114c1b7ff9fb",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_4.gbc",
+      "romHash": "331b2dbc44538b48047eba340df15540402dd97a2990f41731724fe4f9621cfb",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_5.gbc",
+      "romHash": "5725dd6c3cc95a66ec05f04a7bd543a4bb931c9391e64c977dc7b261f8db9961",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_6.gbc",
+      "romHash": "44660c02fa71eda827239c9d786703ecd615c47a027575bd40fe881bbe1691a9",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/revoffset_3/scx_during_m3_ds_7.gbc",
+      "romHash": "01c2ab28724a76aadfeddc49859d757b02bf6624af4863023a6eb1fc39043fe0",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_1.gb",
+      "romHash": "acddbe20284cffe009342b0397f03d9ad0338d962457c7662f4fda0dd02dfa92",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_2.gb",
+      "romHash": "dfb3b1a2adf93d67421ebf1852dc82fad7723953cc0ce241370642d68c1475b7",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_3.gb",
+      "romHash": "cfb5698c0a3e91a8c6804fb1ce53d784b05248b8822a298d47429063ce756bc5",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_4.gb",
+      "romHash": "f0efbce0d2316d107627b5a058762ed0dd715e2bec9f5c0790adb4af1c6eb771",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_1.gbc",
+      "romHash": "5f8988f8b9dd33774e89f7ee91d280239d17b6141df70be0e0bdfb6ece81eac4",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_2.gbc",
+      "romHash": "4e8336c6817d30ec28a0bc5f703a13b1f9248df329dce0a48b9107fdca2a2bcf",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_3.gbc",
+      "romHash": "97569fdaea310c80b25a87834b92151cc4622d8f05d0cf2b0fc274a82cb31827",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_4.gbc",
+      "romHash": "dcafb23c5919eaeb47cfea6d2cf3d66e423c022467db63cb6eb19dea132f517b",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_5.gbc",
+      "romHash": "015a2ab5f4e6dc6f0e52a25d61ada19fb143a941fc43f03bf27352a98a9c1cf1",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_6.gbc",
+      "romHash": "2aade23a16b6a1b9c849fa8164f1a727c36b8f1fd48a28b2fe18d1691b91243b",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/old/scx_during_m3_ds_7.gbc",
+      "romHash": "771c966da4e55de5f47e1715b97925534be41a7e705b706d8f62b6fd2e70d25d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/scx_attrib_during_m3_spx0.gbc",
+      "romHash": "f9879b2914ea27c8b9e01c86e63f42cbb5c0d493f59b45ed30223d2e56e788f2",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/scx_during_m3/scx_attrib_during_m3_spx1.gbc",
+      "romHash": "be91f6948dca2c33ac3eb8042be9a281d7c754eee69389da2551a1ddbd820894",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sound/ch1_duty0_to_duty3_pos3_1_dmg08_cgb_xoutaudio1.gbc",
+      "romHash": "005c95be0eb3d910fa76698c1b554e36ee7c14be44df6a45292a99be8a69d352",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/11spritesPrLine_10xposA8.gbc",
+      "romHash": "7dcab814fdff8209a676b0dd351c81f79503cae7503bdc96aa385e9fbfdd58bb",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_1.gb",
+      "romHash": "9972dddbf3cc7ce72a14c99e1cf799f66d3ac4892e2604ec4c2c1bb16721e43a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_2.gb",
+      "romHash": "806e752d4fb0c7b8ebdeb63d8c05e669545676c41b0a318f4c96d7c150600eda",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_3.gb",
+      "romHash": "51e32180a70dde0d4771e040e112eb772fef43e5cb3f043f405d34bc193dd7c4",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_4.gb",
+      "romHash": "7e5bcbbe47e6d256debbf3c7c42142a621e34dad2939f89c5ea5df7f8203df8a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_5.gb",
+      "romHash": "83fbdaa68aac1cd39499a064c3a3889a2ffddbbffbb09727067952905e107590",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_6.gb",
+      "romHash": "0b2109467dda057c7a2304dfc71996111436edd6ee918a7a013094cc628b7aad",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_7.gb",
+      "romHash": "dc517885036e9f0808ece62674ee91367208f12e79ea1ac647c61e9521dbaa5e",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_8.gb",
+      "romHash": "83dced9d93e306a07e1afb81e33bc1e3f218b58d2720114fcaaf998d275fd997",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_group_image_9.gb",
+      "romHash": "37ca6493876d1ddeb3e19083ab60f369b349ff67a407aa013dd41f9486173a8a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_scx5_1.gb",
+      "romHash": "f825d14e03682af3f36afbad1736f12ab3554dac6df3825db6c45d4154b25587",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_scx5_2.gb",
+      "romHash": "75b788847e294f67a0dc51aa56ff26650411590061bdadccffa0756192a119b1",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_sp00x18_1.gb",
+      "romHash": "5c0c4504091a6ed625053463da5269fc62d5b754ae94cc25526357b51adcdb96",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/late_disable_sp00x18_2.gb",
+      "romHash": "256b71ecbc8d7a814dba5247ebc90f87a6fad40ed973b6305d74ca3cb37b62d5",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sprites/sprite_late_enable_spx19_2_dmg08_xout0.gb",
+      "romHash": "07539eb6c2a2ed4d5a927bdd4e4aa748c067ada3e151a05d4f43d89e09597de3",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/sram.gbc",
+      "romHash": "67472ab202d5844298749096347d0f4870dd9b4e4f87c2895ce2932e29e9594d",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/vram_dumper.gbc",
+      "romHash": "60e76e1e0f553cf8822ad476935aadcf9ade5b23c1248477c8ccc40289c6ed48",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/window/on_screen/late_wx_ds_1.gbc",
+      "romHash": "4fafe3f70a32c542af150d40d92c30a45385ec5cad2adff7f47f69944a210f2a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/window/on_screen/late_wx_ds_2.gbc",
+      "romHash": "a59449e443c107a508e189e23b0dbb9adc2f814e3a128a909135a1d1aef0917e",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gambatte/wram_dumper.gbc",
+      "romHash": "daa56a1b2e9be9aee53d8b390eaef0d6f4b3acb6f216435915dd49dc60fa4a79",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gbmicrotest/halt_op_dupe_delay.gb",
+      "romHash": "ab1656911841d9fdcbe34aad21dc44f554e84a6eef5a82558dc27c8e9a89250c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gbmicrotest/stat_write_glitch_l154_d.gb",
+      "romHash": "4aa12886dac7c7d7dfe17476c4f473a47c8cc36ce43ff8c9b87ea7cb99d5be61",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/gold.gbc",
+      "romHash": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/little-things-gb/firstwhite.gb",
+      "romHash": "ac0e653d61802cdb2560275caef71872e0a442a27aee9bec492f46aa92785d09",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/little-things-gb/tellinglys.gb",
+      "romHash": "f1552ca9cdad950bf9544c5c64ec3e630e6bde4040d98b19622d96a4cc4e5e80",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/bg_oam_priority.gbc",
+      "romHash": "1b2132b354370b1eff22d867da67d8f59eb94872fdad00c277203d8d8b67b84c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/hblank_vram_dma.gbc",
+      "romHash": "e8124ce687d37a2402e20af92af1299610bfbda0871d605084c0bba2bf57135c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/key0_lock_after_boot.gbc",
+      "romHash": "5f71946a80bb4d52b3e9c88cd8634beac6a490ff78c74c3a28f956b24c0c542c",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/mbc_oob_sram_mbc1.gbc",
+      "romHash": "83f1fc44cc26581163b58fe3df426f119dd5813c2e94a187ee0909d6ace1a8bb",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/mbc_oob_sram_mbc3.gbc",
+      "romHash": "03e13fa796a9e06fa90f9b396b728c1de9f6e7351aa47a038e33c11d3a8df7dd",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/mbc_oob_sram_mbc5.gbc",
+      "romHash": "e99f526386f72a8992a72137d0bd9a431b380807b551747bb3baa03421d6f54b",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/oam_internal_priority.gbc",
+      "romHash": "f54fb6366b3ea8597d07917729aeb358d961ae6ece7cecd003fe9c45dcb97fe7",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/magentests/ppu_disabled_state.gbc",
+      "romHash": "4808fe834ea6a6344d74f007a45628c405aca5acd13d6c25f76d02f442f1eea6",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/mooneye/madness/mgb_oam_dma_halt_sprites.gb",
+      "romHash": "861e670e0f9c65d5d9412ea84f5e3235946f812a7152d308b67ded352b529b74",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/mooneye/utils/bootrom_dumper.gb",
+      "romHash": "3f8267ea83a33677070af162c103f19a8731cd316de6b495459aeea7697563c4",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/mooneye/utils/dump_boot_hwio.gb",
+      "romHash": "c38e06cb7174508220e4b55bd16b7623915af5cbbef0cfdd85c95e25f99adcfc",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/fairylake/fairylake.gb",
+      "romHash": "fa8306d4550732ec99b0a6335e053a9c0927a013cbd2cdf92c316c8a5beb3d01",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/lycscx/lycscx.gb",
+      "romHash": "95589e9d4b7a3b3c67e6c09df06ea0978a9f57ea65d9917e807021b152c34e25",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/lycscy/lycscy.gb",
+      "romHash": "d803924443c24cae8f7892c8ce4e82c0a4fb367021e96362dc41f3dda7c0032a",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/palettely/palettely.gb",
+      "romHash": "630fa057b1d549fbc9a1450a7bc54c23fd8201b7048834c3b3fc11196dd3a4a4",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/scxly/scxly.gb",
+      "romHash": "6cc9e00d93ed2de9e81f8e6c7652badd725841e0b2a60be8a433ba2ce278b687",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/statcount/statcount-auto.gb",
+      "romHash": "38559b203e499481a6ae10d1da9625249a68f4c4df45da275eb3d567c3c559a9",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/statcount/statcount.gb",
+      "romHash": "0b1b2882b8bb7c3bd1d22a9ecf3a6526c71b3d2564481af3347c550b830bf704",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/scribbltests/winpos/winpos.gb",
+      "romHash": "0bc1bad9c2086e123a78af9308c19e7d1a644f01d156d076fb6afa7066a72d8b",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/smb.gbc",
+      "romHash": "c06af1a1c2a804e4169fd9bfd6eee7073545d88c97febc96c345dd10efd77547",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/strikethrough/strikethrough.gb",
+      "romHash": "353d50d745e2539d93f0baf7d670ec93b520f97e41443cb39ba6f32be1f5fa31",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/tetris.gb",
+      "romHash": "0d6535aef23969c7e5af2b077acaddb4a445b3d0df7bf34c8acef07b51b015c3",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    },
+    {
+      "rom": "roms/yellow.gbc",
+      "romHash": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
+      "applicability": null
+    }
+  ]
+}

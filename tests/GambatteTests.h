@@ -199,35 +199,5 @@ static void checkGambatteCase(const size_t idx) {
 [[maybe_unused]] static const bool gambatteCasesRegistered =
         registerTableCases<gambatteCases, checkGambatteCase>("tests/catalog/gambatte.json", "gambatte");
 
-static int runSelectedGambatteCases() {
-    std::vector<GambatteCase> selected;
-    auto unmatched = catalogSelection.ids;
-    for (const auto &test : gambatteCases) {
-        if (!catalogSelection.ids.empty() && !catalogSelection.ids.contains(test.id))
-            continue;
-        unmatched.erase(test.id);
-        if (catalogSelection.model && test.model != *catalogSelection.model)
-            continue;
-        if (!catalogSelection.subsystem.empty() && catalogSelection.subsystem != test.subsystem)
-            continue;
-        selected.push_back(test);
-    }
-    if (!unmatched.empty())
-        throw std::invalid_argument("Unknown case ID: " + *unmatched.begin());
-    if (selected.empty())
-        throw std::invalid_argument("No catalog cases matched the selection");
-    std::vector<std::shared_future<GambatteResult>> results;
-    for (const auto test : selected)
-        results.push_back(testWorkers->Submit([test] { return runGambatteTest(test); }));
-    unsigned failed{};
-    for (auto &future : results) {
-        const auto &result = future.get();
-        testReport->Write(result);
-        failed += !result.Passed();
-    }
-    testReport->Write(diagnostics::RunCompletion{.cases = static_cast<unsigned>(results.size()), .failed = failed});
-    std::cout << results.size() << " selected cases, " << failed << " failed\n";
-    return failed ? EXIT_FAILURE : EXIT_SUCCESS;
-}
 
 #endif // STARGBC_GAMBATTETESTS_H

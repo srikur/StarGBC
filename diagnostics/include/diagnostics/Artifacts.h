@@ -38,6 +38,7 @@ namespace diagnostics {
         std::string normalization;
         std::string completion;
         std::string executableHash;
+        bool fixedIntervals{};
     };
 
     struct TerminalState {

@@ -19,37 +19,7 @@ struct MicrotestDiagnostic {
 };
 
 static constexpr MicrotestDiagnostic microtestDiagnostics[] = {
-        {"000-oam_lock", MicrotestOutput::Byte, 0x8000, 0xFF, 0x019A, 0x01A0},
-        {"000-write_to_x8000", MicrotestOutput::Byte, 0x8000, 0x55, 0x0150, 0x0158},
-        {"001-vram_unlocked", MicrotestOutput::Byte, 0x8000, 0x55, 0x0169, 0x016D},
-        {"002-vram_locked", MicrotestOutput::Byte, 0x8000, 0x84, 0x019B, 0x01A1},
-        {"004-tima_boot_phase", MicrotestOutput::Byte, 0x8000, 0x55, 0x0165, 0x016B},
-        {"004-tima_cycle_timer", MicrotestOutput::Byte, 0x8000, 0x55, 0x01BE, 0x01C4},
-        {"007-lcd_on_stat", MicrotestOutput::Byte, 0x8000, 0x00, 0x004D, 0x004F},
-        {"400-dma", MicrotestOutput::Screen},
-        {"500-scx-timing", MicrotestOutput::Byte, 0x8000, 0x49, 0x018A, 0x018F},
-        {"800-ppu-latch-scx", MicrotestOutput::Screen},
-        {"801-ppu-latch-scy", MicrotestOutput::Screen},
-        {"802-ppu-latch-tileselect", MicrotestOutput::Screen},
-        {"803-ppu-latch-bgdisplay", MicrotestOutput::Screen},
-        {"audio_testbench", MicrotestOutput::Audio},
-        {"cpu_bus_1", MicrotestOutput::Byte, 0xFF80, 0x55, 0x0155, 0x0158},
-        {"dma_basic", MicrotestOutput::Dma},
-        {"flood_vram", MicrotestOutput::Vram},
-        {"lcdon_write_timing", MicrotestOutput::Byte, 0x8000, 0x00, 0x01EC, 0x01F2},
-        {"ly_while_lcd_off", MicrotestOutput::Byte, 0x8000, 0x00, 0x0160, 0x0166},
-        {"minimal", MicrotestOutput::Byte, 0x8000, 0x49, 0x018A, 0x018F},
-        {"mode2_stat_int_to_oam_unlock", MicrotestOutput::Byte, 0x8000, 0xFF, 0x0083, 0x0089},
-        {"oam_sprite_trashing", MicrotestOutput::Screen},
-        {"poweron", MicrotestOutput::Byte, 0x8000, 0x80, 0x0150, 0x0160},
-        {"ppu_scx_vs_bgp", MicrotestOutput::Screen},
-        {"ppu_sprite_testbench", MicrotestOutput::Screen},
-        {"ppu_spritex_vs_scx", MicrotestOutput::Byte, 0x8000, 0x55, 0x376A, 0x3771},
-        {"ppu_win_vs_wx", MicrotestOutput::Screen},
-        {"ppu_wx_early", MicrotestOutput::Screen},
-        {"toggle_lcdc", MicrotestOutput::LcdOff},
-        {"temp", MicrotestOutput::Lockup},
-        {"wave_write_to_0xC003", MicrotestOutput::Byte, 0xC003, 0x55, 0x0155, 0x0158},
+#include "MicrotestCases.inc"
 };
 
 class MicrotestDiagnosticCheck {
@@ -58,12 +28,11 @@ class MicrotestDiagnosticCheck {
     std::array<uint8_t, 0x2000> vram_{};
 
 public:
-    explicit MicrotestDiagnosticCheck(const MicrotestDiagnostic &test) : test_(test) {
-        const auto path = "tests/expected/gbmicrotest/" + std::string(test.name);
+    explicit MicrotestDiagnosticCheck(const MicrotestDiagnostic &test, const std::string &path) : test_(test) {
         if (test.output == MicrotestOutput::Screen)
-            screen_ = readBinaryFile(path + ".screen");
+            screen_ = readBinaryFile(path);
         if (test.output == MicrotestOutput::Vram) {
-            std::ifstream file(path + ".vram", std::ios::binary);
+            std::ifstream file(path, std::ios::binary);
             if (!file.read(reinterpret_cast<char *>(vram_.data()), vram_.size())) {
                 throw std::runtime_error("Could not read complete VRAM reference: " + path);
             }

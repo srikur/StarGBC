@@ -65,7 +65,13 @@ def main():
         rom_path = rom.relative_to(ROOT).as_posix()
         for expected, model in cases_for(rom):
             case = catalog_tools.gambatte_case(rom_path, expected, model)
-            cases.append(previous.get(case["id"], {}) | case)
+            old = previous.get(case["id"], {})
+            if old.get("romHash") == case["romHash"] and old.get("sourceHash"):
+                case.pop("sourceFile", None)
+            else:
+                old = {key: value for key, value in old.items() if key not in ("sourceFile", "sourceHash", "sourceUrl")}
+                case.update(sourceRevision=None, buildProvenance="Changed or new binary; source rebuild has not been verified")
+            cases.append(old | case)
 
     catalog["cases"] = cases
     catalog_tools.write_catalog(args.output, catalog)

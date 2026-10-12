@@ -84,12 +84,12 @@ def reproduce(bundle, executable, output, trace_capacity=0, trace_begin=0, trace
     bundle = bundle.resolve()
     spec = json.loads((bundle / "reproduction.json").read_text())
     original = json.loads((bundle / "result.json").read_text())
-    if spec["schemaVersion"] != 1 or spec["test"]["suite"] != "gambatte":
+    if spec["schemaVersion"] != 1 or spec["test"]["suite"] not in ("gambatte", "age", "gbmicrotest", "rom"):
         raise ValueError("Unsupported reproduction contract")
-    if (spec["intervals"] != 15 or not spec["noBootrom"] or spec["realRTC"]
+    if spec["test"]["suite"] == "gambatte" and (spec["intervals"] != 15 or not spec["noBootrom"] or spec["realRTC"]
             or spec["noAudio"] or spec["colorCorrection"] or spec["completion"] != "FixedInterval"):
         raise ValueError("Unsupported Gambatte reproduction configuration")
-    for key, fingerprint in (("rom", "rom"), ("reference", "reference"), ("cartridgeSave", "cartridgeSave")):
+    for key, fingerprint in (("rom", "rom"), ("bootrom", "bootrom"), ("reference", "reference"), ("cartridgeSave", "cartridgeSave")):
         name = spec[key]
         if not name:
             continue
@@ -106,18 +106,28 @@ def reproduce(bundle, executable, output, trace_capacity=0, trace_begin=0, trace
         output = bundle / "reruns" / str(time.time_ns()) / "results.jsonl"
     output = output.resolve()
     expectation = str(bundle / spec["reference"]) if spec["reference"] else spec["expectation"]
-    command = [str(executable.resolve()), "--reproduce-gambatte", str(bundle / spec["rom"]), spec["test"]["model"],
-               expectation, spec["test"]["id"], str(output), spec["inputs"].get("cartridgeSave", "absent")]
     if provenance_line is not None:
         if not 0 <= provenance_line <= 143:
             raise ValueError("Invalid provenance line")
         trace_capacity = trace_capacity or 65536
-    if trace_capacity:
-        if not 1 <= trace_capacity <= 1_000_000 or not 0 <= trace_begin <= trace_end < 2**64:
-            raise ValueError("Invalid trace capacity or interval")
-        command.extend(map(str, (trace_capacity, trace_begin, trace_end)))
-        if provenance_line is not None:
-            command.append(str(provenance_line))
+    if trace_capacity and (not 1 <= trace_capacity <= 1_000_000 or not 0 <= trace_begin <= trace_end < 2**64):
+        raise ValueError("Invalid trace capacity or interval")
+    if spec["test"]["suite"] == "gambatte":
+        command = [str(executable.resolve()), "--reproduce-gambatte", str(bundle / spec["rom"]), spec["test"]["model"],
+                   expectation, spec["test"]["id"], str(output), spec["inputs"].get("cartridgeSave", "absent")]
+        if trace_capacity:
+            command.extend(map(str, (trace_capacity, trace_begin, trace_end)))
+            if provenance_line is not None:
+                command.append(str(provenance_line))
+    else:
+        if (spec["noBootrom"] or spec["realRTC"] or spec["noAudio"] or not spec["colorCorrection"]
+                or not 1 <= spec["intervals"] <= 1000000):
+            raise ValueError("Unsupported catalog reproduction configuration")
+        command = [str(executable.resolve()), "--reproduce-catalog", str(bundle / spec["rom"]),
+                   str(bundle / spec["bootrom"]) if spec["bootrom"] else "",
+                   str(bundle / spec["reference"]) if spec["reference"] else "", spec["test"]["id"], str(output),
+                   spec["inputs"].get("cartridgeSave", "absent"), str(spec["intervals"]), str(int(spec["fixedIntervals"])),
+                   str(trace_capacity), str(trace_begin), str(trace_end), str(provenance_line) if provenance_line is not None else "none"]
     process = subprocess.run(command, check=False, capture_output=True, text=True)
     if process.returncode not in (0, 1):
         raise ValueError(f"Reproduction process failed: {process.stderr}")
@@ -139,7 +149,7 @@ def run_selected(args):
         if not identities:
             print("No previous failures to rerun")
             return 0
-    command = [str(args.binary.resolve()), "--gambatte", f"--max-threads={args.workers}", f"--results={args.output.resolve()}"]
+    command = [str(args.binary.resolve()), f"--max-threads={args.workers}", f"--results={args.output.resolve()}"]
     if args.provenance_line is not None:
         command.append(f"--provenance-line={args.provenance_line}")
     if args.model:
