@@ -6,25 +6,21 @@
 #include <span>
 #include "TestRoms.h"
 
-// NOTE: All Gambatte test roms finish after 15 lcd frames (1053360 clock cycles)
-
 static constexpr unsigned GAMBATTE_FRAME_LIMIT = 15;
 
 struct GambatteCase {
+    const char *id;
     const char *rom;
-    // .screen path, "out:<hex>" for a result printed as hex tiles, or "audio:<0|1>" for silent/audible
     const char *expected;
     Model model;
     const char *name;
-    unsigned line; // in GambatteTests.txt
+    unsigned line;
+    const char *subsystem;
 };
 
-struct GambatteResult {
-    bool passed;
-    std::string details;
-};
+using GambatteResult = diagnostics::Result;
 
-#define GAMBATTE_CASE(ROM, EXPECTED, MODEL, NAME, LINE) {ROM, EXPECTED, Model::MODEL, "gambatte: " NAME, LINE},
+#define GAMBATTE_CASE(ID, ROM, EXPECTED, MODEL, NAME, LINE, SUBSYSTEM) {ID, ROM, EXPECTED, Model::MODEL, "gambatte: " NAME, LINE, SUBSYSTEM},
 
 static constexpr GambatteCase gambatteCases[] = {
 #define GAMBATTE_EXPANSION_CASES
@@ -70,7 +66,19 @@ static char readGambatteHexTile(const uint32_t *screen, const size_t index) {
 static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
     ThreadPermit _permit;
     const std::string label = std::string(gambatte_case.rom) + " [" + std::string(ModelName(gambatte_case.model)) + "]";
+    const std::string_view expected = gambatte_case.expected;
+    const std::string variant = expected.starts_with("audio:") ? "audio" : expected.starts_with("out:") ? "digits" : "screen";
+    GambatteResult result{
+            .test = {.id = gambatte_case.id, .suite = "gambatte", .rom = gambatte_case.rom,
+                     .model = std::string(ModelName(gambatte_case.model)), .startup = "skip-bootrom", .expectationVariant = variant},
+            .budgetTicks = GAMBATTE_FRAME_LIMIT * diagnostics::RunFrameTicks,
+            .expected = gambatte_case.expected,
+            .details = label};
     try {
+        result.inputs.rom = diagnostics::FileHash(gambatte_case.rom);
+        result.inputs.bootrom = "none";
+        result.inputs.reference = variant == "screen" ? diagnostics::FileHash(gambatte_case.expected) : diagnostics::TextHash(expected);
+        result.inputs.configuration = diagnostics::TextHash(result.test.model + "|skip-bootrom|virtual-rtc|color-correction-off|15-intervals|gambatte-v1");
         const auto gameboy = Gameboy::init({
                 .romName = gambatte_case.rom,
                 .model = gambatte_case.model,
@@ -85,32 +93,50 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
         const uint64_t mixChangesBefore = audio.GetMixLevelChanges();
         gameboy->RunFrame();
         const bool audible = audio.GetMixLevelChanges() != mixChangesBefore;
+        result.position.tick = result.budgetTicks;
+        result.completion = diagnostics::Completion::FixedInterval;
+        result.outcome = diagnostics::Outcome::AssertionFailure;
 
-        if (gameboy->[:testGameboyMember("bus_"):].bootromRunning)
-            return {.passed = false, .details = label + ": bootrom still running after " + std::to_string(GAMBATTE_FRAME_LIMIT) + " frames"};
+        if (gameboy->[:testGameboyMember("bus_"):].bootromRunning) {
+            result.outcome = diagnostics::Outcome::Timeout;
+            result.completion = diagnostics::Completion::Deadline;
+            result.details += ": bootrom still running after 15 intervals";
+            return result;
+        }
 
-        const std::string_view expected = gambatte_case.expected;
         if (expected.starts_with("audio:")) {
             const bool wantAudible = expected.back() == '1';
-            if (audible != wantAudible)
-                return {.passed = false,
-                        .details = label + (wantAudible ? ": expected audio, but output was silent" : ": expected silence, but output was audible")};
+            result.actual = audible ? "audio:1" : "audio:0";
+            if (audible != wantAudible) {
+                result.details += wantAudible ? ": expected audio, but output was silent" : ": expected silence, but output was audible";
+                return result;
+            }
         } else if (expected.starts_with("out:")) {
             const std::string_view digits = expected.substr(4);
             std::string read;
             for (size_t i = 0; i < digits.size(); ++i) {
                 read += readGambatteHexTile(gameboy->GetScreenData(), i);
             }
-            if (read != digits)
-                return {.passed = false, .details = label + ": expected " + std::string(digits) + ", screen shows " + read};
+            result.actual = "out:" + read;
+            if (read != digits) {
+                result.details += ": expected " + std::string(digits) + ", screen shows " + read;
+                return result;
+            }
         } else {
             const std::vector<uint32_t> expected_result = readBinaryFile(gambatte_case.expected);
-            if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expected_result.size()), expected_result))
-                return {.passed = false, .details = label + ": screen does not match " + gambatte_case.expected};
+            result.actual = diagnostics::Sha256(std::as_bytes(std::span(gameboy->GetScreenData(), expected_result.size())));
+            if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expected_result.size()), expected_result)) {
+                result.details += ": screen does not match " + std::string(gambatte_case.expected);
+                return result;
+            }
         }
-        return {.passed = true, .details = label};
+        result.outcome = diagnostics::Outcome::Pass;
+        return result;
     } catch (const std::exception &e) {
-        return {.passed = false, .details = label + ": " + e.what()};
+        result.outcome = diagnostics::Outcome::InfrastructureError;
+        result.completion = diagnostics::Completion::Exception;
+        result.details += ": " + std::string(e.what());
+        return result;
     }
 }
 
@@ -131,10 +157,12 @@ static auto &gambatteFutures() {
 
 static void checkGambatteCase(const size_t idx) {
     const auto &result = gambatteFutures()[idx].get();
-    CHECK_MESSAGE(result.passed, result.details);
+    if (testReport)
+        testReport->Write(result);
+    CHECK_MESSAGE(result.Passed(), result.details);
 }
 
 [[maybe_unused]] static const bool gambatteCasesRegistered =
-        registerTableCases<gambatteCases, checkGambatteCase>("tests/GambatteTests.txt", "gambatte");
+        registerTableCases<gambatteCases, checkGambatteCase>("tests/catalog/gambatte.json", "gambatte");
 
 #endif // STARGBC_GAMBATTETESTS_H

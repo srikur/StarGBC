@@ -16,14 +16,15 @@ add_custom_command(
         COMMENT "Generating GbMicrotest.gen.h"
         VERBATIM)
 
-set(GAMBATTE_TEXT ${CMAKE_CURRENT_SOURCE_DIR}/GambatteTests.txt)
-set(GAMBATTE_SCRIPT ${PARENT_DIR}/scripts/generate_gambatte.pl)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(GAMBATTE_TEXT ${CMAKE_CURRENT_SOURCE_DIR}/catalog/gambatte.json)
+set(GAMBATTE_SCRIPT ${PARENT_DIR}/scripts/generate-catalog.py)
 set(GAMBATTE_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/GambatteTests.h)
 set(GAMBATTE_GENERATED_HEADER ${GBMICROTEST_GENERATED_DIR}/GambatteTests.gen.h)
 
 add_custom_command(
         OUTPUT ${GAMBATTE_GENERATED_HEADER}
-        COMMAND ${PERL_EXECUTABLE} ${GAMBATTE_SCRIPT}
+        COMMAND ${Python3_EXECUTABLE} ${GAMBATTE_SCRIPT}
                 ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${GAMBATTE_GENERATED_HEADER}
         DEPENDS ${GAMBATTE_SCRIPT} ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${PARENT_DIR}/includes/Model.h
         COMMENT "Generating GambatteTests.gen.h"
