@@ -39,7 +39,7 @@ struct Bootroms {
 };
 
 static constexpr Bootroms bootroms{};
-static unsigned romFrames = 0;
+static auto romFrames{0u};
 static ExecutionPolicy testExecutionPolicy{ExecutionPolicy::Optimized};
 static std::unique_ptr<diagnostics::Report> testReport;
 static std::filesystem::path failureDirectory;
@@ -111,7 +111,7 @@ static consteval std::meta::info testGameboyMember(const std::string_view name) 
         if (std::meta::identifier_of(m) == name)
             return m;
     }
-    throw "Gameboy member not found";
+    throw std::out_of_range("Gameboy member not found");
 }
 
 static bool mooneyePassed(const Gameboy &gameboy) {
@@ -119,13 +119,13 @@ static bool mooneyePassed(const Gameboy &gameboy) {
     return regs.GetBC() == 0x0305 && regs.GetDE() == 0x080D && regs.GetHL() == 0x1522;
 }
 
-static diagnostics::TerminalState terminalState(Gameboy &gameboy) {
+static diagnostics::TerminalState terminalState(const Gameboy &gameboy) {
     const auto state = gameboy.Inspect();
     return {
-        .pc = state.cpu.pc, .sp = state.cpu.sp, .af = state.cpu.af, .bc = state.cpu.bc,
-        .de = state.cpu.de, .hl = state.cpu.hl, .interruptEnable = state.interrupts.enable,
-        .interruptFlag = state.interrupts.storedFlags, .lcdc = gameboy.InspectRegister(0xFF40).stored, .ly = state.ppu.ly,
-        .dot = static_cast<uint16_t>(state.ppu.dot), .halted = state.cpu.halted, .stopped = state.cpu.stopped, .locked = state.cpu.locked
+            .pc = state.cpu.pc, .sp = state.cpu.sp, .af = state.cpu.af, .bc = state.cpu.bc,
+            .de = state.cpu.de, .hl = state.cpu.hl, .interruptEnable = state.interrupts.enable,
+            .interruptFlag = state.interrupts.storedFlags, .lcdc = gameboy.InspectRegister(0xFF40).stored, .ly = state.ppu.ly,
+            .dot = static_cast<uint16_t>(state.ppu.dot), .halted = state.cpu.halted, .stopped = state.cpu.stopped, .locked = state.cpu.locked
     };
 }
 
@@ -151,11 +151,11 @@ struct CurrentTestCaseListener : doctest::IReporter {
         failed_ += !stats.testCaseSuccess;
         if (testReport)
             testReport->Write(diagnostics::AssertionResult{
-                .name = currentTestCase->m_name,
-                .suite = currentTestCase->m_test_suite,
-                .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
-                .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
-                .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)
+                    .name = currentTestCase->m_name,
+                    .suite = currentTestCase->m_test_suite,
+                    .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
+                    .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
+                    .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)
             });
     }
 
@@ -167,14 +167,7 @@ struct CurrentTestCaseListener : doctest::IReporter {
     void test_case_skipped(const doctest::TestCaseData &) override {}
 };
 
-DOCTEST_REGISTER_LISTENER (
-
-"current-test-case"
-,
-0
-,
-CurrentTestCaseListener
-);
+DOCTEST_REGISTER_LISTENER("current-test-case", 0, CurrentTestCaseListener);
 
 struct SelectedCasesReporter : CurrentTestCaseListener {
     using CurrentTestCaseListener::CurrentTestCaseListener;
@@ -185,14 +178,7 @@ struct SelectedCasesReporter : CurrentTestCaseListener {
     }
 };
 
-DOCTEST_REGISTER_REPORTER (
-
-"diagnostics-selection"
-,
-0
-,
-SelectedCasesReporter
-);
+DOCTEST_REGISTER_REPORTER("diagnostics-selection", 0, SelectedCasesReporter);
 
 template<const auto &Cases, auto Check>
 static bool registerTableCases(const char *file, const char *suite) {
@@ -227,17 +213,14 @@ static std::optional<Model> ModelFromName(const std::string_view name) {
     return std::nullopt;
 }
 
-// Headless throughput benchmark: no screen compares, no doctest context. The
-// audio sample ring fills and takes the same drain-and-drop path the ROM tests
-// exercise, so benchmark and test builds run identical code.
 static int runBenchmark(const std::string &rom, const Model model, const unsigned frames) {
     try {
         TestObservationSession observations;
         const auto gameboy = Gameboy::init({
-            .romName = rom,
-            .biosPath = "",
-            .model = model,
-            .executionPolicy = testExecutionPolicy,
+                .romName = rom,
+                .biosPath = "",
+                .model = model,
+                .executionPolicy = testExecutionPolicy,
         });
         observations.Attach(*gameboy);
         constexpr double kGbFrameHz = 4194304.0 / 70224.0;
@@ -265,13 +248,14 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     Model benchModel = Model::Auto;
     std::filesystem::path reportPath;
 
-    static constexpr std::array<std::pair<std::string_view, std::string_view>, 4> kSuiteFlags{
-        {
-            {"--roms", "rom"},
-            {"--age", "age"},
-            {"--gbmicrotest", "gbmicrotest"},
-            {"--gambatte", "gambatte"},
-        }
+    static constexpr std::array<std::pair<std::string_view, std::string_view>, 5> kSuiteFlags{
+            {
+                    {"--acid", "acid"},
+                    {"--roms", "rom"},
+                    {"--age", "age"},
+                    {"--gbmicrotest", "gbmicrotest"},
+                    {"--gambatte", "gambatte"},
+            }
     };
     std::string suites;
     bool suiteFilterGiven = false;
@@ -306,8 +290,8 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             testObservationMode = mode == "disabled"
                                       ? TestObservationMode::Disabled
                                       : mode == "observe"
-                                            ? TestObservationMode::Observe
-                                            : TestObservationMode::Capture;
+                                      ? TestObservationMode::Observe
+                                      : TestObservationMode::Capture;
         } else if (arg.starts_with("--trace-capacity=")) {
             try {
                 constexpr auto prefix = std::string_view("--trace-capacity=");
@@ -451,10 +435,10 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             failureDirectory = reportPath.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
             testReport = std::make_unique<diagnostics::Report>(reportPath, diagnostics::RunIdentity{
-                                                                   .executable = argv[0],
-                                                                   .executableHash = testExecutableHash,
-                                                                   .compiler = __VERSION__,
-                                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)
+                                                                       .executable = argv[0],
+                                                                       .executableHash = testExecutableHash,
+                                                                       .compiler = __VERSION__,
+                                                                       .arguments = std::vector<std::string>(argv + 1, argv + argc)
                                                                });
             std::cerr << "Diagnostics results: " << reportPath << '\n';
             testWorkers = std::make_unique<TestWorkers>(maxThreads);
