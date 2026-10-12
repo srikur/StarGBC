@@ -54,6 +54,11 @@ namespace diagnostics {
                 }
             }
             throw std::invalid_argument("unknown JSON enum value");
+        } else if constexpr (requires { value.has_value(); *value; }) {
+            if (value)
+                WriteJson(out, *value);
+            else
+                out << "null";
         } else if constexpr (std::ranges::input_range<T>) {
             out.put('[');
             bool separator = false;
@@ -63,11 +68,6 @@ namespace diagnostics {
                 WriteJson(out, entry);
             }
             out.put(']');
-        } else if constexpr (requires { value.has_value(); *value; }) {
-            if (value)
-                WriteJson(out, *value);
-            else
-                out << "null";
         } else {
             static_assert(std::is_aggregate_v<T>);
             out.put('{');

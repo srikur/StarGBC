@@ -63,6 +63,14 @@ public:
 
     [[nodiscard]] uint8_t DebugPeek(const uint16_t address) const { return bus_.DebugPeek(address); }
 
+    [[nodiscard]] MachineInspection Inspect() const;
+
+    [[nodiscard]] CpuInspection InspectCpu() const { return cpu_.Inspect(); }
+
+    [[nodiscard]] RegisterInspection InspectRegister(uint16_t address) const;
+
+    [[nodiscard]] uint8_t InspectCpuRead(const uint16_t address) const { return bus_.InspectRead(address, ComponentSource::CPU); }
+
     void DebugPoke(const uint16_t address, const uint8_t value) { bus_.DebugPoke(address, value); }
 
     [[nodiscard]] uint8_t DebugPeekWram(const uint8_t bank, const uint16_t offset) const {

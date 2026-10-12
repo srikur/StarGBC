@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Common.h"
+#include "Inspection.h"
 
 class Audio;
 
@@ -394,6 +395,10 @@ public:
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
+
+    [[nodiscard]] AudioInspection Inspect() const;
+
+    [[nodiscard]] uint8_t InspectRegister(uint16_t address) const;
 
     // DIV-APU. divWriteSingleSpeed marks an event caused by a DIV write in
     // single speed, which shortens the sweep recalculation reload

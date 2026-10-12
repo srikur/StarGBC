@@ -17,6 +17,10 @@ TEST_CASE("diagnostics: JSON escapes strings and reflects typed contracts") {
     std::ostringstream position;
     diagnostics::WriteJson(position, diagnostics::Position{.tick = 9'000'000'000});
     CHECK(position.str() == "{\"tick\":9000000000,\"frame\":0,\"dot\":0,\"ly\":0,\"cpuPhase\":0}");
+    std::ostringstream optional;
+    diagnostics::WriteJson(optional, std::optional<unsigned>{});
+    diagnostics::WriteJson(optional, std::optional<unsigned>{7});
+    CHECK(optional.str() == "null7");
 }
 
 TEST_CASE("diagnostics: stable case identity excludes hashes and escapes separators") {

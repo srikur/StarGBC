@@ -82,7 +82,7 @@ public:
             case MicrotestOutput::Byte: {
                 // Inspect VRAM directly: the CPU can be in mode 3 when the
                 // harness samples a value that the ROM already stored.
-                const auto actual = test_.address == 0x8000 ? gpu.vram[0] : bus.ReadByte(test_.address, ComponentSource::CPU);
+                const auto actual = test_.address == 0x8000 ? gpu.vram[0] : gameboy.DebugPeek(test_.address);
                 details << " [" << test_.address << "]=" << +actual << " expected=" << +test_.expected;
                 return actual == test_.expected && cpu.pc() >= test_.pcBegin && cpu.pc() <= test_.pcEnd;
             }
@@ -101,7 +101,7 @@ public:
                 constexpr std::array<uint16_t, 6> addresses{0xFF21, 0xFF22, 0xFF24, 0xFF25, 0xFF26, 0xFF23};
                 bool match = cpu.pc() >= 0x0178 && cpu.pc() <= 0x017A;
                 for (size_t i = 0; i < addresses.size(); ++i) {
-                    const auto actual = bus.ReadByte(addresses[i], ComponentSource::CPU);
+                    const auto actual = gameboy.InspectRegister(addresses[i]).cpuVisible;
                     details << " [" << addresses[i] << "]=" << +actual;
                     match &= actual == expected[i];
                 }

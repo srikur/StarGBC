@@ -19,6 +19,8 @@ public:
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
 
+    [[nodiscard]] uint8_t InspectRead(uint16_t address, ComponentSource source) const;
+
     [[nodiscard]] uint8_t DebugPeek(uint16_t address) const;
 
     void DebugPoke(uint16_t address, uint8_t value) const;
@@ -92,4 +94,8 @@ public:
     uint8_t psw74{0x00}; // undocumented $FF74, CGB mode only
     uint8_t pgb75{0x00}; // undocumented $FF75, bits 4-6 writable
     [[=NotStateAware]] std::vector<uint8_t> bootrom;
+
+private:
+    template<bool Inspect>
+    [[nodiscard]] uint8_t ReadByteValue(uint16_t address, ComponentSource source) const;
 };

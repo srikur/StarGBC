@@ -4,6 +4,7 @@
 #include "Bus.h"
 #include "Instructions.h"
 #include "Registers.h"
+#include "Inspection.h"
 
 template<BusLike BusT>
 class CPU {
@@ -56,6 +57,14 @@ public:
     [[nodiscard]] bool locked() const { return locked_; }
 
     [[nodiscard]] bool IsHalted() const { return halted_; }
+
+    [[nodiscard]] CpuInspection Inspect() const {
+        return {.pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
+                .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
+                .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
+                .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
+                .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_};
+    }
 
     void SampleHaltInterrupts() {
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again

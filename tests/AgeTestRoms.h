@@ -49,9 +49,9 @@ static AgeTestResult runAgeTest(const AgeTestCase &test) {
             } else {
                 // AGE's final LD B,B marker enters freeze: IE=0, EI, NOP, HALT, NOP
                 const auto pc = cpu.pc();
-                const bool finished = bus.ReadByte(0xFFFF, ComponentSource::CPU) == 0 && pc >= 8 &&
-                                      bus.ReadByte(pc - 4, ComponentSource::CPU) == 0xFB && bus.ReadByte(pc - 3, ComponentSource::CPU) == 0x00 &&
-                                      bus.ReadByte(pc - 2, ComponentSource::CPU) == 0x76 && bus.ReadByte(pc - 1, ComponentSource::CPU) == 0x00;
+                const bool finished = gameboy->InspectRegister(0xFFFF).cpuVisible == 0 && pc >= 8 &&
+                                      gameboy->InspectCpuRead(pc - 4) == 0xFB && gameboy->InspectCpuRead(pc - 3) == 0x00 &&
+                                      gameboy->InspectCpuRead(pc - 2) == 0x76 && gameboy->InspectCpuRead(pc - 1) == 0x00;
                 passed = finished && mooneyePassed(*gameboy);
                 if (!romFrames && finished)
                     break;
@@ -64,7 +64,7 @@ static AgeTestResult runAgeTest(const AgeTestCase &test) {
         if (!passed && expected.empty()) {
             details << "; results at C000:";
             for (unsigned i = 0; i < 128; ++i)
-                details << ' ' << +bus.ReadByte(0xC000 + i, ComponentSource::CPU);
+                details << ' ' << +gameboy->DebugPeek(0xC000 + i);
         }
         if (!passed && !expected.empty()) {
             unsigned pixels = 0;

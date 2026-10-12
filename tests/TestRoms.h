@@ -64,14 +64,11 @@ static bool mooneyePassed(const Gameboy &gameboy) {
 }
 
 static diagnostics::TerminalState terminalState(Gameboy &gameboy) {
-    auto &cpu = gameboy.[:testGameboyMember("cpu_"):];
-    const auto &registers = gameboy.[:testGameboyMember("registers_"):];
-    const auto &interrupts = gameboy.[:testGameboyMember("interrupts_"):];
-    const auto &gpu = gameboy.[:testGameboyMember("gpu_"):];
-    return {.pc = cpu.pc(), .sp = cpu.sp(), .af = registers.GetAF(), .bc = registers.GetBC(),
-            .de = registers.GetDE(), .hl = registers.GetHL(), .interruptEnable = interrupts.interruptEnable,
-            .interruptFlag = interrupts.interruptFlag, .lcdc = gpu.lcdc, .ly = gpu.currentLine,
-            .dot = static_cast<uint16_t>(gpu.scanlineCounter), .halted = cpu.IsHalted(), .stopped = cpu.stopped(), .locked = cpu.locked()};
+    const auto state = gameboy.Inspect();
+    return {.pc = state.cpu.pc, .sp = state.cpu.sp, .af = state.cpu.af, .bc = state.cpu.bc,
+            .de = state.cpu.de, .hl = state.cpu.hl, .interruptEnable = state.interrupts.enable,
+            .interruptFlag = state.interrupts.storedFlags, .lcdc = gameboy.InspectRegister(0xFF40).stored, .ly = state.ppu.ly,
+            .dot = static_cast<uint16_t>(state.ppu.dot), .halted = state.cpu.halted, .stopped = state.cpu.stopped, .locked = state.cpu.locked};
 }
 
 static const doctest::TestCaseData *currentTestCase = nullptr;

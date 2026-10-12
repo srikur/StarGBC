@@ -104,6 +104,15 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentS
 }
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
+    return ReadByteValue<false>(address, source);
+}
+
+uint8_t Bus::InspectRead(const uint16_t address, const ComponentSource source) const {
+    return ReadByteValue<true>(address, source);
+}
+
+template<bool Inspect>
+uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
     // A CPU access on the bus the DMA unit is reading sees the DMA's current
@@ -158,7 +167,10 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
         case 0xFF0F:
             return interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0;
         case 0xFF10 ... 0xFF3F:
-            return audio_.ReadByte(address);
+            if constexpr (Inspect)
+                return audio_.InspectRegister(address);
+            else
+                return audio_.ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
                 if (!cgbMode)
@@ -200,9 +212,15 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
         case 0xFF75:
             return IsCgb(gpu_.model) ? (pgb75 | 0x8F) : 0xFF;
         case 0xFF76:
-            return IsCgb(gpu_.model) ? audio_.ReadPCM12() : 0xFF;
+            if constexpr (Inspect)
+                return IsCgb(gpu_.model) ? audio_.InspectRegister(address) : 0xFF;
+            else
+                return IsCgb(gpu_.model) ? audio_.ReadPCM12() : 0xFF;
         case 0xFF77:
-            return IsCgb(gpu_.model) ? audio_.ReadPCM34() : 0xFF;
+            if constexpr (Inspect)
+                return IsCgb(gpu_.model) ? audio_.InspectRegister(address) : 0xFF;
+            else
+                return IsCgb(gpu_.model) ? audio_.ReadPCM34() : 0xFF;
         case 0xFF80 ... 0xFFFE:
             return memory_.hram_[address - 0xFF80];
         case 0xFFFF:
