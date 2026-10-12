@@ -330,3 +330,32 @@ TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping
         CHECK((optimizedInterrupts.interruptFlag & 2) != 0);
     }
 }
+
+TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
+    for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
+        Interrupts optimizedInterrupts, ordinaryInterrupts;
+        GPU optimized(optimizedInterrupts), ordinary(ordinaryInterrupts);
+        for (auto *gpu : {&optimized, &ordinary}) {
+            gpu->SetModel(model);
+            gpu->lcdc = 0x91;
+            gpu->currentLine = 10;
+            gpu->stat.mode = GPUMode::MODE_2;
+            gpu->stat.enableM2Interrupt = true;
+        }
+        ordinary.optimizedExecution = false;
+        for (unsigned dot = 0; dot < 80; ++dot) {
+            CAPTURE(model);
+            CAPTURE(dot);
+            optimized.Update();
+            ordinary.Update();
+            CHECK(optimized.statTriggered == ordinary.statTriggered);
+            CHECK(optimizedInterrupts.interruptFlag == ordinaryInterrupts.interruptFlag);
+            if (dot == 7) {
+                for (auto *gpu : {&optimized, &ordinary}) {
+                    gpu->WriteRegisters(0xFF45, 10);
+                    gpu->WriteRegisters(0xFF41, 0x60);
+                }
+            }
+        }
+    }
+}

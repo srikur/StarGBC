@@ -436,9 +436,7 @@ void GPU::MaybeArmIdle() {
     }
 
     if (stat.mode == GPUMode::MODE_2) {
-        // Dots 1..78 of the OAM scan only run TickOAMScan; dot 79 (post-
-        // increment 80) performs the mode-3 transition and must be full
-        if (scanlineCounter >= 1 && scanlineCounter < 79) {
+        if (scanlineCounter >= 2 && scanlineCounter < 79) {
             scanFastDots_ = 79 - scanlineCounter;
         }
         return;
