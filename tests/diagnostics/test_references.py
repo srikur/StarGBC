@@ -15,10 +15,12 @@ def capture(origin=6, overshoot=0):
     capabilities = dict(name='fixture', resolutionTicks=4, instructionValues=True, busValues=True, banks=True,
                         instructionPhase='opcode fetch', limitations=[])
     header = dict(romHash='rom', bootromHash='boot', masterTicksPerSecond=8388608, initialCartridgeRam='ZeroFilled',
-                  rtc='VirtualZero', requestedTicks=1000, settings=dict(model='CGBC', noBootrom=False), capabilities=capabilities)
+                  rtc='VirtualZero', requestedTicks=1000, settings=dict(model='CGBC', noBootrom=False),
+                  capabilities=capabilities)
     events = [dict(kind='InstructionBegin', component='CPU', position=dict(tick=origin + tick), address=0x100 + index,
                    bank=0, pcBank=0, value=0) for index, tick in enumerate((0, 8, 16, 24))]
-    samples = [dict(requestedTick=100, actualTick=100 + overshoot, overshootTicks=overshoot, registers=dict(pc=0x104), framebufferHash='screen')]
+    samples = [dict(requestedTick=100, actualTick=100 + overshoot, overshootTicks=overshoot, registers=dict(pc=0x104),
+                    framebufferHash='screen')]
     return dict(header=header, samples=samples, events=events, complete=dict(actualTick=1000 + overshoot))
 
 
@@ -41,7 +43,8 @@ class References(unittest.TestCase):
             captures = []
             for name in ('StarGBC_Reference', 'StarGBC_GambatteReference', 'StarGBC_SameBoyReference'):
                 base = root / name
-                command = [str(binaries / name), str(root / 'fixture.gb'), '--model', 'DMGB', '--bios', str(root / 'boot.bin'),
+                command = [str(binaries / name), str(root / 'fixture.gb'), '--model', 'DMGB', '--bios',
+                           str(root / 'boot.bin'),
                            '--ticks', '2003', '--sample-ticks', '91', '--output', str(base)]
                 subprocess.run(command, check=True, capture_output=True)
                 captures.append(references.read_capture(base))

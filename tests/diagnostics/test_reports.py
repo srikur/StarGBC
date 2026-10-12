@@ -11,7 +11,8 @@ spec.loader.exec_module(diagnostics)
 
 
 def case(identity, outcome="Pass", reference="ref"):
-    return dict(schemaVersion=1, record="result", test=dict(id=identity, model="DMGB", startup="skip", expectationVariant="screen"),
+    return dict(schemaVersion=1, record="result",
+                test=dict(id=identity, model="DMGB", startup="skip", expectationVariant="screen"),
                 inputs=dict(rom="rom", reference=reference, configuration="config"), budgetTicks=100, outcome=outcome)
 
 
@@ -36,10 +37,10 @@ class Reports(unittest.TestCase):
 
     def test_regression_detected_despite_improved_pass_count(self):
         before = {k: case(k, outcome) for k, outcome in (("regression", "Pass"), ("fixed1", "AssertionFailure"),
-                                                        ("fixed2", "AssertionFailure"), ("missing", "Pass"),
-                                                        ("changed", "AssertionFailure"), ("known", "Timeout"))}
+                                                         ("fixed2", "AssertionFailure"), ("missing", "Pass"),
+                                                         ("changed", "AssertionFailure"), ("known", "Timeout"))}
         after = {k: case(k, outcome) for k, outcome in (("regression", "AssertionFailure"), ("fixed1", "Pass"),
-                                                       ("fixed2", "Pass"), ("added", "Pass"), ("known", "Timeout"))}
+                                                        ("fixed2", "Pass"), ("added", "Pass"), ("known", "Timeout"))}
         after["changed"] = case("changed", "Pass", "new-expectation")
         result = diagnostics.compare_reports(before, after)
         self.assertEqual(result["newlyFailing"], ["regression"])

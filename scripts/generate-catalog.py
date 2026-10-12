@@ -13,7 +13,8 @@ def gambatte_case(rom, expected, model):
     variant = "audio" if expected.startswith("audio:") else "digits" if expected.startswith("out:") else "screen"
     return dict(id=stable_id("gambatte", rom, model, "skip-bootrom", variant), rom=rom, model=model,
                 variant=variant, expected=expected, romHash=hashlib.sha256((ROOT / rom).read_bytes()).hexdigest(),
-                referenceHash=hashlib.sha256((ROOT / expected).read_bytes()).hexdigest() if variant == "screen" else None,
+                referenceHash=hashlib.sha256(
+                    (ROOT / expected).read_bytes()).hexdigest() if variant == "screen" else None,
                 tags=[Path(rom).parts[2]], sourceFile=None)
 
 
@@ -27,6 +28,7 @@ def write_catalog(path, catalog):
 def stable_id(suite, rom, model, startup, variant):
     def escape(part):
         return "".join(f"%{ord(c):02x}" if c in "%|" or ord(c) < 32 else c for c in part)
+
     return "|".join(map(escape, (suite, rom, model, startup, variant)))
 
 

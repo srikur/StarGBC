@@ -14,12 +14,15 @@ def load_cases(paths):
     models = set(re.findall(r'^    (\w+)(?:,|\[\[)', (ROOT / 'includes/Model.h').read_text(), re.M)) - {'Auto'}
     for path in paths:
         catalog = json.loads(path.read_text())
-        if catalog['schemaVersion'] != 1 or not catalog['defaults']['colorCorrection'] or catalog['defaults']['realRTC']:
+        if catalog['schemaVersion'] != 1 or not catalog['defaults']['colorCorrection'] or catalog['defaults'][
+            'realRTC']:
             raise ValueError('Unsupported ROM catalog settings')
         for case in catalog['cases']:
             budget = case['budget']
-            identity = '|'.join(str(case[k]).replace('%', '%25').replace('|', '%7c') for k in ('suite', 'rom', 'model', 'startup', 'variant'))
-            if (case['id'] != identity or identity in seen or case['model'] not in models or case['runner'] not in RUNNERS
+            identity = '|'.join(str(case[k]).replace('%', '%25').replace('|', '%7c') for k in
+                                ('suite', 'rom', 'model', 'startup', 'variant'))
+            if (case['id'] != identity or identity in seen or case['model'] not in models or case[
+                'runner'] not in RUNNERS
                     or budget['unit'] != 'RunFrameIntervals' or budget['masterTicks'] != budget['value'] * 140448
                     or not 1 <= budget['value'] <= 1000000):
                 raise ValueError(f'Invalid ROM contract: {case["id"]}')

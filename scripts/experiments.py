@@ -8,21 +8,26 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BINARY = ROOT / 'build/release/Release/StarGBC_Experiment'
-FIELDS = {'mode': 'mode', 'family': 'family', 'model': 'model', 'seed': 'seed', 'phase': 'phase', 'scx': 'scx', 'wx': 'wx',
-          'spriteX': 'sprite-x', 'spriteOffset': 'sprite-offset', 'budgetTicks': 'ticks', 'expectedValue': 'expected-value',
+FIELDS = {'mode': 'mode', 'family': 'family', 'model': 'model', 'seed': 'seed', 'phase': 'phase', 'scx': 'scx',
+          'wx': 'wx',
+          'spriteX': 'sprite-x', 'spriteOffset': 'sprite-offset', 'budgetTicks': 'ticks',
+          'expectedValue': 'expected-value',
           'basis': 'basis', 'basisEvidence': 'evidence'}
 BOOLEAN_FIELDS = {'doubleSpeed': 'double-speed', 'coordinatePriority': 'coordinate-priority'}
 BOUNDARIES = {'Window': {'WindowActivate', 'PpuMode', 'PixelDiscard'}, 'Sprites': {'PixelStall', 'PpuMode'},
-              'Stat': {'InterruptRequest', 'InterruptAccept', 'InterruptVector'}, 'TimerReload': {'TimerOverflow', 'TimerReload'},
+              'Stat': {'InterruptRequest', 'InterruptAccept', 'InterruptVector'},
+              'TimerReload': {'TimerOverflow', 'TimerReload'},
               'Dma': {'DmaOwnership'}}
 
 
 def execute(scenario, binary, output):
-    if scenario.get('schemaVersion', 1) != 1 or set(scenario) - (FIELDS.keys() | BOOLEAN_FIELDS.keys() | {'schemaVersion', 'noise'}):
+    if scenario.get('schemaVersion', 1) != 1 or set(scenario) - (
+            FIELDS.keys() | BOOLEAN_FIELDS.keys() | {'schemaVersion', 'noise'}):
         raise ValueError('Unsupported timing scenario fields or version')
     output.parent.mkdir(parents=True, exist_ok=True)
     command = [str(binary.resolve()), '--output=' + str(output.resolve())]
-    command.extend('--' + flag + '=' + str(scenario[key]) for key, flag in FIELDS.items() if scenario.get(key) is not None)
+    command.extend(
+        '--' + flag + '=' + str(scenario[key]) for key, flag in FIELDS.items() if scenario.get(key) is not None)
     command.extend('--' + flag for key, flag in BOOLEAN_FIELDS.items() if scenario.get(key, False))
     command.extend('--noise=' + str(value) for value in scenario.get('noise', []))
     process = subprocess.run(command, capture_output=True, text=True)
@@ -32,7 +37,8 @@ def execute(scenario, binary, output):
     result = json.loads(result_path.read_text())
     if result.get('record') != 'experiment' or result.get('schemaVersion') != 1:
         raise ValueError('Invalid experiment result')
-    (output / 'command.json').write_text(json.dumps(dict(command=command, returncode=process.returncode, stderr=process.stderr), indent=2) + '\n')
+    (output / 'command.json').write_text(
+        json.dumps(dict(command=command, returncode=process.returncode, stderr=process.stderr), indent=2) + '\n')
     return result
 
 
@@ -43,13 +49,15 @@ def boundary_observations(result, directory):
     events = [event for event in rows[1:] if event['kind'] in BOUNDARIES[result['scenario']['family']]]
     return [dict(action=action, absoluteTick=result['anchorTick'] + action['offsetTicks'],
                  boundaries=[dict(kind=event['kind'], tick=event['position']['tick'], value=event['value'],
-                                  actionMinusBoundaryTicks=result['anchorTick'] + action['offsetTicks'] - event['position']['tick'])
+                                  actionMinusBoundaryTicks=result['anchorTick'] + action['offsetTicks'] -
+                                                           event['position']['tick'])
                              for event in events]) for action in result['actions']]
 
 
 def equivalent(left, right):
-    return all(left[key] == right[key] for key in ('scenario', 'completionContract', 'outcome', 'failureSignature', 'completedTick',
-                                                  'anchorTick', 'actions', 'checks', 'probeValue', 'framebufferHash', 'eventHash'))
+    return all(left[key] == right[key] for key in
+               ('scenario', 'completionContract', 'outcome', 'failureSignature', 'completedTick',
+                'anchorTick', 'actions', 'checks', 'probeValue', 'framebufferHash', 'eventHash'))
 
 
 def preserves_failure(original, candidate):
@@ -60,7 +68,8 @@ def preserves_failure(original, candidate):
             and all(original['scenario'][key] == candidate['scenario'][key]
                     for key in ('mode', 'family', 'model', 'doubleSpeed', 'expectedValue', 'basis', 'basisEvidence'))
             and all(check['passed'] for check in candidate['checks'] if check['invariant'] in
-                    ('cpu-anchor', 'cpu-action-timing', 'cpu-action-value', 'component-action-timing', 'rendered-line', 'dma-transfers', 'dma-transfer-values')))
+                    ('cpu-anchor', 'cpu-action-timing', 'cpu-action-value', 'component-action-timing', 'rendered-line',
+                     'dma-transfers', 'dma-transfer-values')))
 
 
 def reduce_scenario(scenario, evaluate, max_trials=100):
@@ -76,7 +85,8 @@ def reduce_scenario(scenario, evaluate, max_trials=100):
             return False
         result = evaluate(candidate)
         accepted = preserves_failure(original, result)
-        trials.append(dict(scenario=candidate, outcome=result['outcome'], signature=result['failureSignature'], accepted=accepted))
+        trials.append(dict(scenario=candidate, outcome=result['outcome'], signature=result['failureSignature'],
+                           accepted=accepted))
         if accepted:
             current = result['scenario'].copy()
         return accepted
@@ -97,7 +107,8 @@ def reduce_scenario(scenario, evaluate, max_trials=100):
         if current.get(field):
             attempt(dict(current, **{field: 0}))
     return dict(schemaVersion=1, original=original, reducedScenario=current, trials=trials,
-                reducedFailure=evaluate(current), minimality='Bounded greedy reduction over setup writes and numeric parameters')
+                reducedFailure=evaluate(current),
+                minimality='Bounded greedy reduction over setup writes and numeric parameters')
 
 
 def promote(scenario, result, evidence, output):
@@ -106,7 +117,8 @@ def promote(scenario, result, evidence, output):
     if not scenario.get('expectedValue') and not result['checks']:
         raise ValueError('A regression needs an expectation')
     record = dict(schemaVersion=1, scenario=scenario, expectationBasis=scenario['basis'], evidence=evidence,
-                  completionContract=result['completionContract'], requiredInvariants=[check['invariant'] for check in result['checks']],
+                  completionContract=result['completionContract'],
+                  requiredInvariants=[check['invariant'] for check in result['checks']],
                   observed=dict(probeValue=result['probeValue'], framebufferHash=result['framebufferHash']),
                   validatedBuild=result['build'])
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +163,8 @@ def main():
                                 ('sprite_offset', 'spriteOffset'), ('model', 'model'), ('speed', 'doubleSpeed')):
             value = getattr(args, argument)
             if value is not None:
-                axes[field] = value.split(',') if field == 'model' else [text == 'double' for text in value.split(',')] if field == 'doubleSpeed' else [int(text, 0) for text in value.split(',')]
+                axes[field] = value.split(',') if field == 'model' else [text == 'double' for text in value.split(
+                    ',')] if field == 'doubleSpeed' else [int(text, 0) for text in value.split(',')]
                 if field == 'doubleSpeed' and any(text not in ('regular', 'double') for text in value.split(',')):
                     parser.error('Speed values are regular,double')
         combinations = list(itertools.product(*axes.values()))
@@ -162,7 +175,8 @@ def main():
             index, values = index_and_values
             variant = scenario | dict(zip(axes, values))
             if variant.get('doubleSpeed') and not variant.get('model', 'DMGB').startswith(('CGB', 'AGB')):
-                return dict(scenario=variant, outcome='UnsupportedConfiguration', details='Double speed requires color hardware')
+                return dict(scenario=variant, outcome='UnsupportedConfiguration',
+                            details='Double speed requires color hardware')
             directory = args.output / str(index)
             result = execute(variant, args.binary, directory)
             return dict(result=result, boundaries=boundary_observations(result, directory), directory=str(directory))

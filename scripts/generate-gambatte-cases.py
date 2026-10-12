@@ -15,7 +15,7 @@ CGB = "cgbc"
 
 
 def out_expectation(name, marker):
-    rest = name[name.find(marker) + len(marker) :]
+    rest = name[name.find(marker) + len(marker):]
     if rest.startswith("audio0") or rest.startswith("audio1"):
         return f"audio:{rest[5]}"
     digits = re.match(r"[0-9A-Fa-f]*", rest).group(0)
@@ -70,7 +70,8 @@ def main():
                 case.pop("sourceFile", None)
             else:
                 old = {key: value for key, value in old.items() if key not in ("sourceFile", "sourceHash", "sourceUrl")}
-                case.update(sourceRevision=None, buildProvenance="Changed or new binary; source rebuild has not been verified")
+                case.update(sourceRevision=None,
+                            buildProvenance="Changed or new binary; source rebuild has not been verified")
             cases.append(old | case)
 
     catalog["cases"] = cases

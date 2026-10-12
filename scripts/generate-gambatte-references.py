@@ -25,19 +25,19 @@ def read_png(path):
     compressed = bytearray()
     while offset < len(data):
         length = struct.unpack_from(">I", data, offset)[0]
-        tag = data[offset + 4 : offset + 8]
-        payload = data[offset + 8 : offset + 8 + length]
+        tag = data[offset + 4: offset + 8]
+        payload = data[offset + 8: offset + 8 + length]
         if tag == b"IHDR":
             width, height, depth, kind, compression, filtering, interlace = (
                 struct.unpack(">IIBBBBB", payload)
             )
             if (width, height, depth, compression, filtering, interlace) != (
-                160,
-                144,
-                8,
-                0,
-                0,
-                0,
+                    160,
+                    144,
+                    8,
+                    0,
+                    0,
+                    0,
             ) or kind not in (2, 6):
                 raise ValueError(
                     f"Expected a noninterlaced 160x144 RGB/RGBA PNG: {path}"
@@ -55,7 +55,7 @@ def read_png(path):
     pixels = bytearray()
     for offset in range(0, len(raw), stride + 1):
         filter_type = raw[offset]
-        row = bytearray(raw[offset + 1 : offset + 1 + stride])
+        row = bytearray(raw[offset + 1: offset + 1 + stride])
         for x in range(stride):
             left = row[x - channels] if x >= channels else 0
             above = previous[x]
@@ -66,7 +66,7 @@ def read_png(path):
             predictor = (0, left, above, (left + above) // 2, paeth)[filter_type]
             row[x] = (row[x] + predictor) & 255
         for x in range(0, stride, channels):
-            pixels.extend((*row[x : x + 3], 255))
+            pixels.extend((*row[x: x + 3], 255))
         previous = row
     return pixels
 
@@ -96,7 +96,7 @@ def convert(path):
     """Rewrite a PNG in the colors StarGBC renders with color correction off."""
     pixels = read_png(path)
     for offset in range(0, len(pixels), 4):
-        red, green, blue = pixels[offset : offset + 3]
+        red, green, blue = pixels[offset: offset + 3]
         if is_dmg_reference(path):
             if red != green or red != blue:
                 raise ValueError(f"Non-grayscale DMG reference: {path}")
@@ -112,7 +112,7 @@ def convert(path):
                     )
                 rgb5 = (red >> 3,) * 3
             rgb = tuple((value << 3) | (value >> 2) for value in rgb5)
-        pixels[offset : offset + 3] = bytes(rgb)
+        pixels[offset: offset + 3] = bytes(rgb)
     return pixels
 
 

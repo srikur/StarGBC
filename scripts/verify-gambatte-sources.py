@@ -29,10 +29,13 @@ def main():
             raise ValueError('Source changed: ' + case['sourceFile'])
         rebuilt = assembler.assembleFile(assembler.readDataFromFile(source))
         rebuilt_hash = hashlib.sha256(rebuilt).hexdigest()
-        records[case['rom']] = dict(sourceFile=case['sourceFile'], sourceHash=case['sourceHash'], rebuiltHash=rebuilt_hash,
+        records[case['rom']] = dict(sourceFile=case['sourceFile'], sourceHash=case['sourceHash'],
+                                    rebuiltHash=rebuilt_hash,
                                     romHash=case['romHash'], verified=rebuilt_hash == case['romHash'])
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(dict(schemaVersion=1, revision=catalog['defaults']['sourceRevision'], roms=records), indent=2) + '\n')
+    args.output.write_text(
+        json.dumps(dict(schemaVersion=1, revision=catalog['defaults']['sourceRevision'], roms=records),
+                   indent=2) + '\n')
     print(f'{sum(row["verified"] for row in records.values())}/{len(records)} ROMs rebuilt identically')
     return int(not all(row['verified'] for row in records.values()))
 

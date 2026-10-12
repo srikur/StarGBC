@@ -3,7 +3,7 @@ option(STARGBC_REFERENCE_ADAPTERS "Build optional pinned Gambatte and SameBoy di
 add_executable(StarGBC_Reference Driver.cpp StarGBC.cpp)
 target_link_libraries(StarGBC_Reference PRIVATE StarGBC_Diagnostics)
 
-if(STARGBC_REFERENCE_ADAPTERS)
+if (STARGBC_REFERENCE_ADAPTERS)
     enable_language(C)
     FetchContent_Declare(stargbc_gambatte
             URL https://codeload.github.com/pokemon-speedrunning/gambatte-core/tar.gz/5a41a68c25402421fb1983ddadc9faf2418ddb0f
@@ -35,4 +35,4 @@ if(STARGBC_REFERENCE_ADAPTERS)
     target_link_libraries(StarGBC_SameBoyClock PRIVATE StarGBC_SameBoyCore)
     add_executable(StarGBC_SameBoyReference Driver.cpp SameBoy.cpp)
     target_link_libraries(StarGBC_SameBoyReference PRIVATE StarGBC_Diagnostics StarGBC_SameBoyCore StarGBC_SameBoyClock)
-endif()
+endif ()

@@ -16,7 +16,8 @@ def failure():
     return dict(outcome='AssertionFailure', failureSignature='TimerReload:probe-value:37!=17',
                 completionContract='ComponentBudgetAndRequiredObservations', checks=[],
                 scenario=dict(mode='Component', family='TimerReload', model='DMGB', doubleSpeed=False,
-                              expectedValue=17, basis='Hypothesis', basisEvidence='Suspected reload behavior', budgetTicks=32))
+                              expectedValue=17, basis='Hypothesis', basisEvidence='Suspected reload behavior',
+                              budgetTicks=32))
 
 
 class Experiments(unittest.TestCase):
@@ -54,7 +55,8 @@ class Experiments(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             scenario = dict(schemaVersion=1, mode='Component', family='TimerReload', model='DMGB', seed=1, phase=1,
-                            noise=[7, 8, 9], expectedValue=17, basis='Hypothesis', basisEvidence='Intentional competing timing hypothesis')
+                            noise=[7, 8, 9], expectedValue=17, basis='Hypothesis',
+                            basisEvidence='Intentional competing timing hypothesis')
             index = 0
 
             def execute(candidate):
@@ -67,11 +69,14 @@ class Experiments(unittest.TestCase):
             self.assertEqual(reduced['reducedScenario']['noise'], [])
             self.assertEqual(reduced['reducedScenario']['phase'], 1)
             self.assertTrue(experiments.preserves_failure(reduced['original'], reduced['reducedFailure']))
-            self.assertTrue(any(not trial['accepted'] and trial['scenario']['phase'] == 0 for trial in reduced['trials']))
+            self.assertTrue(
+                any(not trial['accepted'] and trial['scenario']['phase'] == 0 for trial in reduced['trials']))
             for double_speed in (False, True):
                 records = []
                 for phase in (0, 1, 2):
-                    records.append(execute(dict(mode='Component', family='TimerReload', model='CGBC', doubleSpeed=double_speed, phase=phase)))
+                    records.append(execute(
+                        dict(mode='Component', family='TimerReload', model='CGBC', doubleSpeed=double_speed,
+                             phase=phase)))
                 self.assertEqual(records[0]['probeValue'], records[2]['probeValue'])
                 self.assertEqual(records[1]['probeValue'], 37)
                 self.assertNotEqual(records[0]['probeValue'], records[1]['probeValue'])

@@ -12,14 +12,19 @@ spec.loader.exec_module(comparison)
 
 
 def event(tick, value=1, address=0xFF41):
-    return dict(position=dict(tick=tick, frame=0, dot=tick // 2, ly=0), sequence=tick, component='Bus', kind='BusRead', address=address, value=value)
+    return dict(position=dict(tick=tick, frame=0, dot=tick // 2, ly=0), sequence=tick, component='Bus', kind='BusRead',
+                address=address, value=value)
 
 
 def stream():
-    header = dict(schemaVersion=1, record='observations', build='build-a', hardwareFormat='state-1', initial=dict(rom='rom', configuration='CGBC'),
-                  replayHash='inputs', masterTicksPerSecond=8388608, plan=dict(beginTick=0, endTick=30, sampleTicks=10, events=True))
-    samples = [dict(record='sample', state=dict(position=dict(tick=tick), hardwareHash='hardware', framebufferHash='pixels',
-                    machine=dict(audio=dict(mixerLevelChanges=5))), eventHash='events') for tick in range(0, 31, 10)]
+    header = dict(schemaVersion=1, record='observations', build='build-a', hardwareFormat='state-1',
+                  initial=dict(rom='rom', configuration='CGBC'),
+                  replayHash='inputs', masterTicksPerSecond=8388608,
+                  plan=dict(beginTick=0, endTick=30, sampleTicks=10, events=True))
+    samples = [
+        dict(record='sample', state=dict(position=dict(tick=tick), hardwareHash='hardware', framebufferHash='pixels',
+                                         machine=dict(audio=dict(mixerLevelChanges=5))), eventHash='events') for tick in
+        range(0, 31, 10)]
     return header, samples
 
 

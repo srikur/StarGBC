@@ -71,7 +71,8 @@ def compare_events(left, right):
         elif all(a.get(key) == b.get(key) for key in ('component', 'kind', 'address', 'pc', 'pcBank')):
             kind = 'ChangedValue'
         return dict(kind=kind, index=index, tick=min(event['position']['tick'] for event in (a, b) if event),
-                    left=a, right=b, contextLeft=left[max(0, index - 3):index + 4], contextRight=right[max(0, index - 3):index + 4])
+                    left=a, right=b, contextLeft=left[max(0, index - 3):index + 4],
+                    contextRight=right[max(0, index - 3):index + 4])
     return None
 
 
@@ -90,15 +91,19 @@ def compare_observations(left, right):
     b, right_samples = right
     compatibility = ('schemaVersion', 'initial', 'replayHash', 'masterTicksPerSecond')
     mismatches = [key for key in compatibility if a.get(key) != b.get(key)]
-    mismatches.extend('plan.' + key for key in ('beginTick', 'endTick', 'sampleTicks', 'events') if a['plan'].get(key) != b['plan'].get(key))
+    mismatches.extend('plan.' + key for key in ('beginTick', 'endTick', 'sampleTicks', 'events') if
+                      a['plan'].get(key) != b['plan'].get(key))
     if mismatches:
         return dict(schemaVersion=1, status='Incompatible', mismatches=mismatches)
     hardware = a['build'] == b['build'] and a['hardwareFormat'] == b['hardwareFormat']
     report = dict(schemaVersion=1, status='Equal', startTick=a['plan']['beginTick'], endTick=a['plan']['endTick'],
-                  resolutionTicks=a['plan']['sampleTicks'], hardwareCompared=hardware, eventsCompared=a['plan']['events'],
-                  comparedSamples=0, limitations=['Equality applies to the recorded observations and their sampling resolution.'])
+                  resolutionTicks=a['plan']['sampleTicks'], hardwareCompared=hardware,
+                  eventsCompared=a['plan']['events'],
+                  comparedSamples=0,
+                  limitations=['Equality applies to the recorded observations and their sampling resolution.'])
     if not hardware:
-        report['limitations'].append('Private serialized state is compared only for the same core build and format; cross-build records use versioned observations.')
+        report['limitations'].append(
+            'Private serialized state is compared only for the same core build and format; cross-build records use versioned observations.')
     previous = a['plan']['beginTick']
     for index in range(max(len(left_samples), len(right_samples))):
         if index >= min(len(left_samples), len(right_samples)):
@@ -108,8 +113,10 @@ def compare_observations(left, right):
         found = difference(canonical_sample(one, hardware), canonical_sample(two, hardware))
         report['comparedSamples'] += 1
         if found:
-            report.update(status='Divergence', lowerTick=previous, upperTick=min(one['state']['position']['tick'], two['state']['position']['tick']),
-                          difference=found, contextLeft=left_samples[max(0, index - 1):index + 2], contextRight=right_samples[max(0, index - 1):index + 2])
+            report.update(status='Divergence', lowerTick=previous,
+                          upperTick=min(one['state']['position']['tick'], two['state']['position']['tick']),
+                          difference=found, contextLeft=left_samples[max(0, index - 1):index + 2],
+                          contextRight=right_samples[max(0, index - 1):index + 2])
             if one.get('events') is not None and two.get('events') is not None:
                 report['eventDifference'] = compare_events(one['events'], two['events'])
             return report
@@ -121,7 +128,8 @@ def capture(args, side, phase, begin, end, sample_ticks, events=False, details=F
     binary = getattr(args, side).resolve()
     path = args.output / f'{phase}-{side}.jsonl'
     command = [str(binary), str(args.rom.resolve()), '--model', args.model, '--policy', getattr(args, side + '_policy'),
-               '--comparison-output', str(path.resolve()), '--comparison-begin', str(begin), '--comparison-end', str(end),
+               '--comparison-output', str(path.resolve()), '--comparison-begin', str(begin), '--comparison-end',
+               str(end),
                '--sample-ticks', str(sample_ticks), '--output', str(path.with_suffix('.terminal.json').resolve())]
     if args.no_bootrom:
         command.append('--no-bootrom')
@@ -134,7 +142,8 @@ def capture(args, side, phase, begin, end, sample_ticks, events=False, details=F
     if details:
         command.append('--comparison-event-details')
     process = subprocess.run(command, capture_output=True, text=True, check=False)
-    path.with_suffix('.command.json').write_text(json.dumps(dict(command=command, returncode=process.returncode, stderr=process.stderr), indent=2) + '\n')
+    path.with_suffix('.command.json').write_text(
+        json.dumps(dict(command=command, returncode=process.returncode, stderr=process.stderr), indent=2) + '\n')
     if process.returncode:
         raise ValueError(f'{side} capture failed: {process.stderr}')
     return read_observations(path)
@@ -151,15 +160,19 @@ def run_comparison(args):
         if report['status'] == 'Incompatible':
             break
         if report['status'] == 'Divergence':
-            refined_pair = [capture(args, side, phase + '-refined', report['lowerTick'], report['upperTick'], 1, events, events) for side in ('left', 'right')]
+            refined_pair = [
+                capture(args, side, phase + '-refined', report['lowerTick'], report['upperTick'], 1, events, events) for
+                side in ('left', 'right')]
             report['refined'] = compare_observations(*refined_pair)
     incompatible = next((report for report in reports if report['status'] == 'Incompatible'), None)
     divergences = [report for report in reports if report['status'] == 'Divergence']
-    result = dict(schemaVersion=1, status='Incompatible' if incompatible else 'Divergence' if divergences else 'Equal', phases=reports,
+    result = dict(schemaVersion=1, status='Incompatible' if incompatible else 'Divergence' if divergences else 'Equal',
+                  phases=reports,
                   checkpointPolicy='Each process restarts from verified initial conditions; no checkpoint crosses builds.',
                   eventScheduling='Event capture uses per-tick CPU scheduling; the separate policy phase exercises unobserved scheduler batching.')
     if divergences:
-        result['earliest'] = min(divergences, key=lambda report: report.get('refined', report).get('upperTick', report['upperTick']))
+        result['earliest'] = min(divergences,
+                                 key=lambda report: report.get('refined', report).get('upperTick', report['upperTick']))
     (args.output / 'comparison.json').write_text(json.dumps(result, indent=2) + '\n')
     return result
 
@@ -192,7 +205,8 @@ def main():
     else:
         result = compare_observations(read_observations(args.left), read_observations(args.right))
         args.output.write_text(json.dumps(result, indent=2) + '\n')
-    print(json.dumps({key: value for key, value in result.items() if key not in ('phases', 'contextLeft', 'contextRight', 'earliest')}))
+    print(json.dumps({key: value for key, value in result.items() if
+                      key not in ('phases', 'contextLeft', 'contextRight', 'earliest')}))
     return 0 if result['status'] == 'Equal' else 1
 
 

@@ -35,7 +35,9 @@ def read_capture(path):
 
 def compare_captures(left, right, anchor_pc=0x100, projection='instructions', address=None):
     a, b = left['header'], right['header']
-    mismatches = [key for key in ('romHash', 'bootromHash', 'masterTicksPerSecond', 'initialCartridgeRam', 'rtc', 'requestedTicks') if a.get(key) != b.get(key)]
+    mismatches = [key for key in
+                  ('romHash', 'bootromHash', 'masterTicksPerSecond', 'initialCartridgeRam', 'rtc', 'requestedTicks') if
+                  a.get(key) != b.get(key)]
     mismatches.extend('settings.' + key for key in ('model', 'noBootrom') if a['settings'][key] != b['settings'][key])
     if mismatches:
         return dict(schemaVersion=1, status='Incompatible', mismatches=mismatches)
@@ -46,21 +48,26 @@ def compare_captures(left, right, anchor_pc=0x100, projection='instructions', ad
                   limitations=[limitation for core in capabilities for limitation in core['limitations']])
     anchors = []
     for capture in (left, right):
-        event = next((event for event in capture['events'] if event['kind'] == 'InstructionBegin' and event['address'] == anchor_pc), None)
+        event = next((event for event in capture['events'] if
+                      event['kind'] == 'InstructionBegin' and event['address'] == anchor_pc), None)
         if not event:
-            result.update(status='Incompatible', mismatches=[f'Alignment instruction ${anchor_pc:04X} was not captured'])
+            result.update(status='Incompatible',
+                          mismatches=[f'Alignment instruction ${anchor_pc:04X} was not captured'])
             return result
         anchors.append(event['position']['tick'])
-    result['alignment'] = dict(kind='FirstInstructionAtAddress', address=anchor_pc, leftTick=anchors[0], rightTick=anchors[1],
+    result['alignment'] = dict(kind='FirstInstructionAtAddress', address=anchor_pc, leftTick=anchors[0],
+                               rightTick=anchors[1],
                                phases=[core['instructionPhase'] for core in capabilities])
     end_tick = min(a['requestedTicks'] - anchors[0], b['requestedTicks'] - anchors[1])
     result['comparedThroughRelativeTick'] = end_tick
     if projection == 'state':
-        indexed = [{sample['actualTick'] - anchor: sample for sample in capture['samples'] if anchor <= sample['actualTick'] <= anchor + end_tick}
+        indexed = [{sample['actualTick'] - anchor: sample for sample in capture['samples'] if
+                    anchor <= sample['actualTick'] <= anchor + end_tick}
                    for capture, anchor in zip((left, right), anchors)]
         common = sorted(indexed[0].keys() & indexed[1].keys())
         if not common:
-            result.update(status='Incompatible', mismatches=['No samples at equal actual aligned times; requested times are never substituted'])
+            result.update(status='Incompatible', mismatches=[
+                'No samples at equal actual aligned times; requested times are never substituted'])
             return result
         result['comparedSamples'] = len(common)
         result['resolution'] = 'Only equal actual-time samples; operation overshoot may leave gaps'
@@ -69,10 +76,12 @@ def compare_captures(left, right, anchor_pc=0x100, projection='instructions', ad
             found = execution.difference({key: one[key] for key in ('registers', 'framebufferHash')},
                                          {key: two[key] for key in ('registers', 'framebufferHash')})
             if found:
-                result.update(status='Divergence', firstRelativeTick=tick, difference=found, contextLeft=one, contextRight=two)
+                result.update(status='Divergence', firstRelativeTick=tick, difference=found, contextLeft=one,
+                              contextRight=two)
                 break
         return result
-    include_values = all(core['instructionValues' if projection == 'instructions' else 'busValues'] for core in capabilities)
+    include_values = all(
+        core['instructionValues' if projection == 'instructions' else 'busValues'] for core in capabilities)
     include_banks = all(core['banks'] for core in capabilities)
     streams = []
     for capture, anchor in zip((left, right), anchors):
@@ -85,14 +94,16 @@ def compare_captures(left, right, anchor_pc=0x100, projection='instructions', ad
                 continue
             if projection == 'bus' and (event['kind'] not in ('BusRead', 'BusWrite') or event['address'] != address):
                 continue
-            record = dict(position=dict(tick=tick), component=event['component'], kind=event['kind'], address=event['address'])
+            record = dict(position=dict(tick=tick), component=event['component'], kind=event['kind'],
+                          address=event['address'])
             if include_values:
                 record['value'] = event['value']
             if include_banks:
                 record['bank'] = event['bank'] if projection == 'bus' else event['pcBank']
             projected.append(record)
         streams.append(projected)
-    result['comparedFields'] = ['tick', 'kind', 'address'] + (['value'] if include_values else []) + (['bank'] if include_banks else [])
+    result['comparedFields'] = ['tick', 'kind', 'address'] + (['value'] if include_values else []) + (
+        ['bank'] if include_banks else [])
     result['eventsLeft'], result['eventsRight'] = map(len, streams)
     if not any(streams):
         result.update(status='Incompatible', mismatches=['No observations match this projection'])
@@ -115,7 +126,8 @@ def run(args):
         capabilities = json.loads(subprocess.check_output([str(binary), '--capabilities'], text=True))
         startup = 'SkipBootrom' if args.no_bootrom else 'ExplicitBootrom'
         if args.model not in capabilities['models'] or startup not in capabilities['startup']:
-            return dict(schemaVersion=1, status='Incompatible', mismatches=[f'{side} does not support {args.model} with {startup}'], capabilities=capabilities)
+            return dict(schemaVersion=1, status='Incompatible',
+                        mismatches=[f'{side} does not support {args.model} with {startup}'], capabilities=capabilities)
         base = args.output / side
         command = [str(binary), str(rom.resolve()), '--model', args.model, '--ticks', str(args.ticks),
                    '--sample-ticks', str(args.sample_ticks), '--output', str(base.resolve())]
@@ -124,7 +136,8 @@ def run(args):
         else:
             command.extend(['--bios', str(args.bios.resolve())])
         process = subprocess.run(command, capture_output=True, text=True, check=False)
-        base.with_suffix('.command.json').write_text(json.dumps(dict(command=command, returncode=process.returncode, stderr=process.stderr), indent=2) + '\n')
+        base.with_suffix('.command.json').write_text(
+            json.dumps(dict(command=command, returncode=process.returncode, stderr=process.stderr), indent=2) + '\n')
         if process.returncode:
             raise ValueError(f'{side} reference capture failed: {process.stderr}')
         captures.append(read_capture(base))
@@ -159,10 +172,12 @@ def main():
         result = run(args)
         output = args.output / 'comparison.json'
     else:
-        result = compare_captures(read_capture(args.left), read_capture(args.right), args.anchor_pc, args.projection, args.address)
+        result = compare_captures(read_capture(args.left), read_capture(args.right), args.anchor_pc, args.projection,
+                                  args.address)
         output = args.output
     output.write_text(json.dumps(result, indent=2) + '\n')
-    print(json.dumps(dict(status=result['status'], report=str(output), firstRelativeTick=result.get('firstRelativeTick'))))
+    print(json.dumps(
+        dict(status=result['status'], report=str(output), firstRelativeTick=result.get('firstRelativeTick'))))
     return 0 if result['status'] == 'Equal' else 1
 
 

@@ -25,7 +25,8 @@ def catalogs(root=ROOT):
 
 def audit(root=ROOT):
     cases = catalogs(root)
-    problems = dict(duplicateCases=[], missingRoms=[], missingReferences=[], staleHashes=[], unknownApplicability=[], unknownSources=[])
+    problems = dict(duplicateCases=[], missingRoms=[], missingReferences=[], staleHashes=[], unknownApplicability=[],
+                    unknownSources=[])
     seen = set()
     registered = set()
     for case in cases:
@@ -40,8 +41,9 @@ def audit(root=ROOT):
             problems['unknownSources'].append(identity)
         expected = case.get('expected', '')
         for name, fingerprint, missing in ((case['rom'], case.get('romHash'), 'missingRoms'),
-                                          (expected if expected.endswith(('.screen', '.vram')) else '', case.get('referenceHash'), 'missingReferences'),
-                                          (case.get('bios', ''), case.get('bootromHash'), 'missingReferences')):
+                                           (expected if expected.endswith(('.screen', '.vram')) else '',
+                                            case.get('referenceHash'), 'missingReferences'),
+                                           (case.get('bios', ''), case.get('bootromHash'), 'missingReferences')):
             if not name:
                 continue
             path = root / name
@@ -49,14 +51,20 @@ def audit(root=ROOT):
                 problems[missing].append(dict(id=identity, path=name))
             elif fingerprint and digest(path) != fingerprint:
                 problems['staleHashes'].append(dict(id=identity, path=name))
-    bundled = {str(path.relative_to(root)) for path in (root / 'roms').rglob('*') if path.suffix.lower() in ('.gb', '.gbc')}
+    bundled = {str(path.relative_to(root)) for path in (root / 'roms').rglob('*') if
+               path.suffix.lower() in ('.gb', '.gbc')}
     inventory_path = root / 'tests/catalog/unregistered.json'
-    accounted = {row['rom']: row for row in json.loads(inventory_path.read_text())['roms']} if inventory_path.exists() else {}
+    accounted = {row['rom']: row for row in
+                 json.loads(inventory_path.read_text())['roms']} if inventory_path.exists() else {}
     unregistered = sorted(bundled - registered)
     unexplained = [path for path in unregistered if path not in accounted or not accounted[path].get('reason')]
-    stale_inventory = [path for path, entry in accounted.items() if path not in bundled or path in registered or digest(root / path) != entry['romHash']]
+    stale_inventory = [path for path, entry in accounted.items() if
+                       path not in bundled or path in registered or digest(root / path) != entry['romHash']]
     return dict(schemaVersion=1, cases=len(cases), registeredRoms=len(registered), bundledRoms=len(bundled),
-                unregisteredRoms=unregistered, unregisteredUnknownApplicability=[path for path in unregistered if not accounted.get(path, {}).get('applicability')], unexplainedRoms=unexplained, staleInventory=stale_inventory, **problems)
+                unregisteredRoms=unregistered, unregisteredUnknownApplicability=[path for path in unregistered if
+                                                                                 not accounted.get(path, {}).get(
+                                                                                     'applicability')],
+                unexplainedRoms=unexplained, staleInventory=stale_inventory, **problems)
 
 
 def read_symbols(text, format):
@@ -89,7 +97,8 @@ def read_symbols(text, format):
 
 def verified_mapping(manifest_path, rom_path):
     manifest = json.loads(manifest_path.read_text())
-    if manifest.get('schemaVersion') != 1 or not manifest.get('buildProvenance') or manifest['romHash'] != digest(rom_path):
+    if manifest.get('schemaVersion') != 1 or not manifest.get('buildProvenance') or manifest['romHash'] != digest(
+            rom_path):
         raise ValueError('Mapping build provenance does not match the ROM')
     path = manifest_path.parent / manifest['symbols']['path']
     if digest(path) != manifest['symbols']['sha256']:
@@ -98,9 +107,11 @@ def verified_mapping(manifest_path, rom_path):
     lines = manifest.get('sourceLines', [])
     for line in lines:
         path = manifest_path.parent / line['file']
-        if digest(path) != line['sha256'] or not 0 <= line['begin'] < line['end'] <= 65536 or not 0 < line['line'] <= len(path.read_text().splitlines()):
+        if digest(path) != line['sha256'] or not 0 <= line['begin'] < line['end'] <= 65536 or not 0 < line[
+            'line'] <= len(path.read_text().splitlines()):
             raise ValueError('Invalid or stale source-line mapping')
-    return dict(romHash=manifest['romHash'], buildProvenance=manifest['buildProvenance'], symbols=symbols, sourceLines=lines,
+    return dict(romHash=manifest['romHash'], buildProvenance=manifest['buildProvenance'], symbols=symbols,
+                sourceLines=lines,
                 capabilities=dict(symbols=True, exactSourceLines=bool(lines)))
 
 
@@ -135,7 +146,9 @@ def main():
     failed = False
     if args.command == 'audit':
         result = audit(args.root)
-        failed = any(result[key] for key in ('duplicateCases', 'missingRoms', 'missingReferences', 'staleHashes', 'unknownApplicability', 'unexplainedRoms', 'staleInventory'))
+        failed = any(result[key] for key in
+                     ('duplicateCases', 'missingRoms', 'missingReferences', 'staleHashes', 'unknownApplicability',
+                      'unexplainedRoms', 'staleInventory'))
     elif args.command == 'explain':
         result = next((case for case in catalogs() if case['id'] == args.case_id), None)
         if result is None:
@@ -150,12 +163,14 @@ def main():
                                    sha256=digest(args.symbols), format=args.format))
     else:
         mapping = verified_mapping(args.manifest, args.rom)
-        result = dict(schemaVersion=1, capabilities=mapping['capabilities'], location=lookup(mapping, args.bank, args.address))
+        result = dict(schemaVersion=1, capabilities=mapping['capabilities'],
+                      location=lookup(mapping, args.bank, args.address))
         if args.trace:
             rows = [json.loads(line) for line in args.trace.read_text().splitlines()]
             if rows[0].get('record') != 'trace' or rows[0].get('romHash') != mapping['romHash']:
                 raise ValueError('Trace ROM differs from the verified mapping')
-            result['events'] = [dict(event=event, location=lookup(mapping, event['pcBank'], event['pc'])) for event in rows[1:]]
+            result['events'] = [dict(event=event, location=lookup(mapping, event['pcBank'], event['pc'])) for event in
+                                rows[1:]]
     encoded = json.dumps(result, indent=2) + '\n'
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

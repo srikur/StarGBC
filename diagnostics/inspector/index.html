@@ -1,49 +1,105 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StarGBC · Accuracy inspector</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StarGBC · Accuracy inspector</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div><div class="eyebrow">STARGBC DIAGNOSTICS</div><h1>Accuracy inspector</h1></div>
+<header>
+    <div>
+        <div class="eyebrow">STARGBC DIAGNOSTICS</div>
+        <h1>Accuracy inspector</h1></div>
     <label class="open-button">Open failure bundle<input id="bundle-files" type="file" multiple webkitdirectory></label>
-  </header>
-  <main>
-    <p id="status" role="status">Choose a failure bundle folder, or drop its files here. Everything stays in this browser.</p>
+</header>
+<main>
+    <p id="status" role="status">Choose a failure bundle folder, or drop its files here. Everything stays in this
+        browser.</p>
     <section id="case-summary" hidden aria-label="Test result">
-      <div><span id="outcome" class="badge"></span><h2 id="case-name"></h2><p id="case-details"></p></div>
-      <div class="case-values"><span>Expected <strong id="expected-value"></strong></span><span>Observed <strong id="actual-value"></strong></span></div>
+        <div><span id="outcome" class="badge"></span>
+            <h2 id="case-name"></h2>
+            <p id="case-details"></p></div>
+        <div class="case-values"><span>Expected <strong id="expected-value"></strong></span><span>Observed <strong
+                id="actual-value"></strong></span></div>
     </section>
     <section class="images" aria-label="Image comparison">
-      <figure><figcaption>Expected</figcaption><canvas id="expected-image" width="160" height="144" tabindex="0" aria-label="Expected image; click to select a pixel"></canvas><p id="expected-image-note">No image loaded</p></figure>
-      <figure><figcaption>Actual</figcaption><canvas id="actual-image" width="160" height="144" tabindex="0" aria-label="Actual image; click to select a pixel"></canvas><p id="actual-image-note">No image loaded</p></figure>
-      <figure><figcaption>Difference</figcaption><canvas id="difference-image" width="160" height="144" tabindex="0" aria-label="Difference image; click to select a pixel"></canvas><p id="difference-image-note">No image loaded</p></figure>
+        <figure>
+            <figcaption>Expected</figcaption>
+            <canvas id="expected-image" width="160" height="144" tabindex="0"
+                    aria-label="Expected image; click to select a pixel"></canvas>
+            <p id="expected-image-note">No image loaded</p></figure>
+        <figure>
+            <figcaption>Actual</figcaption>
+            <canvas id="actual-image" width="160" height="144" tabindex="0"
+                    aria-label="Actual image; click to select a pixel"></canvas>
+            <p id="actual-image-note">No image loaded</p></figure>
+        <figure>
+            <figcaption>Difference</figcaption>
+            <canvas id="difference-image" width="160" height="144" tabindex="0"
+                    aria-label="Difference image; click to select a pixel"></canvas>
+            <p id="difference-image-note">No image loaded</p></figure>
     </section>
     <section class="selection-bar" aria-label="Pixel selection">
-      <label>X <input id="pixel-x" type="number" min="0" max="159" value="0"></label>
-      <label>Y <input id="pixel-y" type="number" min="0" max="143" value="0"></label>
-      <label>Frame <select id="frame"><option value="latest">Latest captured</option></select></label>
-      <label>Branch <select id="branch"><option value="0">0</option></select></label>
-      <button id="first-difference" type="button" disabled>First difference</button>
-      <span id="mismatch-summary"></span>
+        <label>X <input id="pixel-x" type="number" min="0" max="159" value="0"></label>
+        <label>Y <input id="pixel-y" type="number" min="0" max="143" value="0"></label>
+        <label>Frame <select id="frame">
+            <option value="latest">Latest captured</option>
+        </select></label>
+        <label>Branch <select id="branch">
+            <option value="0">0</option>
+        </select></label>
+        <button id="first-difference" type="button" disabled>First difference</button>
+        <span id="mismatch-summary"></span>
     </section>
     <section class="explanation" aria-labelledby="pixel-heading">
-      <div><div class="eyebrow">SELECTED PIXEL</div><h2 id="pixel-heading">Pixel (0, 0)</h2><p id="pixel-explanation">Capture provenance to see the fetch and priority decisions behind a pixel.</p><dl id="pixel-facts"></dl></div>
-      <div><h3>Sprite candidates</h3><p id="sprite-note">No captured candidates</p><table id="sprite-table" hidden><thead><tr><th>OAM</th><th>Color</th><th>Decision</th><th>FIFO winner</th></tr></thead><tbody></tbody></table><details><summary>Captured pixel record</summary><pre id="pixel-json"></pre></details></div>
+        <div>
+            <div class="eyebrow">SELECTED PIXEL</div>
+            <h2 id="pixel-heading">Pixel (0, 0)</h2>
+            <p id="pixel-explanation">Capture provenance to see the fetch and priority decisions behind a pixel.</p>
+            <dl id="pixel-facts"></dl>
+        </div>
+        <div><h3>Sprite candidates</h3>
+            <p id="sprite-note">No captured candidates</p>
+            <table id="sprite-table" hidden>
+                <thead>
+                <tr>
+                    <th>OAM</th>
+                    <th>Color</th>
+                    <th>Decision</th>
+                    <th>FIFO winner</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <details>
+                <summary>Captured pixel record</summary>
+                <pre id="pixel-json"></pre>
+            </details>
+        </div>
     </section>
     <section class="timeline-section" aria-labelledby="timeline-heading">
-      <div class="section-top"><div><div class="eyebrow">SYNCHRONIZED EVENTS</div><h2 id="timeline-heading">Scanline 0</h2></div><label>Zoom <input id="zoom" type="range" min="1" max="32" value="1"><output id="zoom-value">1×</output></label></div>
-      <p id="timeline-note">Load a trace or pixel provenance to inspect scanline activity.</p>
-      <canvas id="timeline" width="1100" height="250" tabindex="0" aria-label="CPU, fetch, FIFO and pixel event tracks; click a marker to inspect it"></canvas>
-      <div class="event-detail"><h3 id="event-title">Select an event</h3><pre id="event-json"></pre></div>
+        <div class="section-top">
+            <div>
+                <div class="eyebrow">SYNCHRONIZED EVENTS</div>
+                <h2 id="timeline-heading">Scanline 0</h2></div>
+            <label>Zoom <input id="zoom" type="range" min="1" max="32" value="1">
+                <output id="zoom-value">1×</output>
+            </label></div>
+        <p id="timeline-note">Load a trace or pixel provenance to inspect scanline activity.</p>
+        <canvas id="timeline" width="1100" height="250" tabindex="0"
+                aria-label="CPU, fetch, FIFO and pixel event tracks; click a marker to inspect it"></canvas>
+        <div class="event-detail"><h3 id="event-title">Select an event</h3>
+            <pre id="event-json"></pre>
+        </div>
     </section>
-    <details class="capture-details"><summary>Capture details and limits</summary><pre id="capture-details"></pre></details>
-  </main>
-  <footer>StarGBC accuracy diagnostics · Offline report</footer>
-  <script id="embedded-bundle" type="application/json"></script>
-  <script src="app.js"></script>
+    <details class="capture-details">
+        <summary>Capture details and limits</summary>
+        <pre id="capture-details"></pre>
+    </details>
+</main>
+<footer>StarGBC accuracy diagnostics · Offline report</footer>
+<script id="embedded-bundle" type="application/json"></script>
+<script src="app.js"></script>
 </body>
 </html>
