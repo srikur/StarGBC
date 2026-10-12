@@ -31,6 +31,9 @@ uint8_t Bus::ReadDMASource(const uint16_t src) {
         returnValue = offset < 0x1000 ? memory_.wram_[offset] : memory_.wram_[(offset & 0x0FFF) + 0x1000 * memory_.wramBank_];
     }
     dmaReadByte = returnValue;
+    if (observations)
+        observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusRead, src, returnValue, 0,
+                           diagnostics::Initiator::DMA, false, DebugBank(src));
     return returnValue;
 }
 
@@ -104,6 +107,51 @@ void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentS
 }
 
 uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) const {
+    const auto value = ReadByteValue < false > (address, source);
+    if (observations)
+        observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusRead, address, value, 0,
+                           static_cast<diagnostics::Initiator>(source), AccessBlocked(address, source, false), DebugBank(address));
+    return value;
+}
+
+uint16_t Bus::DebugBank(const uint16_t address) const {
+    if (address < 0x8000) {
+        if (bootromRunning &&address<bootrom.size() && (address < 0x100 || (IsCgb(gpu_.model) && address >= 0x200)))
+            return 0xFFFF;
+        return cartridge_.DebugBank(address);
+    }
+    if (address < 0xA000)
+        return gpu_.vramBank;
+    if (address < 0xC000)
+        return cartridge_.DebugBank(address);
+    if ((address >= 0xD000 && address < 0xE000) || (address >= 0xF000 && address < 0xFE00))
+        return memory_.wramBank_;
+    return 0;
+}
+
+bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, const bool write) const {
+    if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
+        return true;
+    if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete &&
+        address <= 0xFDFF && DmaBusFor(address) == DmaBusFor(dma_.startAddress))
+        return true;
+    if (address >= 0x8000 && address < 0xA000)
+        return source == ComponentSource::CPU
+                   ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked())
+                   : gpu_.stat.mode == GPUMode::MODE_3;
+    if (address >= 0xFE00 && address <= 0xFEFF)
+        return source == ComponentSource::CPU
+                   ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked())
+                   : gpu_.stat.mode == GPUMode::MODE_3;
+    return false;
+}
+
+uint8_t Bus::InspectRead(const uint16_t address, const ComponentSource source) const {
+    return ReadByteValue < true > (address, source);
+}
+
+template<bool Inspect>
+uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
     // A CPU access on the bus the DMA unit is reading sees the DMA's current
@@ -158,7 +206,10 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
         case 0xFF0F:
             return interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0;
         case 0xFF10 ... 0xFF3F:
-            return audio_.ReadByte(address);
+            if constexpr (Inspect)
+                return audio_.InspectRegister(address);
+            else
+                return audio_.ReadByte(address);
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF4D) {
                 if (!cgbMode)
@@ -200,9 +251,15 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
         case 0xFF75:
             return IsCgb(gpu_.model) ? (pgb75 | 0x8F) : 0xFF;
         case 0xFF76:
-            return IsCgb(gpu_.model) ? audio_.ReadPCM12() : 0xFF;
+            if constexpr (Inspect)
+                return IsCgb(gpu_.model) ? audio_.InspectRegister(address) : 0xFF;
+            else
+                return IsCgb(gpu_.model) ? audio_.ReadPCM12() : 0xFF;
         case 0xFF77:
-            return IsCgb(gpu_.model) ? audio_.ReadPCM34() : 0xFF;
+            if constexpr (Inspect)
+                return IsCgb(gpu_.model) ? audio_.InspectRegister(address) : 0xFF;
+            else
+                return IsCgb(gpu_.model) ? audio_.ReadPCM34() : 0xFF;
         case 0xFF80 ... 0xFFFE:
             return memory_.hram_[address - 0xFF80];
         case 0xFFFF:
@@ -213,6 +270,25 @@ uint8_t Bus::ReadByte(const uint16_t address, const ComponentSource source) cons
 }
 
 void Bus::WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
+    const bool hdmaOwned = gpu_.hdma.ShouldHaltCPU();
+    if (observations) {
+        const auto blocked = AccessBlocked(address, source, true);
+        observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusWrite, address, value, 0,
+                           static_cast<diagnostics::Initiator>(source), blocked, DebugBank(address));
+        if (address >= 0xFF00)
+            observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::RegisterWrite, address, value, 0,
+                               static_cast<diagnostics::Initiator>(source), blocked);
+    }
+    WriteByteValue(address, value, source);
+    if (observations &&hdmaOwned != gpu_.hdma.ShouldHaltCPU())
+    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
+                       gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
+    if (observations &&address == 0xFF0F)
+    observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
+                       0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+}
+
+void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return;
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
@@ -350,6 +426,9 @@ void Bus::UpdateDMAWork() {
     if (dma_.transferComplete) {
         dma_.transferActive = false;
         dma_.transferComplete = false;
+        if (observations)
+            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, false, 0,
+                               diagnostics::Initiator::DMA);
         dma_.ticks = 0;
         dma_.currentByte = 0;
     }
@@ -367,7 +446,13 @@ void Bus::UpdateDMAWork() {
     if (dma_.ticks <= DMA::STARTUP_CYCLES)
         return; // OAM still accessible here
 
+    if (observations &&dma_.ticks == DMA::STARTUP_CYCLES + 1)
+    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
+                       diagnostics::Initiator::DMA);
     gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+    if (observations)
+        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, 0xFE00 + dma_.currentByte,
+                           gpu_.oam[dma_.currentByte], dma_.startAddress + dma_.currentByte, diagnostics::Initiator::DMA);
     ++dma_.currentByte;
     if (dma_.currentByte == DMA::TOTAL_BYTES) {
         dma_.transferComplete = true;
@@ -382,6 +467,9 @@ void Bus::RunHDMAWork() const {
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
                 gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                if (observations)
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination,
+                                       gpu_.hdma.byte, gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
                 gpu_.hdma.hdmaSource++;
@@ -427,6 +515,9 @@ void Bus::RunHDMAWork() const {
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
                 gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                if (observations)
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination,
+                                       gpu_.hdma.byte, gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
                 gpu_.hdma.hdmaSource++;

@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 import argparse
+import importlib
+import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "roms/gambatte"
 REFERENCES = ROOT / "tests/expected/gambatte"
-OUTPUT = ROOT / "tests/GambatteTests.txt"
+OUTPUT = ROOT / "tests/catalog/gambatte.json"
 
 DMG = "dmgb"
 CGB = "cgbc"
 
 
 def out_expectation(name, marker):
-    rest = name[name.find(marker) + len(marker) :]
+    rest = name[name.find(marker) + len(marker):]
     if rest.startswith("audio0") or rest.startswith("audio1"):
         return f"audio:{rest[5]}"
     digits = re.match(r"[0-9A-Fa-f]*", rest).group(0)
@@ -50,20 +52,31 @@ def cases_for(rom):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description="Discover Gambatte ROM expectations")
     parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args()
 
     roms = sorted(p for p in SOURCE.rglob("*") if p.suffix in (".gb", ".gbc"))
-    lines = []
+    catalog_tools = importlib.import_module("generate-catalog")
+    catalog = json.loads(OUTPUT.read_text())
+    previous = {case["id"]: case for case in catalog["cases"]}
+    cases = []
     for rom in roms:
         rom_path = rom.relative_to(ROOT).as_posix()
-        lines += [
-            f"{rom_path},{expected},{model}" for expected, model in cases_for(rom)
-        ]
+        for expected, model in cases_for(rom):
+            case = catalog_tools.gambatte_case(rom_path, expected, model)
+            old = previous.get(case["id"], {})
+            if old.get("romHash") == case["romHash"] and old.get("sourceHash"):
+                case.pop("sourceFile", None)
+            else:
+                old = {key: value for key, value in old.items() if key not in ("sourceFile", "sourceHash", "sourceUrl")}
+                case.update(sourceRevision=None,
+                            buildProvenance="Changed or new binary; source rebuild has not been verified")
+            cases.append(old | case)
 
-    args.output.write_text("\n".join(lines) + "\n")
-    print(f"Wrote {len(lines)} cases from {len(roms)} ROMs to {args.output}")
+    catalog["cases"] = cases
+    catalog_tools.write_catalog(args.output, catalog)
+    print(f"Wrote {len(cases)} cases from {len(roms)} ROMs to {args.output}")
 
 
 if __name__ == "__main__":

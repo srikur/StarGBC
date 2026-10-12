@@ -16,7 +16,7 @@ def emit(rom: pathlib.Path) -> list[str]:
         f"inline constexpr std::array<std::uint8_t, {len(data)}> {name} {{{{",
     ]
     for i in range(0, len(data), 16):
-        row = data[i : i + 16]
+        row = data[i: i + 16]
         lines.append("    " + ", ".join(f"0x{b:02X}" for b in row) + ",")
     lines.append("}};")
     lines.append("")

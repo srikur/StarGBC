@@ -10,15 +10,7 @@ namespace {
 
 void EmulationSession::ApplyButtons() const {
     const uint8_t desired = (physical_ & ~overrideMask_) | (overridePressed_ & overrideMask_);
-    const uint8_t changed = desired ^ gameboy_.PressedButtons();
-    for (unsigned bit = 1; bit <= 0x80; bit <<= 1) {
-        if (!(changed & bit))
-            continue;
-        if (desired & bit)
-            gameboy_.KeyDown(static_cast<Keys>(bit));
-        else
-            gameboy_.KeyUp(static_cast<Keys>(bit));
-    }
+    gameboy_.ApplyButtons(desired);
 }
 
 void EmulationSession::SetPhysicalButton(const Keys key, const bool pressed) {

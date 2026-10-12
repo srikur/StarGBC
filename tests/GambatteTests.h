@@ -6,25 +6,21 @@
 #include <span>
 #include "TestRoms.h"
 
-// NOTE: All Gambatte test roms finish after 15 lcd frames (1053360 clock cycles)
-
 static constexpr unsigned GAMBATTE_FRAME_LIMIT = 15;
 
 struct GambatteCase {
+    const char *id;
     const char *rom;
-    // .screen path, "out:<hex>" for a result printed as hex tiles, or "audio:<0|1>" for silent/audible
     const char *expected;
     Model model;
     const char *name;
-    unsigned line; // in GambatteTests.txt
+    unsigned line;
+    const char *subsystem;
 };
 
-struct GambatteResult {
-    bool passed;
-    std::string details;
-};
+using GambatteResult = diagnostics::Result;
 
-#define GAMBATTE_CASE(ROM, EXPECTED, MODEL, NAME, LINE) {ROM, EXPECTED, Model::MODEL, "gambatte: " NAME, LINE},
+#define GAMBATTE_CASE(ID, ROM, EXPECTED, MODEL, NAME, LINE, SUBSYSTEM) {ID, ROM, EXPECTED, Model::MODEL, "gambatte: " NAME, LINE, SUBSYSTEM},
 
 static constexpr GambatteCase gambatteCases[] = {
 #define GAMBATTE_EXPANSION_CASES
@@ -32,7 +28,8 @@ static constexpr GambatteCase gambatteCases[] = {
 
 #undef GAMBATTE_CASE
 
-static constexpr std::array<std::array<uint8_t, 8>, 16> GAMBATTE_HEX_TILES{{
+static constexpr std::array<std::array<uint8_t, 8>, 16> GAMBATTE_HEX_TILES{
+    {
         {0x00, 0x7F, 0x41, 0x41, 0x41, 0x41, 0x41, 0x7F}, // 0
         {0x00, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08}, // 1
         {0x00, 0x7F, 0x01, 0x01, 0x7F, 0x40, 0x40, 0x7F}, // 2
@@ -49,7 +46,8 @@ static constexpr std::array<std::array<uint8_t, 8>, 16> GAMBATTE_HEX_TILES{{
         {0x00, 0x7E, 0x41, 0x41, 0x41, 0x41, 0x41, 0x7E}, // D
         {0x00, 0x7F, 0x40, 0x40, 0x7F, 0x40, 0x40, 0x7F}, // E
         {0x00, 0x7F, 0x40, 0x40, 0x7F, 0x40, 0x40, 0x40}, // F
-}};
+    }
+};
 
 static char readGambatteHexTile(const uint32_t *screen, const size_t index) {
     static constexpr char kDigits[] = "0123456789ABCDEF";
@@ -69,49 +67,119 @@ static char readGambatteHexTile(const uint32_t *screen, const size_t index) {
 
 static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
     ThreadPermit _permit;
+    TestObservationSession observations;
     const std::string label = std::string(gambatte_case.rom) + " [" + std::string(ModelName(gambatte_case.model)) + "]";
-    try {
-        const auto gameboy = Gameboy::init({
-                .romName = gambatte_case.rom,
-                .model = gambatte_case.model,
-                .noBootrom = true,
-                .colorCorrection = false,
+    const std::string_view expected = gambatte_case.expected;
+    const std::string variant = expected.starts_with("audio:") ? "audio" : expected.starts_with("out:") ? "digits" : "screen";
+    GambatteResult result{
+        .test = {
+            .id = gambatte_case.id, .suite = "gambatte", .rom = gambatte_case.rom,
+            .model = std::string(ModelName(gambatte_case.model)), .startup = "skip-bootrom", .expectationVariant = variant
+        },
+        .budgetTicks = GAMBATTE_FRAME_LIMIT * diagnostics::RunFrameTicks,
+        .expected = gambatte_case.expected,
+        .details = label
+    };
+    std::unique_ptr<Gameboy> gameboy;
+    std::vector<uint32_t> expectedPixels;
+    diagnostics::TerminalState terminal;
+    auto savePath = std::filesystem::path(gambatte_case.rom);
+    savePath.replace_extension(".sav");
+    const bool hasSave = std::filesystem::exists(savePath);
+    const auto evaluate = [&] {
+        result.inputs.cartridgeSave = hasSave ? diagnostics::FileHash(savePath) : "absent";
+        result.inputs.rom = diagnostics::FileHash(gambatte_case.rom);
+        result.inputs.bootrom = "none";
+        result.inputs.reference = variant == "screen" ? diagnostics::FileHash(gambatte_case.expected) : diagnostics::TextHash(expected);
+        result.inputs.configuration = diagnostics::TextHash(
+            result.test.model + "|skip-bootrom|virtual-rtc|color-correction-off|15-intervals|gambatte-v1");
+        gameboy = Gameboy::init({
+            .romName = gambatte_case.rom,
+            .model = gambatte_case.model,
+            .noBootrom = true,
+            .colorCorrection = false,
+            .executionPolicy = testExecutionPolicy,
         });
-
-        for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame) {
+        observations.Attach(*gameboy);
+        for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame)
             gameboy->RunFrame();
-        }
         auto &audio = gameboy->[:testGameboyMember("audio_"):];
         const uint64_t mixChangesBefore = audio.GetMixLevelChanges();
         gameboy->RunFrame();
-        const bool audible = audio.GetMixLevelChanges() != mixChangesBefore;
-
-        if (gameboy->[:testGameboyMember("bus_"):].bootromRunning)
-            return {.passed = false, .details = label + ": bootrom still running after " + std::to_string(GAMBATTE_FRAME_LIMIT) + " frames"};
-
-        const std::string_view expected = gambatte_case.expected;
+        terminal = terminalState(*gameboy);
+        terminal.audioBeginTick = (GAMBATTE_FRAME_LIMIT - 1) * diagnostics::RunFrameTicks;
+        terminal.audioEndTick = GAMBATTE_FRAME_LIMIT * diagnostics::RunFrameTicks;
+        terminal.mixerLevelChanges = audio.GetMixLevelChanges() - mixChangesBefore;
+        const bool audible = terminal.mixerLevelChanges != 0;
+        result.position = gameboy->ExecutionPosition();
+        result.completion = diagnostics::Completion::FixedInterval;
+        result.outcome = diagnostics::Outcome::AssertionFailure;
+        if (gameboy->[:testGameboyMember("bus_"):].bootromRunning) {
+            result.outcome = diagnostics::Outcome::Timeout;
+            result.completion = diagnostics::Completion::Deadline;
+            result.details += ": bootrom still running after 15 intervals";
+            return;
+        }
         if (expected.starts_with("audio:")) {
             const bool wantAudible = expected.back() == '1';
-            if (audible != wantAudible)
-                return {.passed = false,
-                        .details = label + (wantAudible ? ": expected audio, but output was silent" : ": expected silence, but output was audible")};
-        } else if (expected.starts_with("out:")) {
-            const std::string_view digits = expected.substr(4);
-            std::string read;
-            for (size_t i = 0; i < digits.size(); ++i) {
-                read += readGambatteHexTile(gameboy->GetScreenData(), i);
+            result.actual = audible ? "audio:1" : "audio:0";
+            if (audible != wantAudible) {
+                result.details += wantAudible ? ": expected audio, but output was silent" : ": expected silence, but output was audible";
+                return;
             }
-            if (read != digits)
-                return {.passed = false, .details = label + ": expected " + std::string(digits) + ", screen shows " + read};
+        } else if (expected.starts_with("out:")) {
+            const auto digits = expected.substr(4);
+            if (digits.empty() || digits.size() > 20)
+                throw std::invalid_argument("Gambatte output must occupy 1..20 tiles");
+            expectedPixels.assign(gameboy->GetScreenData(), gameboy->GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT);
+            for (size_t i = 0; i < digits.size(); ++i) {
+                terminal.decodedDigits += readGambatteHexTile(gameboy->GetScreenData(), i);
+                const auto digit = std::string_view("0123456789ABCDEF").find(digits[i]);
+                if (digit == std::string_view::npos)
+                    throw std::invalid_argument("Invalid Gambatte hex digit");
+                for (size_t y = 0; y < 8; ++y)
+                    for (size_t x = 0; x < 8; ++x)
+                        expectedPixels[y * SCREEN_WIDTH + i * 8 + x] = (GAMBATTE_HEX_TILES[digit][y] & (0x80 >> x)) ? 0 : 0xFFFFFF;
+            }
+            result.actual = "out:" + terminal.decodedDigits;
+            if (terminal.decodedDigits != digits) {
+                result.details += ": expected " + std::string(digits) + ", screen shows " + terminal.decodedDigits;
+                return;
+            }
         } else {
-            const std::vector<uint32_t> expected_result = readBinaryFile(gambatte_case.expected);
-            if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expected_result.size()), expected_result))
-                return {.passed = false, .details = label + ": screen does not match " + gambatte_case.expected};
+            expectedPixels = readBinaryFile(gambatte_case.expected);
+            result.actual = diagnostics::Sha256(std::as_bytes(std::span(gameboy->GetScreenData(), expectedPixels.size())));
+            if (!std::ranges::equal(std::span(gameboy->GetScreenData(), expectedPixels.size()), expectedPixels)) {
+                result.details += ": screen does not match " + std::string(gambatte_case.expected);
+                return;
+            }
         }
-        return {.passed = true, .details = label};
-    } catch (const std::exception &e) {
-        return {.passed = false, .details = label + ": " + e.what()};
+        result.outcome = diagnostics::Outcome::Pass;
+    };
+    try {
+        evaluate();
+    } catch (const std::exception &error) {
+        result.outcome = diagnostics::Outcome::InfrastructureError;
+        result.completion = diagnostics::Completion::Exception;
+        result.details += ": " + std::string(error.what());
     }
+    if (!result.Passed() && !failureDirectory.empty()) {
+        const diagnostics::Reproduction reproduction{
+            .test = result.test, .inputs = result.inputs,
+            .rom = gambatte_case.rom,
+            .reference = variant == "screen" ? gambatte_case.expected : "",
+            .cartridgeSave = hasSave ? savePath.string() : "",
+            .expectation = gambatte_case.expected, .intervals = GAMBATTE_FRAME_LIMIT,
+            .noBootrom = true, .colorCorrection = false,
+            .normalization = variant == "digits" ? "gambatte-digits-f8-mask-compared-tiles-only-v1" : "gambatte-rgb5-to-stargbc-uncorrected-v1",
+            .completion = "FixedInterval", .executableHash = testExecutableHash
+        };
+        diagnostics::WriteFailureBundle(failureDirectory / diagnostics::TextHash(result.test.id), result, reproduction, terminal,
+                                        gameboy ? std::span(gameboy->GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT) : std::span<const uint32_t>{},
+                                        expectedPixels, variant == "digits" ? 0xF8F8F8 : 0xFFFFFFFF);
+        observations.Export(result.artifacts.front(), result);
+    }
+    return result;
 }
 
 static auto &gambatteFutures() {
@@ -121,8 +189,7 @@ static auto &gambatteFutures() {
         tmp.reserve(std::size(gambatteCases));
 
         for (const auto &rom : gambatteCases) {
-            tmp.emplace_back(
-                    std::async(parallelRomTests ? std::launch::async : std::launch::deferred, [rom] { return runGambatteTest(rom); }).share());
+            tmp.push_back(selectedTestNames.contains(rom.name) ? testWorkers->Submit([rom] { return runGambatteTest(rom); }) : SF{});
         }
         return tmp;
     }();
@@ -131,10 +198,19 @@ static auto &gambatteFutures() {
 
 static void checkGambatteCase(const size_t idx) {
     const auto &result = gambatteFutures()[idx].get();
-    CHECK_MESSAGE(result.passed, result.details);
+    if (testReport)
+        testReport->Write(result);
+    CHECK_MESSAGE(result.Passed(), result.details);
 }
 
 [[maybe_unused]] static const bool gambatteCasesRegistered =
-        registerTableCases<gambatteCases, checkGambatteCase>("tests/GambatteTests.txt", "gambatte");
+                registerTableCases < gambatteCases, checkGambatteCase
+>
+(
+"tests/catalog/gambatte.json"
+,
+"gambatte"
+);
+
 
 #endif // STARGBC_GAMBATTETESTS_H

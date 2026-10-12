@@ -4,6 +4,7 @@
 #include "Bus.h"
 #include "Instructions.h"
 #include "Registers.h"
+#include "Inspection.h"
 
 template<BusLike BusT>
 class CPU {
@@ -40,6 +41,7 @@ public:
             pc_ = 0x100;
             InitializeSystem();
         }
+        SetInstructionLocation(pc_);
         currentInstruction = bus.ReadByte(pc_++, ComponentSource::CPU);
     }
 
@@ -55,14 +57,40 @@ public:
 
     [[nodiscard]] bool locked() const { return locked_; }
 
+    [[nodiscard]] bool IsHalted() const { return halted_; }
+
+    [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
+
+    void RestoreInstructionCount(const uint64_t count) { instructionsCompleted_ = count; }
+
+    [[nodiscard]] uint16_t InstructionAddress() const { return instructionAddress_; }
+
+    [[nodiscard]] uint16_t InstructionBank() const { return instructionBank_; }
+
+    void ObserveWith(diagnostics::ObservationContext *context) { observations_ = context; }
+
+    [[nodiscard]] CpuInspection Inspect() const {
+        return {
+            .pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
+            .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
+            .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
+            .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
+            .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_
+        };
+    }
+
     void SampleHaltInterrupts() {
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
         haltPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+        if (observations_)
+            observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, haltPending_, 1);
     }
 
     void SampleRunningInterrupts() {
         // The DMG instruction boundary samples before this T4's peripheral edges
         runningPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+        if (observations_)
+            observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, runningPending_, 3);
     }
 
     [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() { return pc_; }
@@ -108,6 +136,18 @@ public:
     bool prefixed{false};
 
 private:
+    void ExecuteMicroOpValue(Instructions<Self> &instructions, bool hdmaActive);
+
+    void SetInstructionLocation(const uint16_t address) {
+        instructionAddress_ = address;
+        if constexpr (requires { bus_.DebugBank(address); })
+            instructionBank_ = bus_.DebugBank(address);
+        if (observations_) {
+            observations_->pc = instructionAddress_;
+            observations_->pcBank = instructionBank_;
+        }
+    }
+
     uint8_t RunInstructionCycle(Instructions<Self> &, uint8_t, bool);
 
     [[nodiscard]] uint8_t InterruptAddress(uint8_t) const;
@@ -141,6 +181,10 @@ private:
     uint8_t interruptBit{0x00};
     uint8_t interruptMask{0x00};
     bool instrRunning{false};
+    [[=NotStateAware]] uint64_t instructionsCompleted_{};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    uint16_t instructionAddress_{};
+    uint16_t instructionBank_{};
 };
 
 #endif // STARGBC_CPU_H

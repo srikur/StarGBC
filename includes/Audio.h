@@ -5,6 +5,8 @@
 #include <vector>
 
 #include "Common.h"
+#include "Inspection.h"
+#include "diagnostics/Observation.h"
 
 class Audio;
 
@@ -139,10 +141,10 @@ struct Channel {
     bool dacEnabled{false};
 
     static constexpr uint8_t DUTY_PATTERNS[4][8] = {
-            {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
-            {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
-            {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
-            {0, 1, 1, 1, 1, 1, 1, 0} // 75%
+        {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
+        {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
+        {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
+        {0, 1, 1, 1, 1, 1, 1, 0} // 75%
     };
 };
 
@@ -313,6 +315,25 @@ struct Channel4 final : Channel {
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
 
+struct AudioDebugOutput {
+    std::array<float, AUDIO_BUFFER_SIZE * 2> samples{};
+    size_t sampleCount{};
+    size_t writePosition{};
+    size_t readPosition{};
+    size_t available{};
+    uint32_t sampleAccumulator{};
+    std::array<BandLimited, 4> resampler;
+    double highpassLeft{};
+    double highpassRight{};
+    uint32_t lastMixRegisters{};
+    std::array<float, 4> lastMixOutputs{};
+    std::array<double, 2> mixLevel{};
+    uint64_t mixChanges{};
+    uint32_t pendingTicks{};
+    uint64_t pendingFirstTick{};
+    uint64_t emissionTick{};
+};
+
 class Audio {
     enum class SkipState : uint8_t { Inactive, Skip, Skipped };
 
@@ -341,7 +362,11 @@ class Audio {
     [[=NotStateAware]] uint32_t sampleAcc_{0};
 
     [[=NotStateAware]] std::array<BandLimited, 4> bandLimited{};
-    [[=NotStateAware]] std::array<std::array<double, BL_WIDTH>, BL_PHASES> blSteps{};
+    [[=NotStateAware]] std::array<std::array < double, BL_WIDTH>
+    ,
+    BL_PHASES
+    >
+    blSteps {};
     [[=NotStateAware]] double highpassLeft{0.0};
     [[=NotStateAware]] double highpassRight{0.0};
     [[=NotStateAware]] double highpassRate{0.0};
@@ -357,6 +382,10 @@ class Audio {
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
     [[=NotStateAware]] uint32_t pendingTicks_{0};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    [[=NotStateAware]] uint64_t pendingFirstTick_{};
+    [[=NotStateAware]] uint64_t emissionTick_{};
+    [[=NotStateAware]] bool optimizedExecution_{true};
 
     void InitBandLimitedTable();
 
@@ -365,7 +394,13 @@ class Audio {
     void BandLimitedRead(int channel, double &outLeft, double &outRight);
 
 public:
+    void SetOptimizedExecution(const bool enabled) {
+        CatchUp();
+        optimizedExecution_ = enabled;
+    }
+
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
+
     void OnSpeedSwitch(bool doubleSpeed) {
         if (doubleSpeed && audioEnabled)
             speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
@@ -391,9 +426,20 @@ public:
         model_ = model;
         hasEarlyPcmGlitch_ = HasEarlyCgbPcmGlitch(model);
     }
+
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
     [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
+
+    [[nodiscard]] AudioDebugOutput CaptureDebugOutput() const;
+
+    [[nodiscard]] bool ValidDebugOutput(const AudioDebugOutput &state) const;
+
+    void RestoreDebugOutput(const AudioDebugOutput &state);
+
+    [[nodiscard]] AudioInspection Inspect() const;
+
+    [[nodiscard]] uint8_t InspectRegister(uint16_t address) const;
 
     // DIV-APU. divWriteSingleSpeed marks an event caused by a DIV write in
     // single speed, which shortens the sweep recalculation reload
@@ -406,7 +452,18 @@ public:
     // The master loop defers APU ticks; CatchUp() materializes them before
     // every register/PCM access, frame-sequencer event, sample read, and at
     // the end of each frame, so observable ordering is exact
-    void Tick() { ++pendingTicks_; }
+    void ObserveWith(diagnostics::ObservationContext *context) {
+        CatchUp();
+        observations_ = context;
+    }
+
+    void Tick() {
+        if (observations_ && pendingTicks_ == 0)
+            pendingFirstTick_ = observations_->position.tick;
+        ++pendingTicks_;
+        if (!optimizedExecution_)
+            CatchUp();
+    }
 
     void CatchUp() {
         if (pendingTicks_ > 0)

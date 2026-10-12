@@ -21,6 +21,9 @@ void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
         frameSeqStep++;
     }
 
+    if (observations_)
+        observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioSequencer, 0xFF04, frameSeqStep, divWriteSingleSpeed);
+
     // 64Hz envelope step: the countdown runs freely while the clock is not
     // latched (a latched clock pauses it until the tick consumes it)
     if ((frameSeqStep & 7) == 7) {
@@ -58,6 +61,8 @@ void Audio::TickFrameSequencerSecondary() {
     CatchUp();
     if (!audioEnabled)
         return;
+    if (observations_)
+        observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioSequencer, 0xFF04, frameSeqStep, 2);
     const auto latch = [](auto &ch) {
         if (ch.enabled && ch.envelope.volumeCountdown == 0) {
             ch.envelope.volumeCountdown = ch.envelope.sweepPace;
@@ -71,6 +76,7 @@ void Audio::TickFrameSequencerSecondary() {
 
 void Audio::CatchUpWork() {
     uint32_t n = pendingTicks_;
+    emissionTick_ = pendingFirstTick_;
     pendingTicks_ = 0;
     // Loop invariants: audioEnabled and the model can only change through
     // paths that catch up first
@@ -82,7 +88,7 @@ void Audio::CatchUpWork() {
         // this advances in bulk, bit-identically. Event ticks (duty steps,
         // wave steps, noise counter increments, emissions) and any hairy
         // transient state are processed one tick at a time below.
-        uint32_t quiet = n;
+        uint32_t quiet = optimizedExecution_ ? n : 0;
         {
             // Emission: sample due when sampleAcc_ crosses the APU rate
             const uint32_t untilEmit = (APU_CLOCK_RATE_INT - sampleAcc_ + AUDIO_SAMPLE_RATE - 1) / AUDIO_SAMPLE_RATE;
@@ -167,6 +173,7 @@ void Audio::CatchUpWork() {
                 if (ch3.enabled)
                     ch3.period -= quiet;
             }
+            emissionTick_ += uint64_t{quiet} * 2;
             n -= quiet;
             continue;
         }
@@ -200,6 +207,7 @@ void Audio::CatchUpWork() {
             ch3.Tick();
         }
         GenerateSample();
+        emissionTick_ += 2;
         --n;
     }
 }
@@ -292,6 +300,11 @@ void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool di
             break;
         default:
             break;
+    }
+    if (observations_) {
+        observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioRegister, address, value, ReadAudioControl());
+        if ((value & 0x80) && (address == 0xFF14 || address == 0xFF19 || address == 0xFF1E || address == 0xFF23))
+            observations_->Emit(diagnostics::Component::APU, diagnostics::EventKind::AudioTrigger, address, value, ReadAudioControl());
     }
 }
 
@@ -634,7 +647,8 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
                 enabled = false;
             }
             TickSweep128(lfDiv, false);
-        } break;
+        }
+        break;
         case 0x01:
             lengthTimer.Write(value, audioEnabled);
             break;
@@ -891,7 +905,7 @@ void Channel3::Trigger(const uint8_t freqStep, const bool dmg) {
 }
 
 void Channel3::TickLength() {
-    if (lengthEnabled && lengthTimer < 256) {
+    if (lengthEnabled &&lengthTimer<256) {
         lengthTimer++;
     }
 }
@@ -899,7 +913,8 @@ void Channel3::TickLength() {
 void Channel3::Tick() {
     if (!enabled)
         return;
-    if (lengthEnabled && lengthTimer == 256) {
+    if (lengthEnabled &&lengthTimer == 256)
+    {
         enabled = false;
     }
 
@@ -1026,7 +1041,8 @@ void Channel4::StepLfsr() {
 }
 
 void Channel4::Tick2M(const uint8_t freqStep, const bool dmg) {
-    if (enabled && lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
+    if (enabled &&lengthTimer.enabled &&lengthTimer.lengthTimer == 64)
+    {
         enabled = false;
     }
     if (dmgDelayedStart > 0 && --dmgDelayedStart == 0) {
@@ -1236,8 +1252,8 @@ void Channel4::HandleNR43Write(const uint8_t value) {
         } else {
             // Category 2
             static constexpr uint8_t glitchMap[8 * 8] = {
-                    0, 0, 4, 2, 2, 2, 0, 0, 0, 0, 2, 4, 2, 2, 0, 0, 1, 2, 0, 1, 5, 3, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0,
-                    0, 2, 2, 2, 0, 0, 0, 0, 6, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 4, 2, 2, 2, 0, 0, 0, 0, 2, 4, 2, 2, 0, 0, 1, 2, 0, 1, 5, 3, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0,
+                0, 2, 2, 2, 0, 0, 0, 0, 6, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             };
             const unsigned glitch = (value & 0x80) ? glitchMap[((old & 0x70) >> 1) | ((value & 0x70) >> 4)] : 0;
             switch (glitch) {
@@ -1338,7 +1354,8 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
         case 0x01:
             if ((value & 0xF8) == 0) {
                 // Disabling the DAC also stops the background counter
-                if (enabled && noise.clockDivider) {
+                if (enabled &&noise.clockDivider)
+                {
                     if (counterCountdown <= 2) {
                         counter = (counter + 1) & 0x3FFF;
                     }
@@ -1456,7 +1473,7 @@ void Audio::GenerateSample() {
     // exact-zero delta and deposit nothing, so the whole block is skippable
     const uint32_t mixRegs = static_cast<uint32_t>(nr50) << 16 | static_cast<uint32_t>(nr51) << 8 | ch1.enabled | ch1.dacEnabled << 1 |
                              ch2.enabled << 2 | ch2.dacEnabled << 3 | ch3.enabled << 4 | ch3.dacEnabled << 5 | ch4.enabled << 6 | ch4.dacEnabled << 7;
-    if (mixRegs != lastMixRegs_ || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1] ||
+    if (!optimizedExecution_ || mixRegs != lastMixRegs_ || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1] ||
         ch3.currentOutput != lastMixOutputs_[2] || ch4.currentOutput != lastMixOutputs_[3]) {
         lastMixRegs_ = mixRegs;
         lastMixOutputs_ = {ch1.currentOutput, ch2.currentOutput, ch3.currentOutput, ch4.currentOutput};
@@ -1468,7 +1485,7 @@ void Audio::GenerateSample() {
         };
 
         const int phase = static_cast<int>(sampleAcc_ >> 15) & (BL_PHASES - 1);
-        std::array<double, 2> level{};
+        std::array < double, 2 > level{};
         auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled, const uint8_t leftMask,
                                     const uint8_t rightMask) {
             const double val = dac(output, enabled && dacEnabled);
@@ -1492,6 +1509,12 @@ void Audio::GenerateSample() {
         if (level != mixLevel_) {
             mixLevel_ = level;
             ++mixLevelChanges_;
+            if (observations_) {
+                const auto left = static_cast<int32_t>(std::lround(level[0] * 15));
+                const auto right = static_cast<int32_t>(std::lround(level[1] * 15));
+                observations_->EmitDeferred(emissionTick_, diagnostics::Component::APU, diagnostics::EventKind::AudioMix,
+                                            std::bit_cast<uint32_t>(left), std::bit_cast<uint32_t>(right));
+            }
         }
     }
 

@@ -68,24 +68,42 @@
       "name": "debug",
       "displayName": "Configure + Build Debug",
       "steps": [
-        { "type": "configure", "name": "debug" },
-        { "type": "build", "name": "debug" }
+        {
+          "type": "configure",
+          "name": "debug"
+        },
+        {
+          "type": "build",
+          "name": "debug"
+        }
       ]
     },
     {
       "name": "release",
       "displayName": "Configure + Build Release",
       "steps": [
-        { "type": "configure", "name": "release" },
-        { "type": "build", "name": "release" }
+        {
+          "type": "configure",
+          "name": "release"
+        },
+        {
+          "type": "build",
+          "name": "release"
+        }
       ]
     },
     {
       "name": "profile",
       "displayName": "Configure + Build for Profiling",
       "steps": [
-        { "type": "configure", "name": "profile" },
-        { "type": "build", "name": "profile" }
+        {
+          "type": "configure",
+          "name": "profile"
+        },
+        {
+          "type": "build",
+          "name": "profile"
+        }
       ]
     }
   ]

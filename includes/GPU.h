@@ -3,6 +3,7 @@
 #include "FixedContainers.h"
 #include "HDMA.h"
 #include "Interrupts.h"
+#include "diagnostics/PixelProvenance.h"
 
 struct Pixel {
     uint8_t color{0x00};
@@ -74,11 +75,29 @@ class GPU {
 public:
     explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : colorCorrection_(colorCorrection), interrupts_(interrupts) {}
 
+    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+    [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
+    [[=NotStateAware]] bool optimizedExecution{true};
+
+    void SetMode(GPUMode mode);
+
+    void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
+
+    void ObserveStall(diagnostics::StallReason reason) const;
+
+    void RecordSpriteCandidate(unsigned slot, uint8_t bit, uint8_t color, diagnostics::SpriteDecision decision);
+
+    [[nodiscard]] diagnostics::PixelDecision ExplainSelection(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+
+    void RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel &selected, bool bgEnable, uint32_t color);
+
+    void RecordRecolor(uint16_t offset, uint16_t address, const Pixel &selected, diagnostics::PixelDecision decision);
+
     static constexpr uint32_t DMG_SHADE[4] = {
-            0xFFFFFFFFu, // FF FF FF FF
-            0xFFC0C0C0u, // C0 C0 C0 FF
-            0xFF606060u, // 60 60 60 FF
-            0xFF000000u // 00 00 00 FF
+        0xFFFFFFFFu, // FF FF FF FF
+        0xFFC0C0C0u, // C0 C0 C0 FF
+        0xFF606060u, // 60 60 60 FF
+        0xFF000000u // 00 00 00 FF
     };
 
     FixedDeque<Pixel, 16> backgroundQueue;
@@ -164,6 +183,7 @@ public:
 
     bool vblank = false;
     [[=NotStateAware]] bool frameReady = true;
+    uint64_t displayFrames_{};
     bool statTriggered{false};
     bool lycInterruptLine_{false};
     bool m2IrqRaisedEarly{false};
@@ -328,7 +348,9 @@ private:
     void ApplyLCDC(uint8_t value);
 
     [[nodiscard]] Pixel SelectPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+
     [[nodiscard]] uint32_t ResolveColor(const Pixel &finalPixel) const;
+
     [[nodiscard]] uint32_t MixPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;

@@ -9,7 +9,9 @@
 
 #include "CPU.h"
 #include "Common.h"
+#include "Execution.h"
 #include "Memory.h"
+#include "diagnostics/ReplayInput.h"
 
 struct GameboySettings {
     std::string romName;
@@ -19,6 +21,7 @@ struct GameboySettings {
     bool realRTC{false};
     bool noAudio{false};
     bool colorCorrection{true};
+    ExecutionPolicy executionPolicy{ExecutionPolicy::Optimized};
 };
 
 class Gameboy {
@@ -28,14 +31,14 @@ public:
     static constexpr uint32_t FRAME_CYCLES_DMG = 70224;
     static constexpr std::chrono::nanoseconds FRAME_PERIOD{FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND};
 
-    explicit Gameboy(const GameboySettings &settings) : romPath_(settings.romName), biosPath_(settings.biosPath),
+    explicit Gameboy(const GameboySettings &settings) : initialSettings_(settings), romPath_(settings.romName), biosPath_(settings.biosPath),
                                                         rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
                                                         joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_),
                                                         serial_(interrupts_),
                                                         gpu_(interrupts_, settings.colorCorrection),
                                                         bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
                                                         cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_),
-                                                        instructions_(registers_, interrupts_) {}
+                                                        instructions_(registers_, interrupts_), executionPolicy_(settings.executionPolicy) {}
 
     Gameboy(const Gameboy &other) = delete;
 
@@ -47,9 +50,29 @@ public:
 
     ~Gameboy() = default;
 
+    [[nodiscard]] static std::string_view CoreBuildIdentity();
+
+    [[nodiscard]] const GameboySettings &InitialSettings() const { return initialSettings_; }
+
     static std::unique_ptr<Gameboy> init(const GameboySettings &settings) { return std::make_unique<Gameboy>(settings); }
 
     void RunFrame();
+
+    [[nodiscard]] ExecutionResult AdvanceTicks(uint64_t ticks, ExecutionPolicy policy = ExecutionPolicy::Ordinary);
+
+    [[nodiscard]] ExecutionResult StepInstruction(uint64_t maxTicks);
+
+    [[nodiscard]] ConditionalExecutionResult RunUntil(std::span<const RunCondition> conditions, uint64_t maxTicks);
+
+    [[nodiscard]] diagnostics::ObservationContext *Observations() const { return observations_; }
+
+    [[nodiscard]] uint64_t TimelineTicks() const { return timelineTicks_; }
+
+    void ObserveWith(diagnostics::ObservationContext *context);
+
+    void RecordPixelsWith(diagnostics::PixelProvenanceContext *context);
+
+    [[nodiscard]] diagnostics::ExecutionPosition ExecutionPosition() const;
 
     [[nodiscard]] bool ConsumeFrame();
 
@@ -59,9 +82,25 @@ public:
 
     void KeyDown(Keys);
 
+    void ApplyButtons(uint8_t buttons);
+
+    void RecordInputsWith(diagnostics::InputSink *sink) { inputSink_ = sink; }
+
+    [[nodiscard]] diagnostics::InputSink *InputRecording() const { return inputSink_; }
+
+    [[nodiscard]] uint64_t InstructionsCompleted() const { return cpu_.InstructionsCompleted(); }
+
     [[nodiscard]] uint8_t PressedButtons() const { return static_cast<uint8_t>(~joypad_.GetMatrix()); }
 
     [[nodiscard]] uint8_t DebugPeek(const uint16_t address) const { return bus_.DebugPeek(address); }
+
+    [[nodiscard]] MachineInspection Inspect() const;
+
+    [[nodiscard]] CpuInspection InspectCpu() const { return cpu_.Inspect(); }
+
+    [[nodiscard]] RegisterInspection InspectRegister(uint16_t address) const;
+
+    [[nodiscard]] uint8_t InspectCpuRead(const uint16_t address) const { return bus_.InspectRead(address, ComponentSource::CPU); }
 
     void DebugPoke(const uint16_t address, const uint8_t value) { bus_.DebugPoke(address, value); }
 
@@ -77,6 +116,14 @@ public:
 
     [[nodiscard]] bool LoadState(std::span<const std::byte> state);
 
+    [[nodiscard]] std::vector<std::byte> SaveDebugState() const;
+
+    [[nodiscard]] bool LoadDebugState(std::span<const std::byte> state);
+
+    [[nodiscard]] std::span<const uint8_t> BootromBytes() const { return bus_.bootrom; }
+
+    [[nodiscard]] bool UsesRealRTC() const { return rtc_.realRTC_; }
+
     [[nodiscard]] uint16_t CartChecksum() const { return cartridge_.GlobalChecksum(); }
 
     [[nodiscard]] Model GetModel() const { return gpu_.model; }
@@ -90,6 +137,7 @@ public:
     void ClearAudioBuffer() { audio_.ClearBuffer(); }
 
 private:
+    [[=NotStateAware]] GameboySettings initialSettings_;
     [[=NotStateAware]] std::string romPath_;
     [[=NotStateAware]] std::string biosPath_;
 
@@ -110,6 +158,14 @@ private:
 
     uint32_t masterCycles{0x00000000};
     uint8_t cpuTickPhase_{0x00};
+    uint64_t timelineTicks_{};
+    [[=NotStateAware]] ExecutionPolicy executionPolicy_{ExecutionPolicy::Optimized};
+    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    [[=NotStateAware]] diagnostics::InputSink *inputSink_{};
+
+    void ObserveInput(uint8_t previous);
+
+    void SynchronizeObservationPosition();
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 
@@ -203,5 +259,16 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
     gpu_.InvalidateIdle();
     gpu_.RecomputeSpritePending();
     gpu_.frameReady = false;
+    if (observations_) {
+        observations_->pc = cpu_.InstructionAddress();
+        observations_->pcBank = cpu_.InstructionBank();
+        observations_->Restore(ExecutionPosition());
+    }
+    if (gpu_.provenance) {
+        gpu_.provenance->ResetPipeline();
+        gpu_.provenance->position = ExecutionPosition();
+        gpu_.provenance->branch = observations_ ? observations_->branch : gpu_.provenance->branch + 1;
+        gpu_.provenance->Pipeline(gpu_.pixelsDrawn, gpu_.currentLine, diagnostics::PipelineReason::RestoredWithoutHistory);
+    }
     return true;
 }

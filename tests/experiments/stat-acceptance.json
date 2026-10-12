@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "seed": 1,
+  "basis": "InternalInvariant",
+  "mode": "WholeMachine",
+  "family": "Stat",
+  "model": "DMGB",
+  "expectedValue": 1,
+  "budgetTicks": 140448,
+  "basisEvidence": "Internal invariant: the CPU accepts a previously requested STAT interrupt and executes the acknowledgment handler"
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "seed": 1,
+  "basis": "InternalInvariant",
+  "mode": "Component",
+  "family": "Window",
+  "model": "CGBC",
+  "scx": 3,
+  "wx": 5,
+  "budgetTicks": 912,
+  "basisEvidence": "Internal invariant: a clipped window emits exactly 160 ordered visible pixels with historical origins"
+}

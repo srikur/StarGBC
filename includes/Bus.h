@@ -9,6 +9,7 @@
 #include "Memory.h"
 #include "Serial.h"
 #include "Timer.h"
+#include "diagnostics/Observation.h"
 
 class Bus {
 public:
@@ -18,6 +19,12 @@ public:
                              gpu_(gpu) {}
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
+
+    [[nodiscard]] uint8_t InspectRead(uint16_t address, ComponentSource source) const;
+
+    [[nodiscard]] uint16_t DebugBank(uint16_t address) const;
+
+    [[nodiscard]] bool AccessBlocked(uint16_t address, ComponentSource source, bool write) const;
 
     [[nodiscard]] uint8_t DebugPeek(uint16_t address) const;
 
@@ -52,7 +59,11 @@ public:
     void RunHDMA() const {
         if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_)
             return;
+        const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork();
+        if (observations && wasOwned != gpu_.hdma.ShouldHaltCPU())
+            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
+                               gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
     }
 
     void RunHDMAWork() const;
@@ -92,4 +103,11 @@ public:
     uint8_t psw74{0x00}; // undocumented $FF74, CGB mode only
     uint8_t pgb75{0x00}; // undocumented $FF75, bits 4-6 writable
     [[=NotStateAware]] std::vector<uint8_t> bootrom;
+    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+
+private:
+    template<bool Inspect>
+    [[nodiscard]] uint8_t ReadByteValue(uint16_t address, ComponentSource source) const;
+
+    void WriteByteValue(uint16_t address, uint8_t value, ComponentSource source);
 };

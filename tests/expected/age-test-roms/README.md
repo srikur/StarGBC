@@ -6,7 +6,8 @@ Each file contains 160 × 144 pixels in RGBA byte order, with alpha 255.
 
 The originals are from [Christoph Sprenger's AGE test ROMs](https://github.com/c-sp/age-test-roms).
 The source used to investigate the tests was
-[`1f5bc10e2cb60b86c19f8d0287ff78f410c4f639`](https://github.com/c-sp/age-test-roms/tree/1f5bc10e2cb60b86c19f8d0287ff78f410c4f639/src).
+[
+`1f5bc10e2cb60b86c19f8d0287ff78f410c4f639`](https://github.com/c-sp/age-test-roms/tree/1f5bc10e2cb60b86c19f8d0287ff78f410c4f639/src).
 The bundled ROMs and PNGs are retained unchanged. The upstream MIT license is
 included in [LICENSE](LICENSE).
 
