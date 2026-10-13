@@ -486,34 +486,28 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
             return;
         }
         case HDMAMode::HDMA: {
+            // Once a block starts, all sixteen bytes transfer even if the PPU enters the next scanline
             if (!gpu_.hdma.transferringBlock) {
-            // Delay is always 4 cycles whether in single or double speed mode
-            if (gpu_.hdma.hdmaStartDelay > 0) {
-                gpu_.hdma.hdmaStartDelay--;
-                gpu_.hdma.transferringBlock = false;
-                return;
-            }
-            // HDMA copy won't happen if the CPU is in HALT or STOP mode, or during a speed shift
-            if (!gpu_.hblank || gpu_.vblank || speedShiftActive) {
-                gpu_.hdma.transferringBlock = false;
-                return;
-            }
-            // When LCD is on: one block per H-blank period
-            if (!gpu_.LCDDisabled() && gpu_.hdma.hblankBlockFinished) {
-                gpu_.hdma.transferringBlock = false;
-                return;
-            }
-            // HBlank DMA request follows the PPU mode-0 transition by 2 dots
-            if (!gpu_.LCDDisabled() && gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u)
-                return;
-            // When LCD is off: only one block transfers until LCD turns back on
-            if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer) {
-                gpu_.hdma.transferringBlock = false;
-                return;
-            }
+                // Delay is always 4 cycles whether in single or double speed mode
+                if (gpu_.hdma.hdmaStartDelay > 0) {
+                    gpu_.hdma.hdmaStartDelay--;
+                    return;
+                }
+                // No new block outside HBlank or during a speed shift
+                if (!gpu_.hblank || gpu_.vblank || speedShiftActive)
+                    return;
+                // When LCD is on: one block per H-blank period
+                if (!gpu_.LCDDisabled() && gpu_.hdma.hblankBlockFinished)
+                    return;
+                // HBlank DMA request follows the PPU mode-0 transition by 2 dots
+                if (!gpu_.LCDDisabled() && gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u)
+                    return;
+                // When LCD is off: only one block transfers until LCD turns back on
+                if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer)
+                    return;
 
-            // We're actively transferring
-            gpu_.hdma.transferringBlock = true;
+                // We're actively transferring
+                gpu_.hdma.transferringBlock = true;
             }
 
             if (gpu_.hdma.step == HDMAStep::Read) {
