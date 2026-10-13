@@ -51,3 +51,50 @@ TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
         CHECK(bus.ReadByte(0xFF55, ComponentSource::CPU) == 0xFF);
     }
 }
+
+TEST_CASE("Disabling the LCD during VBlank transfers one pending HDMA block") {
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array speeds = {false, true};
+    for (const auto [policy, doubleSpeed] : std::views::cartesian_product(policies, speeds)) {
+        CAPTURE(policy);
+        CAPTURE(doubleSpeed);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
+        if (doubleSpeed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        static_cast<void>(gameboy.AdvanceTicks(144 * 456 * 2 + 16, policy));
+        REQUIRE(bus.gpu_.vblank);
+        for (uint16_t i = 0; i < 32; ++i) {
+            gameboy.DebugPoke(0xC000 + i, i + 1);
+            gameboy.DebugPoke(0x8000 + i, 0);
+        }
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0x81}}})
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(40, policy));
+        CHECK(gameboy.DebugPeek(0x8000) == 0);
+        CHECK(bus.ReadByte(0xFF55, ComponentSource::CPU) == 1);
+
+        bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(200, policy));
+        for (uint16_t i = 0; i < 32; ++i)
+            CHECK(gameboy.DebugPeek(0x8000 + i) == (i < 16 ? i + 1 : 0));
+        CHECK(bus.ReadByte(0xFF55, ComponentSource::CPU) == 0);
+
+        // Another LCDC write with the display still off does not request the remaining block
+        bus.WriteByte(0xFF40, 1, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(2000, policy));
+        CHECK(gameboy.DebugPeek(0x8010) == 0);
+        CHECK(bus.ReadByte(0xFF55, ComponentSource::CPU) == 0);
+
+        // transfer resumes at HBlank after the display is enabled
+        bus.WriteByte(0xFF40, 0x91, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(1000, policy));
+        for (uint16_t i = 0; i < 32; ++i)
+            CHECK(gameboy.DebugPeek(0x8000 + i) == i + 1);
+        CHECK(bus.ReadByte(0xFF55, ComponentSource::CPU) == 0xFF);
+    }
+}

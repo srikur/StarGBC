@@ -486,6 +486,7 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
             return;
         }
         case HDMAMode::HDMA: {
+            if (!gpu_.hdma.transferringBlock) {
             // Delay is always 4 cycles whether in single or double speed mode
             if (gpu_.hdma.hdmaStartDelay > 0) {
                 gpu_.hdma.hdmaStartDelay--;
@@ -513,6 +514,7 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
 
             // We're actively transferring
             gpu_.hdma.transferringBlock = true;
+            }
 
             if (gpu_.hdma.step == HDMAStep::Read) {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);

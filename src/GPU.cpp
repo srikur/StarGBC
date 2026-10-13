@@ -1439,6 +1439,9 @@ void GPU::ApplyLCDC(const uint8_t value) {
     Observe(diagnostics::EventKind::RegisterApply, 0xFF40, lcdc);
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
+        // Entering mode 0 via disabling the LCD requests one HDMA block
+        if (hdma.hdmaActive && hdma.hdmaMode == HDMAMode::HDMA && stat.mode != GPUMode::MODE_0)
+            hdma.singleBlockTransfer = true;
         scanlineCounter = currentLine = 0;
         SetMode(GPUMode::MODE_0);
         screenData.fill(0);
