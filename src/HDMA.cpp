@@ -58,11 +58,6 @@ uint8_t HDMA::ReadHDMA(const uint16_t address, const bool gbc) const {
 }
 
 bool HDMA::ShouldHaltCPU() const {
-    if (!hdmaActive)
-        return false;
-    // GDMA always halts CPU until complete
-    if (hdmaMode == HDMAMode::GDMA)
-        return true;
-    // HDMA only halts CPU when actively transferring a block
-    return transferringBlock;
+    /* Seems that GDMA lets the requesting instr + next instr prefetch finish before halting the CPU */
+    return hdmaActive && transferringBlock;
 }

@@ -459,9 +459,14 @@ void Bus::UpdateDMAWork() {
     }
 }
 
-void Bus::RunHDMAWork() const {
+void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
+            if (!gpu_.hdma.transferringBlock) {
+                if (!cpuAtInstructionBoundary)
+                    return;
+                gpu_.hdma.transferringBlock = true;
+            }
             if (gpu_.hdma.step == HDMAStep::Read) {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
                 gpu_.hdma.step = HDMAStep::Write;
@@ -480,8 +485,10 @@ void Bus::RunHDMAWork() const {
                     gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
                 }
             }
-            if (gpu_.hdma.hdmaRemain == 0)
+            if (gpu_.hdma.hdmaRemain == 0) {
                 gpu_.hdma.hdmaActive = false;
+                gpu_.hdma.transferringBlock = false;
+            }
             return;
         }
         case HDMAMode::HDMA: {

@@ -12,7 +12,8 @@ public:
     using Self = CPU<BusT>;
 
     explicit CPU(const Model requestedModel, const std::string &biosPath, const bool noBootrom, BusT &bus, Interrupts &interrupts,
-                 Registers &registers) : bus_(bus), interrupts_(interrupts), regs_(registers) {
+                 Registers &registers) :
+        bus_(bus), interrupts_(interrupts), regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
         bus.gpu_.SetModel(hw);
         bus.audio_.SetModel(hw);
@@ -59,6 +60,10 @@ public:
 
     [[nodiscard]] bool IsHalted() const { return halted_; }
 
+    [[nodiscard]] bool AtInstructionBoundary() const {
+        return !instrRunning && !prefixed && interruptState == InterruptState::M1;
+    }
+
     [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
 
     void RestoreInstructionCount(const uint64_t count) { instructionsCompleted_ = count; }
@@ -71,11 +76,11 @@ public:
 
     [[nodiscard]] CpuInspection Inspect() const {
         return {
-            .pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
-            .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
-            .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
-            .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
-            .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_
+                .pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
+                .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
+                .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
+                .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
+                .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_
         };
     }
 

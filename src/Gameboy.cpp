@@ -125,7 +125,7 @@ uint32_t Gameboy::AdvanceMCycle() {
         } else {
             gpu_.Update();
         }
-        bus_.RunHDMA();
+        bus_.RunHDMA(phase == 0 && cpu_.AtInstructionBoundary());
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
             if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
@@ -184,7 +184,7 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
             } else {
                 gpu_.Update();
             }
-            bus_.RunHDMA();
+            bus_.RunHDMA(phase == 0 && cpu_.AtInstructionBoundary());
         }
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
@@ -242,7 +242,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         }
         bus_.UpdateDMA();
         gpu_.Update();
-        bus_.RunHDMA();
+        bus_.RunHDMA((cpuTickPhase_ & 3) == 0 && cpu_.AtInstructionBoundary());
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
             if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
@@ -283,7 +283,9 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     bus_.UpdateDMA();
     if (evenCycle) {
         gpu_.Update();
-        bus_.RunHDMA();
+        // After a speed switch, T1 can fall on an odd master tick. The first
+        // PPU dot of that machine cycle is then T2 rather than T1.
+        bus_.RunHDMA((cpuTickPhase_ & 3) < 2 && cpu_.AtInstructionBoundary());
     }
     if (bus_.speedSwitchHalt > 0) {
         --bus_.speedSwitchHalt;

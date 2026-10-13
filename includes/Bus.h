@@ -56,17 +56,17 @@ public:
     void UpdateDMAWork();
 
     // Inline idle fast path; HDMA is inactive almost always
-    void RunHDMA() const {
+    void RunHDMA(const bool cpuAtInstructionBoundary) const {
         if (!gpu_.hdma.hdmaActive || !gpu_.isCgb_)
             return;
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
-        RunHDMAWork();
+        RunHDMAWork(cpuAtInstructionBoundary);
         if (observations && wasOwned != gpu_.hdma.ShouldHaltCPU())
             observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
                                gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
     }
 
-    void RunHDMAWork() const;
+    void RunHDMAWork(bool cpuAtInstructionBoundary) const;
 
 
     void ChangeSpeed();
