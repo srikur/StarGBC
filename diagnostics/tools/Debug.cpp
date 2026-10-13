@@ -96,7 +96,8 @@ namespace {
 }
 
 int main(const int argc, char **argv) {
-    const auto arguments = StarParse::parse_or_exit<Arguments>(argc, argv, {.allow_case_insensitivity = true});
+    constexpr Settings parse_settings{.allow_case_insensitivity = true};
+    const auto arguments = StarParse::parse_or_exit<Arguments, parse_settings>(argc, argv);
     if (arguments.help_requested()) {
         std::print("{}", arguments.help());
         return 0;

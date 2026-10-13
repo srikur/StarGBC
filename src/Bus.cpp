@@ -501,6 +501,9 @@ void Bus::RunHDMAWork() const {
                 gpu_.hdma.transferringBlock = false;
                 return;
             }
+            // HBlank DMA request follows the PPU mode-0 transition by 2 dots
+            if (!gpu_.LCDDisabled() && gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u)
+                return;
             // When LCD is off: only one block transfers until LCD turns back on
             if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer) {
                 gpu_.hdma.transferringBlock = false;
