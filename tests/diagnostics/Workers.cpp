@@ -3,10 +3,7 @@
 #include <latch>
 #include "ThreadContext.h"
 
-TEST_CASE (
-"diagnostics: selected work runs concurrently within the worker limit"
-)
- {
+TEST_CASE("diagnostics: selected work runs concurrently within the worker limit") {
     TestWorkers workers(2);
     std::latch simultaneous(2);
     std::atomic<unsigned> active{};

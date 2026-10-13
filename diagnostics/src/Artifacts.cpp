@@ -8,8 +8,8 @@
 #include "diagnostics/Json.h"
 
 namespace diagnostics {
-    PixelDifference ComparePixels(const std::span<const uint32_t> actual, const std::span<const uint32_t> expected,
-                                  const uint32_t width, const uint32_t height, const uint32_t mask) {
+    PixelDifference ComparePixels(const std::span<const uint32_t> actual, const std::span<const uint32_t> expected, const uint32_t width,
+                                  const uint32_t height, const uint32_t mask) {
         if (!width || !height || actual.size() != static_cast<uint64_t>(width) * height || expected.size() != actual.size())
             throw std::invalid_argument("Pixel buffers must match image dimensions");
         PixelDifference result{.width = width, .height = height, .mask = mask};
@@ -59,9 +59,8 @@ namespace diagnostics {
         }
     }
 
-    void WriteFailureBundle(const std::filesystem::path &directory, Result &result, Reproduction reproduction,
-                            const TerminalState &state, const std::span<const uint32_t> actual,
-                            const std::span<const uint32_t> expected, const uint32_t mask) {
+    void WriteFailureBundle(const std::filesystem::path &directory, Result &result, Reproduction reproduction, const TerminalState &state,
+                            const std::span<const uint32_t> actual, const std::span<const uint32_t> expected, const uint32_t mask) {
         if (!std::filesystem::create_directories(directory))
             throw std::runtime_error("Failure bundle already exists: " + directory.string());
         const auto json = [&](const std::string &name, const auto &value) {
@@ -104,4 +103,4 @@ namespace diagnostics {
         result.artifacts.push_back(directory.string());
         json("result.json", result);
     }
-}
+} // namespace diagnostics

@@ -1,6 +1,6 @@
+#include "diagnostics/Trace.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
-#include "diagnostics/Trace.h"
 
 namespace {
     template<class T>
@@ -10,12 +10,9 @@ namespace {
                 return member;
         throw "Unknown trace test member";
     }
-}
+} // namespace
 
-TEST_CASE (
-"diagnostics: tracing disabled observed and captured preserves hardware and pixels"
-)
- {
+TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardware and pixels") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
         Gameboy disabled(settings);
@@ -49,10 +46,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-"diagnostics: bus records distinguish blocked reads from stored FF and retain banks"
-)
- {
+TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and retain banks") {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     diagnostics::TraceRecorder recorder(64);
     gameboy.ObserveWith(&recorder.Context());
@@ -77,10 +71,7 @@ TEST_CASE (
     CHECK(recorder.Metadata().observed == count);
 }
 
-TEST_CASE (
-"diagnostics: interrupt sampling uses CPU phases at both speeds and restore branches retain time"
-)
- {
+TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and restore branches retain time") {
     for (const bool doubleSpeed : {false, true}) {
         Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
         if (doubleSpeed) {
@@ -112,17 +103,21 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-"diagnostics: trace filters combine component kind address PC bank line dot and time"
-)
- {
-    diagnostics::EventFilter filter{
-            .components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::Bus),
-            .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::BusRead),
-            .ticks = {10, 20}, .addresses = {{0xFF40, 0xFF45}}, .pcs = {{0x4000, 0x4100}}, .pcBank = 3,
-            .lines = {{5, 6}}, .dots = {{80, 120}}};
-    diagnostics::Event event{.position = {.tick = 10, .dot = 80, .ly = 5}, .pc = 0x4000, .pcBank = 3, .address = 0xFF41,
-                             .component = diagnostics::Component::Bus, .kind = diagnostics::EventKind::BusRead};
+TEST_CASE("diagnostics: trace filters combine component kind address PC bank line dot and time") {
+    diagnostics::EventFilter filter{.components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::Bus),
+                                    .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::BusRead),
+                                    .ticks = {10, 20},
+                                    .addresses = {{0xFF40, 0xFF45}},
+                                    .pcs = {{0x4000, 0x4100}},
+                                    .pcBank = 3,
+                                    .lines = {{5, 6}},
+                                    .dots = {{80, 120}}};
+    diagnostics::Event event{.position = {.tick = 10, .dot = 80, .ly = 5},
+                             .pc = 0x4000,
+                             .pcBank = 3,
+                             .address = 0xFF41,
+                             .component = diagnostics::Component::Bus,
+                             .kind = diagnostics::EventKind::BusRead};
     CHECK(filter.Matches(event));
     event.position.tick = 21;
     CHECK_FALSE(filter.Matches(event));

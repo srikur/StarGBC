@@ -1,12 +1,11 @@
+#include "diagnostics/Provenance.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
-#include "diagnostics/Provenance.h"
 
 namespace {
     void tickPixel(GPU &gpu, diagnostics::ProvenanceRecorder &recorder, const uint64_t tick) {
         recorder.Context().position = {
-            .tick = tick, .frame = gpu.displayFrames_, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine
-        };
+                .tick = tick, .frame = gpu.displayFrames_, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
         gpu.Update();
     }
 
@@ -20,12 +19,9 @@ namespace {
         gpu.bgpd[0][1] = {20, 20, 20};
         gpu.RebuildColorLuts();
     }
-}
+} // namespace
 
-TEST_CASE (
-"diagnostics: provenance does not change pixels hardware state or timeline"
-)
- {
+TEST_CASE("diagnostics: provenance does not change pixels hardware state or timeline") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
         Gameboy continuous(settings);
@@ -46,10 +42,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-"diagnostics: pixel origins retain bitplane reads across mid-fetch SCY and later VRAM changes"
-)
- {
+TEST_CASE("diagnostics: pixel origins retain bitplane reads across mid-fetch SCY and later VRAM changes") {
     Interrupts interrupts;
     GPU gpu(interrupts);
     configurePixelLine(gpu);
@@ -83,10 +76,7 @@ TEST_CASE (
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
 }
 
-TEST_CASE (
-"diagnostics: post-output palette changes retain both emitted and final pixel colors"
-)
- {
+TEST_CASE("diagnostics: post-output palette changes retain both emitted and final pixel colors") {
     Interrupts interrupts;
     GPU gpu(interrupts);
     configurePixelLine(gpu);
@@ -112,10 +102,7 @@ TEST_CASE (
     CHECK(recorder.Recolors()[0].registerAddress == 0xFF47);
 }
 
-TEST_CASE (
-"diagnostics: restoring without provenance history marks a new branch with unknown in-flight origins"
-)
- {
+TEST_CASE("diagnostics: restoring without provenance history marks a new branch with unknown in-flight origins") {
     Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
     machine.RecordPixelsWith(&recorder.Context());

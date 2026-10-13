@@ -22,4 +22,4 @@ namespace diagnostics {
         }
         throw std::runtime_error("Cannot allocate diagnostics run directory");
     }
-}
+} // namespace diagnostics

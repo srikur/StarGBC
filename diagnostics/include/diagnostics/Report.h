@@ -39,4 +39,4 @@ namespace diagnostics {
     };
 
     [[nodiscard]] std::filesystem::path DefaultReportPath();
-}
+} // namespace diagnostics

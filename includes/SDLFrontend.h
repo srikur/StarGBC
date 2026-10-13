@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "Audio.h"
-#include "Gameboy.h"
 #include "EmulationSession.h"
+#include "Gameboy.h"
 #ifdef STARGBC_ENABLE_LUA
 #include "LuaRuntime.h"
 #endif

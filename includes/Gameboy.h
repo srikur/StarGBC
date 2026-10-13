@@ -31,14 +31,12 @@ public:
     static constexpr uint32_t FRAME_CYCLES_DMG = 70224;
     static constexpr std::chrono::nanoseconds FRAME_PERIOD{FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND};
 
-    explicit Gameboy(const GameboySettings &settings) : initialSettings_(settings), romPath_(settings.romName), biosPath_(settings.biosPath),
-                                                        rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
-                                                        joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_),
-                                                        serial_(interrupts_),
-                                                        gpu_(interrupts_, settings.colorCorrection),
-                                                        bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
-                                                        cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_),
-                                                        instructions_(registers_, interrupts_), executionPolicy_(settings.executionPolicy) {}
+    explicit Gameboy(const GameboySettings &settings) :
+        initialSettings_(settings), romPath_(settings.romName), biosPath_(settings.biosPath), rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
+        joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_),
+        gpu_(interrupts_, settings.colorCorrection), bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
+        cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_), instructions_(registers_, interrupts_),
+        executionPolicy_(settings.executionPolicy) {}
 
     Gameboy(const Gameboy &other) = delete;
 
@@ -154,7 +152,7 @@ private:
     GPU gpu_;
     Bus bus_;
     CPU<Bus> cpu_;
-    Instructions<CPU<Bus> > instructions_;
+    Instructions<CPU<Bus>> instructions_;
 
     uint32_t masterCycles{0x00000000};
     uint8_t cpuTickPhase_{0x00};
@@ -213,7 +211,7 @@ template<class T>
 static constexpr void SerializeInto(const T &obj, std::byte *out) {
     ForEachStateLeaf(obj, [out](const auto &leaf, const std::size_t offset) {
         using Leaf = std::remove_cvref_t<decltype(leaf)>;
-        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(Leaf)> >(leaf), out + offset);
+        std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(Leaf)>>(leaf), out + offset);
     });
 }
 

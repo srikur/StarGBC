@@ -4,8 +4,8 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Model.h"
 #include "Contracts.h"
+#include "Model.h"
 
 namespace diagnostics {
     enum class ExperimentMode { Component, WholeMachine };
@@ -70,4 +70,4 @@ namespace diagnostics {
     };
 
     [[nodiscard]] ExperimentResult RunExperiment(Scenario scenario, const std::filesystem::path &directory);
-}
+} // namespace diagnostics

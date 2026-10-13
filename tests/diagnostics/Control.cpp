@@ -2,17 +2,14 @@
 #include "Gameboy.h"
 #include "diagnostics/Watchpoints.h"
 
-TEST_CASE (
-"diagnostics: watchpoint stops retain trigger and safe positions and resume without changing hardware"
-)
- {
+TEST_CASE("diagnostics: watchpoint stops retain trigger and safe positions and resume without changing hardware") {
     const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
     Gameboy controlled(settings);
     Gameboy continuous(settings);
     diagnostics::TraceRecorder recorder(32);
     diagnostics::Watchpoints watchpoints(recorder.Context());
     watchpoints.Add({.events = {.components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::Bus),
-                               .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::BusWrite)}});
+                                .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::BusWrite)}});
     controlled.ObserveWith(&recorder.Context());
     const auto first = controlled.RunUntil({}, 140448);
     REQUIRE(first.execution.reason == ExecutionStopReason::Condition);
@@ -34,10 +31,7 @@ TEST_CASE (
                              std::span(continuous.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
 }
 
-TEST_CASE (
-"diagnostics: bank aware PC breakpoints and instruction deadlines remain bounded"
-)
- {
+TEST_CASE("diagnostics: bank aware PC breakpoints and instruction deadlines remain bounded") {
     const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
     for (const uint16_t bank : {0, 1}) {
         Gameboy machine(settings);
@@ -59,10 +53,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-"diagnostics: declarative conditions inspect PPU and register changes without overshooting deadlines"
-)
- {
+TEST_CASE("diagnostics: declarative conditions inspect PPU and register changes without overshooting deadlines") {
     Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     const std::array unchanged{RunCondition{ConditionKind::RegisterChange, 0xFF04}};
     const auto result = machine.RunUntil(unchanged, 1024);

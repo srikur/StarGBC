@@ -24,7 +24,7 @@ namespace diagnostics {
             std::string record{"sample"};
             CanonicalObservation state;
             std::string eventHash;
-            std::optional<std::vector<Event> > events;
+            std::optional<std::vector<Event>> events;
         };
 
         struct ObservationEnd {
@@ -32,7 +32,7 @@ namespace diagnostics {
             uint64_t tick{};
             uint64_t samples{};
         };
-    }
+    } // namespace
 
     CanonicalObservation CaptureObservation(Gameboy &machine) {
         if (machine.UsesRealRTC())
@@ -51,8 +51,8 @@ namespace diagnostics {
         return result;
     }
 
-    void WriteObservations(const std::filesystem::path &path, Gameboy &machine, ReplayPlayer *replay,
-                           const InputFingerprint &initial, std::string replayHash, const ObservationPlan &plan) {
+    void WriteObservations(const std::filesystem::path &path, Gameboy &machine, ReplayPlayer *replay, const InputFingerprint &initial,
+                           std::string replayHash, const ObservationPlan &plan) {
         if (machine.TimelineTicks() || !plan.sampleTicks || plan.beginTick > plan.endTick || machine.Observations() ||
             (plan.eventDetails && !plan.events))
             throw std::invalid_argument("Observation capture requires initial conditions and an ordered bounded sampling plan");
@@ -64,11 +64,11 @@ namespace diagnostics {
             WriteJson(output, value);
             output << '\n';
         };
-        write(ObservationHeader{
-            .initial = initial, .replayHash = std::move(replayHash), .plan = plan,
-            .hardwareFormat = "reflection-state-" + std::to_string(kGameboyStateSize),
-            .scheduler = plan.events ? "PerTickForObservations" : "RequestedPolicy"
-        });
+        write(ObservationHeader{.initial = initial,
+                                .replayHash = std::move(replayHash),
+                                .plan = plan,
+                                .hardwareFormat = "reflection-state-" + std::to_string(kGameboyStateSize),
+                                .scheduler = plan.events ? "PerTickForObservations" : "RequestedPolicy"});
         const auto advance = [&](const uint64_t ticks) {
             return replay ? replay->AdvanceTicks(ticks, plan.policy) : machine.AdvanceTicks(ticks, plan.policy);
         };
@@ -110,4 +110,4 @@ namespace diagnostics {
         machine.ObserveWith(nullptr);
         write(ObservationEnd{.tick = machine.TimelineTicks(), .samples = count});
     }
-}
+} // namespace diagnostics

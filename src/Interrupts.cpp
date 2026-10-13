@@ -7,8 +7,8 @@ void Interrupts::Set(const InterruptType interrupt, const bool delayed) {
             observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F, mask);
         interruptFlag |= mask;
         if (observations)
-            observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
-                               0xFF0F, interruptFlag | interruptVisiblePending | 0xE0);
+            observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
+                               interruptFlag | interruptVisiblePending | 0xE0);
     } else {
         SetAfter(interrupt, 4);
     }
@@ -22,16 +22,16 @@ void Interrupts::SetAfter(const InterruptType interrupt, const uint8_t dots, con
     const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
     const auto index = static_cast<uint8_t>(interrupt);
     if (observations)
-        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest,
-                           0xFF0F, mask, dots | (visibleEarly << 8) | (visibleDelay << 16));
+        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F, mask,
+                           dots | (visibleEarly << 8) | (visibleDelay << 16));
     if (visibleEarly) {
         if (visibleDelay) {
             interruptVisibleDelays[index] = visibleDelay;
         } else {
             interruptVisiblePending |= mask;
             if (observations)
-                observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
-                                   0xFF0F, interruptFlag | interruptVisiblePending | 0xE0);
+                observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
+                                   interruptFlag | interruptVisiblePending | 0xE0);
         }
     }
     if (interruptSetDelays[index] == 0)
@@ -53,9 +53,9 @@ void Interrupts::TickPending() {
             interruptVisiblePending &= ~mask;
         }
         remaining |= interruptSetDelays[i] | interruptVisibleDelays[i];
-        if (observations &&previousFlags != (interruptFlag | interruptVisiblePending))
-        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
-                           0xFF0F, interruptFlag | interruptVisiblePending | 0xE0);
+        if (observations && previousFlags != (interruptFlag | interruptVisiblePending))
+            observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
+                               interruptFlag | interruptVisiblePending | 0xE0);
     }
     delaysPending_ = remaining != 0;
 }

@@ -2,13 +2,9 @@
 #define GB_INTERNAL
 #include <Core/gb.h>
 
-uint64_t StarGBC_SameBoyRunTicks(const GB_gameboy_t *gb) {
-    return gb->cycles_since_run;
-}
+uint64_t StarGBC_SameBoyRunTicks(const GB_gameboy_t *gb) { return gb->cycles_since_run; }
 
-bool StarGBC_SameBoyBootromActive(const GB_gameboy_t *gb) {
-    return !gb->boot_rom_finished;
-}
+bool StarGBC_SameBoyBootromActive(const GB_gameboy_t *gb) { return !gb->boot_rom_finished; }
 
 void StarGBC_SameBoyInitializeRtc(GB_gameboy_t *gb) {
     GB_set_rtc_mode(gb, GB_RTC_MODE_ACCURATE);

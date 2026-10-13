@@ -9,7 +9,7 @@ namespace {
                 return member;
         throw std::out_of_range("Unknown DMA test member");
     }
-}
+} // namespace
 
 TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
@@ -41,8 +41,7 @@ TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
             gameboy.DebugPoke(0xC000 + i, 0);
         gameboy.DebugPoke(0xC002, 0x0C); // INC C replaces INC B in memory, but must not execute
         gameboy.DebugPoke(0xC003, 0x76);
-        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 4>{{
-                     {0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 4>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
 
         static_cast<void>(gameboy.AdvanceTicks(200, policy));

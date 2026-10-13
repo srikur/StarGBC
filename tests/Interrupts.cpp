@@ -1,10 +1,7 @@
 #include "Interrupts.h"
 #include <doctest/doctest.h>
 
-TEST_CASE (
-"interrupts: simultaneous sources retain independent propagation times"
-)
- {
+TEST_CASE("interrupts: simultaneous sources retain independent propagation times") {
     Interrupts interrupts;
     interrupts.interruptFlag = 0;
     const auto vblank = [&] { interrupts.SetAfter(InterruptType::VBlank, 8, true, 4); };

@@ -17,13 +17,13 @@
 
 #include <doctest/doctest.h>
 #include "ThreadContext.h"
-#include "diagnostics/Hash.h"
-#include "diagnostics/Report.h"
 #include "diagnostics/Artifacts.h"
-#include "diagnostics/Trace.h"
 #include "diagnostics/Checkpoint.h"
-#include "diagnostics/Replay.h"
+#include "diagnostics/Hash.h"
 #include "diagnostics/Provenance.h"
+#include "diagnostics/Replay.h"
+#include "diagnostics/Report.h"
+#include "diagnostics/Trace.h"
 
 struct Bootroms {
     const char *dmg0Bootrom = "roms/dmg0_boot.bin";
@@ -95,7 +95,7 @@ public:
 };
 
 struct CatalogSelection {
-    std::set<std::string, std::less<> > ids;
+    std::set<std::string, std::less<>> ids;
     std::optional<Model> model;
     std::string subsystem;
     std::set<std::string> suites;
@@ -121,12 +121,20 @@ static bool mooneyePassed(const Gameboy &gameboy) {
 
 static diagnostics::TerminalState terminalState(const Gameboy &gameboy) {
     const auto state = gameboy.Inspect();
-    return {
-            .pc = state.cpu.pc, .sp = state.cpu.sp, .af = state.cpu.af, .bc = state.cpu.bc,
-            .de = state.cpu.de, .hl = state.cpu.hl, .interruptEnable = state.interrupts.enable,
-            .interruptFlag = state.interrupts.storedFlags, .lcdc = gameboy.InspectRegister(0xFF40).stored, .ly = state.ppu.ly,
-            .dot = static_cast<uint16_t>(state.ppu.dot), .halted = state.cpu.halted, .stopped = state.cpu.stopped, .locked = state.cpu.locked
-    };
+    return {.pc = state.cpu.pc,
+            .sp = state.cpu.sp,
+            .af = state.cpu.af,
+            .bc = state.cpu.bc,
+            .de = state.cpu.de,
+            .hl = state.cpu.hl,
+            .interruptEnable = state.interrupts.enable,
+            .interruptFlag = state.interrupts.storedFlags,
+            .lcdc = gameboy.InspectRegister(0xFF40).stored,
+            .ly = state.ppu.ly,
+            .dot = static_cast<uint16_t>(state.ppu.dot),
+            .halted = state.cpu.halted,
+            .stopped = state.cpu.stopped,
+            .locked = state.cpu.locked};
 }
 
 static const doctest::TestCaseData *currentTestCase = nullptr;
@@ -150,13 +158,12 @@ struct CurrentTestCaseListener : doctest::IReporter {
         ++cases_;
         failed_ += !stats.testCaseSuccess;
         if (testReport)
-            testReport->Write(diagnostics::AssertionResult{
-                    .name = currentTestCase->m_name,
-                    .suite = currentTestCase->m_test_suite,
-                    .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
-                    .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
-                    .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)
-            });
+            testReport->Write(diagnostics::AssertionResult{.name = currentTestCase->m_name,
+                                                           .suite = currentTestCase->m_test_suite,
+                                                           .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass
+                                                                                            : diagnostics::Outcome::AssertionFailure,
+                                                           .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
+                                                           .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)});
     }
 
     void test_case_exception(const doctest::TestCaseException &) override {}
@@ -231,7 +238,7 @@ static int runBenchmark(const std::string &rom, const Model model, const unsigne
         const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - start;
         const double fps = frames * 1000.0 / elapsed.count();
         std::cout << rom << " [" << ModelName(model) << "] " << frames << " frames in " << elapsed.count() << " ms | " << fps << " fps | "
-                << fps / kGbFrameHz << "x realtime" << std::endl;
+                  << fps / kGbFrameHz << "x realtime" << std::endl;
         return EXIT_SUCCESS;
     } catch (const std::exception &e) {
         std::cerr << "Benchmark failed for " << rom << ": " << e.what() << std::endl;
@@ -248,15 +255,13 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     Model benchModel = Model::Auto;
     std::filesystem::path reportPath;
 
-    static constexpr std::array<std::pair<std::string_view, std::string_view>, 5> kSuiteFlags{
-            {
-                    {"--acid", "acid"},
-                    {"--roms", "rom"},
-                    {"--age", "age"},
-                    {"--gbmicrotest", "gbmicrotest"},
-                    {"--gambatte", "gambatte"},
-            }
-    };
+    static constexpr std::array<std::pair<std::string_view, std::string_view>, 5> kSuiteFlags{{
+            {"--acid", "acid"},
+            {"--roms", "rom"},
+            {"--age", "age"},
+            {"--gbmicrotest", "gbmicrotest"},
+            {"--gambatte", "gambatte"},
+    }};
     std::string suites;
     bool suiteFilterGiven = false;
 
@@ -287,11 +292,9 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 std::cerr << "--observations requires disabled, observe or capture\n";
                 return EXIT_FAILURE;
             }
-            testObservationMode = mode == "disabled"
-                                      ? TestObservationMode::Disabled
-                                      : mode == "observe"
-                                      ? TestObservationMode::Observe
-                                      : TestObservationMode::Capture;
+            testObservationMode = mode == "disabled"  ? TestObservationMode::Disabled
+                                  : mode == "observe" ? TestObservationMode::Observe
+                                                      : TestObservationMode::Capture;
         } else if (arg.starts_with("--trace-capacity=")) {
             try {
                 constexpr auto prefix = std::string_view("--trace-capacity=");
@@ -403,7 +406,7 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
         return runBenchmark(benchRom, benchModel, romFrames ? romFrames : 3000);
     }
 
-    threadSemaphore = std::make_shared<std::counting_semaphore<> >(maxThreads);
+    threadSemaphore = std::make_shared<std::counting_semaphore<>>(maxThreads);
     if (catalogSelection.Active() && doctest_args.size() != 1) {
         std::cerr << "Use catalog selectors without doctest filters\n";
         return EXIT_FAILURE;
@@ -434,12 +437,11 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 reportPath = diagnostics::DefaultReportPath();
             failureDirectory = reportPath.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
-            testReport = std::make_unique<diagnostics::Report>(reportPath, diagnostics::RunIdentity{
-                                                                       .executable = argv[0],
-                                                                       .executableHash = testExecutableHash,
-                                                                       .compiler = __VERSION__,
-                                                                       .arguments = std::vector<std::string>(argv + 1, argv + argc)
-                                                               });
+            testReport = std::make_unique<diagnostics::Report>(
+                    reportPath, diagnostics::RunIdentity{.executable = argv[0],
+                                                         .executableHash = testExecutableHash,
+                                                         .compiler = __VERSION__,
+                                                         .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             std::cerr << "Diagnostics results: " << reportPath << '\n';
             testWorkers = std::make_unique<TestWorkers>(maxThreads);
         }

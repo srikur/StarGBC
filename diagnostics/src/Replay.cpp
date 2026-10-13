@@ -51,10 +51,11 @@ namespace diagnostics {
             }
             return output.str();
         }
-    }
+    } // namespace
 
     InputRecorder::InputRecorder(Gameboy &machine, InputFingerprint initial, const size_t capacity, std::optional<GameboySettings> settings) :
-        machine_(machine), log_{.initial = std::move(initial), .settings = std::move(settings), .initialButtons = machine.PressedButtons()}, capacity_(capacity) {
+        machine_(machine), log_{.initial = std::move(initial), .settings = std::move(settings), .initialButtons = machine.PressedButtons()},
+        capacity_(capacity) {
         if (machine.TimelineTicks() || machine.UsesRealRTC() || machine.InputRecording() || !capacity || capacity > 1'000'000)
             throw std::invalid_argument("Input recording requires an unrecorded initial machine, virtual RTC and bounded capacity");
         if (log_.settings)
@@ -62,13 +63,13 @@ namespace diagnostics {
         Validate(log_);
         log_.events.reserve(capacity);
         sink_ = {.owner = this, .applied = [](void *owner, const uint64_t tick, const uint8_t buttons) noexcept {
-            auto &recorder = *static_cast<InputRecorder *>(owner);
-            if (recorder.log_.events.size() == recorder.capacity_) {
-                recorder.overflow_ = true;
-                return;
-            }
-            recorder.log_.events.push_back({tick, recorder.log_.events.size(), buttons});
-        }};
+                     auto &recorder = *static_cast<InputRecorder *>(owner);
+                     if (recorder.log_.events.size() == recorder.capacity_) {
+                         recorder.overflow_ = true;
+                         return;
+                     }
+                     recorder.log_.events.push_back({tick, recorder.log_.events.size(), buttons});
+                 }};
         machine.RecordInputsWith(&sink_);
     }
 
@@ -215,7 +216,9 @@ namespace diagnostics {
             ApplyDueInputs(true);
             if (machine_.Observations() && machine_.Observations()->stopEvent)
                 return {{ExecutionStopReason::Condition, begin, machine_.TimelineTicks(), machine_.InstructionsCompleted() - instructions},
-                        machine_.ExecutionPosition(), machine_.Observations()->stopEvent, {}};
+                        machine_.ExecutionPosition(),
+                        machine_.Observations()->stopEvent,
+                        {}};
             const bool atDeadline = machine_.TimelineTicks() == deadline;
             auto result = machine_.RunUntil(conditions, NextTick(deadline) - machine_.TimelineTicks());
             result.execution.beginTick = begin;
@@ -236,4 +239,4 @@ namespace diagnostics {
         const auto identity = diagnostics::RestoreCheckpoint(path, machine_, compatible, log_.events.size());
         cursor_ = identity.replayCursor;
     }
-}
+} // namespace diagnostics

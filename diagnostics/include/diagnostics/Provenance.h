@@ -71,4 +71,4 @@ namespace diagnostics {
 
         void WriteJson(const std::filesystem::path &path) const;
     };
-}
+} // namespace diagnostics

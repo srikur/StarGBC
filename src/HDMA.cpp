@@ -19,7 +19,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
             hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF55: {
-            if (hdmaActive && !Bit < 7 > (value)) {
+            if (hdmaActive && !Bit<7>(value)) {
                 hdmaActive = false;
                 hdma5 = 0x80 | value;
                 hblankBlockFinished = false;
@@ -35,7 +35,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
             step = HDMAStep::Read;
             hdmaRemain = (value & 0x7F) + 1;
             hdma5 = value & 0x7F; // HDMA5 reads show remaining - 1
-            hdmaMode = Bit < 7 > (value) ? HDMAMode::HDMA : HDMAMode::GDMA;
+            hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             singleBlockTransfer = screenOff;
             break;
         }

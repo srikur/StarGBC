@@ -9,21 +9,22 @@
 
 namespace diagnostics {
     void WriteFingerprints(std::ostream &output, const InputFingerprint &inputs) {
-        template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
-            WriteString(output, inputs.[:member:]);
+        template for (constexpr auto member :
+                      std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
+                WriteString(output, inputs.[:member:]);
     }
 
     InputFingerprint ReadFingerprints(std::istream &input) {
         InputFingerprint result;
-        template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
-            result.[:member:] = ReadString(input);
+        template for (constexpr auto member :
+                      std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
+                result.[:member:] = ReadString(input);
         return result;
     }
 
     bool CompatibleInputs(const InputFingerprint &left, const InputFingerprint &right) {
-        template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
-            if (left.[:member:] != right.[:member:])
-                return false;
+        template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(
+                              ^^InputFingerprint, std::meta::access_context::current()))) if (left.[:member:] != right.[:member:]) return false;
         return true;
     }
 
@@ -58,7 +59,8 @@ namespace diagnostics {
         metadata << '\n';
     }
 
-    CheckpointIdentity RestoreCheckpoint(const std::filesystem::path &path, Gameboy &machine, const CheckpointIdentity &compatible, const uint64_t maximumReplayCursor) {
+    CheckpointIdentity RestoreCheckpoint(const std::filesystem::path &path, Gameboy &machine, const CheckpointIdentity &compatible,
+                                         const uint64_t maximumReplayCursor) {
         const auto size = std::filesystem::file_size(path);
         if (size < 76 || size > 32 * 1024 * 1024)
             throw std::invalid_argument("Invalid checkpoint size");
@@ -91,10 +93,11 @@ namespace diagnostics {
             identity.replayHash != compatible.replayHash || identity.replayCursor > maximumReplayCursor)
             throw std::invalid_argument("Checkpoint build, state format or initial inputs are incompatible");
         std::vector<std::byte> payload(payloadSize);
-        if (!input.read(reinterpret_cast<char *>(payload.data()), static_cast<std::streamsize>(payloadSize)) || input.peek() != std::char_traits<char>::eof())
+        if (!input.read(reinterpret_cast<char *>(payload.data()), static_cast<std::streamsize>(payloadSize)) ||
+            input.peek() != std::char_traits<char>::eof())
             throw std::invalid_argument("Invalid checkpoint payload length");
         if (!machine.LoadDebugState(payload))
             throw std::invalid_argument("Checkpoint hardware state is invalid");
         return identity;
     }
-}
+} // namespace diagnostics

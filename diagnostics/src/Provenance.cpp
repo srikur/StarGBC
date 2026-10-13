@@ -15,17 +15,16 @@ namespace diagnostics {
                 result.push_back(ring[i % ring.size()]);
             return result;
         }
-    }
+    } // namespace
 
     bool PixelRegion::Contains(const ExecutionPosition &position, const uint16_t px, const uint16_t py) const noexcept {
         return x.Contains(px) && y.Contains(py) && frames.Contains(position.frame) && ticks.Contains(position.tick);
     }
 
-    ProvenanceRecorder::ProvenanceRecorder(PixelRegion region, const size_t pixelCapacity, const size_t eventCapacity) :
-        region_(region) {
-        if (!pixelCapacity || pixelCapacity > 46080 || !eventCapacity || eventCapacity > 1'000'000 ||
-            region.x.first > region.x.last || region.x.last > 159 || region.y.first > region.y.last || region.y.last > 143 ||
-            region.frames.first > region.frames.last || region.ticks.first > region.ticks.last)
+    ProvenanceRecorder::ProvenanceRecorder(PixelRegion region, const size_t pixelCapacity, const size_t eventCapacity) : region_(region) {
+        if (!pixelCapacity || pixelCapacity > 46080 || !eventCapacity || eventCapacity > 1'000'000 || region.x.first > region.x.last ||
+            region.x.last > 159 || region.y.first > region.y.last || region.y.last > 143 || region.frames.first > region.frames.last ||
+            region.ticks.first > region.ticks.last)
             throw std::invalid_argument("Invalid provenance region or bounded capacity");
         pixels_.resize(pixelCapacity);
         pipeline_.resize(eventCapacity);
@@ -71,7 +70,8 @@ namespace diagnostics {
         recolors_[recolorsWritten_++ % recolors_.size()] = event;
         for (size_t i = pixelsWritten_; i > pixelsWritten_ - std::min(pixels_.size(), pixelsWritten_); --i) {
             auto &pixel = pixels_[(i - 1) % pixels_.size()];
-            if (pixel.x != event.offset % 160 || pixel.y != event.offset / 160 || pixel.branch != event.branch || pixel.emission.frame != event.position.frame)
+            if (pixel.x != event.offset % 160 || pixel.y != event.offset / 160 || pixel.branch != event.branch ||
+                pixel.emission.frame != event.position.frame)
                 continue;
             pixel.recolored = true;
             pixel.finalColor = event.color;
@@ -96,17 +96,23 @@ namespace diagnostics {
     }
 
     ProvenanceMetadata ProvenanceRecorder::Metadata() const {
-        return {.region = region_, .pixelCapacity = pixels_.size(), .eventCapacity = pipeline_.size(),
+        return {.region = region_,
+                .pixelCapacity = pixels_.size(),
+                .eventCapacity = pipeline_.size(),
                 .overwrittenPixels = pixelsWritten_ - std::min(pixelsWritten_, pixels_.size()),
-                .overwrittenEvents = pipelineWritten_ - std::min(pipelineWritten_, pipeline_.size()) + recolorsWritten_ - std::min(recolorsWritten_, recolors_.size()),
-                .build = build_, .romHash = romHash_, .branch = context_.branch};
+                .overwrittenEvents = pipelineWritten_ - std::min(pipelineWritten_, pipeline_.size()) + recolorsWritten_ -
+                                     std::min(recolorsWritten_, recolors_.size()),
+                .build = build_,
+                .romHash = romHash_,
+                .branch = context_.branch};
     }
 
     std::vector<PixelExplanation> ProvenanceRecorder::Pixels() const { return Ordered(pixels_, pixelsWritten_); }
     std::vector<PixelPipelineEvent> ProvenanceRecorder::PipelineEvents() const { return Ordered(pipeline_, pipelineWritten_); }
     std::vector<PixelRecolor> ProvenanceRecorder::Recolors() const { return Ordered(recolors_, recolorsWritten_); }
 
-    std::optional<PixelExplanation> ProvenanceRecorder::Query(const uint16_t x, const uint16_t y, const std::optional<uint64_t> frame, const std::optional<uint64_t> branch) const {
+    std::optional<PixelExplanation> ProvenanceRecorder::Query(const uint16_t x, const uint16_t y, const std::optional<uint64_t> frame,
+                                                              const std::optional<uint64_t> branch) const {
         for (size_t i = pixelsWritten_; i > pixelsWritten_ - std::min(pixels_.size(), pixelsWritten_); --i) {
             const auto &pixel = pixels_[(i - 1) % pixels_.size()];
             if (pixel.x == x && pixel.y == y && (!frame || pixel.emission.frame == *frame) && pixel.branch == branch.value_or(context_.branch))
@@ -127,4 +133,4 @@ namespace diagnostics {
         diagnostics::WriteJson(output, Report{Metadata(), Pixels(), PipelineEvents(), Recolors()});
         output << '\n';
     }
-}
+} // namespace diagnostics

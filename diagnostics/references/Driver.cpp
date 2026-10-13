@@ -58,7 +58,7 @@ namespace {
         uint64_t samples{};
         uint64_t overwrittenEvents{};
     };
-}
+} // namespace
 
 int main(const int argc, char **argv) {
     const auto arguments = StarParse::parse_or_exit<Arguments>(argc, argv);
@@ -94,10 +94,13 @@ int main(const int argc, char **argv) {
             diagnostics::WriteJson(output, record);
             output << '\n';
         };
-        write(Header{
-            .capabilities = capabilities, .settings = settings, .executableHash = diagnostics::FileHash(argv[0]),
-            .romHash = romHash, .bootromHash = bootHash, .requestedTicks = arguments->ticks, .sampleTicks = arguments->sample_ticks
-        });
+        write(Header{.capabilities = capabilities,
+                     .settings = settings,
+                     .executableHash = diagnostics::FileHash(argv[0]),
+                     .romHash = romHash,
+                     .bootromHash = bootHash,
+                     .requestedTicks = arguments->ticks,
+                     .sampleTicks = arguments->sample_ticks});
         uint64_t kinds{};
         for (const auto kind : capabilities.events)
             kinds |= uint64_t{1} << static_cast<unsigned>(kind);
@@ -109,11 +112,12 @@ int main(const int argc, char **argv) {
         uint64_t actual{}, count{};
         const auto sample = [&](const uint64_t requested) {
             const auto pixels = adapter->Pixels();
-            write(Sample{
-                .requestedTick = requested, .actualTick = actual, .overshootTicks = actual - requested,
-                .frames = adapter->Frames(), .registers = adapter->Registers(),
-                .framebufferHash = diagnostics::Sha256(std::as_bytes(pixels))
-            });
+            write(Sample{.requestedTick = requested,
+                         .actualTick = actual,
+                         .overshootTicks = actual - requested,
+                         .frames = adapter->Frames(),
+                         .registers = adapter->Registers(),
+                         .framebufferHash = diagnostics::Sha256(std::as_bytes(pixels))});
             ++count;
         };
         sample(0);

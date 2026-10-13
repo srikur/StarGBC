@@ -207,8 +207,7 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                     CHECK(written.ReadRegisters(0xFF41) == control.ReadRegisters(0xFF41));
                     CHECK(writtenInterrupts.interruptFlag == controlInterrupts.interruptFlag);
                 }
-                CHECK(std::equal(written.GetScreenData(), written.GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT,
-                    control.GetScreenData()));
+                CHECK(std::equal(written.GetScreenData(), written.GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT, control.GetScreenData()));
             }
         }
     }
@@ -316,7 +315,7 @@ TEST_CASE("diagnostics: Crystal sprite overlap provenance identifies transparent
     REQUIRE(pixel->sprites.count == 2);
     CHECK(std::ranges::any_of(std::span(pixel->sprites.candidates).first(pixel->sprites.count), [](const auto &candidate) {
         return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 && candidate.decision == diagnostics::SpriteDecision::Transparent;
-        }));
+    }));
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick <= pixel->emission.tick);
     CHECK(pixel->selected.lowRead == 0);
@@ -337,9 +336,7 @@ TEST_CASE("diagnostics: Crystal window provenance explains clipped window pixels
     CHECK(pixel->selected.bit == 5);
     CHECK(pixel->selected.color == 2);
     const auto events = recorder.PipelineEvents();
-    CHECK(std::ranges::count_if(events, [](const auto &event) {
-        return event.reason == diagnostics::PipelineReason::WindowClipping;
-        }) == 2);
+    CHECK(std::ranges::count_if(events, [](const auto &event) { return event.reason == diagnostics::PipelineReason::WindowClipping; }) == 2);
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick < pixel->emission.tick);
 }

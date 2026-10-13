@@ -94,10 +94,10 @@ public:
     void RecordRecolor(uint16_t offset, uint16_t address, const Pixel &selected, diagnostics::PixelDecision decision);
 
     static constexpr uint32_t DMG_SHADE[4] = {
-        0xFFFFFFFFu, // FF FF FF FF
-        0xFFC0C0C0u, // C0 C0 C0 FF
-        0xFF606060u, // 60 60 60 FF
-        0xFF000000u // 00 00 00 FF
+            0xFFFFFFFFu, // FF FF FF FF
+            0xFFC0C0C0u, // C0 C0 C0 FF
+            0xFF606060u, // 60 60 60 FF
+            0xFF000000u // 00 00 00 FF
     };
 
     FixedDeque<Pixel, 16> backgroundQueue;

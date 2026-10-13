@@ -1,8 +1,8 @@
+#include "diagnostics/Replay.h"
 #include <doctest/doctest.h>
 #include <fstream>
 #include "EmulationSession.h"
 #include "diagnostics/Hash.h"
-#include "diagnostics/Replay.h"
 #include "diagnostics/Trace.h"
 #include "diagnostics/Watchpoints.h"
 
@@ -16,22 +16,18 @@ namespace {
     }
 
     const diagnostics::InputFingerprint replayInputs{
-        .rom = "fixture-ROM", .bootrom = "skip", .configuration = "CGBC-virtual-RTC", .cartridgeSave = "absent"
-    };
+            .rom = "fixture-ROM", .bootrom = "skip", .configuration = "CGBC-virtual-RTC", .cartridgeSave = "absent"};
     const diagnostics::CheckpointIdentity checkpointIdentity{.build = "test-executable", .inputs = replayInputs};
 
     std::filesystem::path replayDirectory() {
-        const auto path = std::filesystem::temp_directory_path() / ("stargbc-replay-" + std::to_string(
-                                                                        std::chrono::steady_clock::now().time_since_epoch().count()));
+        const auto path = std::filesystem::temp_directory_path() /
+                          ("stargbc-replay-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
         std::filesystem::create_directories(path);
         return path;
     }
-}
+} // namespace
 
-TEST_CASE (
-"diagnostics: mid-frame debug checkpoints preserve pixels deferred audio and future output"
-)
- {
+TEST_CASE("diagnostics: mid-frame debug checkpoints preserve pixels deferred audio and future output") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         for (const bool doubleSpeed : {false, true}) {
             if (doubleSpeed && IsDmg(model))
@@ -70,10 +66,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-"diagnostics: checkpoint files reject incompatible builds and corruption without changing the machine"
-)
- {
+TEST_CASE("diagnostics: checkpoint files reject incompatible builds and corruption without changing the machine") {
     Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     diagnostics::TraceRecorder recorder(32);
     machine.ObserveWith(&recorder.Context());
@@ -103,10 +96,7 @@ TEST_CASE (
     std::filesystem::remove_all(directory);
 }
 
-TEST_CASE (
-"diagnostics: replay records buttons after session overrides and restores the input cursor"
-)
- {
+TEST_CASE("diagnostics: replay records buttons after session overrides and restores the input cursor") {
     const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
     Gameboy recorded(settings);
     diagnostics::InputRecorder recorder(recorded, replayInputs);
@@ -141,10 +131,7 @@ TEST_CASE (
     std::filesystem::remove_all(directory);
 }
 
-TEST_CASE (
-"diagnostics: replay inputs can trigger safe stops and incomplete input recordings are rejected"
-)
- {
+TEST_CASE("diagnostics: replay inputs can trigger safe stops and incomplete input recordings are rejected") {
     const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
     Gameboy machine(settings);
     diagnostics::InputLog log{.initial = replayInputs, .events = {{5, 0, 1}, {5, 1, 3}, {11, 2, 0}}};
@@ -169,10 +156,7 @@ TEST_CASE (
     CHECK_THROWS_AS(static_cast<void>(bounded.Log()), std::runtime_error);
 }
 
-TEST_CASE (
-"diagnostics: checkpoint resumes HALT STOP speed switching DMA and pending display writes"
-)
- {
+TEST_CASE("diagnostics: checkpoint resumes HALT STOP speed switching DMA and pending display writes") {
     for (unsigned scenario = 0; scenario < 6; ++scenario) {
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
         Gameboy continuous(settings);

@@ -55,4 +55,4 @@ namespace diagnostics {
 
     [[nodiscard]] ReferenceCapabilities Capabilities();
     [[nodiscard]] std::unique_ptr<ReferenceAdapter> MakeReferenceAdapter();
-}
+} // namespace diagnostics

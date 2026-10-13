@@ -9,8 +9,7 @@ uint8_t Joypad::GetJoypadState() const {
         // With both lines deselected the SGB drives the current joypad ID ($FF down to $FC)
         return (result & 0xF0) | (0x0F - sgbCurrentPlayer_);
     }
-    if (sgb_ &&sgbCurrentPlayer_ != 0)
-    {
+    if (sgb_ && sgbCurrentPlayer_ != 0) {
         // Only controller 1 is physically attached; other players read as all-released
         return result;
     }

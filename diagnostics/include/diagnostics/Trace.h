@@ -18,11 +18,11 @@ namespace diagnostics {
         uint64_t components{~uint64_t{0}};
         uint64_t kinds{~uint64_t{0}};
         Range<uint64_t> ticks;
-        std::optional<Range<uint16_t> > addresses;
-        std::optional<Range<uint16_t> > pcs;
+        std::optional<Range<uint16_t>> addresses;
+        std::optional<Range<uint16_t>> pcs;
         std::optional<uint16_t> pcBank;
-        std::optional<Range<uint8_t> > lines;
-        std::optional<Range<uint16_t> > dots;
+        std::optional<Range<uint8_t>> lines;
+        std::optional<Range<uint16_t>> dots;
 
         [[nodiscard]] bool Matches(const Event &event) const noexcept;
     };
@@ -103,4 +103,4 @@ namespace diagnostics {
 
         void WriteBinary(const std::filesystem::path &path) const;
     };
-}
+} // namespace diagnostics

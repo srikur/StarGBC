@@ -18,8 +18,8 @@ namespace {
     }
 } // namespace
 
-LuaRuntime::Impl::Impl(EmulationSession &host, const LuaLimits configuration, Logger output) : session(host), limits(configuration),
-                                                                                               logger(std::move(output)) {
+LuaRuntime::Impl::Impl(EmulationSession &host, const LuaLimits configuration, Logger output) :
+    session(host), limits(configuration), logger(std::move(output)) {
     if (!limits.instructionsPerFrame || limits.instructionsPerFrame > std::numeric_limits<uint64_t>::max() / 10 || !limits.memoryBytes)
         throw std::invalid_argument("Lua limits must be positive and instruction budget must not overflow");
     if (!logger)
@@ -163,19 +163,17 @@ void LuaRuntime::Impl::Dispatch(const SessionEvent event, const uint64_t frame) 
     const int status = lua_pcall(lua, arguments, 0, 1);
     phase = Phase::Idle;
     if (status != LUA_OK || memoryFault || instructionFault) {
-        Fail(memoryFault
-                 ? "Lua memory limit exceeded"
-                 : instructionFault
-                       ? "Lua instruction budget exceeded"
-                       : ErrorMessage(lua, "Lua callback failed"));
+        Fail(memoryFault        ? "Lua memory limit exceeded"
+             : instructionFault ? "Lua instruction budget exceeded"
+                                : ErrorMessage(lua, "Lua callback failed"));
     }
     lua_settop(lua, 0);
     if (!active)
         Close();
 }
 
-LuaRuntime::LuaRuntime(EmulationSession &session, const LuaLimits limits, Logger logger) : impl_(
-    std::make_unique<Impl>(session, limits, std::move(logger))) {}
+LuaRuntime::LuaRuntime(EmulationSession &session, const LuaLimits limits, Logger logger) :
+    impl_(std::make_unique<Impl>(session, limits, std::move(logger))) {}
 
 LuaRuntime::~LuaRuntime() = default;
 

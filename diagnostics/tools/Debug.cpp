@@ -5,15 +5,15 @@
 #include <sstream>
 #include <starparse/starparse.hpp>
 #include "Gameboy.h"
+#include "diagnostics/Artifacts.h"
+#include "diagnostics/Comparison.h"
 #include "diagnostics/Contracts.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
+#include "diagnostics/Provenance.h"
+#include "diagnostics/Replay.h"
 #include "diagnostics/Trace.h"
 #include "diagnostics/Watchpoints.h"
-#include "diagnostics/Replay.h"
-#include "diagnostics/Provenance.h"
-#include "diagnostics/Artifacts.h"
-#include "diagnostics/Comparison.h"
 
 namespace {
     using namespace StarParse;
@@ -93,7 +93,7 @@ namespace {
         std::optional<diagnostics::PixelExplanation> selectedPixel;
         std::optional<diagnostics::ProvenanceMetadata> provenance;
     };
-}
+} // namespace
 
 int main(const int argc, char **argv) {
     constexpr Settings parse_settings{.allow_case_insensitivity = true};
@@ -107,10 +107,12 @@ int main(const int argc, char **argv) {
         return 0;
     }
     try {
-        GameboySettings settings{
-            .romName = arguments->rom, .biosPath = arguments->bios, .model = arguments->model,
-            .noBootrom = arguments->no_bootrom, .colorCorrection = !arguments->raw_color, .executionPolicy = arguments->policy
-        };
+        GameboySettings settings{.romName = arguments->rom,
+                                 .biosPath = arguments->bios,
+                                 .model = arguments->model,
+                                 .noBootrom = arguments->no_bootrom,
+                                 .colorCorrection = !arguments->raw_color,
+                                 .executionPolicy = arguments->policy};
         std::optional<diagnostics::InputLog> inputLog;
         if (!arguments->replay_inputs.empty()) {
             if (!arguments->input_at.empty())
@@ -170,10 +172,8 @@ int main(const int argc, char **argv) {
             throw std::invalid_argument("PPU condition is outside its hardware range");
         std::vector<RunCondition> conditions;
         if (arguments->until_register)
-            conditions.push_back({
-                arguments->until_changed ? ConditionKind::RegisterChange : ConditionKind::RegisterValue,
-                *arguments->until_register, arguments->until_value.value_or(0), arguments->until_mask
-            });
+            conditions.push_back({arguments->until_changed ? ConditionKind::RegisterChange : ConditionKind::RegisterValue, *arguments->until_register,
+                                  arguments->until_value.value_or(0), arguments->until_mask});
         if (arguments->until_mode)
             conditions.push_back({ConditionKind::PpuMode, 0, *arguments->until_mode});
         if (arguments->until_ly)
@@ -221,10 +221,8 @@ int main(const int argc, char **argv) {
                 if (arguments->watch_write)
                     watchpoints->WriteAt({*arguments->watch_write, *arguments->watch_write});
                 if (arguments->watch_event)
-                    watchpoints->Add({
-                        .events = {.kinds = uint64_t{1} << static_cast<unsigned>(*arguments->watch_event)},
-                        .value = arguments->watch_value
-                    });
+                    watchpoints->Add(
+                            {.events = {.kinds = uint64_t{1} << static_cast<unsigned>(*arguments->watch_event)}, .value = arguments->watch_value});
             }
             machine.ObserveWith(&recorder->Context());
         }
@@ -234,17 +232,15 @@ int main(const int argc, char **argv) {
         if (arguments->pixel_x.value_or(0) > 159 || arguments->pixel_y.value_or(0) > 143)
             throw std::invalid_argument("Pixel query is outside the display");
         if (!arguments->provenance.empty() || arguments->pixel_x) {
-            diagnostics::PixelRegion region{
-                .y = {arguments->pixel_y.value_or(0), arguments->pixel_y.value_or(0)},
-                .ticks = {arguments->pixel_begin, arguments->pixel_end}
-            };
+            diagnostics::PixelRegion region{.y = {arguments->pixel_y.value_or(0), arguments->pixel_y.value_or(0)},
+                                            .ticks = {arguments->pixel_begin, arguments->pixel_end}};
             if (arguments->provenance_whole_frame)
                 region.y = {0, 143};
             if (arguments->pixel_frame)
                 region.frames = {*arguments->pixel_frame, *arguments->pixel_frame};
-            pixels = std::make_unique<diagnostics::ProvenanceRecorder>(region, 160 * (region.y.last - region.y.first + 1),
-                                                                       arguments->pixel_event_capacity.value_or(
-                                                                           arguments->provenance_whole_frame ? 65536 : 4096));
+            pixels = std::make_unique<diagnostics::ProvenanceRecorder>(
+                    region, 160 * (region.y.last - region.y.first + 1),
+                    arguments->pixel_event_capacity.value_or(arguments->provenance_whole_frame ? 65536 : 4096));
             pixels->Identify(std::string(Gameboy::CoreBuildIdentity()), initialInputs.rom);
             machine.RecordPixelsWith(&pixels->Context());
         }
@@ -259,13 +255,13 @@ int main(const int argc, char **argv) {
                 !arguments->checkpoint_load.empty() || recorder || pixels)
                 throw std::invalid_argument("Differential capture requires its own initial execution and capture plan");
             diagnostics::WriteObservations(arguments->comparison_output, machine, replay.get(), initialInputs, replayHash,
-                                           {
-                                               .beginTick = arguments->comparison_begin, .endTick = arguments->comparison_end,
-                                               .sampleTicks = arguments->sample_ticks,
-                                               .policy = arguments->policy, .events = arguments->comparison_events,
-                                               .eventDetails = arguments->comparison_event_details,
-                                               .eventCapacity = arguments->trace_capacity
-                                           });
+                                           {.beginTick = arguments->comparison_begin,
+                                            .endTick = arguments->comparison_end,
+                                            .sampleTicks = arguments->sample_ticks,
+                                            .policy = arguments->policy,
+                                            .events = arguments->comparison_events,
+                                            .eventDetails = arguments->comparison_event_details,
+                                            .eventCapacity = arguments->trace_capacity});
         }
         for (unsigned interval = 0; interval < arguments->intervals; ++interval) {
             if (replay)
@@ -275,19 +271,19 @@ int main(const int argc, char **argv) {
         }
         std::optional<ExecutionResult> execution;
         if (arguments->ticks)
-            execution = replay
-                            ? replay->AdvanceTicks(arguments->ticks, arguments->policy)
-                            : machine.AdvanceTicks(arguments->ticks, arguments->policy);
+            execution =
+                    replay ? replay->AdvanceTicks(arguments->ticks, arguments->policy) : machine.AdvanceTicks(arguments->ticks, arguments->policy);
         if (arguments->step_instruction)
             execution = replay ? replay->StepInstruction(arguments->deadline_ticks) : machine.StepInstruction(arguments->deadline_ticks);
         std::optional<ConditionalExecutionResult> conditional;
         if (hasWatchpoint || !conditions.empty())
             conditional = replay ? replay->RunUntil(conditions, arguments->deadline_ticks) : machine.RunUntil(conditions, arguments->deadline_ticks);
-        InspectionReport report{
-            .romHash = diagnostics::FileHash(arguments->rom), .machine = machine.Inspect(),
-            .execution = execution, .conditional = conditional, .initialInputs = initialInputs,
-            .replayCursor = replay ? replay->Cursor() : 0
-        };
+        InspectionReport report{.romHash = diagnostics::FileHash(arguments->rom),
+                                .machine = machine.Inspect(),
+                                .execution = execution,
+                                .conditional = conditional,
+                                .initialInputs = initialInputs,
+                                .replayCursor = replay ? replay->Cursor() : 0};
         if (!arguments->checkpoint_save.empty()) {
             if (inputRecorder) {
                 auto recordedIdentity = checkpointIdentity;

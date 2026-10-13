@@ -12,18 +12,14 @@ namespace {
     }
 
     auto only(const diagnostics::Component component, const diagnostics::EventKind kind) {
-        return diagnostics::EventFilter{
-            .components = uint64_t{1} << static_cast<unsigned>(component),
-            .kinds = uint64_t{1} << static_cast<unsigned>(kind)
-        };
+        return diagnostics::EventFilter{.components = uint64_t{1} << static_cast<unsigned>(component),
+                                        .kinds = uint64_t{1} << static_cast<unsigned>(kind)};
     }
-}
+} // namespace
 
-TEST_CASE (
+TEST_CASE(
 
-"diagnostics: trigger retains bounded history and following events including a filtered trigger"
-)
- {
+        "diagnostics: trigger retains bounded history and following events including a filtered trigger") {
     auto capture = only(diagnostics::Component::Bus, diagnostics::EventKind::BusRead);
     auto match = only(diagnostics::Component::Bus, diagnostics::EventKind::BusWrite);
     diagnostics::TraceRecorder recorder(4, capture);
@@ -52,11 +48,9 @@ TEST_CASE (
     CHECK(immediate.Events().size() == 1);
 }
 
-TEST_CASE (
+TEST_CASE(
 
-"diagnostics: timer overflow and reload retain their distinct modeled ticks"
-)
- {
+        "diagnostics: timer overflow and reload retain their distinct modeled ticks") {
     Audio audio;
     audio.SetModel(Model::DMGB);
     Interrupts interrupts;
@@ -82,11 +76,9 @@ TEST_CASE (
     CHECK(timer.tima == 37);
 }
 
-TEST_CASE (
+TEST_CASE(
 
-"diagnostics: delayed PPU writes become visible to the fetcher at their apply tick"
-)
- {
+        "diagnostics: delayed PPU writes become visible to the fetcher at their apply tick") {
     Interrupts interrupts;
     GPU gpu(interrupts);
     gpu.SetModel(Model::DMGB);
@@ -111,11 +103,9 @@ TEST_CASE (
     CHECK(events[0].position.tick == 24);
 }
 
-TEST_CASE (
+TEST_CASE(
 
-"diagnostics: OAM DMA transfer records identify source destination and ownership"
-)
- {
+        "diagnostics: OAM DMA transfer records identify source destination and ownership") {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     auto &bus = gameboy.[:peripheralMember<Gameboy>("bus_"):];
     auto &cpu = gameboy.[:peripheralMember<Gameboy>("cpu_"):];
@@ -142,20 +132,17 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
+TEST_CASE(
 
-"diagnostics: deferred audio retains modeled mixer ticks and inspection emits nothing"
-)
- {
+        "diagnostics: deferred audio retains modeled mixer ticks and inspection emits nothing") {
     std::array<std::vector<diagnostics::Event>, 2> results;
     for (const bool defer : {false, true}) {
         Audio audio;
         audio.SetModel(Model::CGBC);
         diagnostics::TraceRecorder recorder(4096, only(diagnostics::Component::APU, diagnostics::EventKind::AudioMix));
         audio.ObserveWith(&recorder.Context());
-        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 7>{{
-                     {0xFF26, 0x80}, {0xFF24, 0x77}, {0xFF25, 0x11}, {0xFF11, 0x80},
-                     {0xFF12, 0xF0}, {0xFF13, 0xF8}, {0xFF14, 0x87}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 7>{
+                     {{0xFF26, 0x80}, {0xFF24, 0x77}, {0xFF25, 0x11}, {0xFF11, 0x80}, {0xFF12, 0xF0}, {0xFF13, 0xF8}, {0xFF14, 0x87}}})
             audio.WriteByte(address, value, false);
         for (uint64_t tick = 0; tick < 4000; tick += 2) {
             recorder.Context().position.tick = tick;
@@ -181,11 +168,9 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
+TEST_CASE(
 
-"diagnostics: general DMA records both bus ownership edges and all sixteen destination writes"
-)
- {
+        "diagnostics: general DMA records both bus ownership edges and all sixteen destination writes") {
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     auto &bus = gameboy.[:peripheralMember<Gameboy>("bus_"):];
     gameboy.[:peripheralMember<Gameboy>("cpu_"):].Lock();
@@ -195,8 +180,8 @@ TEST_CASE (
         bus.DebugPoke(0xC000 + i, i + 1);
     diagnostics::TraceRecorder recorder(32, {.components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::DMA)});
     gameboy.ObserveWith(&recorder.Context());
-    for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{
-                 {0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0}}})
+    for (const auto [address, value] :
+         std::array<std::pair<uint16_t, uint8_t>, 5>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0}}})
         bus.WriteByte(address, value, ComponentSource::CPU);
     static_cast<void>(gameboy.AdvanceTicks(100));
     const auto events = recorder.Events();

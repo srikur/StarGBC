@@ -14,9 +14,9 @@
 class Bus {
 public:
     explicit Bus(Joypad &joypad, Memory &memory, Timer &timer, Cartridge &cartridge, Serial &serial, DMA &dma, Audio &audio, Interrupts &interrupts,
-                 GPU &gpu) : joypad_(joypad), memory_(memory), timer_(timer), cartridge_(cartridge), serial_(serial), dma_(dma), audio_(audio),
-                             interrupts_(interrupts),
-                             gpu_(gpu) {}
+                 GPU &gpu) :
+        joypad_(joypad), memory_(memory), timer_(timer), cartridge_(cartridge), serial_(serial), dma_(dma), audio_(audio), interrupts_(interrupts),
+        gpu_(gpu) {}
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
 
@@ -62,8 +62,8 @@ public:
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork(cpuAtInstructionBoundary);
         if (observations && wasOwned != gpu_.hdma.ShouldHaltCPU())
-            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
-                               gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
+            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55, gpu_.hdma.ShouldHaltCPU(), 0,
+                               diagnostics::Initiator::HDMA);
     }
 
     void RunHDMAWork(bool cpuAtInstructionBoundary) const;
