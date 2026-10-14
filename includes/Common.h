@@ -25,6 +25,10 @@ static constexpr uint16_t GPU_REGS_BEGIN = 0xFF40;
 static constexpr uint16_t GPU_REGS_END = 0xFF4B;
 static constexpr uint16_t OAM_BEGIN = 0xFE00;
 static constexpr uint16_t OAM_END = 0xFE9F;
+static constexpr uint16_t WRAM_BEGIN = 0xC000;
+static constexpr uint16_t WRAM_END = 0xDFFF;
+static constexpr uint16_t ERAM_BEGIN = 0xE000;
+static constexpr uint16_t ERAM_END = 0xFDFF;
 
 static constexpr uint8_t OAM_PRIORITY_BIT = 7;
 static constexpr uint8_t OAM_Y_FLIP_BIT = 6;

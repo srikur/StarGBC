@@ -7,9 +7,9 @@
 #include <vector>
 
 int Bus::DmaBusFor(const uint16_t address) const {
-    if (address >= 0x8000 && address <= 0x9FFF)
+    if (address >= VRAM_BEING && address <= VRAM_END)
         return 1; // VRAM bus
-    if (address >= 0xC000 && address <= 0xFDFF) {
+    if (address >= WRAM_BEGIN && address <= ERAM_END) {
         // CGB WRAM sits on its own bus; DMG WRAM shares the external bus
         return IsCgb(gpu_.model) ? 2 : 0;
     }
@@ -286,8 +286,23 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return;
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
-        DmaBusFor(address) == DmaBusFor(dma_.startAddress))
+        DmaBusFor(address) == DmaBusFor(dma_.startAddress)) {
+        // appears that writes to the OAM DMA are not discarded, but have corrupted writes to the current OAM byte depending on the model:
+        // 1) DMG WRAM — AND of OAM data and value
+        // 2) other DMG — bus value
+        // 3) CGB VRAM — byte set to 0
+        // 4) CGB WRAM — retain DMA value
+        // 5) CGB other — bus value
+        auto &transferred = gpu_.oam[dma_.currentByte - 1];
+        if (IsCgb(gpu_.model)) {
+            if (dma_.startAddress < WRAM_BEGIN) {
+                transferred = DmaBusFor(dma_.startAddress) == 1 ? 0 : value;
+            }
+        } else {
+            transferred = dma_.startAddress >= WRAM_BEGIN ? transferred & value : value;
+        }
         return;
+    }
     switch (address) {
         case 0x0000 ... 0x7FFF:
             cartridge_.WriteByte(address, value);
