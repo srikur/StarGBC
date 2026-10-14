@@ -1,7 +1,7 @@
+#include "diagnostics/Comparison.h"
 #include <doctest/doctest.h>
 #include <fstream>
 #include <sstream>
-#include "diagnostics/Comparison.h"
 #include "diagnostics/Json.h"
 
 namespace {
@@ -11,12 +11,9 @@ namespace {
         diagnostics::WriteJson(output, value);
         return output.str();
     }
-}
+} // namespace
 
-TEST_CASE (
-"diagnostics: optimized execution agrees with ordinary hardware and sampled outputs"
-)
- {
+TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sampled outputs") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         CAPTURE(model);
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
@@ -37,18 +34,18 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-"diagnostics: ordered observation capture bounds events and rejects incomplete plans"
-)
- {
-    const auto directory = std::filesystem::temp_directory_path() / ("stargbc-comparison-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+TEST_CASE("diagnostics: ordered observation capture bounds events and rejects incomplete plans") {
+    const auto directory = std::filesystem::temp_directory_path() /
+                           ("stargbc-comparison-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(directory);
     const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
     Gameboy machine(settings);
     const auto initial = diagnostics::IdentifyInitialInputs(machine, settings);
-    CHECK_THROWS_AS(diagnostics::WriteObservations(directory / "invalid", machine, nullptr, initial, {}, {.endTick = 17, .sampleTicks = 0}), std::invalid_argument);
+    CHECK_THROWS_AS(diagnostics::WriteObservations(directory / "invalid", machine, nullptr, initial, {}, {.endTick = 17, .sampleTicks = 0}),
+                    std::invalid_argument);
     REQUIRE(machine.TimelineTicks() == 0);
-    diagnostics::WriteObservations(directory / "complete", machine, nullptr, initial, {}, {.beginTick = 7, .endTick = 49, .sampleTicks = 11, .events = true, .eventDetails = true});
+    diagnostics::WriteObservations(directory / "complete", machine, nullptr, initial, {},
+                                   {.beginTick = 7, .endTick = 49, .sampleTicks = 11, .events = true, .eventDetails = true});
     CHECK(machine.TimelineTicks() == 49);
     CHECK(machine.Observations() == nullptr);
     std::ifstream input(directory / "complete");
@@ -56,7 +53,9 @@ TEST_CASE (
     CHECK(contents.contains("\"record\":\"complete\",\"tick\":49,\"samples\":5"));
     CHECK(contents.contains("\"kind\":\"BusRead\""));
     Gameboy overflow(settings);
-    CHECK_THROWS_AS(diagnostics::WriteObservations(directory / "overflow", overflow, nullptr, initial, {}, {.endTick = 100, .events = true, .eventCapacity = 1}), std::runtime_error);
+    CHECK_THROWS_AS(diagnostics::WriteObservations(directory / "overflow", overflow, nullptr, initial, {},
+                                                   {.endTick = 100, .events = true, .eventCapacity = 1}),
+                    std::runtime_error);
     CHECK(overflow.Observations() == nullptr);
     std::filesystem::remove_all(directory);
 }

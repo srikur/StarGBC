@@ -647,8 +647,7 @@ void Channel1::WriteByte(const uint16_t address, const uint8_t value, const bool
                 enabled = false;
             }
             TickSweep128(lfDiv, false);
-        }
-        break;
+        } break;
         case 0x01:
             lengthTimer.Write(value, audioEnabled);
             break;
@@ -905,7 +904,7 @@ void Channel3::Trigger(const uint8_t freqStep, const bool dmg) {
 }
 
 void Channel3::TickLength() {
-    if (lengthEnabled &&lengthTimer<256) {
+    if (lengthEnabled && lengthTimer < 256) {
         lengthTimer++;
     }
 }
@@ -913,8 +912,7 @@ void Channel3::TickLength() {
 void Channel3::Tick() {
     if (!enabled)
         return;
-    if (lengthEnabled &&lengthTimer == 256)
-    {
+    if (lengthEnabled && lengthTimer == 256) {
         enabled = false;
     }
 
@@ -1041,8 +1039,7 @@ void Channel4::StepLfsr() {
 }
 
 void Channel4::Tick2M(const uint8_t freqStep, const bool dmg) {
-    if (enabled &&lengthTimer.enabled &&lengthTimer.lengthTimer == 64)
-    {
+    if (enabled && lengthTimer.enabled && lengthTimer.lengthTimer == 64) {
         enabled = false;
     }
     if (dmgDelayedStart > 0 && --dmgDelayedStart == 0) {
@@ -1252,8 +1249,8 @@ void Channel4::HandleNR43Write(const uint8_t value) {
         } else {
             // Category 2
             static constexpr uint8_t glitchMap[8 * 8] = {
-                0, 0, 4, 2, 2, 2, 0, 0, 0, 0, 2, 4, 2, 2, 0, 0, 1, 2, 0, 1, 5, 3, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0,
-                0, 2, 2, 2, 0, 0, 0, 0, 6, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 4, 2, 2, 2, 0, 0, 0, 0, 2, 4, 2, 2, 0, 0, 1, 2, 0, 1, 5, 3, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0,
+                    0, 2, 2, 2, 0, 0, 0, 0, 6, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             };
             const unsigned glitch = (value & 0x80) ? glitchMap[((old & 0x70) >> 1) | ((value & 0x70) >> 4)] : 0;
             switch (glitch) {
@@ -1354,8 +1351,7 @@ void Channel4::WriteByte(const uint16_t address, const uint8_t value, const bool
         case 0x01:
             if ((value & 0xF8) == 0) {
                 // Disabling the DAC also stops the background counter
-                if (enabled &&noise.clockDivider)
-                {
+                if (enabled && noise.clockDivider) {
                     if (counterCountdown <= 2) {
                         counter = (counter + 1) & 0x3FFF;
                     }
@@ -1485,7 +1481,7 @@ void Audio::GenerateSample() {
         };
 
         const int phase = static_cast<int>(sampleAcc_ >> 15) & (BL_PHASES - 1);
-        std::array < double, 2 > level{};
+        std::array<double, 2> level{};
         auto getChannelOutput = [&](const int ch, const double output, const bool enabled, const bool dacEnabled, const uint8_t leftMask,
                                     const uint8_t rightMask) {
             const double val = dac(output, enabled && dacEnabled);

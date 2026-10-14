@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <cstddef>
 #include "diagnostics/Observation.h"
 
 enum class ExecutionPolicy { Optimized, Ordinary };

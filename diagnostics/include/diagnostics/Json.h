@@ -54,7 +54,10 @@ namespace diagnostics {
                 }
             }
             throw std::invalid_argument("unknown JSON enum value");
-        } else if constexpr (requires { value.has_value(); *value; }) {
+        } else if constexpr (requires {
+                                 value.has_value();
+                                 *value;
+                             }) {
             if (value)
                 WriteJson(out, *value);
             else
@@ -72,7 +75,8 @@ namespace diagnostics {
             static_assert(std::is_aggregate_v<T>);
             out.put('{');
             bool separator = false;
-            template for (constexpr auto m : std::define_static_array(std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()))) {
+            template for (constexpr auto m :
+                          std::define_static_array(std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()))) {
                 if (std::exchange(separator, true))
                     out.put(',');
                 WriteJson(out, std::meta::identifier_of(m));
@@ -82,4 +86,4 @@ namespace diagnostics {
             out.put('}');
         }
     }
-}
+} // namespace diagnostics

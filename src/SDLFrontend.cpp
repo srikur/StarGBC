@@ -4,14 +4,15 @@
 #include <cstdio>
 #include <format>
 #include <fstream>
-#include <print>
 #include <limits>
+#include <print>
 #include <string_view>
 
 #include <starparse/starparse.hpp>
 
 constexpr std::string_view kAppName = "StarGBC";
 constexpr std::string_view kAppVersion = "0.0.1";
+constexpr std::string_view kAppDescription = "GBC Emulator";
 constexpr std::string_view kAppIdentifier = "com.srikur.stargbc";
 
 SDLFrontend::~SDLFrontend() {
@@ -40,7 +41,7 @@ SDLFrontend::~SDLFrontend() {
 namespace {
     using namespace StarParse;
 
-    struct[[=Program{kAppName, "GBC Emulator", kAppVersion}]] Args {
+    struct[[=Program{kAppName, kAppDescription, kAppVersion}]] Args {
         [[=Positional{0}, =Required]] std::string rom_path;
         [[=Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
         [[=Opt{"Start without speed limitations"}]] bool unthrottled{false};
@@ -55,13 +56,13 @@ namespace {
         [[=Opt{"Lua instructions per frame"}]] uint64_t script_instruction_budget{1'000'000};
         [[=Opt{"Lua memory limit in MiB"}]] uint64_t script_memory_mib{32};
     };
-}
+} // namespace
 
 SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
     SDL_SetAppMetadata(kAppName.data(), kAppVersion.data(), kAppIdentifier.data());
 
-    constexpr StarParse::Settings settings{.allow_case_insensitivity = true};
-    const auto args{StarParse::parse_or_exit<Args>(argc, argv, settings)};
+    constexpr Settings settings{.allow_case_insensitivity = true};
+    const auto args{StarParse::parse_or_exit<Args, settings>(argc, argv)};
     if (args.help_requested()) {
         std::print("{}", args.help());
         return SDL_APP_SUCCESS;
@@ -83,8 +84,8 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 #endif
-    if (!args->script_instruction_budget || args->script_instruction_budget > std::numeric_limits<uint64_t>::max() / 10 ||
-        !args->script_memory_mib || args->script_memory_mib > std::numeric_limits<size_t>::max() / (1024 * 1024)) {
+    if (!args->script_instruction_budget || args->script_instruction_budget > std::numeric_limits<uint64_t>::max() / 10 || !args->script_memory_mib ||
+        args->script_memory_mib > std::numeric_limits<size_t>::max() / (1024 * 1024)) {
         SDL_Log("Script limits must be positive and fit in the supported range");
         return SDL_APP_FAILURE;
     }
@@ -94,8 +95,7 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer(kAppName.data(), GB_SCREEN_W * windowScale_, GB_SCREEN_H * windowScale_, SDL_WINDOW_RESIZABLE,
-                                     &window_,
+    if (!SDL_CreateWindowAndRenderer(kAppName.data(), GB_SCREEN_W * windowScale_, GB_SCREEN_H * windowScale_, SDL_WINDOW_RESIZABLE, &window_,
                                      &renderer_)) {
         SDL_Log("CreateWindowAndRenderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -132,14 +132,12 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         }
     }
 
-    gameboy_ = Gameboy::init({
-        .romName = args->rom_path,
-        .biosPath = args->bios_path,
-        .model = args->model,
-        .noBootrom = args->no_bootrom,
-        .realRTC = args->real_rtc,
-        .noAudio = !audioEnabled_
-    });
+    gameboy_ = Gameboy::init({.romName = args->rom_path,
+                              .biosPath = args->bios_path,
+                              .model = args->model,
+                              .noBootrom = args->no_bootrom,
+                              .realRTC = args->real_rtc,
+                              .noAudio = !audioEnabled_});
 
     lastTitleTime_ = std::chrono::steady_clock::now();
     session_ = std::make_unique<EmulationSession>(*gameboy_);
@@ -314,7 +312,8 @@ SDL_AppResult SDLFrontend::Iterate() {
     }
     if (audioStateGeneration_ != session_->StateGeneration()) {
         audioStateGeneration_ = session_->StateGeneration();
-        if (audioStream_) SDL_ClearAudioStream(audioStream_);
+        if (audioStream_)
+            SDL_ClearAudioStream(audioStream_);
     }
 
     if (gameboy_->ConsumeFrame()) {
@@ -415,7 +414,7 @@ namespace {
         uint8_t model;
         uint8_t reserved;
     };
-}
+} // namespace
 
 static_assert(sizeof(SaveStateHeader) == 24 && std::has_unique_object_representations_v<SaveStateHeader>);
 
@@ -429,12 +428,12 @@ void SDLFrontend::SaveState(const uint8_t slot) const {
         if (!file.is_open())
             throw std::runtime_error("Failed to save: " + filename);
         const SaveStateHeader header{
-            .magic = kStateMagic,
-            .stateSize = kGameboyStateSize,
-            .version = kStateVersion,
-            .cartChecksum = gameboy_->CartChecksum(),
-            .model = static_cast<uint8_t>(gameboy_->GetModel()),
-            .reserved = 0,
+                .magic = kStateMagic,
+                .stateSize = kGameboyStateSize,
+                .version = kStateVersion,
+                .cartChecksum = gameboy_->CartChecksum(),
+                .model = static_cast<uint8_t>(gameboy_->GetModel()),
+                .reserved = 0,
         };
         const auto saveBytes = gameboy_->SaveState();
         file.write(reinterpret_cast<const char *>(&header), sizeof(header));

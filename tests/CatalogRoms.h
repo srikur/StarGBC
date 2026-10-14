@@ -1,8 +1,8 @@
 #pragma once
 
 #include <format>
-#include "TestRoms.h"
 #include "GbMicrotestDiagnostics.h"
+#include "TestRoms.h"
 
 enum class CatalogRunner { AgeScreen, AgeMarker, MicroProtocol, MicroDiagnostic, RomScreen, RomStopScreen, RomRegisters };
 
@@ -32,14 +32,15 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
     ThreadPermit permit;
     TestObservationSession observations;
     const unsigned limit = romFrames ? romFrames : test.intervals;
-    diagnostics::Result result{
-        .test = {
-            .id = test.id, .suite = test.suite, .rom = test.rom, .model = std::string(ModelName(test.model)),
-            .startup = test.startup, .expectationVariant = test.variant
-        },
-        .budgetTicks = limit * diagnostics::RunFrameTicks,
-        .expected = *test.expected ? test.expected : std::string(model_name(test.runner)), .details = test.name
-    };
+    diagnostics::Result result{.test = {.id = test.id,
+                                        .suite = test.suite,
+                                        .rom = test.rom,
+                                        .model = std::string(ModelName(test.model)),
+                                        .startup = test.startup,
+                                        .expectationVariant = test.variant},
+                               .budgetTicks = limit * diagnostics::RunFrameTicks,
+                               .expected = *test.expected ? test.expected : std::string(model_name(test.runner)),
+                               .details = test.name};
     std::unique_ptr<Gameboy> gameboy;
     std::vector<uint32_t> expected;
     diagnostics::TerminalState terminal;
@@ -66,11 +67,10 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
             diagnostic.emplace(*entry, test.expected);
         }
         result.inputs.reference = *test.expected ? diagnostics::FileHash(test.expected) : diagnostics::TextHash(contract.str());
-        result.inputs.configuration = diagnostics::TextHash(result.test.model + "|" + test.startup + "|" + contract.str() +
-                                                            "|virtual-rtc|color-correction|" + std::to_string(limit) + (
-                                                                romFrames ? "|fixed|" : "|until|") + "catalog-v1");
-        const bool graphical = test.runner == AgeScreen || test.runner == RomScreen || test.runner == RomStopScreen ||
-                               diagnosticScreen;
+        result.inputs.configuration =
+                diagnostics::TextHash(result.test.model + "|" + test.startup + "|" + contract.str() + "|virtual-rtc|color-correction|" +
+                                      std::to_string(limit) + (romFrames ? "|fixed|" : "|until|") + "catalog-v1");
+        const bool graphical = test.runner == AgeScreen || test.runner == RomScreen || test.runner == RomStopScreen || diagnosticScreen;
         if (graphical)
             expected = readBinaryFile(test.expected);
         gameboy = Gameboy::init({.romName = test.rom, .biosPath = test.bios, .model = test.model, .executionPolicy = testExecutionPolicy});
@@ -93,9 +93,8 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
                 previous = current;
             } else if (test.runner == AgeMarker) {
                 const auto pc = gameboy->InspectCpu().pc;
-                completed = gameboy->InspectRegister(0xFFFF).cpuVisible == 0 && pc >= 8 &&
-                            gameboy->InspectCpuRead(pc - 4) == 0xFB && gameboy->InspectCpuRead(pc - 3) == 0 &&
-                            gameboy->InspectCpuRead(pc - 2) == 0x76 && gameboy->InspectCpuRead(pc - 1) == 0;
+                completed = gameboy->InspectRegister(0xFFFF).cpuVisible == 0 && pc >= 8 && gameboy->InspectCpuRead(pc - 4) == 0xFB &&
+                            gameboy->InspectCpuRead(pc - 3) == 0 && gameboy->InspectCpuRead(pc - 2) == 0x76 && gameboy->InspectCpuRead(pc - 1) == 0;
                 passed = completed && mooneyePassed(*gameboy);
                 stable = completed;
             } else {
@@ -125,15 +124,11 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
         terminal = terminalState(*gameboy);
         result.position = gameboy->ExecutionPosition();
         const bool sampledAfterBoot = romFrames && !gameboy->[:testGameboyMember("bus_"):].bootromRunning;
-        result.outcome = passed
-                             ? diagnostics::Outcome::Pass
-                             : completed || sampledAfterBoot
-                                   ? diagnostics::Outcome::AssertionFailure
-                                   : diagnostics::Outcome::Timeout;
-        result.completion = romFrames
-                                ? diagnostics::Completion::FixedInterval
-                                : stable
-                                      ? (test.runner == AgeMarker ? diagnostics::Completion::CompletionMarker : diagnostics::Completion::StableResult)
+        result.outcome = passed                          ? diagnostics::Outcome::Pass
+                         : completed || sampledAfterBoot ? diagnostics::Outcome::AssertionFailure
+                                                         : diagnostics::Outcome::Timeout;
+        result.completion = romFrames ? diagnostics::Completion::FixedInterval
+                            : stable  ? (test.runner == AgeMarker ? diagnostics::Completion::CompletionMarker : diagnostics::Completion::StableResult)
                                       : diagnostics::Completion::Deadline;
         if (graphical) {
             result.actual = diagnostics::Sha256(std::as_bytes(std::span(gameboy->GetScreenData(), 160 * 144)));
@@ -154,14 +149,18 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
     }
     if (!result.Passed() && !failureDirectory.empty()) {
         diagnostics::WriteFailureBundle(failureDirectory / diagnostics::TextHash(result.test.id), result,
-                                        {
-                                            .test = result.test, .inputs = result.inputs, .rom = test.rom, .bootrom = test.bios,
-                                            .reference = test.expected,
-                                            .cartridgeSave = hasSave ? save.string() : "", .expectation = result.expected, .intervals = limit,
-                                            .normalization = test.runner == RomStopScreen ? "rgb24" : "rgba32",
-                                            .completion = std::string(model_name(test.runner)),
-                                            .executableHash = testExecutableHash, .fixedIntervals = romFrames != 0
-                                        },
+                                        {.test = result.test,
+                                         .inputs = result.inputs,
+                                         .rom = test.rom,
+                                         .bootrom = test.bios,
+                                         .reference = test.expected,
+                                         .cartridgeSave = hasSave ? save.string() : "",
+                                         .expectation = result.expected,
+                                         .intervals = limit,
+                                         .normalization = test.runner == RomStopScreen ? "rgb24" : "rgba32",
+                                         .completion = std::string(model_name(test.runner)),
+                                         .executableHash = testExecutableHash,
+                                         .fixedIntervals = romFrames != 0},
                                         terminal, gameboy ? std::span(gameboy->GetScreenData(), 160 * 144) : std::span<const uint32_t>{}, expected,
                                         test.runner == RomStopScreen ? 0xFFFFFF : 0xFFFFFFFF);
         observations.Export(result.artifacts.front(), result);
@@ -171,11 +170,10 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
 
 static auto &catalogFutures() {
     static auto futures = [] {
-        std::vector<std::shared_future<diagnostics::Result> > results;
+        std::vector<std::shared_future<diagnostics::Result>> results;
         for (const auto &test : catalogCases)
-            results.push_back(selectedTestNames.contains(test.name)
-                                  ? testWorkers->Submit([test] { return runCatalogTest(test); })
-                                  : std::shared_future<diagnostics::Result>{});
+            results.push_back(selectedTestNames.contains(test.name) ? testWorkers->Submit([test] { return runCatalogTest(test); })
+                                                                    : std::shared_future<diagnostics::Result>{});
         return results;
     }();
     return futures;
@@ -193,19 +191,13 @@ static void checkCatalogCase() {
         const auto &test = catalogCases[i];
         if (!test.grouped)
             doctest::detail::regTest(doctest::detail::TestCase(checkCatalogCase, "tests/catalog", static_cast<unsigned>(i),
-                                                               doctest::detail::TestSuite() * test.suite) * test.name);
+                                                               doctest::detail::TestSuite() * test.suite) *
+                                     test.name);
     }
     return true;
 }();
 
-TEST_CASE (
-"model ROMs: Mooneye startup and HALT, SameSuite early CGB audio"
-*
-doctest::test_suite (
-"rom"
-)
-)
- {
+TEST_CASE("model ROMs: Mooneye startup and HALT, SameSuite early CGB audio" * doctest::test_suite("rom")) {
     for (size_t i = 0; i < std::size(catalogCases); ++i) {
         if (!catalogCases[i].grouped)
             continue;

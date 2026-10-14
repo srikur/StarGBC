@@ -82,4 +82,4 @@ namespace diagnostics {
     };
 
     [[nodiscard]] std::string StableCaseId(const CaseIdentity &test);
-}
+} // namespace diagnostics

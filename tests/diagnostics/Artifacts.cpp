@@ -1,11 +1,8 @@
+#include "diagnostics/Artifacts.h"
 #include <array>
 #include <doctest/doctest.h>
-#include "diagnostics/Artifacts.h"
 
-TEST_CASE (
-"diagnostics: pixel differences retain the first mismatch and inclusive bounds"
-)
- {
+TEST_CASE("diagnostics: pixel differences retain the first mismatch and inclusive bounds") {
     constexpr std::array<uint32_t, 6> actual{0, 1, 2, 3, 4, 5};
     constexpr std::array<uint32_t, 6> expected{0, 0xFF000001, 9, 9, 4, 5};
     const auto difference = diagnostics::ComparePixels(actual, expected, 3, 2, 0xFFFFFF);

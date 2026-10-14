@@ -8,8 +8,25 @@
 namespace diagnostics {
     enum class PixelSource : uint8_t { Unknown, Background, Window, Sprite, Backdrop, WindowGlitch };
     enum class SpriteDecision : uint8_t { Transparent, Replaced, KeptEarlier, Aborted };
-    enum class PixelDecision : uint8_t { SpriteTransparent, ObjectsDisabled, BackgroundDisabled, BackgroundPriority, SpriteBehindBackground, SpriteForeground, DisplayCleared };
-    enum class PipelineReason : uint8_t { FineScroll, WindowClipping, WindowRestart, SpriteClipping, SpriteFetch, SpriteAlignment, FifoStarvation, RestoredWithoutHistory };
+    enum class PixelDecision : uint8_t {
+        SpriteTransparent,
+        ObjectsDisabled,
+        BackgroundDisabled,
+        BackgroundPriority,
+        SpriteBehindBackground,
+        SpriteForeground,
+        DisplayCleared
+    };
+    enum class PipelineReason : uint8_t {
+        FineScroll,
+        WindowClipping,
+        WindowRestart,
+        SpriteClipping,
+        SpriteFetch,
+        SpriteAlignment,
+        FifoStarvation,
+        RestoredWithoutHistory
+    };
 
     struct PixelOrigin {
         bool valid{};
@@ -114,9 +131,9 @@ namespace diagnostics {
 
     struct PixelProvenanceContext {
         void *owner{};
-        void (*output)(void *, const PixelExplanation &) noexcept{};
-        void (*pipeline)(void *, const PixelPipelineEvent &) noexcept{};
-        void (*recolor)(void *, const PixelRecolor &) noexcept{};
+        void (*output)(void *, const PixelExplanation &) noexcept {};
+        void (*pipeline)(void *, const PixelPipelineEvent &) noexcept {};
+        void (*recolor)(void *, const PixelRecolor &) noexcept {};
         ExecutionPosition position;
         uint64_t branch{};
         PixelOrigin backgroundFetch;
@@ -167,4 +184,4 @@ namespace diagnostics {
                 pipeline(owner, {position, branch, x, y, reason, origin});
         }
     };
-}
+} // namespace diagnostics

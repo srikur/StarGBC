@@ -2,9 +2,9 @@
 #define STARGBC_CPU_H
 
 #include "Bus.h"
+#include "Inspection.h"
 #include "Instructions.h"
 #include "Registers.h"
-#include "Inspection.h"
 
 template<BusLike BusT>
 class CPU {
@@ -59,6 +59,8 @@ public:
 
     [[nodiscard]] bool IsHalted() const { return halted_; }
 
+    [[nodiscard]] bool AtInstructionBoundary() const { return !instrRunning && !prefixed && interruptState == InterruptState::M1; }
+
     [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
 
     void RestoreInstructionCount(const uint64_t count) { instructionsCompleted_ = count; }
@@ -70,13 +72,26 @@ public:
     void ObserveWith(diagnostics::ObservationContext *context) { observations_ = context; }
 
     [[nodiscard]] CpuInspection Inspect() const {
-        return {
-            .pc = pc_, .sp = sp_, .af = regs_.GetAF(), .bc = regs_.GetBC(), .de = regs_.GetDE(), .hl = regs_.GetHL(),
-            .instruction = currentInstruction, .nextInstruction = nextInstruction_, .instructionCycle = icount_,
-            .machineCycle = mCycleCounter_, .sampledRunningInterrupts = runningPending_, .sampledHaltInterrupts = haltPending_,
-            .interruptState = interruptState, .interruptMask = interruptMask, .instructionRunning = instrRunning,
-            .prefixed = prefixed, .halted = halted_, .stopped = stopped_, .locked = locked_, .haltBug = haltBug_
-        };
+        return {.pc = pc_,
+                .sp = sp_,
+                .af = regs_.GetAF(),
+                .bc = regs_.GetBC(),
+                .de = regs_.GetDE(),
+                .hl = regs_.GetHL(),
+                .instruction = currentInstruction,
+                .nextInstruction = nextInstruction_,
+                .instructionCycle = icount_,
+                .machineCycle = mCycleCounter_,
+                .sampledRunningInterrupts = runningPending_,
+                .sampledHaltInterrupts = haltPending_,
+                .interruptState = interruptState,
+                .interruptMask = interruptMask,
+                .instructionRunning = instrRunning,
+                .prefixed = prefixed,
+                .halted = halted_,
+                .stopped = stopped_,
+                .locked = locked_,
+                .haltBug = haltBug_};
     }
 
     void SampleHaltInterrupts() {

@@ -8,7 +8,7 @@ namespace {
             if (std::meta::has_identifier(m) && std::meta::identifier_of(m) == name)
                 return m;
         }
-        throw "Test member not found";
+        throw std::out_of_range("Test member not found");
     }
 
     constexpr auto busMember = member<Gameboy>("bus_");
@@ -16,18 +16,38 @@ namespace {
 
     GameboySettings settings(const Model model, const bool color = false) {
         return {
-            .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
-            .model = model,
-            .noBootrom = true,
+                .romName = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
+                .model = model,
+                .noBootrom = true,
         };
     }
 } // namespace
 
-TEST_CASE (
+TEST_CASE("models: skipping the boot ROM leaves VRAM DMA idle") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE, Model::AGBBE};
+    constexpr std::array colors = {false, true};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
 
-"cpu: illegal opcodes lock execution while peripherals keep running"
-)
- {
+    for (const auto [model, color, policy] : std::views::cartesian_product(models, colors, policies)) {
+        CAPTURE(model);
+        CAPTURE(color);
+        CAPTURE(policy);
+        Gameboy gameboy(settings(model, color));
+        auto &bus = gameboy.[:busMember:];
+        CHECK(gameboy.InspectCpuRead(0xFF55) == 0xFF);
+        CHECK_FALSE(gameboy.Inspect().dma.hdma.hdmaActive);
+
+        // leave the PPU running through a full frame without requesting dma or changing VRAM
+        gameboy.[:member<Gameboy>("cpu_"):].Lock();
+        bus.gpu_.vram.fill(0xA5);
+        const auto before = bus.gpu_.vram;
+        static_cast<void>(gameboy.AdvanceTicks(Gameboy::FRAME_CYCLES_DMG * 2, policy));
+        CHECK(bus.gpu_.vram == before);
+        CHECK(gameboy.InspectCpuRead(0xFF55) == 0xFF);
+    }
+}
+
+TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") {
     for (const uint8_t opcode : {0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD}) {
         CAPTURE(opcode);
         Gameboy gameboy(settings(Model::DMGB));
@@ -53,11 +73,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-
-"models: cartridge compatibility preserves the silicon revision"
-)
- {
+TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBD, Model::CGBE, Model::AGB0, Model::AGBBE}) {
         Gameboy dmgCart(settings(model));
         Gameboy cgbCart(settings(model, true));
@@ -74,11 +90,7 @@ TEST_CASE (
     CHECK_FALSE(dmgHardware.IsInCgbMode());
 }
 
-TEST_CASE (
-
-"models: unused OAM follows revision-specific address decoding"
-)
- {
+TEST_CASE("models: unused OAM follows revision-specific address decoding") {
     for (const auto model : {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Gameboy gameboy(settings(model)); // Includes CGB hardware in DMG compatibility mode.
         auto &bus = gameboy.[:busMember:];
@@ -118,11 +130,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-
-"models: CGB-D latches the background row across both bitplanes"
-)
- {
+TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
     for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Interrupts interrupts;
         GPU gpu(interrupts);
@@ -145,11 +153,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-
-"models: early CGB length writes differ from CGB-C and later"
-)
- {
+TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
     for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);
@@ -169,11 +173,7 @@ TEST_CASE (
     }
 }
 
-TEST_CASE (
-
-"models: save states retain extra OAM and reject a different revision"
-)
- {
+TEST_CASE("models: save states retain extra OAM and reject a different revision") {
     Gameboy early(settings(Model::CGBB));
     Gameboy late(settings(Model::CGBE));
     auto &bus = early.[:busMember:];
@@ -189,11 +189,7 @@ TEST_CASE (
     CHECK(late.SaveState() == lateBefore);
 }
 
-TEST_CASE (
-
-"models: early CGB envelope writes pass through an intermediate value"
-)
- {
+TEST_CASE("models: early CGB envelope writes pass through an intermediate value") {
     for (const auto model : {Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);

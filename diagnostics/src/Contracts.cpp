@@ -19,4 +19,4 @@ namespace diagnostics {
         }
         return result;
     }
-}
+} // namespace diagnostics

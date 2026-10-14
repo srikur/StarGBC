@@ -52,7 +52,7 @@ struct MockCPU {
         prefixed = false;
     }
 
-    bool ExecuteMicroOp(Instructions<MockCPU<MockBus> > &instructions) {
+    bool ExecuteMicroOp(Instructions<MockCPU<MockBus>> &instructions) {
         mCycleCounter_++;
         return prefixed ? instructions.prefixedInstr(currentInstruction, *this) : instructions.nonPrefixedInstr(currentInstruction, *this);
     }

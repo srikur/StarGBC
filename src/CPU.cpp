@@ -43,109 +43,108 @@ void CPU<BusT>::InitializeSystem() {
     const bool sgbFamily = IsSgb(hw);
 
     static const std::map<uint16_t, uint8_t> initialData = {
-        {0xFF00, 0xCF},
-        {0xFF02, 0x7C},
-        {0xFF03, 0xFF},
-        {0xFF04, 0x1E},
-        {0xFF07, 0xF8},
-        {0xFF08, 0xFF},
-        {0xFF09, 0xFF},
-        {0xFF0A, 0xFF},
-        {0xFF0B, 0xFF},
-        {0xFF0C, 0xFF},
-        {0xFF0D, 0xFF},
-        {0xFF0E, 0xFF},
-        {0xFF0F, 0xE1},
-        {0xFF10, 0x80},
-        {0xFF11, 0xBF},
-        {0xFF12, 0xF3},
-        {0xFF13, 0xFF},
-        {0xFF14, 0xBF},
-        {0xFF15, 0xFF},
-        {0xFF16, 0x3F},
-        {0xFF18, 0xFF},
-        // NRx4 trigger bits stay clear for ch2/ch3/ch4: the bootroms never
-        // trigger them, and the trigger bit is unreadable (only ch1 plays the
-        // DMG boot beep, via FF14 below)
-        {0xFF19, 0x3F},
-        {0xFF1A, 0x7F},
-        {0xFF1B, 0xFF},
-        {0xFF1C, 0x9F},
-        {0xFF1D, 0xFF},
-        {0xFF1E, 0x3F},
-        {0xFF1F, 0xFF},
-        {0xFF20, 0xFF},
-        {0xFF23, 0x3F},
-        {0xFF24, 0x77},
-        {0xFF25, 0xF3},
-        {0xFF26, 0xF1},
-        {0xFF27, 0xFF},
-        {0xFF28, 0xFF},
-        {0xFF29, 0xFF},
-        {0xFF2A, 0xFF},
-        {0xFF2B, 0xFF},
-        {0xFF2C, 0xFF},
-        {0xFF2D, 0xFF},
-        {0xFF2E, 0xFF},
-        {0xFF2F, 0xFF},
-        {0xFF31, 0xFF},
-        {0xFF33, 0xFF},
-        {0xFF35, 0xFF},
-        {0xFF37, 0xFF},
-        {0xFF39, 0xFF},
-        {0xFF3B, 0xFF},
-        {0xFF3D, 0xFF},
-        {0xFF3F, 0xFF},
-        {0xFF40, 0x91},
-        {0xFF41, 0x81},
-        {0xFF47, 0xFC},
-        {0xFF4C, 0xFF},
-        {0xFF4D, 0x7E},
-        {0xFF4E, 0xFF},
-        {0xFF4F, 0xFE},
-        {0xFF50, 0xFF},
-        {0xFF51, 0xFF},
-        {0xFF52, 0xFF},
-        {0xFF53, 0xFF},
-        {0xFF54, 0xFF},
-        {0xFF55, 0xFF},
-        {0xFF56, 0xFF},
-        {0xFF57, 0xFF},
-        {0xFF58, 0xFF},
-        {0xFF59, 0xFF},
-        {0xFF5A, 0xFF},
-        {0xFF5B, 0xFF},
-        {0xFF5C, 0xFF},
-        {0xFF5D, 0xFF},
-        {0xFF5E, 0xFF},
-        {0xFF5F, 0xFF},
-        {0xFF60, 0xFF},
-        {0xFF61, 0xFF},
-        {0xFF62, 0xFF},
-        {0xFF63, 0xFF},
-        {0xFF64, 0xFF},
-        {0xFF65, 0xFF},
-        {0xFF66, 0xFF},
-        {0xFF67, 0xFF},
-        {0xFF68, 0xC0},
-        {0xFF69, 0xFF},
-        {0xFF6A, 0xC1},
-        {0xFF6B, 0x90},
-        {0xFF6C, 0xFE},
-        {0xFF6D, 0xFF},
-        {0xFF6E, 0xFF},
-        {0xFF6F, 0xFF},
-        {0xFF70, 0xF8},
-        {0xFF71, 0xFF},
-        {0xFF75, 0x8F},
-        {0xFF78, 0xFF},
-        {0xFF79, 0xFF},
-        {0xFF7A, 0xFF},
-        {0xFF7B, 0xFF},
-        {0xFF7C, 0xFF},
-        {0xFF7D, 0xFF},
-        {0xFF7E, 0xFF},
-        {0xFF7F, 0xFF},
+            {0xFF00, 0xCF},
+            {0xFF02, 0x7C},
+            {0xFF03, 0xFF},
+            {0xFF04, 0x1E},
+            {0xFF07, 0xF8},
+            {0xFF08, 0xFF},
+            {0xFF09, 0xFF},
+            {0xFF0A, 0xFF},
+            {0xFF0B, 0xFF},
+            {0xFF0C, 0xFF},
+            {0xFF0D, 0xFF},
+            {0xFF0E, 0xFF},
+            {0xFF0F, 0xE1},
+            {0xFF10, 0x80},
+            {0xFF11, 0xBF},
+            {0xFF12, 0xF3},
+            {0xFF13, 0xFF},
+            {0xFF14, 0xBF},
+            {0xFF15, 0xFF},
+            {0xFF16, 0x3F},
+            {0xFF18, 0xFF},
+            // NRx4 trigger bits stay clear for ch2/ch3/ch4: the bootroms never
+            // trigger them, and the trigger bit is unreadable (only ch1 plays the
+            // DMG boot beep, via FF14 below)
+            {0xFF19, 0x3F},
+            {0xFF1A, 0x7F},
+            {0xFF1B, 0xFF},
+            {0xFF1C, 0x9F},
+            {0xFF1D, 0xFF},
+            {0xFF1E, 0x3F},
+            {0xFF1F, 0xFF},
+            {0xFF20, 0xFF},
+            {0xFF23, 0x3F},
+            {0xFF24, 0x77},
+            {0xFF25, 0xF3},
+            {0xFF26, 0xF1},
+            {0xFF27, 0xFF},
+            {0xFF28, 0xFF},
+            {0xFF29, 0xFF},
+            {0xFF2A, 0xFF},
+            {0xFF2B, 0xFF},
+            {0xFF2C, 0xFF},
+            {0xFF2D, 0xFF},
+            {0xFF2E, 0xFF},
+            {0xFF2F, 0xFF},
+            {0xFF31, 0xFF},
+            {0xFF33, 0xFF},
+            {0xFF35, 0xFF},
+            {0xFF37, 0xFF},
+            {0xFF39, 0xFF},
+            {0xFF3B, 0xFF},
+            {0xFF3D, 0xFF},
+            {0xFF3F, 0xFF},
+            {0xFF40, 0x91},
+            {0xFF41, 0x81},
+            {0xFF47, 0xFC},
+            {0xFF4C, 0xFF},
+            {0xFF4D, 0x7E},
+            {0xFF4E, 0xFF},
+            {0xFF4F, 0xFE},
+            {0xFF50, 0xFF},
+            {0xFF51, 0xFF},
+            {0xFF52, 0xFF},
+            {0xFF53, 0xFF},
+            {0xFF54, 0xFF},
+            {0xFF56, 0xFF},
+            {0xFF57, 0xFF},
+            {0xFF58, 0xFF},
+            {0xFF59, 0xFF},
+            {0xFF5A, 0xFF},
+            {0xFF5B, 0xFF},
+            {0xFF5C, 0xFF},
+            {0xFF5D, 0xFF},
+            {0xFF5E, 0xFF},
+            {0xFF5F, 0xFF},
+            {0xFF60, 0xFF},
+            {0xFF61, 0xFF},
+            {0xFF62, 0xFF},
+            {0xFF63, 0xFF},
+            {0xFF64, 0xFF},
+            {0xFF65, 0xFF},
+            {0xFF66, 0xFF},
+            {0xFF67, 0xFF},
+            {0xFF68, 0xC0},
+            {0xFF69, 0xFF},
+            {0xFF6A, 0xC1},
+            {0xFF6B, 0x90},
+            {0xFF6C, 0xFE},
+            {0xFF6D, 0xFF},
+            {0xFF6E, 0xFF},
+            {0xFF6F, 0xFF},
+            {0xFF70, 0xF8},
+            {0xFF71, 0xFF},
+            {0xFF75, 0x8F},
+            {0xFF78, 0xFF},
+            {0xFF79, 0xFF},
+            {0xFF7A, 0xFF},
+            {0xFF7B, 0xFF},
+            {0xFF7C, 0xFF},
+            {0xFF7D, 0xFF},
+            {0xFF7E, 0xFF},
+            {0xFF7F, 0xFF},
     };
 
     // Power the APU on before the register table below: the map iterates in
@@ -166,6 +165,9 @@ void CPU<BusT>::InitializeSystem() {
         }
         bus_.WriteByte(address, effective, ComponentSource::CPU);
     }
+
+    // Prevent DMA transfer of 128 blocks due to FF55 reading 0xFF
+    bus_.gpu_.hdma.hdma5 = 0xFF;
 
     if (sgbFamily) {
         // The SGB bootrom's duration depends on the cartridge header it sends
@@ -233,9 +235,9 @@ void CPU<BusT>::BeginMCycle() {
 
 template<BusLike BusT>
 void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
-    if (observations_ &&currentInstruction >> 8 != 0xCB)
-    observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InstructionEnd,
-                        instructionAddress_, prefixed ? 0xCB00 | currentInstruction : currentInstruction);
+    if (observations_ && currentInstruction >> 8 != 0xCB)
+        observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InstructionEnd, instructionAddress_,
+                            prefixed ? 0xCB00 | currentInstruction : currentInstruction);
     prefixed = currentInstruction >> 8 == 0xCB;
     if (!prefixed)
         ++instructionsCompleted_;
@@ -290,11 +292,11 @@ bool CPU<BusT>::ProcessInterrupts() {
             // CGB VBlank reaches interrupt dispatch one M-cycle before its
             // IME=0 HALT-wake path; STAT retains its own propagation delay
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
-                                        ? (halted_ ? haltPending_ : runningPending_)
-                                        : interrupts_.interruptEnable &
-                                          (interrupts_.interruptFlag |
-                                           (interrupts_.interruptMasterEnable ? interrupts_.interruptVisiblePending & 0x01 : 0)) &
-                                          0x1F;
+                                            ? (halted_ ? haltPending_ : runningPending_)
+                                            : interrupts_.interruptEnable &
+                                                      (interrupts_.interruptFlag |
+                                                       (interrupts_.interruptMasterEnable ? interrupts_.interruptVisiblePending & 0x01 : 0)) &
+                                                      0x1F;
             if (pending == 0) {
                 return false;
             }
@@ -308,7 +310,7 @@ bool CPU<BusT>::ProcessInterrupts() {
                 return false;
             }
 
-            if (halted_ &&IsCgb(bus_.gpu_.model)) {
+            if (halted_ && IsCgb(bus_.gpu_.model)) {
                 if (speedSwitchWakePending_) {
                     speedSwitchWakePending_ = false;
                     ++pc_;
@@ -355,8 +357,8 @@ bool CPU<BusT>::ProcessInterrupts() {
             bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF), ComponentSource::CPU);
             interrupts_.interruptFlag &= ~interruptMask;
             if (observations_)
-                observations_->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible,
-                                    0xFF0F, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+                observations_->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
+                                    interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
             pc_ = InterruptAddress(interruptBit);
 
             interruptState = M4;

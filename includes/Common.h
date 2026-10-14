@@ -47,6 +47,10 @@ static constexpr uint8_t LCDC_OBJ_SIZE = 2;
 static constexpr uint8_t LCDC_OBJ_ENABLE = 1;
 static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
 
+constexpr std::uint8_t operator""_u8(unsigned long long value) { return static_cast<std::uint8_t>(value); }
+
+constexpr std::uint16_t operator""_u16(unsigned long long value) { return static_cast<std::uint16_t>(value); }
+
 template<uint8_t bit>
 static constexpr bool Bit(const uint8_t value) {
     static_assert(bit < 8);
@@ -79,8 +83,7 @@ enum class InterruptType {
 enum class ComponentSource { CPU, DMA, PPU, HDMA };
 
 template<typename T>
-concept BusLike = requires(T bus, uint16_t addr, uint8_t val, ComponentSource source)
-{
+concept BusLike = requires(T bus, uint16_t addr, uint8_t val, ComponentSource source) {
     { bus.ReadByte(addr, source) } -> std::same_as<uint8_t>;
     { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };

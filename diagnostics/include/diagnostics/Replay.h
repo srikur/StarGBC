@@ -1,8 +1,8 @@
 #pragma once
 
 #include <filesystem>
-#include "Gameboy.h"
 #include "Checkpoint.h"
+#include "Gameboy.h"
 #include "ReplayInput.h"
 
 namespace diagnostics {
@@ -65,4 +65,4 @@ namespace diagnostics {
 
         void RestoreCheckpoint(const std::filesystem::path &path, CheckpointIdentity compatible);
     };
-}
+} // namespace diagnostics

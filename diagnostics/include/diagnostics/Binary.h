@@ -44,4 +44,4 @@ namespace diagnostics {
             throw std::runtime_error("Truncated diagnostics string");
         return text;
     }
-}
+} // namespace diagnostics

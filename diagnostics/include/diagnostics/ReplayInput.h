@@ -6,7 +6,7 @@ namespace diagnostics {
     struct InputSink {
         void *owner{};
 
-        void (*applied)(void *, uint64_t tick, uint8_t buttons) noexcept{};
+        void (*applied)(void *, uint64_t tick, uint8_t buttons) noexcept {};
     };
 
     struct AppliedInput {
@@ -14,4 +14,4 @@ namespace diagnostics {
         uint64_t sequence{};
         uint8_t buttons{};
     };
-}
+} // namespace diagnostics

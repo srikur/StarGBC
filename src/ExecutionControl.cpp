@@ -35,20 +35,21 @@ ConditionalExecutionResult Gameboy::RunUntil(const std::span<const RunCondition>
             const auto value = read(condition) & condition.mask;
             const bool matches = condition.kind == ConditionKind::RegisterChange ? value != initial[i] : value == (condition.value & condition.mask);
             if (matches)
-                return {
-                    {ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
-                    ExecutionPosition(), observations_ ? observations_->stopEvent : std::nullopt, i
-                };
+                return {{ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
+                        ExecutionPosition(),
+                        observations_ ? observations_->stopEvent : std::nullopt,
+                        i};
         }
-        if (observations_ &&observations_->stopEvent)
-        return {
-            {ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
-            ExecutionPosition(), observations_->stopEvent, {}
-        };
+        if (observations_ && observations_->stopEvent)
+            return {{ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
+                    ExecutionPosition(),
+                    observations_->stopEvent,
+                    {}};
         if (timelineTicks_ - begin == maxTicks)
-            return {
-                {ExecutionStopReason::TickBudget, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions}, ExecutionPosition(), {}, {}
-            };
+            return {{ExecutionStopReason::TickBudget, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
+                    ExecutionPosition(),
+                    {},
+                    {}};
         static_cast<void>(AdvanceTicks(1));
     }
 }

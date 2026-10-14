@@ -25,18 +25,36 @@ namespace {
         [[=Opt{"Evidence supporting the expectation"}]] std::string evidence{"Platform invariants checked against captured hardware events"};
         [[=Opt{"New artifact directory"}, =Required]] std::string output;
     };
-}
+} // namespace
 
 int main(const int argc, char **argv) {
     const auto arguments = StarParse::parse_or_exit<Arguments>(argc, argv);
-    if (arguments.help_requested()) { std::print("{}", arguments.help()); return 0; }
-    if (arguments.version_requested()) { std::print("{}", arguments.version()); return 0; }
+    if (arguments.help_requested()) {
+        std::print("{}", arguments.help());
+        return 0;
+    }
+    if (arguments.version_requested()) {
+        std::print("{}", arguments.version());
+        return 0;
+    }
     try {
-        const auto result = diagnostics::RunExperiment({.mode = arguments->mode, .family = arguments->family, .model = arguments->model,
-                .doubleSpeed = arguments->double_speed, .seed = arguments->seed, .phase = arguments->phase, .scx = arguments->scx,
-                .wx = arguments->wx, .spriteX = arguments->sprite_x, .spriteOffset = arguments->sprite_offset, .coordinatePriority = arguments->coordinate_priority,
-                .noise = arguments->noise, .budgetTicks = arguments->ticks, .expectedValue = arguments->expected_value,
-                .basis = arguments->basis, .basisEvidence = arguments->evidence}, arguments->output);
+        const auto result = diagnostics::RunExperiment({.mode = arguments->mode,
+                                                        .family = arguments->family,
+                                                        .model = arguments->model,
+                                                        .doubleSpeed = arguments->double_speed,
+                                                        .seed = arguments->seed,
+                                                        .phase = arguments->phase,
+                                                        .scx = arguments->scx,
+                                                        .wx = arguments->wx,
+                                                        .spriteX = arguments->sprite_x,
+                                                        .spriteOffset = arguments->sprite_offset,
+                                                        .coordinatePriority = arguments->coordinate_priority,
+                                                        .noise = arguments->noise,
+                                                        .budgetTicks = arguments->ticks,
+                                                        .expectedValue = arguments->expected_value,
+                                                        .basis = arguments->basis,
+                                                        .basisEvidence = arguments->evidence},
+                                                       arguments->output);
         diagnostics::WriteJson(std::cout, result);
         std::cout << '\n';
         return result.outcome == diagnostics::Outcome::Pass ? 0 : result.outcome == diagnostics::Outcome::AssertionFailure ? 1 : 2;

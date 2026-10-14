@@ -6,10 +6,11 @@
 static constexpr uint32_t kFrameCyclesCGB = Gameboy::FRAME_CYCLES_DMG * 2;
 
 diagnostics::ExecutionPosition Gameboy::ExecutionPosition() const {
-    return {
-        .tick = timelineTicks_, .frame = gpu_.displayFrames_, .dot = static_cast<uint16_t>(gpu_.scanlineCounter),
-        .ly = gpu_.currentLine, .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3)
-    };
+    return {.tick = timelineTicks_,
+            .frame = gpu_.displayFrames_,
+            .dot = static_cast<uint16_t>(gpu_.scanlineCounter),
+            .ly = gpu_.currentLine,
+            .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3)};
 }
 
 void Gameboy::SynchronizeObservationPosition() {
@@ -53,8 +54,8 @@ void Gameboy::ObserveInput(const uint8_t previous) {
     const auto buttons = PressedButtons();
     if (buttons == previous)
         return;
-    if (inputSink_ &&inputSink_->applied)
-    inputSink_->applied(inputSink_->owner, timelineTicks_, buttons);
+    if (inputSink_ && inputSink_->applied)
+        inputSink_->applied(inputSink_->owner, timelineTicks_, buttons);
     if (observations_) {
         SynchronizeObservationPosition();
         observations_->Emit(diagnostics::Component::Input, diagnostics::EventKind::InputApplied, 0xFF00, buttons, previous);
@@ -125,7 +126,7 @@ uint32_t Gameboy::AdvanceMCycle() {
         } else {
             gpu_.Update();
         }
-        bus_.RunHDMA();
+        bus_.RunHDMA(phase == 0 && cpu_.AtInstructionBoundary());
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
             if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
@@ -184,7 +185,7 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
             } else {
                 gpu_.Update();
             }
-            bus_.RunHDMA();
+            bus_.RunHDMA(phase == 0 && cpu_.AtInstructionBoundary());
         }
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
@@ -242,7 +243,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         }
         bus_.UpdateDMA();
         gpu_.Update();
-        bus_.RunHDMA();
+        bus_.RunHDMA((cpuTickPhase_ & 3) == 0 && cpu_.AtInstructionBoundary());
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
             if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
@@ -283,7 +284,9 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     bus_.UpdateDMA();
     if (evenCycle) {
         gpu_.Update();
-        bus_.RunHDMA();
+        // After a speed switch, T1 can fall on an odd master tick. The first
+        // PPU dot of that machine cycle is then T2 rather than T1.
+        bus_.RunHDMA((cpuTickPhase_ & 3) < 2 && cpu_.AtInstructionBoundary());
     }
     if (bus_.speedSwitchHalt > 0) {
         --bus_.speedSwitchHalt;
@@ -316,8 +319,8 @@ ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolic
     audio_.SetOptimizedExecution(optimized);
     uint64_t remaining = ticks;
     while (remaining > 0) {
-        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 && (
-                masterCycles & 1) == 0) [[likely]] {
+        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 &&
+            (masterCycles & 1) == 0) [[likely]] {
             if (bus_.speed == Speed::Regular && remaining >= 8) {
                 if (masterCycles >= CGB_CYCLES_PER_SECOND)
                     masterCycles -= CGB_CYCLES_PER_SECOND;
@@ -373,6 +376,4 @@ ExecutionResult Gameboy::StepInstruction(const uint64_t maxTicks) {
     return {ExecutionStopReason::TickBudget, begin, timelineTicks_, 0};
 }
 
-void Gameboy::RunFrame() {
-    static_cast<void>(AdvanceTicks(kFrameCyclesCGB, executionPolicy_));
-}
+void Gameboy::RunFrame() { static_cast<void>(AdvanceTicks(kFrameCyclesCGB, executionPolicy_)); }

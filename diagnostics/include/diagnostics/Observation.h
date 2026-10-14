@@ -15,12 +15,41 @@ namespace diagnostics {
     enum class Component : uint8_t { CPU, Bus, Interrupt, PPU, Timer, DMA, APU, Input, Control };
 
     enum class EventKind : uint8_t {
-        InstructionBegin, InstructionEnd, BusRead, BusWrite, Halt, Stop, InterruptSample,
-        InterruptRequest, InterruptVisible, InterruptAccept, InterruptVector,
-        RegisterWrite, RegisterApply, PpuMode, WindowActivate, TileFetch, FifoPush, FifoPop,
-        PixelDiscard, PixelStall, PixelOutput, PixelRecolor, DmaOwnership, DmaTransfer,
-        TimerEdge, TimerOverflow, TimerReload, AudioRegister, AudioTrigger, AudioSequencer,
-        AudioMix, InputApplied, Branch, Overflow, FramebufferClear
+        InstructionBegin,
+        InstructionEnd,
+        BusRead,
+        BusWrite,
+        Halt,
+        Stop,
+        InterruptSample,
+        InterruptRequest,
+        InterruptVisible,
+        InterruptAccept,
+        InterruptVector,
+        RegisterWrite,
+        RegisterApply,
+        PpuMode,
+        WindowActivate,
+        TileFetch,
+        FifoPush,
+        FifoPop,
+        PixelDiscard,
+        PixelStall,
+        PixelOutput,
+        PixelRecolor,
+        DmaOwnership,
+        DmaTransfer,
+        TimerEdge,
+        TimerOverflow,
+        TimerReload,
+        AudioRegister,
+        AudioTrigger,
+        AudioSequencer,
+        AudioMix,
+        InputApplied,
+        Branch,
+        Overflow,
+        FramebufferClear
     };
 
     enum class FetchStage : uint8_t { Map, Attributes, BackgroundLow, BackgroundHigh, SpriteOam, SpriteLow, SpriteHigh };
@@ -60,7 +89,7 @@ namespace diagnostics {
         uint64_t branch{};
         void *conditionOwner{};
 
-        bool (*condition)(void *, const Event &) noexcept{};
+        bool (*condition)(void *, const Event &) noexcept {};
 
         std::optional<Event> stopEvent;
 
@@ -72,25 +101,35 @@ namespace diagnostics {
                 stopEvent = event;
         }
 
-        void Emit(const Component component, const EventKind kind, const uint16_t address = 0, const uint32_t value = 0,
-                  const uint32_t detail = 0, const Initiator initiator = Initiator::Peripheral, const bool blocked = false,
-                  const uint16_t bank = 0) noexcept {
+        void Emit(const Component component, const EventKind kind, const uint16_t address = 0, const uint32_t value = 0, const uint32_t detail = 0,
+                  const Initiator initiator = Initiator::Peripheral, const bool blocked = false, const uint16_t bank = 0) noexcept {
             if (callback || condition)
-                Dispatch({
-                    .position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
-                    .address = address, .bank = bank, .component = component, .kind = kind, .initiator = initiator,
-                    .blocked = blocked, .value = value, .detail = detail
-                });
+                Dispatch({.position = position,
+                          .branch = branch,
+                          .pc = pc,
+                          .pcBank = pcBank,
+                          .address = address,
+                          .bank = bank,
+                          .component = component,
+                          .kind = kind,
+                          .initiator = initiator,
+                          .blocked = blocked,
+                          .value = value,
+                          .detail = detail});
         }
 
         void EmitDeferred(const uint64_t tick, const Component component, const EventKind kind, const uint32_t value,
                           const uint32_t detail = 0) noexcept {
             if (callback || condition)
-                Dispatch({
-                    .position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
-                    .branch = branch, .pc = UINT16_MAX, .pcBank = UINT16_MAX,
-                    .component = component, .kind = kind, .initiator = Initiator::Peripheral, .value = value, .detail = detail
-                });
+                Dispatch({.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
+                          .branch = branch,
+                          .pc = UINT16_MAX,
+                          .pcBank = UINT16_MAX,
+                          .component = component,
+                          .kind = kind,
+                          .initiator = Initiator::Peripheral,
+                          .value = value,
+                          .detail = detail});
         }
 
         void Restore(const ExecutionPosition &restored) noexcept {
@@ -99,11 +138,14 @@ namespace diagnostics {
             const auto previousTick = position.tick;
             position = restored;
             if (callback || condition)
-                Dispatch({
-                    .position = position, .branch = branch, .pc = pc, .pcBank = pcBank,
-                    .component = Component::Control, .kind = EventKind::Branch,
-                    .relatedTick = previousTick, .parentBranch = parent
-                });
+                Dispatch({.position = position,
+                          .branch = branch,
+                          .pc = pc,
+                          .pcBank = pcBank,
+                          .component = Component::Control,
+                          .kind = EventKind::Branch,
+                          .relatedTick = previousTick,
+                          .parentBranch = parent});
         }
     };
-}
+} // namespace diagnostics

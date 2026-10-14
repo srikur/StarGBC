@@ -5,16 +5,15 @@
 #include "TestRoms.h"
 
 static int runSelectedCatalogCases() {
-    std::vector<std::function<diagnostics::Result()> > selected;
+    std::vector<std::function<diagnostics::Result()>> selected;
     auto unmatched = catalogSelection.ids;
     const auto accept = [&](const auto &test, const std::string_view suite) {
         unmatched.erase(test.id);
         return (catalogSelection.ids.empty() || catalogSelection.ids.contains(test.id)) &&
                (!catalogSelection.model || test.model == *catalogSelection.model) &&
-               (catalogSelection.subsystem.empty() || std::ranges::any_of(std::string_view(test.subsystem) | std::views::split(','),
-                                                                          [&](const auto tag) {
-                                                                              return std::ranges::equal(tag, catalogSelection.subsystem);
-                                                                          })) &&
+               (catalogSelection.subsystem.empty() ||
+                std::ranges::any_of(std::string_view(test.subsystem) | std::views::split(','),
+                                    [&](const auto tag) { return std::ranges::equal(tag, catalogSelection.subsystem); })) &&
                (catalogSelection.suites.empty() || catalogSelection.suites.contains(std::string(suite)));
     };
     for (const auto &test : gambatteCases)
@@ -27,7 +26,7 @@ static int runSelectedCatalogCases() {
         throw std::invalid_argument("Unknown case ID: " + *unmatched.begin());
     if (selected.empty())
         throw std::invalid_argument("No catalog cases matched the selection");
-    std::vector<std::shared_future<diagnostics::Result> > results;
+    std::vector<std::shared_future<diagnostics::Result>> results;
     for (auto &run : selected)
         results.push_back(testWorkers->Submit(std::move(run)));
     unsigned failed{};
@@ -78,15 +77,15 @@ int main(const int argc, char **argv) {
                     throw std::invalid_argument("Invalid provenance line");
                 testProvenanceLine = line;
             }
-            threadSemaphore = std::make_shared<std::counting_semaphore<> >(1);
+            threadSemaphore = std::make_shared<std::counting_semaphore<>>(1);
             const std::filesystem::path path = argv[6];
             failureDirectory = path.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
-            testReport = std::make_unique<diagnostics::Report>(path, diagnostics::RunIdentity{
-                                                                   .executable = argv[0], .executableHash = testExecutableHash,
-                                                                   .compiler = __VERSION__,
-                                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)
-                                                               });
+            testReport = std::make_unique<diagnostics::Report>(
+                    path, diagnostics::RunIdentity{.executable = argv[0],
+                                                   .executableHash = testExecutableHash,
+                                                   .compiler = __VERSION__,
+                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             auto save = std::filesystem::path(test.rom);
             save.replace_extension(".sav");
             if ((std::filesystem::exists(save) ? diagnostics::FileHash(save) : "absent") != argv[7])
@@ -102,8 +101,8 @@ int main(const int argc, char **argv) {
     }
     if (argc > 1 && std::string_view(argv[1]) == "--reproduce-gambatte") {
         if (argc != 8 && argc != 11 && argc != 12) {
-            std::cerr <<
-                    "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH [TRACE_CAPACITY TRACE_BEGIN TRACE_END [PROVENANCE_LINE]]\n";
+            std::cerr << "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH [TRACE_CAPACITY TRACE_BEGIN TRACE_END "
+                         "[PROVENANCE_LINE]]\n";
             return EXIT_FAILURE;
         }
         try {
@@ -131,15 +130,15 @@ int main(const int argc, char **argv) {
             const auto model = ModelFromName(argv[3]);
             if (!model || *model == Model::Auto)
                 throw std::invalid_argument("Reproduction requires a specific model");
-            threadSemaphore = std::make_shared<std::counting_semaphore<> >(1);
+            threadSemaphore = std::make_shared<std::counting_semaphore<>>(1);
             const std::filesystem::path path = argv[6];
             failureDirectory = path.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
-            testReport = std::make_unique<diagnostics::Report>(path, diagnostics::RunIdentity{
-                                                                   .executable = argv[0], .executableHash = testExecutableHash,
-                                                                   .compiler = __VERSION__,
-                                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)
-                                                               });
+            testReport = std::make_unique<diagnostics::Report>(
+                    path, diagnostics::RunIdentity{.executable = argv[0],
+                                                   .executableHash = testExecutableHash,
+                                                   .compiler = __VERSION__,
+                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             auto save = std::filesystem::path(argv[2]);
             save.replace_extension(".sav");
             const auto saveHash = std::filesystem::exists(save) ? diagnostics::FileHash(save) : "absent";

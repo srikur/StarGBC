@@ -10,9 +10,8 @@ namespace diagnostics {
     bool EventFilter::Matches(const Event &event) const noexcept {
         return (components & (uint64_t{1} << static_cast<unsigned>(event.component))) &&
                (kinds & (uint64_t{1} << static_cast<unsigned>(event.kind))) && ticks.Contains(event.position.tick) &&
-               (!addresses || addresses->Contains(event.address)) && (!pcs || pcs->Contains(event.pc)) &&
-               (!pcBank || *pcBank == event.pcBank) && (!lines || lines->Contains(event.position.ly)) &&
-               (!dots || dots->Contains(event.position.dot));
+               (!addresses || addresses->Contains(event.address)) && (!pcs || pcs->Contains(event.pc)) && (!pcBank || *pcBank == event.pcBank) &&
+               (!lines || lines->Contains(event.position.ly)) && (!dots || dots->Contains(event.position.dot));
     }
 
     TraceRecorder::TraceRecorder(const size_t capacity, EventFilter filter) : events_(capacity), filter_(std::move(filter)) {
@@ -63,11 +62,17 @@ namespace diagnostics {
     }
 
     TraceMetadata TraceRecorder::Metadata() const {
-        return {
-            .capacity = events_.size(), .retained = size_, .observed = observed_, .overwritten = overwritten_, .filter = filter_,
-            .executableHash = executableHash_, .romHash = romHash_, .configuration = configuration_,
-            .trigger = trigger_, .triggerEvent = triggerEvent_, .captureComplete = captureComplete_
-        };
+        return {.capacity = events_.size(),
+                .retained = size_,
+                .observed = observed_,
+                .overwritten = overwritten_,
+                .filter = filter_,
+                .executableHash = executableHash_,
+                .romHash = romHash_,
+                .configuration = configuration_,
+                .trigger = trigger_,
+                .triggerEvent = triggerEvent_,
+                .captureComplete = captureComplete_};
     }
 
     void TraceRecorder::Identify(std::string executableHash, std::string romHash, std::string configuration) {
@@ -145,4 +150,4 @@ namespace diagnostics {
             write(event.parentBranch, 8);
         }
     }
-}
+} // namespace diagnostics

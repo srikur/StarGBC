@@ -36,4 +36,4 @@ namespace diagnostics {
 
         void WriteAt(Range<uint16_t> addresses);
     };
-}
+} // namespace diagnostics

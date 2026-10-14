@@ -6,18 +6,14 @@
 
 namespace {
     constexpr auto kSnapshotType = "StarGBC.snapshot";
-    constexpr std::array<std::pair<const char *, Keys>, 8> kButtons{
-        {
-            {"A", Keys::A},
-            {"B", Keys::B},
-            {"Start", Keys::Start},
-            {"Select", Keys::Select},
-            {"Up", Keys::Up},
-            {"Down", Keys::Down},
-            {"Left", Keys::Left},
-            {"Right", Keys::Right}
-        }
-    };
+    constexpr std::array<std::pair<const char *, Keys>, 8> kButtons{{{"A", Keys::A},
+                                                                     {"B", Keys::B},
+                                                                     {"Start", Keys::Start},
+                                                                     {"Select", Keys::Select},
+                                                                     {"Up", Keys::Up},
+                                                                     {"Down", Keys::Down},
+                                                                     {"Left", Keys::Left},
+                                                                     {"Right", Keys::Right}}};
 
     lua_Integer Integer(lua_State *state, const int index, const lua_Integer maximum) {
         luaL_argcheck(state, lua_isinteger(state, index), index, "expected an integer");
@@ -93,13 +89,11 @@ int LuaRuntime::Impl::SetMetatable(lua_State *state) {
 }
 
 int LuaRuntime::Impl::Initialize(lua_State *state) {
-    const luaL_Reg libraries[] = {
-        {LUA_GNAME, luaopen_base},
-        {LUA_TABLIBNAME, luaopen_table},
-        {LUA_STRLIBNAME, luaopen_string},
-        {LUA_MATHLIBNAME, luaopen_math},
-        {LUA_UTF8LIBNAME, luaopen_utf8}
-    };
+    const luaL_Reg libraries[] = {{LUA_GNAME, luaopen_base},
+                                  {LUA_TABLIBNAME, luaopen_table},
+                                  {LUA_STRLIBNAME, luaopen_string},
+                                  {LUA_MATHLIBNAME, luaopen_math},
+                                  {LUA_UTF8LIBNAME, luaopen_utf8}};
     for (const auto &library : libraries) {
         luaL_requiref(state, library.name, library.func, 1);
         lua_pop(state, 1);
@@ -125,10 +119,8 @@ int LuaRuntime::Impl::Initialize(lua_State *state) {
     lua_call(state, 1, 0);
     lua_pop(state, 1);
 
-    const luaL_Reg root[] = {
-        {"on", On}, {"log", LogMessage}, {"frame_count", FrameCount}, {"model", Model}, {"is_cgb_mode", CgbMode},
-        {"pause", Pause}, {"stop", Stop}, {nullptr, nullptr}
-    };
+    const luaL_Reg root[] = {{"on", On},       {"log", LogMessage}, {"frame_count", FrameCount}, {"model", Model}, {"is_cgb_mode", CgbMode},
+                             {"pause", Pause}, {"stop", Stop},      {nullptr, nullptr}};
     luaL_newlib(state, root);
     lua_pushinteger(state, 1);
     lua_setfield(state, -2, "api_version");
