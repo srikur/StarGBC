@@ -16,6 +16,14 @@
 #include <utility>
 #include <vector>
 
+// TODO: Move whole codebase to Google C++ style guide?
+
+// TODO: Replace all type usages
+using u8 = std::uint8_t;
+using u16 = std::uint16_t;
+using u32 = std::uint32_t;
+using u64 = std::uint64_t;
+
 static constexpr uint8_t SCREEN_WIDTH = 160;
 static constexpr uint8_t SCREEN_HEIGHT = 144;
 static constexpr uint16_t VRAM_BEGIN = 0x8000;
