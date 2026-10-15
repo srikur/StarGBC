@@ -294,8 +294,8 @@ bool CPU<BusT>::ProcessInterrupts() {
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
                                             ? (halted_ ? haltPending_ : runningPending_)
                                             : interrupts_.interruptEnable &
-                                                      ((interrupts_.interruptFlag & ~0x04 |
-                                                        ((speedSwitchWakePending_ ? interrupts_.interruptFlag : runningPending_) & 0x04) |
+                                                      ((interrupts_.interruptFlag & ~0x04) |
+                                                       ((speedSwitchWakePending_ ? interrupts_.interruptFlag : runningPending_) & 0x04) |
                                                        (interrupts_.interruptMasterEnable ? interrupts_.interruptVisiblePending & 0x01 : 0)) &
                                                       0x1F;
             if (pending == 0) {
