@@ -38,6 +38,7 @@ static constexpr u16 WRAM_END = 0xDFFF;
 static constexpr u16 ERAM_BEGIN = 0xE000;
 static constexpr u16 ERAM_END = 0xFDFF;
 
+static constexpr u16 LCD_CONTROL_BIT = 0xFF40;
 static constexpr u16 OAM_DMA_TRANSFER_REG = 0xFF46;
 
 static constexpr u8 OAM_PRIORITY_BIT = 7;

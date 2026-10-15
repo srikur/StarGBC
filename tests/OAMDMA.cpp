@@ -114,3 +114,32 @@ TEST_CASE("Reading the VRAM DMA bus clears the CGB OAM byte") {
         CHECK(bus.gpu_.oam[1] == 0x76);
     }
 }
+
+TEST_CASE("OAM DMA retains source bus ownership through the last byte machine cycle") {
+    for (const auto model : {Model::DMGB, Model::CGBC}) {
+        CAPTURE(model);
+        Gameboy gameboy({.romName = std::string{kRomName}, .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        const auto romByte = gameboy.DebugPeek(0);
+        bus.WriteByte(OAM_DMA_TRANSFER_REG, 0, ComponentSource::CPU);
+        // TODO: Create RunFor(uz, lambda) utility
+        for (auto _ : std::views::indices(644))
+            bus.UpdateDMA();
+        REQUIRE(bus.dma_.currentByte == 160);
+        REQUIRE(bus.dma_.transferComplete);
+        const auto lastByte = bus.gpu_.oam[159];
+        CHECK(gameboy.InspectCpuRead(0) == lastByte);
+        bus.WriteByte(0, 0x5A, ComponentSource::CPU);
+        CHECK(bus.gpu_.oam[159] == 0x5A);
+        for (auto _ : std::views::indices(3)) {
+            bus.UpdateDMA();
+            CHECK(gameboy.InspectCpuRead(0) == 0x5A);
+            CHECK(gameboy.InspectCpuRead(0xFE9F) == 0xFF);
+        }
+        bus.UpdateDMA();
+        CHECK_FALSE(bus.dma_.transferActive);
+        CHECK(gameboy.InspectCpuRead(0) == romByte);
+        CHECK(gameboy.InspectCpuRead(0xFE9F) == 0x5A);
+    }
+}

@@ -18,7 +18,7 @@ int Bus::DmaBusFor(const uint16_t address) const {
 }
 
 bool Bus::cpu_dma_conflict(const u16 address) const {
-    if (!dma_.transferActive || dma_.ticks <= DMA::STARTUP_CYCLES || dma_.transferComplete || address >= OAM_BEGIN) {
+    if (!dma_.transferActive || dma_.ticks <= DMA::STARTUP_CYCLES || address >= OAM_BEGIN) {
         return false;
     }
     if (IsCgb(gpu_.model)) {
@@ -170,9 +170,6 @@ template<bool Inspect>
 u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
-    // A CPU access on the bus the DMA unit is reading sees the DMA's current
-    // byte — only while bytes are actually moving, not during the startup
-    // delay or after the last byte (hacktix bully)
     if (source == ComponentSource::CPU && cpu_dma_conflict(address)) {
         if (IsCgb(gpu_.model) && address >= WRAM_BEGIN && (dma_.startAddress < WRAM_BEGIN || dma_.startAddress >= ERAM_BEGIN)) {
             return memory_.wram_[dma_wram_offset(address)];
