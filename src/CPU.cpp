@@ -294,7 +294,8 @@ bool CPU<BusT>::ProcessInterrupts() {
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
                                             ? (halted_ ? haltPending_ : runningPending_)
                                             : interrupts_.interruptEnable &
-                                                      (interrupts_.interruptFlag |
+                                                      ((interrupts_.interruptFlag & ~0x04) |
+                                                       ((speedSwitchWakePending_ ? interrupts_.interruptFlag : runningPending_) & 0x04) |
                                                        (interrupts_.interruptMasterEnable ? interrupts_.interruptVisiblePending & 0x01 : 0)) &
                                                       0x1F;
             if (pending == 0) {
@@ -334,12 +335,16 @@ bool CPU<BusT>::ProcessInterrupts() {
             return true;
         }
         case M2: {
-            sp_ -= 1;
-            bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ >> 8), ComponentSource::CPU);
             interruptState = M3;
             return true;
         }
         case M3: {
+            sp_ -= 1;
+            bus_.WriteByte(sp_, static_cast<u8>(pc_ >> 8), ComponentSource::CPU);
+            interruptState = M4;
+            return true;
+        }
+        case M4: {
             // The vector is selected at the low-byte stack write. A newly
             // pending higher-priority source can replace the original request
             const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
@@ -347,7 +352,8 @@ bool CPU<BusT>::ProcessInterrupts() {
                 sp_--;
                 bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);
                 pc_ = 0x0000;
-                interruptState = M4;
+                interruptState = shortInterruptEntry_ ? M6 : M5;
+                shortInterruptEntry_ = false;
                 return true;
             }
             interruptBit = std::countr_zero(newPending);
@@ -360,11 +366,6 @@ bool CPU<BusT>::ProcessInterrupts() {
                 observations_->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
                                     interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
             pc_ = InterruptAddress(interruptBit);
-
-            interruptState = M4;
-            return true;
-        }
-        case M4: {
             interruptState = shortInterruptEntry_ ? M6 : M5;
             shortInterruptEntry_ = false;
             return true;

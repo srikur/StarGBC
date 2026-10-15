@@ -6,20 +6,42 @@
 #include <ranges>
 #include <vector>
 
+// TODO: Change to enum
 int Bus::DmaBusFor(const uint16_t address) const {
-    if (address >= 0x8000 && address <= 0x9FFF)
+    if (address >= VRAM_BEGIN && address <= VRAM_END)
         return 1; // VRAM bus
-    if (address >= 0xC000 && address <= 0xFDFF) {
+    if (address >= WRAM_BEGIN && address <= ERAM_END) {
         // CGB WRAM sits on its own bus; DMG WRAM shares the external bus
         return IsCgb(gpu_.model) ? 2 : 0;
     }
     return 0; // ROM / cart RAM / everything else on the external bus
 }
 
+bool Bus::cpu_dma_conflict(const u16 address) const {
+    if (!dma_.transferActive || dma_.ticks <= DMA::STARTUP_CYCLES || address >= OAM_BEGIN) {
+        return false;
+    }
+    if (IsCgb(gpu_.model)) {
+        if (dma_.startAddress >= ERAM_BEGIN) {
+            return DmaBusFor(address) != 1;
+        }
+        if (address >= WRAM_BEGIN) {
+            return DmaBusFor(dma_.startAddress) != 1;
+        }
+    }
+    return DmaBusFor(address) == DmaBusFor(dma_.startAddress);
+}
+
+u32 Bus::dma_wram_offset(const u16 address) const { return (address & 0x0FFF) + ((dma_.startAddress & 0x1000) ? 0x1000 * memory_.wramBank_ : 0); }
+
 uint8_t Bus::ReadDMASource(const uint16_t src) {
     const uint8_t page = src >> 8;
     uint8_t returnValue;
-    if (page <= 0x7F) {
+    // TODO: Check godbolt to see if IILE can be just as efficient as switch or ifs
+    if (IsCgb(gpu_.model) && page >= 0xE0) {
+        // DMA reads above 0xDFFF on CGB return FF
+        returnValue = 0xFF;
+    } else if (page <= 0x7F) {
         returnValue = cartridge_.ReadByte(src);
     } else if (page <= 0x9F) {
         // The DMA unit reads VRAM on its own bus, regardless of PPU mode
@@ -31,6 +53,7 @@ uint8_t Bus::ReadDMASource(const uint16_t src) {
         returnValue = offset < 0x1000 ? memory_.wram_[offset] : memory_.wram_[(offset & 0x0FFF) + 0x1000 * memory_.wramBank_];
     }
     dmaReadByte = returnValue;
+    // TODO: Maybe add directives to remove observation branches from Release builds
     if (observations)
         observations->Emit(diagnostics::Component::Bus, diagnostics::EventKind::BusRead, src, returnValue, 0, diagnostics::Initiator::DMA, false,
                            DebugBank(src));
@@ -132,8 +155,7 @@ uint16_t Bus::DebugBank(const uint16_t address) const {
 bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, const bool write) const {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return true;
-    if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
-        DmaBusFor(address) == DmaBusFor(dma_.startAddress))
+    if (source == ComponentSource::CPU && cpu_dma_conflict(address))
         return true;
     if (address >= 0x8000 && address < 0xA000)
         return source == ComponentSource::CPU ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
@@ -145,12 +167,22 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
 uint8_t Bus::InspectRead(const uint16_t address, const ComponentSource source) const { return ReadByteValue<true>(address, source); }
 
 template<bool Inspect>
-uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source) const {
+u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
-    // A CPU access on the bus the DMA unit is reading sees the DMA's current
-    // byte — only while bytes are actually moving, not during the startup
-    // delay or after the last byte (hacktix bully)
+    if (source == ComponentSource::CPU && cpu_dma_conflict(address)) {
+        if (IsCgb(gpu_.model) && address >= WRAM_BEGIN && (dma_.startAddress < WRAM_BEGIN || dma_.startAddress >= ERAM_BEGIN)) {
+            return memory_.wram_[dma_wram_offset(address)];
+        }
+        const u8 value = gpu_.oam[dma_.currentByte - 1];
+        if constexpr (!Inspect) {
+            // CGB VRAM — reads clear the destination byte
+            if (IsCgb(gpu_.model) && DmaBusFor(dma_.startAddress) == 1) {
+                gpu_.oam[dma_.currentByte - 1] = 0;
+            }
+            return value;
+        }
+    }
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
         DmaBusFor(address) == DmaBusFor(dma_.startAddress)) {
         return dmaReadByte;
@@ -176,12 +208,12 @@ uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source)
         }
         case 0xA000 ... 0xBFFF:
             return cartridge_.ReadByte(address);
-        case 0xC000 ... 0xCFFF:
-            return memory_.wram_[address - 0xC000];
+        case WRAM_BEGIN ... 0xCFFF:
+            return memory_.wram_[address - WRAM_BEGIN];
         case 0xD000 ... 0xDFFF:
             return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
-        case 0xE000 ... 0xEFFF:
-            return memory_.wram_[address - 0xE000];
+        case ERAM_BEGIN ... 0xEFFF:
+            return memory_.wram_[address - ERAM_BEGIN];
         case 0xF000 ... 0xFDFF:
             return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
         case 0xFE00 ... 0xFEFF:
@@ -285,9 +317,27 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
 void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const ComponentSource source) {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return;
-    if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
-        DmaBusFor(address) == DmaBusFor(dma_.startAddress))
+    if (source == ComponentSource::CPU && cpu_dma_conflict(address)) {
+        if (IsCgb(gpu_.model) && address >= WRAM_BEGIN && (dma_.startAddress < WRAM_BEGIN || dma_.startAddress >= ERAM_BEGIN)) {
+            memory_.wram_[dma_wram_offset(address)] = value;
+            return;
+        }
+        // appears that writes to the OAM DMA are not discarded, but have corrupted writes to the current OAM byte depending on the model:
+        // 1) DMG WRAM — AND of OAM data and value
+        // 2) other DMG — bus value
+        // 3) CGB VRAM — byte set to 0
+        // 4) CGB WRAM — retain DMA value
+        // 5) CGB other — bus value
+        auto &transferred = gpu_.oam[dma_.currentByte - 1];
+        if (IsCgb(gpu_.model)) {
+            if (dma_.startAddress < WRAM_BEGIN || dma_.startAddress >= ERAM_BEGIN) {
+                transferred = DmaBusFor(dma_.startAddress) == 1 ? 0 : value;
+            }
+        } else {
+            transferred = dma_.startAddress >= WRAM_BEGIN ? transferred & value : value;
+        }
         return;
+    }
     switch (address) {
         case 0x0000 ... 0x7FFF:
             cartridge_.WriteByte(address, value);

@@ -106,6 +106,10 @@ public:
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
 
 private:
+    [[nodiscard]] bool cpu_dma_conflict(u16 address) const;
+
+    u32 dma_wram_offset(u16 address) const;
+
     template<bool Inspect>
     [[nodiscard]] uint8_t ReadByteValue(uint16_t address, ComponentSource source) const;
 
