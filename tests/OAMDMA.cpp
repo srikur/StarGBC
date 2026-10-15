@@ -4,7 +4,7 @@
 #include "Gameboy.h"
 #include "TestUtilities.h"
 
-static constexpr kRomName = "roms/acid/cgb-acid2.gbc";
+static constexpr std::string_view kRomName = "roms/acid/cgb-acid2.gbc";
 
 TEST_CASE("OAM DMA: Bus conflicts alter the transferred byte without writing the CPU address") {
     constexpr std::array models = {Model::DMGB, Model::CGBC};
@@ -12,13 +12,13 @@ TEST_CASE("OAM DMA: Bus conflicts alter the transferred byte without writing the
     for (const auto [model, source] : std::views::cartesian_product(models, sources)) {
         CAPTURE(model);
         CAPTURE(source);
-        Gameboy gameboy({.romName = kRomName, .model = model, .noBootrom = true});
+        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = model, .noBootrom = true});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.gpu_.vram[0] = 0x65;
         bus.memory_.wram_[0] = 0x65;
         bus.gpu_.oam.fill(0x87);
         bus.WriteByte(OAM_DMA_TRANSFER_REG, source >> 8, ComponentSource::CPU);
-        for (auto i{} : std::views::indices(8))
+        for (auto _ : std::views::indices(8))
             bus.UpdateDMA();
         REQUIRE(bus.dma_.currentByte == 1);
         const auto original = bus.gpu_.oam[0];
@@ -32,7 +32,7 @@ TEST_CASE("OAM DMA: Bus conflicts alter the transferred byte without writing the
         CHECK(bus.gpu_.oam[0] == expected);
         CHECK(bus.gpu_.oam[1] == 0x87);
         CHECK(gameboy.DebugPeek(address) == destination);
-        for (auto i{} : std::views::indices(4))
+        for (auto _ : std::views::indices(4))
             bus.UpdateDMA();
         CHECK(bus.gpu_.oam[0] == expected);
         CHECK(bus.dma_.currentByte == 2);
@@ -45,14 +45,14 @@ TEST_CASE("CGB OAM DMA selects the work RAM half while the CPU selects its byte"
     for (const auto [source, address] : std::views::cartesian_product(sources, addresses)) {
         CAPTURE(source);
         CAPTURE(address);
-        Gameboy gameboy({.romName = kRomName, .model = Model::CGBC, .noBootrom = true});
+        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = Model::CGBC, .noBootrom = true});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.memory_.wramBank_ = 3;
         bus.memory_.wram_[0x0123] = 0x11;
         bus.memory_.wram_[0x1123] = 0x22;
         bus.memory_.wram_[0x3123] = 0x33;
         bus.WriteByte(OAM_DMA_TRANSFER_REG, source >> 8, ComponentSource::CPU);
-        for (auto i{} : std::views::indices(8))
+        for (auto _ : std::views::indices(8))
             bus.UpdateDMA();
         REQUIRE(bus.dma_.currentByte == 1);
         const bool banked = source & 0x1000;
@@ -75,11 +75,11 @@ TEST_CASE("OAM DMA sources above work RAM are disconnected on CGB and mirrored o
     for (const auto [model, page] : std::views::cartesian_product(models, pages)) {
         CAPTURE(model);
         CAPTURE(page);
-        Gameboy gameboy({.romName = kRomName, .model = model, .noBootrom = true});
+        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = model, .noBootrom = true});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.memory_.wram_.fill(0x65);
         bus.WriteByte(OAM_DMA_TRANSFER_REG, page, ComponentSource::CPU);
-        for (auto i{} : std::views::indices(8))
+        for (auto _ : std::views::indices(8))
             bus.UpdateDMA();
         REQUIRE(bus.dma_.currentByte == 1);
         CHECK(bus.gpu_.oam[0] == (model == Model::DMGB ? 0x65 : 0xFF));
@@ -90,17 +90,17 @@ TEST_CASE("OAM DMA sources above work RAM are disconnected on CGB and mirrored o
 TEST_CASE("Reading the VRAM DMA bus clears the CGB OAM byte") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
         CAPTURE(model);
-        Gameboy gameboy({.romName = kRomName, .model = model, .noBootrom = true});
+        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = model, .noBootrom = true});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.gpu_.vram[0] = 0x65;
         bus.gpu_.vram[1] = 0x76;
         bus.gpu_.oam.fill(0x87);
         bus.WriteByte(OAM_DMA_TRANSFER_REG, 0x80, ComponentSource::CPU);
-        for (auto i{} : std::views::indices(8))
+        for (auto _ : std::views::indices(8))
             bus.UpdateDMA();
         REQUIRE(bus.dma_.currentByte == 1);
         const auto before = gameboy.SaveState();
-        for (auto i{} : std::views::indices(3))
+        for (auto _ : std::views::indices(3))
             CHECK(gameboy.InspectCpuRead(0x9000) == 0x65);
         CHECK(gameboy.SaveState() == before);
         CHECK(bus.ReadByte(0x9000, ComponentSource::CPU) == 0x65);
@@ -108,7 +108,7 @@ TEST_CASE("Reading the VRAM DMA bus clears the CGB OAM byte") {
         CHECK(bus.gpu_.oam[1] == 0x87);
         CHECK(bus.gpu_.vram[0] == 0x65);
         CHECK(gameboy.InspectCpuRead(0x9000) == (model == Model::DMGB ? 0x65 : 0));
-        for (auto i{} : std::views::indices(4))
+        for (auto _ : std::views::indices(4))
             bus.UpdateDMA();
         CHECK(gameboy.InspectCpuRead(0x9000) == 0x76);
         CHECK(bus.gpu_.oam[1] == 0x76);
