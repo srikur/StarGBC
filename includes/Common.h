@@ -24,47 +24,49 @@ using u16 = std::uint16_t;
 using u32 = std::uint32_t;
 using u64 = std::uint64_t;
 
-static constexpr uint8_t SCREEN_WIDTH = 160;
-static constexpr uint8_t SCREEN_HEIGHT = 144;
-static constexpr uint16_t VRAM_BEGIN = 0x8000;
-static constexpr uint16_t VRAM_END = 0x9FFF;
-static constexpr uint16_t VRAM_SIZE = 0x4000;
-static constexpr uint16_t GPU_REGS_BEGIN = 0xFF40;
-static constexpr uint16_t GPU_REGS_END = 0xFF4B;
-static constexpr uint16_t OAM_BEGIN = 0xFE00;
-static constexpr uint16_t OAM_END = 0xFE9F;
-static constexpr uint16_t WRAM_BEGIN = 0xC000;
-static constexpr uint16_t WRAM_END = 0xDFFF;
-static constexpr uint16_t ERAM_BEGIN = 0xE000;
-static constexpr uint16_t ERAM_END = 0xFDFF;
+static constexpr u8 SCREEN_WIDTH = 160;
+static constexpr u8 SCREEN_HEIGHT = 144;
+static constexpr u16 VRAM_BEGIN = 0x8000;
+static constexpr u16 VRAM_END = 0x9FFF;
+static constexpr u16 VRAM_SIZE = 0x4000;
+static constexpr u16 GPU_REGS_BEGIN = 0xFF40;
+static constexpr u16 GPU_REGS_END = 0xFF4B;
+static constexpr u16 OAM_BEGIN = 0xFE00;
+static constexpr u16 OAM_END = 0xFE9F;
+static constexpr u16 WRAM_BEGIN = 0xC000;
+static constexpr u16 WRAM_END = 0xDFFF;
+static constexpr u16 ERAM_BEGIN = 0xE000;
+static constexpr u16 ERAM_END = 0xFDFF;
 
-static constexpr uint8_t OAM_PRIORITY_BIT = 7;
-static constexpr uint8_t OAM_Y_FLIP_BIT = 6;
-static constexpr uint8_t OAM_X_FLIP_BIT = 5;
-static constexpr uint8_t OAM_PALETTE_NUMBER_DMG_BIT = 4;
-static constexpr uint8_t OAM_VRAM_BANK_BIT = 3;
+static constexpr u16 OAM_DMA_TRANSFER_REG = 0xFF46;
 
-static constexpr uint16_t SCANLINE_CYCLES = 456;
-static constexpr uint8_t MODE2_CYCLES = 80;
+static constexpr u8 OAM_PRIORITY_BIT = 7;
+static constexpr u8 OAM_Y_FLIP_BIT = 6;
+static constexpr u8 OAM_X_FLIP_BIT = 5;
+static constexpr u8 OAM_PALETTE_NUMBER_DMG_BIT = 4;
+static constexpr u8 OAM_VRAM_BANK_BIT = 3;
 
-static constexpr uint8_t OBJ_TOTAL_SPRITES = 40;
+static constexpr u16 SCANLINE_CYCLES = 456;
+static constexpr u8 MODE2_CYCLES = 80;
+
+static constexpr u8 OBJ_TOTAL_SPRITES = 40;
 
 // 0xFF40 -- LCD Control
-static constexpr uint8_t LCDC_ENABLE_BIT = 7;
-static constexpr uint8_t LCDC_WINDOW_TILE_MAP_AREA = 6;
-static constexpr uint8_t LCDC_WINDOW_ENABLE = 5;
-static constexpr uint8_t LCDC_BG_AND_WINDOW_TILE_DATA = 4;
-static constexpr uint8_t LCDC_BG_TILE_MAP_AREA = 3;
-static constexpr uint8_t LCDC_OBJ_SIZE = 2;
-static constexpr uint8_t LCDC_OBJ_ENABLE = 1;
-static constexpr uint8_t LCDC_BG_WINDOW_ENABLE = 0;
+static constexpr u8 LCDC_ENABLE_BIT = 7;
+static constexpr u8 LCDC_WINDOW_TILE_MAP_AREA = 6;
+static constexpr u8 LCDC_WINDOW_ENABLE = 5;
+static constexpr u8 LCDC_BG_AND_WINDOW_TILE_DATA = 4;
+static constexpr u8 LCDC_BG_TILE_MAP_AREA = 3;
+static constexpr u8 LCDC_OBJ_SIZE = 2;
+static constexpr u8 LCDC_OBJ_ENABLE = 1;
+static constexpr u8 LCDC_BG_WINDOW_ENABLE = 0;
 
-constexpr std::uint8_t operator""_u8(unsigned long long value) { return static_cast<std::uint8_t>(value); }
+constexpr u8 operator""_u8(unsigned long long value) { return static_cast<u8>(value); }
 
-constexpr std::uint16_t operator""_u16(unsigned long long value) { return static_cast<std::uint16_t>(value); }
+constexpr u16 operator""_u16(unsigned long long value) { return static_cast<u16>(value); }
 
 template<uint8_t bit>
-static constexpr bool Bit(const uint8_t value) {
+static constexpr bool Bit(const u8 value) {
     static_assert(bit < 8);
     return value >> bit & 0x01;
 }
@@ -95,7 +97,7 @@ enum class InterruptType {
 enum class ComponentSource { CPU, DMA, PPU, HDMA };
 
 template<typename T>
-concept BusLike = requires(T bus, uint16_t addr, uint8_t val, ComponentSource source) {
+concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source) {
     { bus.ReadByte(addr, source) } -> std::same_as<uint8_t>;
     { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };

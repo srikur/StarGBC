@@ -167,15 +167,24 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
 uint8_t Bus::InspectRead(const uint16_t address, const ComponentSource source) const { return ReadByteValue<true>(address, source); }
 
 template<bool Inspect>
-uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source) const {
+u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
     if (address >= 0xFE00 && address <= 0xFEFF && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES)
         return 0xFF;
     // A CPU access on the bus the DMA unit is reading sees the DMA's current
     // byte — only while bytes are actually moving, not during the startup
     // delay or after the last byte (hacktix bully)
     if (source == ComponentSource::CPU && cpu_dma_conflict(address)) {
-        const bool check = IsCgb(gpu_.model) && address >= WRAM_BEGIN && (dma_.startAddress < WRAM_BEGIN || dma_.startAddress >= ERAM_BEGIN);
-        return check ? memory_.wram_[dma_wram_offset(address)] : dmaReadByte;
+        if (IsCgb(gpu_.model) && address >= WRAM_BEGIN && (dma_.startAddress < WRAM_BEGIN || dma_.startAddress >= ERAM_BEGIN)) {
+            return memory_.wram_[dma_wram_offset(address)];
+        }
+        const u8 value = gpu_.oam[dma_.currentByte - 1];
+        if constexpr (!Inspect) {
+            // CGB VRAM — reads clear the destination byte
+            if (IsCgb(gpu_.model) && DmaBusFor(dma_.startAddress) == 1) {
+                gpu_.oam[dma_.currentByte - 1] = 0;
+            }
+            return value;
+        }
     }
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
         DmaBusFor(address) == DmaBusFor(dma_.startAddress)) {
@@ -202,12 +211,12 @@ uint8_t Bus::ReadByteValue(const uint16_t address, const ComponentSource source)
         }
         case 0xA000 ... 0xBFFF:
             return cartridge_.ReadByte(address);
-        case 0xC000 ... 0xCFFF:
-            return memory_.wram_[address - 0xC000];
+        case WRAM_BEGIN ... 0xCFFF:
+            return memory_.wram_[address - WRAM_BEGIN];
         case 0xD000 ... 0xDFFF:
             return memory_.wram_[address - 0xD000 + 0x1000 * memory_.wramBank_];
-        case 0xE000 ... 0xEFFF:
-            return memory_.wram_[address - 0xE000];
+        case ERAM_BEGIN ... 0xEFFF:
+            return memory_.wram_[address - ERAM_BEGIN];
         case 0xF000 ... 0xFDFF:
             return memory_.wram_[address - 0xF000 + 0x1000 * memory_.wramBank_];
         case 0xFE00 ... 0xFEFF:
