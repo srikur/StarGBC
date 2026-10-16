@@ -498,6 +498,8 @@ void Bus::UpdateDMAWork() {
     if (observations && dma_.ticks == DMA::STARTUP_CYCLES + 1)
         observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
                            diagnostics::Initiator::DMA);
+    gpu_.oam_dma_write_offset = dma_.currentByte;
+    gpu_.oam_dma_old_value = gpu_.oam[dma_.currentByte];
     gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
     if (observations)
         observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, 0xFE00 + dma_.currentByte, gpu_.oam[dma_.currentByte],

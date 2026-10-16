@@ -45,6 +45,7 @@ public:
     // Inline fast path: 3 of 4 calls only advance the phase counter, and the
     // 4th is idle unless a transfer is active or just finished
     void UpdateDMA() {
+        gpu_.oam_dma_write_offset = 0xFF;
         if (++dma_.dmaTickCounter % 4 != 0)
             return;
         dma_.dmaTickCounter = 0;

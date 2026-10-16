@@ -932,3 +932,37 @@ TEST_CASE("ppu: DMG object disable releases alignment and active fetch stalls") 
         CHECK(gpu.mode3EndDot_ == (model == Model::DMGB ? 252 + disable_dot - 108 : 263));
     }
 }
+
+TEST_CASE("ppu: CGB OAM selection combines both object-size samples") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<unsigned, 3> index_values = {0, 1, 39};
+    constexpr std::array<int, 3> offset_values = {-2, 0, 2};
+    constexpr std::array initially_large_values = {false, true};
+    for (const auto [double_speed, optimized, index, offset, initially_large] : std::views::cartesian_product(speeds, optimizations, index_values, offset_values, initially_large_values)) {
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        CAPTURE(index);
+        CAPTURE(offset);
+        CAPTURE(initially_large);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::CGBC);
+        gpu.doubleSpeed = double_speed;
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = initially_large ? 0x97 : 0x93;
+        gpu.currentLine = 10;
+        gpu.oam[index * 4] = 18;
+        gpu.oam[index * 4 + 1] = 24;
+        const unsigned write_dot = 2 + index * 2 + offset;
+        while (gpu.scanlineCounter < 90) {
+            if (gpu.scanlineCounter == write_dot)
+                gpu.WriteRegisters(LCD_CONTROL_BIT, initially_large ? 0x93 : 0x97);
+            gpu.Update();
+        }
+        const bool selected = initially_large ? offset >= 0 : offset <= 0;
+        REQUIRE(gpu.spriteBuffer.size() == unsigned(selected));
+        if (selected)
+            CHECK(gpu.spriteBuffer.begin()->sprite_num / 2 == index);
+    }
+}

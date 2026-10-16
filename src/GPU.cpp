@@ -159,6 +159,8 @@ void GPU::Update() {
         if (stat.mode == GPUMode::MODE_3 && mode3EndDelay_ == 0 && pixelsDrawn < SCREEN_WIDTH) {
             backgroundDataReadThisDot_ = false;
             pixelOutputThisDot_ = false;
+            if (is_cgb && !lcdEnableLine0_ && scanlineCounter < 84)
+                TickOAMScan();
             TickMode3();
             ++scanlineCounter;
             return;
@@ -177,6 +179,8 @@ void GPU::Update() {
         }
         recentPixelOffsets_[0] = 0xFFFF;
     }
+    if (mode2_size_delay)
+        --mode2_size_delay;
     if (stat_irq_delay)
         --stat_irq_delay;
     if (lyc_irq_delay)
@@ -280,9 +284,8 @@ void GPU::Update() {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
         if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scx_just_applied && !scyJustApplied_ &&
-            (stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage |
-             scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) ==
-                    0) {
+            (mode2_size_delay | stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage |
+             wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) == 0) {
             lcdOffIdle_ = true;
         }
         return;
@@ -356,6 +359,8 @@ void GPU::Update() {
             TickOAMScan();
             break;
         case GPUMode::MODE_3: {
+            if (is_cgb && !lcdEnableLine0_ && scanlineCounter < 84)
+                TickOAMScan();
             if (pixelsDrawn < SCREEN_WIDTH)
                 TickMode3();
             if (pixelsDrawn == SCREEN_WIDTH && mode3EndDelay_ == 0) {
@@ -417,11 +422,8 @@ void GPU::Update() {
     } else if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
         set_mode(GPUMode::MODE_3);
         pixelsDrawn = 0;
-        if (!is_cgb || objectPriority) {
+        if (!is_cgb)
             std::ranges::sort(spriteBuffer, std::less{});
-        } else if (is_cgb && !objectPriority) {
-            std::ranges::sort(spriteBuffer, [](const Sprite &a, const Sprite &b) { return a.sprite_num < b.sprite_num; });
-        }
         ResetScanlineState(false);
     } else if (scanlineCounter == scanlineDuration) {
         lcdEnableLine0_ = false;
@@ -508,8 +510,8 @@ void GPU::MaybeArmIdle() {
         return;
     if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scx_just_applied || scyJustApplied_)
         return;
-    if ((stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage |
-             scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
+    if ((mode2_size_delay | stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage |
+         wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
         return;
 
     if (stat.mode == GPUMode::MODE_3) {
@@ -538,26 +540,45 @@ void GPU::MaybeArmIdle() {
 }
 
 void GPU::TickOAMScan() {
-    if (oam_dma_active && cpu_halted && model < Model::CGBE)
+    const unsigned scan_position = is_cgb ? scanlineCounter - (doubleSpeed ? 1 : 3) : scanlineCounter;
+    if (is_cgb && scan_position == 80) {
+        if (objectPriority)
+            std::ranges::sort(spriteBuffer, std::less{});
+        else
+            std::ranges::sort(spriteBuffer, [](const Sprite &a, const Sprite &b) { return a.sprite_num < b.sprite_num; });
+    }
+    if (scan_position >= 80)
         return;
-    if (!(scanlineCounter % 2))
-        return;
-    const uint8_t index = scanlineCounter / 2;
-
+    const uint8_t index = scan_position / 2;
     const uint16_t base = index * 4;
-    // An active OAM DMA blocks the scan's OAM reads: the y/x bus keeps its
-    // previous values, and tile/attr reads see the word the DMA is currently
-    // writing (hacktix strikethrough)
-    if (!oam_dma_active || cpu_halted) {
-        mode2YBus_ = oam[base];
-        mode2XBus_ = oam[base + 1];
+    const bool large_sprite = mode2_size_delay ? mode2_size_old : Bit<LCDC_OBJ_SIZE>(lcdc);
+    const bool scan_blocked = oam_dma_active && cpu_halted && model < Model::CGBE;
+    if (is_cgb) {
+        if (!(scan_position & 1)) {
+            mode2_entry_valid = !scan_blocked;
+            if (!scan_blocked && (!oam_dma_active || cpu_halted)) {
+                mode2YBus_ = oam_dma_write_offset == base ? oam_dma_old_value : oam[base];
+                mode2XBus_ = oam_dma_write_offset == base + 1 ? oam_dma_old_value : oam[base + 1];
+            }
+            mode2_large_sprite = large_sprite;
+            return;
+        }
+        if (scan_blocked || !mode2_entry_valid)
+            return;
+    } else {
+        if (!(scan_position & 1) || scan_blocked)
+            return;
+        if (!oam_dma_active || cpu_halted) {
+            mode2YBus_ = oam_dma_write_offset == base ? oam_dma_old_value : oam[base];
+            mode2XBus_ = oam_dma_write_offset == base + 1 ? oam_dma_old_value : oam[base + 1];
+        }
     }
     const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(mode2YBus_) - 16);
     const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(mode2XBus_) - 8);
     const bool dmaRedirect = oam_dma_active && !cpu_halted && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
     const uint8_t spriteTileIndex = dmaRedirect ? oam[oamDmaDest_ & ~1] : oam[base + 2];
     const Attributes attr = GetAttrsFrom(dmaRedirect ? oam[(oamDmaDest_ & ~1) | 1] : oam[base + 3]);
-    const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
+    const uint8_t spriteSize = (large_sprite || (is_cgb && mode2_large_sprite)) ? 16 : 8;
 
     // OAM scan checks only Y — off-screen X (0 or ≥168) still occupies a buffer
     // slot, and an X=0 sprite stalls mode 3 without drawing anything
@@ -565,7 +586,7 @@ void GPU::TickOAMScan() {
     const bool cond3 = currentLine < spriteY + spriteSize;
     const bool cond4 = spriteBuffer.size() < 10;
     if (cond2 && cond3 && cond4) {
-        spriteBuffer.push_back(Sprite{.sprite_num = static_cast<uint8_t>(scanlineCounter),
+        spriteBuffer.push_back(Sprite{.sprite_num = static_cast<uint8_t>(index * 2 + 1),
                                       .x = spriteX,
                                       .y = spriteY,
                                       .tile_index = spriteTileIndex,
@@ -1656,6 +1677,13 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     InvalidateIdle();
     switch (address) {
         case 0xFF40: {
+            if (is_cgb && !LCDDisabled() && Bit<LCDC_ENABLE_BIT>(value) && ((lcdc ^ value) & (1 << LCDC_OBJ_SIZE))) {
+                if (!mode2_size_delay)
+                    mode2_size_old = Bit<LCDC_OBJ_SIZE>(lcdc);
+                mode2_size_delay = doubleSpeed ? 1 : 3;
+            } else if (!Bit<LCDC_ENABLE_BIT>(value) || LCDDisabled()) {
+                mode2_size_delay = 0;
+            }
             if (is_cgb && stat.mode == GPUMode::MODE_3 && !LCDDisabled() && Bit<LCDC_ENABLE_BIT>(value) &&
                 ((lcdc ^ value) & (1 << LCDC_BG_AND_WINDOW_TILE_DATA))) {
                 if (backgroundDataReadThisDot_) {

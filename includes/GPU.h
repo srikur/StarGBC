@@ -290,8 +290,14 @@ public:
     // PPU's OAM scan (stale bus) and redirects tile/attr reads
     bool oam_dma_active{false};
     uint8_t oamDmaDest_{0};
+    uint8_t oam_dma_write_offset{0xFF};
+    uint8_t oam_dma_old_value{};
     uint8_t mode2YBus_{0xFF};
     uint8_t mode2XBus_{0xFF};
+    bool mode2_large_sprite{};
+    bool mode2_size_old{};
+    uint8_t mode2_size_delay{};
+    bool mode2_entry_valid{};
 
     void SetModel(const Model m) {
         model = m;
