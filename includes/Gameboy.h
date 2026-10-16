@@ -232,11 +232,10 @@ static constexpr void DeserializeFrom(T &obj, const std::byte *in) {
 
 inline constexpr std::size_t kGameboyStateSize = StateSizeOf(^^Gameboy);
 
-// GCC 16.2's -Wsfinae-incomplete flags the deduced return type resolving here after the
-// reflection queries probed the then-incomplete Gameboy; benign for this single-TU-style header
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsfinae-incomplete"
 inline auto Gameboy::SaveState() const {
+    // TODO: Cant remember if the SaveState()s in each component are actually doing I/O. Should change to only returning bytes if so
     std::array<std::byte, kGameboyStateSize> out{};
     SerializeInto(*this, out.data());
     return out;
