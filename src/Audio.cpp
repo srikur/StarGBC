@@ -27,11 +27,11 @@ void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
     // 64Hz envelope step: the countdown runs freely while the clock is not
     // latched (a latched clock pauses it until the tick consumes it)
     if ((frameSeqStep & 7) == 7) {
-        if (!ch1.envelope.clock)
+        if (!ch1.envelope.clock && !ch1.envelope.counter_reload_delay)
             ch1.envelope.volumeCountdown = (ch1.envelope.volumeCountdown - 1) & 7;
-        if (!ch2.envelope.clock)
+        if (!ch2.envelope.clock && !ch2.envelope.counter_reload_delay)
             ch2.envelope.volumeCountdown = (ch2.envelope.volumeCountdown - 1) & 7;
-        if (!ch4.envelope.clock)
+        if (!ch4.envelope.clock && !ch4.envelope.counter_reload_delay)
             ch4.envelope.volumeCountdown = (ch4.envelope.volumeCountdown - 1) & 7;
     }
 
@@ -51,7 +51,7 @@ void Audio::TickFrameSequencer(const bool divWriteSingleSpeed) {
         ch4.TickLength();
     }
 
-    if ((frameSeqStep & 3) == 3) {
+    if ((frameSeqStep & 3) == 3 && !ch1.sweep.counter_reload_delay) {
         ch1.sweep.countdown = (ch1.sweep.countdown + 1) & 7;
         ch1.TickSweep128((tickCounter & 2) ? 0 : 1, divWriteSingleSpeed);
     }
@@ -95,7 +95,8 @@ void Audio::CatchUpWork() {
             quiet = std::min(quiet, untilEmit - 1);
         }
         if (enabled) {
-            const bool hairy = ch1.frequency_reload_delay || ch2.frequency_reload_delay ||
+            const bool hairy = ch1.frequency_reload_delay || ch2.frequency_reload_delay || ch1.sweep.counter_reload_delay ||
+                               ch1.envelope.counter_reload_delay || ch2.envelope.counter_reload_delay || ch4.envelope.counter_reload_delay ||
                                (ch1.sweep.calcReloadTimer | ch1.sweep.calcCountdown | ch1.restartHold) != 0 || ch4.dmgDelayedStart > 0 ||
                                (ch1.enabled && ch1.lengthTimer.enabled && ch1.lengthTimer.lengthTimer == 64) ||
                                (ch2.enabled && ch2.lengthTimer.enabled && ch2.lengthTimer.lengthTimer == 64) ||
@@ -204,6 +205,11 @@ void Audio::CatchUpWork() {
                     ch2.Tick2M();
                 }
                 ch4.Tick2M(frameSeqStep, dmg);
+                if (ch1.sweep.counter_reload_delay)
+                    --ch1.sweep.counter_reload_delay;
+                for (auto *envelope : {&ch1.envelope, &ch2.envelope, &ch4.envelope})
+                    if (envelope->counter_reload_delay)
+                        --envelope->counter_reload_delay;
             }
             ch3.Tick();
         }
@@ -222,7 +228,8 @@ void Audio::initialize_post_boot() {
     ch1.dutyStep = cgb ? 6 : 2;
     ch1.duty_sample = Channel::DUTY_PATTERNS[ch1.lengthTimer.dutyCycle][ch1.dutyStep];
     ch1.sampleCountdown = cgb ? (IsAgb(model_) ? 71 : 73) : 11;
-    ch1.trigDelay = ch1.restartHold = 0;
+    ch1.trigDelay = ch1.restartHold = ch1.sweep.counter_reload_delay = 0;
+    ch1.envelope.counter_reload_delay = ch2.envelope.counter_reload_delay = ch4.envelope.counter_reload_delay = 0;
     ch1.didTick = true;
     ch1.justReloaded = ch1.sampleSurpressed = false;
     ch1.lengthTimer.lengthTimer = 0;
@@ -441,6 +448,7 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
         sampleCountdown = frequency_reload_value;
 
     envelope.volumeCountdown = envelope.sweepPace;
+    envelope.counter_reload_delay = 2;
     envelope.currentVolume = envelope.initialVolume;
     envelope.clock = false;
     envelope.locked = false;
@@ -473,6 +481,7 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
     }
     restartHold = 2 - lfDiv + (dmg ? 0 : 3);
     sweep.countdown = sweep.pace ^ 7;
+    sweep.counter_reload_delay = dmg ? 2 : 4;
 }
 
 void Channel1::TickLength() {
@@ -756,6 +765,7 @@ void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
         sampleCountdown = frequency_reload_value;
 
     envelope.volumeCountdown = envelope.sweepPace;
+    envelope.counter_reload_delay = 2;
     envelope.currentVolume = envelope.initialVolume;
     envelope.clock = false;
     envelope.locked = false;
@@ -1228,6 +1238,7 @@ void Channel4::DoTrigger(const uint8_t freqStep, const bool dmg) {
     envelope.currentVolume = envelope.initialVolume;
     currentLfsrSample = false;
     envelope.volumeCountdown = envelope.sweepPace;
+    envelope.counter_reload_delay = 2;
     didStepCounter = (alignment & 3) == 2;
     currentOutput = 0.0f;
 

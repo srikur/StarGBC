@@ -58,6 +58,7 @@ struct Sweep {
     // computed addend to the frequency, then schedules a recalculation
     // (and overflow check) a few 1MHz ticks later
     uint8_t countdown{0}; // 128Hz counter, triggers at 7
+    uint8_t counter_reload_delay{0};
     uint8_t calcCountdown{0}; // 1MHz delay until the recalculation
     uint8_t calcReloadTimer{0}; // 1MHz delay before calcCountdown may run
     uint16_t lengthAddend{0};
@@ -84,6 +85,7 @@ struct Envelope {
     // zero on an active channel it reloads to the pace and latches the clock;
     // the volume tick then fires on the next DIV event
     uint8_t volumeCountdown{0};
+    uint8_t counter_reload_delay{0};
     uint8_t currentVolume{0};
     bool clock{false};
     bool shouldLock{false};

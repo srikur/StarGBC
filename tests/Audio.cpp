@@ -136,3 +136,45 @@ TEST_CASE("apu: length expiration clears NR52 independently of the waveform phas
         CHECK(audio.ReadByte(SOUND_CONTROL) == (0xFF & ~length_mask));
     }
 }
+
+TEST_CASE("apu: trigger reloads take precedence over adjacent sequencer clocks") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array after_reload_values = {false, true};
+    for (const auto [model, optimized, after_reload] : std::views::cartesian_product(models, optimizations, after_reload_values)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(optimized);
+        CAPTURE(after_reload);
+        Audio envelope(true);
+        envelope.SetModel(model);
+        envelope.SetOptimizedExecution(optimized);
+        envelope.WriteByte(SOUND_CONTROL, 0x80, false);
+        for (auto edge{0u}; edge < 6; ++edge)
+            envelope.TickFrameSequencer();
+        envelope.WriteByte(PULSE2_ENVELOPE, 0x09, false);
+        envelope.WriteByte(PULSE2_FREQUENCY_HIGH, 0x87, false);
+        for (auto tick{0u}; tick < (after_reload ? 4u : 3u); ++tick)
+            envelope.Tick();
+        envelope.TickFrameSequencer();
+        envelope.TickFrameSequencerSecondary();
+        envelope.TickFrameSequencer();
+        CHECK(envelope.ch2.envelope.currentVolume == (after_reload ? 1 : 0));
+        CHECK(envelope.ReadByte(SOUND_CONTROL) == 0xF2);
+
+        Audio sweep(true);
+        sweep.SetModel(model);
+        sweep.SetOptimizedExecution(optimized);
+        sweep.WriteByte(SOUND_CONTROL, 0x80, false);
+        sweep.TickFrameSequencer();
+        sweep.TickFrameSequencer();
+        sweep.WriteByte(PULSE1_SWEEP, 0x20, false);
+        sweep.WriteByte(PULSE1_ENVELOPE, 0xF0, false);
+        sweep.WriteByte(PULSE1_FREQUENCY_HIGH, 0x87, false);
+        const unsigned reload_tick = IsDmg(model) ? 4 : 8;
+        for (auto tick{0u}; tick < reload_tick - !after_reload; ++tick)
+            sweep.Tick();
+        sweep.TickFrameSequencer();
+        CHECK(sweep.ch1.sweep.countdown == (after_reload ? 6 : 5));
+        CHECK(sweep.ReadByte(SOUND_CONTROL) == 0xF1);
+    }
+}
