@@ -216,6 +216,7 @@ public:
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
     uint8_t scxWriteStage{0};
+    bool scx_just_applied{false};
     uint8_t scyFetcherOld{0};
     uint8_t scyWriteStage{0};
     bool scyJustApplied_{false};

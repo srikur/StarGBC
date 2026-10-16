@@ -188,6 +188,7 @@ void GPU::Update() {
     // DMG: mode-3 SCX/SCY writes reach the fetcher's reads two dots late,
     // same latency class as BGP. The warmup fetch's reads run just ahead of
     // the apply point, so a value landing on the read dot is still seen old
+    scx_just_applied = scxWriteStage == 1;
     if (scxWriteStage > 0 && --scxWriteStage == 0)
         Observe(diagnostics::EventKind::RegisterApply, 0xFF43, scrollX);
     scyJustApplied_ = false;
@@ -230,7 +231,7 @@ void GPU::Update() {
     if (LCDDisabled()) {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
-        if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scyJustApplied_ &&
+        if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scx_just_applied && !scyJustApplied_ &&
             (bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
              obp1WriteStage) == 0) {
             lcdOffIdle_ = true;
@@ -444,7 +445,7 @@ void GPU::Update() {
 void GPU::MaybeArmIdle() {
     if (!optimized_execution)
         return;
-    if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_)
+    if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scx_just_applied || scyJustApplied_)
         return;
     if ((bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
          obp1WriteStage) != 0)
@@ -1109,7 +1110,8 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
         return tileMapBase + tileRow * 32 + tileCol;
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
-        const uint8_t scxForFetch = scxWriteStage > 0 ? scxFetcherOld : scrollX;
+        const bool scx_old = scxWriteStage > 0 || (scx_just_applied && scanlineCounter < 92);
+        const uint8_t scx_for_fetch = scx_old ? scxFetcherOld : scrollX;
         const bool scyOld = scyWriteStage > 0 || (scyJustApplied_ && scanlineCounter < 92);
         const uint8_t scyForFetch = scyOld ? scyFetcherOld : scrollY;
         const uint8_t tileRow = (((scyForFetch + currentLine) & 0xFF) >> 3) & 0x1F;
@@ -1117,7 +1119,7 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
         // carry from changed fine bits. DMG reads one dot after the FIFO push
         const int readOffset = fetcherTileX_ ? (is_cgb ? 0 : 1) - initialScrollXFine_ : 0;
         const uint8_t fetchX = fetcherTileX_ * 8 + readOffset;
-        const uint8_t tileCol = ((fetchX + scxForFetch) / 8) & 0x1F;
+        const uint8_t tileCol = ((fetchX + scx_for_fetch) / 8) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
 }
