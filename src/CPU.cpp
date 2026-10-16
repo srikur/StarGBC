@@ -302,6 +302,10 @@ bool CPU<BusT>::ProcessInterrupts() {
                 interrupts_.interrupt_master_enable = true;
                 icount_ = 0;
             }
+            if (halted_ && halt_entry_cycles) {
+                --halt_entry_cycles;
+                return false;
+            }
             // DMG samples HALT wake at T2 and running instructions at T4
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
                                             ? (halted_ ? haltPending_ : runningPending_)
