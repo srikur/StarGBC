@@ -4142,8 +4142,8 @@ Current Performance: (4367/4372)
 | magentests/hblank_vram_dma.gbc                                                                     | :white_check_mark: |
 | magentests/key0_lock_after_boot.gbc                                                                | :white_check_mark: |
 | magentests/mbc_oob_sram_mbc1.gbc                                                                   | :white_check_mark: |
-| magentests/mbc_oob_sram_mbc3.gbc                                                                   | :x:                |
-| magentests/mbc_oob_sram_mbc5.gbc                                                                   | :x:                |
+| magentests/mbc_oob_sram_mbc3.gbc                                                                   | :white_check_mark: |
+| magentests/mbc_oob_sram_mbc5.gbc                                                                   | :white_check_mark: |
 | magentests/oam_internal_priority.gbc                                                               | :white_check_mark: |
 | magentests/ppu_disabled_state.gbc                                                                  | :white_check_mark: |
 | mbc3-tester/mbc3-tester.gb                                                                         | :white_check_mark: |
