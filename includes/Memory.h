@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include "Model.h"
 
 struct Memory {
     static constexpr uint16_t WRAM_BEGIN = 0xA000;
@@ -14,6 +15,8 @@ struct Memory {
     std::array<uint8_t, 0x8000> wram_{};
     std::array<uint8_t, 0x80> hram_{};
     uint8_t wramBank_{0x01};
+
+    void initialize_power_on(Model model);
 
     bool SaveState(std::ofstream &stateFile) const;
 

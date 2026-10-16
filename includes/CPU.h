@@ -14,6 +14,7 @@ public:
     explicit CPU(const Model requestedModel, const std::string &biosPath, const bool noBootrom, BusT &bus, Interrupts &interrupts,
                  Registers &registers) : bus_(bus), interrupts_(interrupts), regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
+        bus.memory_.initialize_power_on(hw);
         bus.gpu_.SetModel(hw);
         bus.gpu_.initialize_palette_ram();
         bus.audio_.SetModel(hw);
