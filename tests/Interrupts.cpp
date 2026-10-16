@@ -101,6 +101,7 @@ TEST_CASE("interrupts: acknowledging a visible request retires its delayed dispa
     CHECK(interrupts.interrupt_visible_pending == 4);
     CHECK(interrupts.interrupt_flag_delayed == 4);
     for (auto dot{0u}; dot < 8; ++dot) {
+        interrupts.tick_cpu();
         interrupts.tick();
         CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
     }
@@ -109,8 +110,10 @@ TEST_CASE("interrupts: acknowledging a visible request retires its delayed dispa
 
     interrupts.set_after(InterruptType::LCDStat, 4);
     interrupts.acknowledge(2, true);
-    for (auto dot{0u}; dot < 4; ++dot)
+    for (auto dot{0u}; dot < 4; ++dot) {
+        interrupts.tick_cpu();
         interrupts.tick();
+    }
     CHECK(interrupts.is_set(InterruptType::LCDStat));
 }
 
@@ -139,5 +142,46 @@ TEST_CASE("interrupts: vector selection sees higher-priority IF before dispatch 
         CHECK(bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) == 0xE4);
         static_cast<void>(gameboy.AdvanceTicks(8, policy));
         CHECK(bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) == 0xE4);
+    }
+}
+
+TEST_CASE("interrupts: timer acknowledgment suppresses requests during its clear interval") {
+    constexpr std::array cgb_values = {false, true};
+    for (const auto cgb : cgb_values) {
+        CAPTURE(cgb);
+        Interrupts interrupts;
+        interrupts.interrupt_flag = 6;
+        interrupts.acknowledge(4, cgb);
+        for (auto tick{0u}; tick < 3u + cgb; ++tick) {
+            if (cgb)
+                interrupts.set(InterruptType::Timer, false);
+            else
+                interrupts.set_after(InterruptType::Timer, 4, true);
+            CHECK(((interrupts.interrupt_flag | interrupts.interrupt_visible_pending) & 4) == 0);
+            CHECK(interrupts.is_set(InterruptType::LCDStat));
+            interrupts.tick_cpu();
+            interrupts.tick();
+        }
+        interrupts.set(InterruptType::Timer, false);
+        CHECK(interrupts.is_set(InterruptType::Timer));
+    }
+}
+
+TEST_CASE("interrupts: the STAT clear interval applies when a queued request becomes IF-visible") {
+    constexpr std::array<uint8_t, 3> visibility_delay_values = {1, 2, 3};
+    for (const auto visibility_delay : visibility_delay_values) {
+        CAPTURE(visibility_delay);
+        Interrupts interrupts;
+        interrupts.interrupt_flag = 6;
+        interrupts.set_after(InterruptType::LCDStat, 6, true, visibility_delay);
+        interrupts.acknowledge(2, true);
+        for (auto tick{1u}; tick <= 6; ++tick) {
+            interrupts.tick_cpu();
+            interrupts.tick();
+            const bool visible = ((interrupts.interrupt_flag | interrupts.interrupt_visible_pending) & 2) != 0;
+            CHECK(visible == (visibility_delay == 3 && tick >= 3));
+            CHECK(interrupts.is_set(InterruptType::Timer));
+        }
+        CHECK_FALSE(interrupts.delays_pending);
     }
 }

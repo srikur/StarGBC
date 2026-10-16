@@ -12,7 +12,7 @@ void Interrupts::acknowledge(const uint8_t mask, const bool cgb) {
         }
         recompute_pending();
     }
-    acknowledge_cycles = mask == 0x08 ? 3 + cgb : 0;
+    acknowledge_cycles = (mask == 0x08 || mask == 0x04) ? 3 + cgb : mask == 0x02 ? 3 : 0;
     acknowledge_mask = acknowledge_cycles ? mask : 0;
 }
 
@@ -40,6 +40,8 @@ void Interrupts::set_after(const InterruptType interrupt, const uint8_t dots, co
     if (observations)
         observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F, mask,
                            dots | (visibleEarly << 8) | (visibleDelay << 16));
+    if (visibleEarly && !visibleDelay && (acknowledge_mask & mask))
+        return;
     if (visibleEarly) {
         if (visibleDelay) {
             interrupt_visible_delays[index] = visibleDelay;
@@ -61,8 +63,14 @@ void Interrupts::tick_pending() {
     for (unsigned i = 0; i < interrupt_set_delays.size(); ++i) {
         const auto previousFlags = interrupt_flag | interrupt_visible_pending;
         const uint8_t mask = 1u << i;
-        if (interrupt_visible_delays[i] && --interrupt_visible_delays[i] == 0)
-            interrupt_visible_pending |= mask;
+        if (interrupt_visible_delays[i] && --interrupt_visible_delays[i] == 0) {
+            if (acknowledge_mask & mask) {
+                interrupt_flag_delayed &= ~mask;
+                interrupt_set_delays[i] = 0;
+            } else {
+                interrupt_visible_pending |= mask;
+            }
+        }
         if (interrupt_set_delays[i] && --interrupt_set_delays[i] == 0) {
             interrupt_flag |= interrupt_flag_delayed & mask & ~acknowledge_mask;
             interrupt_flag_delayed &= ~mask;
