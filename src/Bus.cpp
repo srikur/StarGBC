@@ -521,7 +521,8 @@ void Bus::set_cpu_halted(const bool value, const bool preserve_dma_request, cons
     auto &hdma = gpu_.hdma;
     if (gpu_.cpu_halted == value)
         return;
-    const bool hblank_active = value || immediate_wake ? hdma_hblank_active() : hdma.hdmaActive && hdma.wake_hblank_sample;
+    const bool hblank_active =
+            immediate_wake ? hdma_hblank_active() : hdma.hdmaActive && (value ? hdma.entry_hblank_sample : hdma.wake_hblank_sample);
     gpu_.cpu_halted = value;
     dma_.halt_step_pending = false;
     if (value) {

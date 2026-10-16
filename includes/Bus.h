@@ -62,6 +62,8 @@ public:
             return;
         if (cpuAtInstructionBoundary && gpu_.cpu_halted)
             gpu_.hdma.wake_hblank_sample = gpu_.hdma.hblank_sample;
+        if (!gpu_.doubleSpeed || cpuAtInstructionBoundary)
+            gpu_.hdma.entry_hblank_sample = gpu_.hdma.hblank_sample;
         gpu_.hdma.hblank_sample = hdma_hblank_active();
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork(cpuAtInstructionBoundary);

@@ -23,6 +23,7 @@ struct HDMA {
     bool block_requested{};
     bool halt_request_pending{};
     bool halt_hblank_active{};
+    bool entry_hblank_sample{};
     bool hblank_sample{};
     bool wake_hblank_sample{};
     uint8_t release_delay{};
