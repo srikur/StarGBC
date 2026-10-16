@@ -431,7 +431,7 @@ TEST_CASE("ppu: window enable qualifies the retained WY match") {
             gpu.Update();
         REQUIRE(gpu.currentLine == 11);
         REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
-        CHECK(gpu.windowWasActiveThisLine_ == (enable_dot == 450));
+        CHECK(gpu.isFetchingWindow_ == (enable_dot == 450));
     }
 }
 
@@ -520,7 +520,7 @@ TEST_CASE("ppu: first-line CGB WY retention samples after the frame boundary") {
         gpu.WriteRegisters(WINDOW_Y, 255);
         while (gpu.scanlineCounter < 280)
             gpu.Update();
-        CHECK(gpu.windowWasActiveThisLine_ == (write_dot == 4));
+        CHECK(gpu.isFetchingWindow_ == (write_dot == 4));
     }
 }
 
@@ -568,7 +568,7 @@ TEST_CASE("ppu: DMG live WY comparison applies before the horizontal window matc
         gpu.WriteRegisters(WINDOW_Y, 10);
         while (gpu.scanlineCounter < 300)
             gpu.Update();
-        CHECK(gpu.windowWasActiveThisLine_ == (write_dot < 92));
+        CHECK(gpu.isFetchingWindow_ == (write_dot < 92));
         CHECK_FALSE(gpu.windowTriggeredThisFrame);
         while (gpu.scanlineCounter < 452)
             gpu.Update();
@@ -628,6 +628,67 @@ TEST_CASE("ppu: disabling a CGB window fetch resumes its retained background pix
             REQUIRE(pixel);
             CHECK(pixel->selected.source == diagnostics::PixelSource::Background);
             CHECK(pixel->selected.mapAddress == 0x9820);
+        }
+    }
+}
+
+TEST_CASE("ppu: DMG right-edge windows retain their trigger and count each activation") {
+    constexpr std::array models = {Model::DMGB, Model::DMGC};
+    constexpr std::array fine_values = {0, 3, 7};
+    constexpr std::array reenable_values = {false, true};
+    constexpr std::array optimizations = {false, true};
+    for (const auto [model, fine, reenable, optimized] : std::views::cartesian_product(models, fine_values, reenable_values, optimizations)) {
+        CAPTURE(model);
+        CAPTURE(fine);
+        CAPTURE(reenable);
+        CAPTURE(optimized);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0xF1;
+        gpu.currentLine = 10;
+        gpu.windowY = 10;
+        gpu.windowX = 166;
+        gpu.scrollX = fine;
+        gpu.backgroundPalette = 0xE4;
+        for (auto tile{1u}; tile <= 32; ++tile) {
+            gpu.vram[0x1C00 + tile - 1] = tile;
+            for (auto row{0u}; row < 8; ++row) {
+                for (auto x{0u}; x < 8; ++x) {
+                    const auto color = (tile * 3 + row + x % 3) % 4;
+                    gpu.vram[tile * 16 + row * 2] |= (color & 1) << (7 - x);
+                    gpu.vram[tile * 16 + row * 2 + 1] |= (color >> 1) << (7 - x);
+                }
+            }
+        }
+        std::array<unsigned, 3> rendered{};
+        while (gpu.currentLine < 13) {
+            if (reenable && gpu.currentLine > 10) {
+                if (gpu.scanlineCounter == 36)
+                    gpu.WriteRegisters(LCD_CONTROL_BIT, 0xD1);
+                if (gpu.scanlineCounter == 80)
+                    gpu.WriteRegisters(LCD_CONTROL_BIT, 0xF1);
+            }
+            gpu.Update();
+            if (gpu.currentLine < 13 && gpu.pixelsDrawn == SCREEN_WIDTH && rendered[gpu.currentLine - 10] == 0) {
+                rendered[gpu.currentLine - 10] = gpu.scanlineCounter;
+                if (gpu.currentLine > 10)
+                    CHECK(gpu.windowLineCounter_ == (gpu.currentLine - 10) * (reenable ? 2 : 1));
+            }
+        }
+        REQUIRE(rendered[0] != 0);
+        CHECK(rendered[1] == rendered[0]);
+        CHECK(rendered[2] == rendered[0]);
+        for (auto line{10u}; line < 13; ++line) {
+            for (auto x{0u}; x < SCREEN_WIDTH; ++x) {
+                const auto window_x = x + 8 + fine;
+                const auto row = (line - 10) * (reenable ? 2 : 1);
+                const auto color = line == 10 ? 0 : ((window_x / 8 + 1) * 3 + row + window_x % 8 % 3) % 4;
+                CAPTURE(line);
+                CAPTURE(x);
+                CHECK(gpu.GetScreenData()[line * SCREEN_WIDTH + x] == GPU::DMG_SHADE[color]);
+            }
         }
     }
 }

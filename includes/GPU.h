@@ -150,7 +150,6 @@ public:
     // on a fresh transition into the match state, not on the match that keeps
     // holding while pixel output is stalled after a window activation
     bool windowMatchLatch_{false};
-    bool windowWasActiveThisLine_{false};
     bool windowEndPending_{false};
     uint8_t windowEndStage_{0};
     bool windowActivatePending_{false};
@@ -158,6 +157,8 @@ public:
     bool window_pixel_stalled{};
     uint8_t window_startup_discard{};
     bool windowPixel0Triggered_{false};
+    bool window_line_start_pending{};
+    bool window_line_start_counted{};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};
@@ -166,7 +167,7 @@ public:
     uint8_t savedBgTileDataHigh_{0};
     uint16_t savedBgLastAddress_{0};
 
-    uint8_t windowLineCounter_{0x00};
+    uint8_t windowLineCounter_{0xFF};
 
     FixedVector<Sprite, 10> spriteBuffer;
     uint8_t initialScrollXDiscard_{0x00};

@@ -121,7 +121,6 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     spriteFetchAbort_ = false;
     spriteFetchedThisLine_ = false;
     windowMatchLatch_ = false;
-    windowWasActiveThisLine_ = false;
     windowEndPending_ = false;
     windowEndStage_ = 0;
     windowActivatePending_ = false;
@@ -428,16 +427,12 @@ void GPU::Update() {
             }
         }
 
-        if (isFetchingWindow_ || windowWasActiveThisLine_) {
-            windowLineCounter_++;
-        }
-
         if (currentLine == 154) {
             vblank = false;
             hblank = false;
             currentLine = 0;
             set_mode(GPUMode::MODE_2);
-            windowLineCounter_ = 0;
+            windowLineCounter_ = 0xFF;
             ResetScanlineState(true);
             windowTriggeredThisFrame = !is_cgb && windowY == 0 && Bit<LCDC_WINDOW_ENABLE>(lcdc);
             initialSCXSet = false;
@@ -673,6 +668,19 @@ uint32_t GPU::MixPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 }
 
 void GPU::TickMode3() {
+    if (scanlineCounter == 83 && window_line_start_pending) {
+        window_line_start_pending = false;
+        window_line_start_counted = false;
+        if (Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
+            isFetchingWindow_ = true;
+            ++windowLineCounter_;
+            fetcherTileX_ = 1;
+            initialSCXSet = true;
+            initialScrollXFine_ = scrollX & 7;
+            initialScrollXDiscard_ = initialScrollXFine_;
+            Observe(diagnostics::EventKind::WindowActivate, WINDOW_X, windowX, 0);
+        }
+    }
     window_pixel_stalled = false;
     // scx discard pixels get delayed activation on window, rather than being discarded
     if (pixelsDrawn == 0 && windowX <= 7 && window_y_matched() &&
@@ -863,6 +871,17 @@ void GPU::CheckForWindowTrigger() {
     // The falling edge follows the full LCDC delay. A late activation starts
     // fetching on the next dot and moves the LCD output back one pixel
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdc | (lcdcWriteStage == 1 ? lcdcPending : 0));
+    if (!is_cgb && pixelsDrawn == SCREEN_WIDTH - 1 && windowX == 166 && window_y_matched()) {
+        if (!window_line_start_pending) {
+            window_line_start_pending = true;
+            window_line_start_counted = isFetchingWindow_;
+            if (winEnabled && !window_line_start_counted) {
+                ++windowLineCounter_;
+                window_line_start_counted = true;
+            }
+        }
+        return;
+    }
     if (windowActivatePending_ || (winEnabled && !isFetchingWindow_ && window_y_matched() && windowMatch)) {
         if (!windowActivatePending_ && lcdcWriteStage == 1 && !Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
             windowActivatePending_ = true;
@@ -873,9 +892,7 @@ void GPU::CheckForWindowTrigger() {
         windowActivatePending_ = false;
         // Clip only the offscreen part of the window. Except at WX=0, the
         // fine-scroll delay has already been accounted for by the trigger
-        if (windowWasActiveThisLine_)
-            windowLineCounter_++;
-        windowWasActiveThisLine_ = true;
+        windowLineCounter_++;
         if (is_cgb && backgroundQueue.empty() && fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0)
             Fetcher_StepBackgroundFetch();
         window_fetch_startup = is_cgb;
@@ -1561,6 +1578,13 @@ void GPU::ApplyLCDC(const uint8_t value) {
         if (window_fetch_startup)
             initialScrollXDiscard_ = window_startup_discard;
     }
+    if (!is_cgb && window_line_start_pending && !Bit<LCDC_WINDOW_ENABLE>(value) &&
+        (stat.mode != GPUMode::MODE_3 || pixelsDrawn == SCREEN_WIDTH))
+        window_line_start_counted = false;
+    if (!is_cgb && window_line_start_pending && !Bit<LCDC_WINDOW_ENABLE>(lcdc) && Bit<LCDC_WINDOW_ENABLE>(value) && !window_line_start_counted) {
+        ++windowLineCounter_;
+        window_line_start_counted = true;
+    }
     lcdc = value;
     if (is_cgb && window_fetch_startup && window_pixel_stalled && Bit<LCDC_ENABLE_BIT>(lcdc) && !Bit<LCDC_WINDOW_ENABLE>(lcdc))
         OutputPixel();
@@ -1568,6 +1592,7 @@ void GPU::ApplyLCDC(const uint8_t value) {
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
         m1_irq_delay = 0;
+        window_line_start_pending = false;
         if (is_cgb && interrupts_.interrupt_set_delays[1] > 1)
             interrupts_.cancel_pending(InterruptType::LCDStat);
         // Entering mode 0 via disabling the LCD requests one HDMA block
