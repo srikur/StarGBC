@@ -324,11 +324,14 @@ void GPU::Update() {
         lycInterruptLine_ = matches;
         stat.coincidence_flag = lyCompare == lyc;
     } else {
-        if (lyCompare >= 0)
-            lycInterruptLine_ = lyCompare == lyc;
+        const auto interrupt_compare = currentLine == 153 ? (scanlineCounter < 5 ? 153 : 0)
+                                                        : scanlineCounter >= 453 ? currentLine + 1 : currentLine;
+        if (lyCompare >= 0 || scanlineCounter == 453 || (currentLine == 153 && scanlineCounter == 5))
+            lycInterruptLine_ = interrupt_compare == lyc;
         stat.coincidence_flag = lyCompare == lyc;
-        if (stat.coincidence_flag && stat.enable_ly_interrupt && !statTriggered) {
-            interrupts_.set_after(InterruptType::LCDStat, 1, true);
+        if (lycInterruptLine_ && stat.enable_ly_interrupt && !statTriggered) {
+            const auto delay = scanlineCounter == 453 ? 2 : currentLine == 153 && scanlineCounter == 5 ? 3 : 1;
+            interrupts_.set_after(InterruptType::LCDStat, delay, true);
             statTriggered = true;
         }
     }

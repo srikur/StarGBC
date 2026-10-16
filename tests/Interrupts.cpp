@@ -377,3 +377,38 @@ TEST_CASE("interrupts: VBlank visibility precedes dispatch and acknowledgment pr
         CHECK_FALSE(interrupts.delays_pending);
     }
 }
+
+TEST_CASE("interrupts: DMG LYC source precedes coincidence visibility and dispatch") {
+    constexpr std::array line153_values = {false, true};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array acknowledge_values = {false, true};
+    for (const auto [line153, optimized, acknowledge] : std::views::cartesian_product(line153_values, optimizations, acknowledge_values)) {
+        CAPTURE(line153);
+        CAPTURE(optimized);
+        CAPTURE(acknowledge);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::DMGB);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = line153 ? 153 : 41;
+        gpu.scanlineCounter = line153 ? 2 : 450;
+        gpu.stat.mode = line153 ? GPUMode::MODE_1 : GPUMode::MODE_0;
+        gpu.lyc = line153 ? 0 : 42;
+        gpu.stat.enable_ly_interrupt = true;
+        interrupts.interrupt_flag = 1;
+        for (auto dot{0u}; dot < 12; ++dot) {
+            CAPTURE(dot);
+            interrupts.tick_cpu();
+            if (acknowledge && dot == 2)
+                interrupts.acknowledge(2, false);
+            gpu.Update();
+            CHECK(((interrupts.interrupt_flag | interrupts.interrupt_visible_pending) & 2) ==
+                  (!acknowledge && dot >= 3 ? 2 : 0));
+            CHECK(interrupts.is_set(InterruptType::LCDStat) == (!acknowledge && dot >= (line153 ? 6u : 5u)));
+            CHECK(gpu.stat.coincidence_flag == (dot >= 5));
+            CHECK(gpu.lycInterruptLine_ == (dot >= 3));
+            CHECK(interrupts.is_set(InterruptType::VBlank));
+        }
+    }
+}
