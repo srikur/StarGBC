@@ -1470,23 +1470,27 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             return lcdc;
         case 0xFF41: {
             uint8_t value = stat.value();
+            if (is_cgb && !LCDDisabled()) {
+                const unsigned comparison_delay = doubleSpeed ? 1 : 2;
+                const bool zero_during153 = currentLine == 153 && scanlineCounter >= 8 + comparison_delay;
+                const auto compared_line = zero_during153 ? 0 : currentLine;
+                const bool valid = (currentLine == 0 || scanlineCounter >= comparison_delay) &&
+                                   (currentLine != 153 || scanlineCounter < 8 || zero_during153);
+                value = (value & ~4u) | (valid && compared_line == lyc ? 4u : 0u);
+            }
             if (!is_cgb && currentLine == 153 && scanlineCounter >= 452)
                 value &= ~3;
             if (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible()) {
                 value &= ~0x03;
             }
-            // CGB: the reported mode bits lag the line start by 4 dots — a
-            // fresh line reads mode 0 first, and OAM scan / mode 3 assert late
-            // (daid speed_switch_timing_stat)
-            if (is_cgb && !doubleSpeed && !LCDDisabled() && !lcdEnableLine0_) {
-                if (stat.mode == GPUMode::MODE_2 && scanlineCounter < 4) {
-                    value &= ~0x03;
-                } else if (stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && scanlineCounter < 84) {
-                    value = (value & ~0x03) | 0x02;
-                }
-                if (currentLine == 144 && scanlineCounter < 4)
+            if (is_cgb && !LCDDisabled() && !lcdEnableLine0_) {
+                if (!doubleSpeed && stat.mode == GPUMode::MODE_2 && scanlineCounter == 0)
                     value &= ~3;
-                if (currentLine == 0 && scanlineCounter < 4 && model == Model::CGBE)
+                if (!doubleSpeed && stat.mode == GPUMode::MODE_3 && scanlineCounter == 80)
+                    value = (value & ~3) | 2;
+                if (currentLine == 144 && scanlineCounter < (doubleSpeed ? 1u : 2u))
+                    value &= ~3;
+                if (currentLine == 0 && scanlineCounter < 4 && model == Model::CGBE && !doubleSpeed)
                     value = (value & ~3) | 1;
             }
             // DMG: LY has already flipped during the last dots of a line while

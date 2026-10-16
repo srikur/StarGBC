@@ -692,3 +692,48 @@ TEST_CASE("ppu: DMG right-edge windows retain their trigger and count each activ
         }
     }
 }
+
+TEST_CASE("ppu: CGB STAT readback separates line comparisons from rendering modes") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    for (const auto [double_speed, optimized] : std::views::cartesian_product(speeds, optimizations)) {
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::CGBC);
+        gpu.optimized_execution = optimized;
+        gpu.doubleSpeed = double_speed;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 152;
+        gpu.scanlineCounter = 450;
+        gpu.stat.mode = GPUMode::MODE_1;
+        gpu.lyc = 153;
+        interrupts.interrupt_flag = 0;
+        while (gpu.currentLine == 152)
+            gpu.Update();
+        const unsigned comparison_delay = double_speed ? 1 : 2;
+        for (auto dot{0u}; dot <= 12; ++dot) {
+            REQUIRE(gpu.currentLine == 153);
+            REQUIRE(gpu.scanlineCounter == dot);
+            CHECK((gpu.ReadRegisters(LCD_STATUS) & 7) == (dot >= comparison_delay && dot < 8 ? 5 : 1));
+            gpu.WriteRegisters(SCANLINE_COMPARE, 0);
+            CHECK((gpu.ReadRegisters(LCD_STATUS) & 7) == (dot >= 8 + comparison_delay ? 5 : 1));
+            gpu.WriteRegisters(SCANLINE_COMPARE, 153);
+            CHECK(interrupts.interrupt_flag == 0);
+            gpu.Update();
+        }
+        while (gpu.currentLine == 153)
+            gpu.Update();
+        gpu.WriteRegisters(SCANLINE_COMPARE, 0);
+        CHECK((gpu.ReadRegisters(LCD_STATUS) & 7) == (double_speed ? 6 : 4));
+        while (gpu.scanlineCounter < 82) {
+            gpu.Update();
+            const auto dot = gpu.scanlineCounter;
+            const unsigned mode = dot < (double_speed ? 80u : 81u) ? 2 : 3;
+            CHECK((gpu.ReadRegisters(LCD_STATUS) & 7) == (4 | mode));
+            if (dot == 80)
+                CHECK(gpu.stat.mode == GPUMode::MODE_3);
+        }
+    }
+}
