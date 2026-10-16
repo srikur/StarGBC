@@ -482,6 +482,8 @@ void GPU::Update() {
             ResetScanlineState(true);
             windowTriggeredThisFrame = !is_cgb && windowY == 0 && Bit<LCDC_WINDOW_ENABLE>(lcdc);
             initialSCXSet = false;
+            if (!is_cgb)
+                statTriggered = StatLineHigh();
         } else if (currentLine == 144) {
             set_mode(GPUMode::MODE_1);
             vblank = true;
