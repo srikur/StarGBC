@@ -395,7 +395,7 @@ void GPU::Update() {
                 hdma.bytesThisBlock = 0;
                 hdma.hblankBlockFinished = false;
                 if (!is_cgb && stat.enable_m0_interrupt && !statTriggered) {
-                    interrupts_.set_after(InterruptType::LCDStat, lcdEnableLine0_ ? 4 : 1, lcdEnableLine0_);
+                    interrupts_.set_after(InterruptType::LCDStat, lcdEnableLine0_ ? 4 : 1, lcdEnableLine0_, lcdEnableLine0_ ? 1 : 0);
                     statTriggered = true;
                 }
                 break;
