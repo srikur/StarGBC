@@ -223,3 +223,68 @@ TEST_CASE("interrupts: clearing an IF-visible CGB LYC request prevents delayed r
         CHECK(interrupts.is_set(InterruptType::LCDStat) == !clear);
     }
 }
+
+TEST_CASE("interrupts: a CGB LYC request on the final CPU tick waits for the next dispatch boundary") {
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    for (const auto policy : policies) {
+        CAPTURE(policy);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto &gpu = bus.gpu_;
+        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        cpu.pc(0xC001);
+        cpu.currentInstruction = 0;
+        gameboy.DebugPoke(0xC001, 0);
+        gameboy.DebugPoke(0xC002, 0);
+        gpu.InvalidateIdle();
+        gpu.currentLine = 10;
+        gpu.scanlineCounter = 453;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.lyc = 11;
+        gpu.lycInterruptLine_ = false;
+        gpu.stat.enable_ly_interrupt = true;
+        gpu.stat.enable_m0_interrupt = gpu.stat.enable_m1_interrupt = gpu.stat.enable_m2_interrupt = false;
+        interrupts.interrupt_flag = 0;
+        interrupts.interrupt_enable = 2;
+        interrupts.interrupt_master_enable = true;
+        static_cast<void>(gameboy.AdvanceTicks(16, policy));
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 2);
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+        CHECK(interrupts.interrupt_master_enable);
+        CHECK(cpu.InstructionsCompleted() == 2);
+        CHECK(cpu.pc() == 0xC003);
+        static_cast<void>(gameboy.AdvanceTicks(8, policy));
+        CHECK_FALSE(interrupts.interrupt_master_enable);
+        CHECK(cpu.InstructionsCompleted() == 2);
+        CHECK(cpu.pc() == 0xC002);
+    }
+}
+
+TEST_CASE("interrupts: a STAT edge during acknowledgment cannot reappear after its visibility delay") {
+    constexpr std::array acknowledge_values = {false, true};
+    for (const auto acknowledge : acknowledge_values) {
+        CAPTURE(acknowledge);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::CGBC);
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 143;
+        gpu.scanlineCounter = 455;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.stat.enable_m1_interrupt = true;
+        interrupts.interrupt_flag = 2;
+        gpu.Update();
+        if (acknowledge)
+            interrupts.acknowledge(2, true);
+        else
+            interrupts.interrupt_flag = 0;
+        for (auto dot{0u}; dot < 10; ++dot) {
+            interrupts.tick_cpu();
+            gpu.Update();
+        }
+        CHECK(interrupts.is_set(InterruptType::VBlank));
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == !acknowledge);
+        CHECK_FALSE(interrupts.delays_pending);
+    }
+}

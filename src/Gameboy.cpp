@@ -134,7 +134,7 @@ uint32_t Gameboy::AdvanceMCycle() {
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
-                cpu_.halted(false);
+                cpu_.halted(false, true);
                 if (observations_ && wasHalted)
                     observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
             }
@@ -195,7 +195,7 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
-                cpu_.halted(false);
+                cpu_.halted(false, true);
                 if (observations_ && wasHalted)
                     observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
             }
@@ -253,7 +253,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
-                cpu_.halted(false);
+                cpu_.halted(false, true);
                 if (observations_ && wasHalted)
                     observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
             }
@@ -298,7 +298,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
             bus_.speedSwitchHalt = 0;
         else if (bus_.speedSwitchHalt == 0) {
             const bool wasHalted = cpu_.IsHalted();
-            cpu_.halted(false);
+            cpu_.halted(false, true);
             if (observations_ && wasHalted)
                 observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
         }

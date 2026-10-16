@@ -127,10 +127,10 @@ public:
 
     void nextInstruction(const uint16_t value) { nextInstruction_ = value; }
 
-    void halted(const bool value) {
+    void halted(const bool value, const bool immediate_wake = false) {
         halted_ = value;
         halt_prefetch_retained = value && bus_.gpu_.hdma.block_requested;
-        bus_.set_cpu_halted(value);
+        bus_.set_cpu_halted(value, false, immediate_wake);
         if (!value)
             speedSwitchWakePending_ = false;
     }

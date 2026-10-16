@@ -507,14 +507,14 @@ void Bus::UpdateDMAWork() {
 
 bool Bus::hdma_hblank_active() const {
     return gpu_.hdma.hdmaActive && gpu_.hdma.hdmaMode == HDMAMode::HDMA && gpu_.hblank && !gpu_.vblank &&
-           gpu_.scanlineCounter > gpu_.mode3EndDot_ + 1u && gpu_.scanlineCounter < (gpu_.doubleSpeed ? 454u : 453u);
+           gpu_.scanlineCounter > gpu_.mode3EndDot_ + 1u && gpu_.scanlineCounter < (gpu_.doubleSpeed ? 454u : 456u);
 }
 
-void Bus::set_cpu_halted(const bool value, const bool preserve_dma_request) const {
+void Bus::set_cpu_halted(const bool value, const bool preserve_dma_request, const bool immediate_wake) const {
     auto &hdma = gpu_.hdma;
     if (hdma.cpu_halted == value)
         return;
-    const bool hblank_active = value ? hdma_hblank_active() : hdma.hdmaActive && hdma.wake_hblank_sample;
+    const bool hblank_active = value || immediate_wake ? hdma_hblank_active() : hdma.hdmaActive && hdma.wake_hblank_sample;
     hdma.cpu_halted = value;
     if (value) {
         hdma.halt_hblank_active = hblank_active;

@@ -71,7 +71,7 @@ public:
 
     void RunHDMAWork(bool cpuAtInstructionBoundary) const;
 
-    void set_cpu_halted(bool value, bool preserve_dma_request = false) const;
+    void set_cpu_halted(bool value, bool preserve_dma_request = false, bool immediate_wake = false) const;
 
     [[nodiscard]] bool hdma_hblank_active() const;
 
