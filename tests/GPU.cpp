@@ -1186,3 +1186,55 @@ TEST_CASE("ppu: DMG mode-1 entry has independent mode-source blocking") {
         CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
     }
 }
+
+TEST_CASE("ppu: LCD startup retains the qualified window match before WY changes") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<uint8_t, 2> initial_wy_values = {0, 1};
+    constexpr std::array initially_enabled_values = {false, true};
+    constexpr std::array previous_match_values = {false, true};
+    for (const auto [model, double_speed, optimized, initial_wy, initially_enabled, previous_match] : std::views::cartesian_product(models, speeds, optimizations, initial_wy_values, initially_enabled_values, previous_match_values)) {
+        if (IsDmg(model) && double_speed)
+            continue;
+
+        CAPTURE(ModelName(model));
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        CAPTURE(initial_wy);
+        CAPTURE(initially_enabled);
+        CAPTURE(previous_match);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.doubleSpeed = double_speed;
+        gpu.optimized_execution = optimized;
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0);
+        gpu.backgroundPalette = 0xE4;
+        gpu.windowLineCounter_ = 0xFF;
+        gpu.windowTriggeredThisFrame = previous_match;
+        gpu.WriteRegisters(WINDOW_Y, initial_wy);
+        gpu.WriteRegisters(WINDOW_X, 7);
+        for (auto i{0_u16}; i < 16; ++i)
+            gpu.WriteVRAM(0x8010 + i, 0xFF);
+        for (auto i{0_u16}; i < 32; ++i)
+            gpu.WriteVRAM(0x9C00 + i, 1);
+        if (IsCgb(model)) {
+            gpu.WriteRegisters(BACKGROUND_PALETTE_INDEX, 0x80);
+            gpu.WriteRegisters(BACKGROUND_PALETTE_DATA, 0xFF);
+            gpu.WriteRegisters(BACKGROUND_PALETTE_DATA, 0x7F);
+            gpu.WriteRegisters(BACKGROUND_PALETTE_INDEX, 0x86);
+            gpu.WriteRegisters(BACKGROUND_PALETTE_DATA, 0);
+            gpu.WriteRegisters(BACKGROUND_PALETTE_DATA, 0);
+        }
+        gpu.WriteRegisters(LCD_CONTROL_BIT, initially_enabled ? 0xF1 : 0xD1);
+        for (auto dot{0u}; dot < 20; ++dot)
+            gpu.Update();
+        gpu.WriteRegisters(WINDOW_Y, 0xFF);
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0xF1);
+        for (auto dot{20u}; dot < 300; ++dot)
+            gpu.Update();
+        REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
+        CHECK(gpu.GetScreenData()[80] == (initially_enabled && initial_wy == 0 ? 0xFF000000u : 0xFFFFFFFFu));
+    }
+}

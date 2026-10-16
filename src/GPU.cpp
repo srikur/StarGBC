@@ -722,7 +722,8 @@ void GPU::TickMode3() {
     window_pixel_stalled = false;
     // scx discard pixels get delayed activation on window, rather than being discarded
     if (pixelsDrawn == 0 && windowX <= 7 && window_y_matched() &&
-        scanlineCounter == 85u + windowX + (windowX == 0 ? ((scrollX & 7) != 0 ? 1u : 0u) : initialScrollXFine_)) {
+        scanlineCounter + (lcdEnableLine0_ ? (is_cgb && !lcdStartDoubleSpeed_ ? 2u : 1u) : 0u) ==
+                85u + windowX + (windowX == 0 ? ((scrollX & 7) != 0 ? 1u : 0u) : initialScrollXFine_)) {
         windowPixel0Triggered_ = true;
     }
     // The window comparator is evaluated before the sprite one: an activation
@@ -1669,6 +1670,7 @@ void GPU::ApplyLCDC(const uint8_t value) {
         set_mode(GPUMode::MODE_0);
         lcdEnableLine0_ = true;
         lcdStartDoubleSpeed_ = doubleSpeed;
+        windowTriggeredThisFrame = windowY == 0 && Bit<LCDC_WINDOW_ENABLE>(lcdc);
         ResetScanlineState(true);
         hblank = false;
         vblank = false;
