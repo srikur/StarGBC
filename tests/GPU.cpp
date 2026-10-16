@@ -403,7 +403,7 @@ TEST_CASE("ppu: CGB window enable qualifies the retained WY match") {
     constexpr std::array optimizeds = {false, true};
     constexpr std::array speeds = {false, true};
     constexpr std::array<u32, 2> enable_dots = {450, 452};
-    for (const auto [model, optimized, speed, enable_dot] : std::views::cartesian_product(models, optimizeds, speeds, enable_dots) {
+    for (const auto [model, optimized, speed, enable_dot] : std::views::cartesian_product(models, optimizeds, speeds, enable_dots)) {
         CAPTURE(ModelName(model));
         CAPTURE(optimized);
         CAPTURE(speed);
