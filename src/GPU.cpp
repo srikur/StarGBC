@@ -492,8 +492,8 @@ void GPU::Update() {
             hblank = false;
             if (is_cgb)
                 interrupts_.set_after(InterruptType::VBlank, doubleSpeed ? 4 : 8, true, doubleSpeed ? 1 : 2);
-            if ((!is_cgb || !doubleSpeed) && stat.enable_m2_interrupt && !statTriggered) {
-                interrupts_.set(InterruptType::LCDStat, !is_cgb);
+            if (is_cgb && !doubleSpeed && stat.enable_m2_interrupt && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
             if (is_cgb) {
