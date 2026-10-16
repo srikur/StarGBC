@@ -294,7 +294,7 @@ void GPU::Update() {
         case GPUMode::MODE_2:
             if (is_cgb && stat.enable_m2_interrupt && scanlineCounter == 0 && !statTriggered) {
                 // CGB's first line has a later OAM request than steady lines
-                interrupts_.set(InterruptType::LCDStat, currentLine == 0);
+                interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 2 : 4) : 0);
                 statTriggered = true;
             }
             TickOAMScan();
