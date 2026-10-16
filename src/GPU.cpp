@@ -1846,7 +1846,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 const bool mode_blocked = (stat.mode == GPUMode::MODE_0 && stat.enable_m0_interrupt && value == currentLine) ||
                                          (stat.mode == GPUMode::MODE_1 && stat.enable_m1_interrupt);
                 if (value == compared_line && !continuous && !mode_blocked) {
-                    interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 0 : 5);
+                    interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 0 : 9, true, doubleSpeed ? 0 : 5);
                     statTriggered = true;
                 }
             }

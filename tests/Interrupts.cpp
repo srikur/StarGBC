@@ -454,3 +454,39 @@ TEST_CASE("interrupts: IF writes clear arriving LCD requests without changing ot
         CHECK_FALSE(interrupts.delays_pending);
     }
 }
+
+TEST_CASE("interrupts: software CGB LYC requests are readable before normal-speed dispatch") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array clear_values = {false, true};
+    for (const auto [model, policy, clear] : std::views::cartesian_product(models, policies, clear_values)) {
+        CAPTURE(model);
+        CAPTURE(policy);
+        CAPTURE(clear);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        gameboy.[:get_member<Gameboy>("cpu_"):].Lock();
+        static_cast<void>(gameboy.AdvanceTicks(8, policy));
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto &gpu = bus.gpu_;
+        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        gpu.InvalidateIdle();
+        gpu.currentLine = 150;
+        gpu.scanlineCounter = 100;
+        gpu.lyc = 0xFF;
+        gpu.stat.enable_ly_interrupt = true;
+        gpu.stat.enable_m0_interrupt = gpu.stat.enable_m1_interrupt = gpu.stat.enable_m2_interrupt = false;
+        interrupts.interrupt_flag = 0;
+        bus.WriteByte(SCANLINE_COMPARE, 150, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(8, policy));
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 0);
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+        static_cast<void>(gameboy.AdvanceTicks(2, policy));
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 2);
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+        if (clear)
+            bus.WriteByte(INTERRUPT_FLAG, 0, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(8, policy));
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == (clear ? 0 : 2));
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == !clear);
+    }
+}
