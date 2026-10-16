@@ -1913,7 +1913,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 if (wy_write_stage == 0) {
                     wy_trigger_old = windowY;
                 }
-                wy_write_stage = doubleSpeed && is_cgb ? 3 : 5;
+                wy_write_stage = doubleSpeed && is_cgb ? 2 : 5;
             }
             windowY = value;
             break;
