@@ -17,6 +17,7 @@ struct DMA {
     uint16_t restartCountdown{0x0000};
     uint16_t ticks{0x0000};
     bool transferComplete{false};
+    bool halt_step_pending{};
 
     void Set(uint8_t);
 };

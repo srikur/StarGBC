@@ -538,6 +538,8 @@ void GPU::MaybeArmIdle() {
 }
 
 void GPU::TickOAMScan() {
+    if (oam_dma_active && cpu_halted && model < Model::CGBE)
+        return;
     if (!(scanlineCounter % 2))
         return;
     const uint8_t index = scanlineCounter / 2;
@@ -546,13 +548,13 @@ void GPU::TickOAMScan() {
     // An active OAM DMA blocks the scan's OAM reads: the y/x bus keeps its
     // previous values, and tile/attr reads see the word the DMA is currently
     // writing (hacktix strikethrough)
-    if (!oam_dma_active) {
+    if (!oam_dma_active || cpu_halted) {
         mode2YBus_ = oam[base];
         mode2XBus_ = oam[base + 1];
     }
     const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(mode2YBus_) - 16);
     const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(mode2XBus_) - 8);
-    const bool dmaRedirect = oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
+    const bool dmaRedirect = oam_dma_active && !cpu_halted && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
     const uint8_t spriteTileIndex = dmaRedirect ? oam[oamDmaDest_ & ~1] : oam[base + 2];
     const Attributes attr = GetAttrsFrom(dmaRedirect ? oam[(oamDmaDest_ & ~1) | 1] : oam[base + 3]);
     const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
@@ -1082,8 +1084,9 @@ void GPU::Fetcher_StepSpriteFetch() {
             // takeover+2 and takeover+4, with the merge dot unchanged. Each read
             // samples the OBJ size bit independently, so an LCDC write between
             // them mixes rows from two different tiles
-            const unsigned oamAddress =
-                    oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0 ? (oamDmaDest_ & ~1) : (sprite.sprite_num / 2) * 4 + 2;
+            const unsigned oamAddress = oam_dma_active && !cpu_halted && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0
+                                                ? (oamDmaDest_ & ~1)
+                                                : (sprite.sprite_num / 2) * 4 + 2;
             sprite.tile_index = oam[oamAddress];
             Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tile_index,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteOam));

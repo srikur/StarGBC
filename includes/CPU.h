@@ -98,6 +98,8 @@ public:
     void SampleHaltInterrupts() {
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
         haltPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
+        if (halted_ && haltPending_ && !IsCgb(bus_.gpu_.model))
+            bus_.dma_.halt_step_pending = true;
         if (observations_)
             observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, haltPending_, 1);
     }
@@ -131,6 +133,8 @@ public:
         halted_ = value;
         halt_prefetch_retained = value && bus_.gpu_.hdma.block_requested;
         bus_.set_cpu_halted(value, false, immediate_wake);
+        if (value)
+            bus_.dma_.halt_step_pending = bus_.dma_.transferActive;
         if (!value)
             speedSwitchWakePending_ = false;
     }

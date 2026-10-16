@@ -143,3 +143,56 @@ TEST_CASE("OAM DMA retains source bus ownership through the last byte machine cy
         CHECK(gameboy.InspectCpuRead(0xFE9F) == 0x5A);
     }
 }
+
+TEST_CASE("OAM DMA pauses with HALT while retaining its byte and source bus ownership") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array speeds = {false, true};
+    for (const auto [model, policy, double_speed] : std::views::cartesian_product(models, policies, speeds)) {
+        if (model == Model::DMGB && double_speed)
+            continue;
+        CAPTURE(model);
+        CAPTURE(policy);
+        CAPTURE(double_speed);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        for (auto offset{0_u16}; offset < 160; ++offset)
+            gameboy.DebugPoke(WRAM_BEGIN + offset, offset + 1);
+        bus.gpu_.oam.fill(0);
+        gameboy.DebugPoke(0xFF81, 0x18);
+        gameboy.DebugPoke(0xFF82, 0xFE);
+        cpu.pc(0xFF81);
+        cpu.currentInstruction = 0x76;
+        interrupts.interrupt_enable = 1;
+        interrupts.interrupt_flag = 0;
+        interrupts.interrupt_master_enable = false;
+        bus.WriteByte(OAM_DMA_TRANSFER_REG, 0xC0, ComponentSource::CPU);
+        for (auto tick{0u}; tick < 64; ++tick)
+            bus.UpdateDMA();
+        static_cast<void>(gameboy.AdvanceTicks(16, policy));
+        REQUIRE(cpu.IsHalted());
+        REQUIRE(bus.dma_.transferActive);
+        const auto paused_byte = bus.dma_.currentByte;
+        const auto paused_oam = bus.gpu_.oam;
+        static_cast<void>(gameboy.AdvanceTicks(2000, policy));
+        CHECK(cpu.IsHalted());
+        CHECK(bus.dma_.transferActive);
+        CHECK(bus.dma_.currentByte == paused_byte);
+        CHECK(bus.gpu_.oam == paused_oam);
+        CHECK(gameboy.InspectCpuRead(WRAM_BEGIN) == paused_byte);
+        interrupts.set(InterruptType::VBlank, false);
+        static_cast<void>(gameboy.AdvanceTicks(2000, policy));
+        CHECK_FALSE(cpu.IsHalted());
+        CHECK_FALSE(bus.dma_.transferActive);
+        CHECK(gameboy.InspectCpuRead(WRAM_BEGIN) == 1);
+        for (auto offset{0u}; offset < 160; ++offset)
+            CHECK(bus.gpu_.oam[offset] == offset + 1);
+    }
+}

@@ -59,7 +59,7 @@ public:
     void RunHDMA(const bool cpuAtInstructionBoundary) const {
         if ((!gpu_.hdma.hdmaActive && !gpu_.hdma.block_requested && !gpu_.hdma.transferringBlock) || !gpu_.is_cgb)
             return;
-        if (cpuAtInstructionBoundary && gpu_.hdma.cpu_halted)
+        if (cpuAtInstructionBoundary && gpu_.cpu_halted)
             gpu_.hdma.wake_hblank_sample = gpu_.hdma.hblank_sample;
         gpu_.hdma.hblank_sample = hdma_hblank_active();
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();

@@ -21,7 +21,6 @@ struct HDMA {
     bool hblankBlockFinished{};
     bool singleBlockTransfer{};
     bool block_requested{};
-    bool cpu_halted{};
     bool halt_request_pending{};
     bool halt_hblank_active{};
     bool hblank_sample{};

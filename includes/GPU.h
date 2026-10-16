@@ -285,6 +285,7 @@ public:
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
     bool dmg_compat{false};
+    bool cpu_halted{};
     // Mirrored from the DMA unit each tick: an active OAM DMA blocks the
     // PPU's OAM scan (stale bus) and redirects tile/attr reads
     bool oam_dma_active{false};

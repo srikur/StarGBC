@@ -469,6 +469,9 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
 }
 
 void Bus::UpdateDMAWork() {
+    if (gpu_.cpu_halted && !dma_.halt_step_pending)
+        return;
+    dma_.halt_step_pending = false;
     if (dma_.transferComplete) {
         dma_.transferActive = false;
         dma_.transferComplete = false;
@@ -512,10 +515,11 @@ bool Bus::hdma_hblank_active() const {
 
 void Bus::set_cpu_halted(const bool value, const bool preserve_dma_request, const bool immediate_wake) const {
     auto &hdma = gpu_.hdma;
-    if (hdma.cpu_halted == value)
+    if (gpu_.cpu_halted == value)
         return;
     const bool hblank_active = value || immediate_wake ? hdma_hblank_active() : hdma.hdmaActive && hdma.wake_hblank_sample;
-    hdma.cpu_halted = value;
+    gpu_.cpu_halted = value;
+    dma_.halt_step_pending = false;
     if (value) {
         hdma.halt_hblank_active = hblank_active;
         hdma.halt_request_pending = hdma.block_requested && !preserve_dma_request;
@@ -569,7 +573,7 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
         case HDMAMode::HDMA: {
             if (!gpu_.hdma.transferringBlock) {
                 if (!gpu_.hdma.block_requested) {
-                    if (gpu_.hdma.cpu_halted)
+                    if (gpu_.cpu_halted)
                         return;
                     if (gpu_.hdma.hdmaStartDelay > 0) {
                         --gpu_.hdma.hdmaStartDelay;
@@ -609,7 +613,7 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                     gpu_.hdma.release_delay = gpu_.hdma.halt_request_pending ? 1 : (gpu_.doubleSpeed ? 3 : 5);
                     gpu_.hdma.halt_request_pending = false;
                     gpu_.hdma.bytesThisBlock = 0;
-                    if (gpu_.hdma.cpu_halted) {
+                    if (gpu_.cpu_halted) {
                         gpu_.hdma.hdmaActive = false;
                         gpu_.hdma.hdma5 |= 0x80;
                     } else {
