@@ -1469,7 +1469,7 @@ bool GPU::CpuOamWriteBlocked() const {
 }
 
 bool GPU::CpuVramReadBlocked() const {
-    if (is_cgb && !doubleSpeed && stat.mode == GPUMode::MODE_3 && scanlineCounter < (lcdEnableLine0_ ? 82u : 84u))
+    if (is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter < (lcdEnableLine0_ ? (doubleSpeed ? 80u : 81u) : doubleSpeed ? 81u : 83u))
         return false;
     if (stat.mode == GPUMode::MODE_3)
         return is_cgb || lcdEnableLine0_ || !StatMode0Visible();
@@ -1478,7 +1478,7 @@ bool GPU::CpuVramReadBlocked() const {
     return stat.mode == GPUMode::MODE_2 && scanlineCounter >= 76;
 }
 
-bool GPU::CpuVramWriteBlocked() const { return stat.mode == GPUMode::MODE_3; }
+bool GPU::CpuVramWriteBlocked() const { return is_cgb ? CpuVramReadBlocked() : stat.mode == GPUMode::MODE_3; }
 
 bool GPU::cpu_palette_blocked() const {
     if (LCDDisabled() || currentLine >= SCREEN_HEIGHT)
