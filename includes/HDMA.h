@@ -21,6 +21,11 @@ struct HDMA {
     bool hblankBlockFinished{};
     bool singleBlockTransfer{};
     bool block_requested{};
+    bool cpu_halted{};
+    bool halt_request_pending{};
+    bool halt_hblank_active{};
+    bool hblank_sample{};
+    bool wake_hblank_sample{};
     uint8_t release_delay{};
     bool transferringBlock{}; // True when actively transferring bytes (CPU should halt)
 

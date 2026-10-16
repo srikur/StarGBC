@@ -319,7 +319,7 @@ bool CPU<BusT>::ProcessInterrupts() {
                 speed_switch_resume_pending = false;
                 if (IsCgb(bus_.gpu_.model) && !speedSwitchWakePending_ && !halt_prefetch_retained)
                     currentInstruction = bus_.ReadByte(pc_ - 1, ComponentSource::CPU);
-                halted_ = false;
+                halted(false);
                 speedSwitchWakePending_ = false;
                 return IsCgb(bus_.gpu_.model);
             }
@@ -337,10 +337,10 @@ bool CPU<BusT>::ProcessInterrupts() {
                 }
                 if (halt_prefetch_retained)
                     ++pc_;
-                halted_ = false;
+                halted(false);
                 return true;
             }
-            halted_ = false;
+            halted(false);
 
             interruptState = M2;
             interrupts_.interrupt_master_enable = false;

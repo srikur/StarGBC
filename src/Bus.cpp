@@ -505,6 +505,30 @@ void Bus::UpdateDMAWork() {
     }
 }
 
+bool Bus::hdma_hblank_active() const {
+    return gpu_.hdma.hdmaActive && gpu_.hdma.hdmaMode == HDMAMode::HDMA && gpu_.hblank && !gpu_.vblank &&
+           gpu_.scanlineCounter > gpu_.mode3EndDot_ + 1u && gpu_.scanlineCounter < (gpu_.doubleSpeed ? 454u : 453u);
+}
+
+void Bus::set_cpu_halted(const bool value, const bool preserve_dma_request) const {
+    auto &hdma = gpu_.hdma;
+    if (hdma.cpu_halted == value)
+        return;
+    const bool hblank_active = value ? hdma_hblank_active() : hdma.hdmaActive && hdma.wake_hblank_sample;
+    hdma.cpu_halted = value;
+    if (value) {
+        hdma.halt_hblank_active = hblank_active;
+        hdma.halt_request_pending = hdma.block_requested && !preserve_dma_request;
+        hdma.block_requested &= preserve_dma_request;
+    } else {
+        if (hdma.halt_request_pending || (hblank_active && !hdma.halt_hblank_active))
+            hdma.block_requested = true;
+        else if (hdma.halt_hblank_active && hdma.hdmaActive && gpu_.hblank && !gpu_.vblank)
+            hdma.hblankBlockFinished = true;
+        hdma.halt_hblank_active = false;
+    }
+}
+
 void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
     if (gpu_.hdma.release_delay) {
         if (--gpu_.hdma.release_delay == 0)
@@ -545,6 +569,8 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
         case HDMAMode::HDMA: {
             if (!gpu_.hdma.transferringBlock) {
                 if (!gpu_.hdma.block_requested) {
+                    if (gpu_.hdma.cpu_halted)
+                        return;
                     if (gpu_.hdma.hdmaStartDelay > 0) {
                         --gpu_.hdma.hdmaStartDelay;
                         return;
@@ -580,10 +606,16 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.singleBlockTransfer = false;
                     gpu_.hdma.hblankBlockFinished = true;
-                    gpu_.hdma.release_delay = gpu_.doubleSpeed ? 3 : 5;
+                    gpu_.hdma.release_delay = gpu_.hdma.halt_request_pending ? 1 : (gpu_.doubleSpeed ? 3 : 5);
+                    gpu_.hdma.halt_request_pending = false;
                     gpu_.hdma.bytesThisBlock = 0;
-                    gpu_.hdma.hdmaRemain -= 1;
-                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) | (gpu_.hdma.hdmaActive ? 0 : 0x80) : 0xFF;
+                    if (gpu_.hdma.cpu_halted) {
+                        gpu_.hdma.hdmaActive = false;
+                        gpu_.hdma.hdma5 |= 0x80;
+                    } else {
+                        gpu_.hdma.hdmaRemain -= 1;
+                        gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) | (gpu_.hdma.hdmaActive ? 0 : 0x80) : 0xFF;
+                    }
                 }
             }
             if (gpu_.hdma.hdmaRemain == 0x00)

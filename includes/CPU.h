@@ -130,6 +130,7 @@ public:
     void halted(const bool value) {
         halted_ = value;
         halt_prefetch_retained = value && bus_.gpu_.hdma.block_requested;
+        bus_.set_cpu_halted(value);
         if (!value)
             speedSwitchWakePending_ = false;
     }
@@ -139,6 +140,8 @@ public:
         speedSwitchWakePending_ = !pending;
         speed_switch_resume_pending = !pending;
         speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
+        halt_prefetch_retained = false;
+        bus_.set_cpu_halted(!pending, bus_.gpu_.doubleSpeed);
         shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
     }
 
