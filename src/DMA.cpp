@@ -7,6 +7,7 @@ void DMA::Set(const uint8_t value) {
     if (transferActive && ticks >= STARTUP_CYCLES) {
         // A transfer is already past the setup window --> schedule a restart
         restartPending = true;
+        startAddress = newSource;
         pendingStart = newSource;
         restartCountdown = STARTUP_CYCLES + 1;
     } else {

@@ -196,3 +196,39 @@ TEST_CASE("OAM DMA pauses with HALT while retaining its byte and source bus owne
             CHECK(bus.gpu_.oam[offset] == offset + 1);
     }
 }
+
+TEST_CASE("OAM DMA restarts change the source bus before resetting the transfer index") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC};
+    constexpr std::array<uint16_t, 2> first_source_values = {0x0000, VRAM_BEGIN};
+    for (const auto [model, first_source] : std::views::cartesian_product(models, first_source_values)) {
+        CAPTURE(model);
+        CAPTURE(first_source);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        for (auto offset{0u}; offset < 160; ++offset)
+            gameboy.DebugPoke(VRAM_BEGIN + offset, 0x60 + offset);
+        bus.gpu_.oam.fill(0xFF);
+        bus.WriteByte(OAM_DMA_TRANSFER_REG, first_source >> 8, ComponentSource::CPU);
+        for (auto tick{0u}; tick < 64; ++tick)
+            bus.UpdateDMA();
+        const auto index = bus.dma_.currentByte;
+        REQUIRE(index == 15);
+        const auto last_byte = bus.gpu_.oam[index - 1];
+        const uint16_t new_source = first_source ^ VRAM_BEGIN;
+        const auto source_at_index = gameboy.DebugPeek(new_source + index);
+        const auto source_at_zero = gameboy.DebugPeek(new_source);
+        const auto rom_byte = gameboy.DebugPeek(0x0100);
+        bus.WriteByte(OAM_DMA_TRANSFER_REG, new_source >> 8, ComponentSource::CPU);
+        CHECK(bus.ReadByte(0x0100, ComponentSource::CPU) == (new_source == 0 ? last_byte : rom_byte));
+        CHECK(bus.dma_.currentByte == index);
+        for (auto tick{0u}; tick < 4; ++tick)
+            bus.UpdateDMA();
+        CHECK(bus.dma_.currentByte == index + 1);
+        CHECK(bus.gpu_.oam[index] == source_at_index);
+        for (auto tick{0u}; tick < 4; ++tick)
+            bus.UpdateDMA();
+        CHECK(bus.dma_.currentByte == 1);
+        CHECK(bus.gpu_.oam[0] == source_at_zero);
+    }
+}
