@@ -1743,7 +1743,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 lcdcPending = value;
                 lcdcWriteStage = 3;
             } else {
-                const bool updatePixel = is_cgb && dmg_compat && pixelOutputThisDot_ && ((lcdc ^ value) & 1) && Bit<LCDC_ENABLE_BIT>(value);
+                const bool updatePixel = is_cgb && pixelOutputThisDot_ && ((lcdc ^ value) & 1) && Bit<LCDC_ENABLE_BIT>(value);
                 ApplyLCDC(value);
                 if (updatePixel) {
                     screenData[currentLine * SCREEN_WIDTH + pixelsDrawn - 1] =
