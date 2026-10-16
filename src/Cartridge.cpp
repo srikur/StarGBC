@@ -346,10 +346,11 @@ u8 Cartridge::ReadByteMBC3(const u16 address) const {
         case 0x4000 ... 0x7FFF:
             return gameRom_[static_cast<u64>(romBank & BankBitmask()) * 0x4000ULL + (address - 0x4000)];
         case 0xA000 ... 0xBFFF: {
-            if (!ramEnabled)
+            if (!ramEnabled || gameRamSize == 0)
                 return 0xFF;
-            if (ramBank <= 0x03 && gameRamSize > 0) {
-                return gameRam_[static_cast<u64>(ramBank) * 0x2000ULL + (address - 0xA000)];
+            if (ramBank <= 0x03) {
+                const u64 ramAddr = static_cast<u64>(ramBank) * 0x2000ULL + (address - 0xA000);
+                return gameRam_[ramAddr & (gameRamSize - 1)];
             }
             return rtc_.ReadRTC(ramBank);
         }
@@ -473,7 +474,8 @@ void Cartridge::WriteByteMBC3(const u16 address, const u8 value) {
             if (ramEnabled) {
                 ramDirty_ = true;
                 if (ramBank <= 0x03 && gameRamSize > 0) {
-                    gameRam_[static_cast<u64>(ramBank) * 0x2000ULL + (address - 0xA000)] = value;
+                    const u64 ramAddr = static_cast<u64>(ramBank) * 0x2000ULL + (address - 0xA000);
+                    gameRam_[ramAddr & (gameRamSize - 1)] = value;
                 } else {
                     rtc_.WriteRTC(ramBank, value);
                 }
