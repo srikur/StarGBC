@@ -1109,3 +1109,40 @@ TEST_CASE("ppu: CGB LYC comparisons retain sampled STAT enable and blocking inpu
         CHECK((gpu.ReadRegisters(LCD_STATUS) & 4) != 0);
     }
 }
+
+
+TEST_CASE("ppu: CGB LYC cancellation and mode-2 blocking use separate capture intervals") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array mode2_values = {false, true};
+    for (const auto [double_speed, optimized, mode2] : std::views::cartesian_product(speeds, optimizations, mode2_values)) {
+        for (auto write_dot{450u}; write_dot <= 457; ++write_dot) {
+            CAPTURE(double_speed);
+            CAPTURE(optimized);
+            CAPTURE(mode2);
+            CAPTURE(write_dot);
+            Interrupts interrupts;
+            GPU gpu(interrupts);
+            gpu.SetModel(Model::CGBC);
+            gpu.doubleSpeed = double_speed;
+            gpu.optimized_execution = optimized;
+            gpu.lcdc = 0x91;
+            gpu.currentLine = 1;
+            gpu.scanlineCounter = 450;
+            gpu.stat.mode = GPUMode::MODE_0;
+            gpu.stat.enable_ly_interrupt = true;
+            gpu.stat.enable_m2_interrupt = mode2;
+            gpu.lyc = mode2 ? 1 : 2;
+            gpu.lycInterruptLine_ = mode2;
+            interrupts.interrupt_flag = 0;
+            for (auto dot{450u}; dot < 468; ++dot) {
+                if (dot == write_dot)
+                    gpu.WriteRegisters(SCANLINE_COMPARE, 0xFF);
+                gpu.Update();
+            }
+            const bool expected = mode2 ? write_dot < (double_speed ? 453u : 451u) : write_dot >= 456;
+            CHECK(interrupts.is_set(InterruptType::LCDStat) == expected);
+            CHECK((gpu.ReadRegisters(LCD_STATUS) & 4) == 0);
+        }
+    }
+}

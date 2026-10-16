@@ -185,8 +185,8 @@ void GPU::Update() {
         --stat_irq_delay;
     if (lyc_irq_delay)
         --lyc_irq_delay;
-    if (lyc_m0_delay)
-        --lyc_m0_delay;
+    if (lyc_mode_delay)
+        --lyc_mode_delay;
     if (m1_irq_delay && --m1_irq_delay == 0) {
         const auto previous_stat = stat_irq_delay ? stat_irq_old : stat.value();
         if (stat.enable_m1_interrupt && !(previous_stat & 0x28)) {
@@ -284,7 +284,7 @@ void GPU::Update() {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
         if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scx_just_applied && !scyJustApplied_ &&
-            (mode2_size_delay | stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage |
+            (mode2_size_delay | stat_irq_delay | lyc_irq_delay | lyc_mode_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage |
              wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) == 0) {
             lcdOffIdle_ = true;
         }
@@ -388,7 +388,7 @@ void GPU::Update() {
     if (m0_irq_edge) {
         m0_irq_active = true;
         const auto previous_stat = stat_irq_delay > (doubleSpeed ? 0u : 1u) ? stat_irq_old : stat.value();
-        const auto previous_lyc = lyc_m0_delay ? lyc_irq_old : lyc;
+        const auto previous_lyc = lyc_mode_delay > (doubleSpeed ? 1u : 0u) ? lyc_irq_old : lyc;
         if (((previous_stat | stat.value()) & 8) && (!(previous_stat & 0x40) || previous_lyc != currentLine)) {
             interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 5, true, doubleSpeed ? 0 : 1);
             statTriggered = true;
@@ -492,7 +492,7 @@ void GPU::Update() {
             initialSCXSet = false;
         }
         const auto previous_stat = stat_irq_delay ? stat_irq_old : stat.value();
-        const auto previous_lyc = lyc_irq_delay ? lyc_irq_old : lyc;
+        const auto previous_lyc = lyc_mode_delay ? lyc_irq_old : lyc;
         const bool m2_blocked = (currentLine != 0 && (previous_stat & 8)) || (currentLine == 0 && (previous_stat & 0x10)) ||
                                ((previous_stat & 0x40) && previous_lyc == (currentLine == 0 ? 0 : currentLine - 1));
         if (is_cgb && currentLine < 144 && stat.enable_m2_interrupt && !m2_blocked) {
@@ -514,7 +514,7 @@ void GPU::MaybeArmIdle() {
         return;
     if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scx_just_applied || scyJustApplied_)
         return;
-    if ((mode2_size_delay | stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage |
+    if ((mode2_size_delay | stat_irq_delay | lyc_irq_delay | lyc_mode_delay | m0_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage |
          wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
         return;
 
@@ -1832,8 +1832,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             if (is_cgb && value != lyc) {
                 const bool continuous = lyc == cgb_lyc_compare_line(0) && value == cgb_lyc_compare_line(4);
                 lyc_irq_old = lyc;
-                lyc_irq_delay = continuous ? 6 : doubleSpeed ? 4 : 5;
-                lyc_m0_delay = doubleSpeed ? 3 : 6;
+                lyc_irq_delay = continuous ? 6 : value == cgb_lyc_compare_line(4) ? (doubleSpeed ? 4 : 5) : 2;
+                lyc_mode_delay = doubleSpeed ? 4 : 6;
             }
             lyc = value;
             break;
