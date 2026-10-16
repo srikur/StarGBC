@@ -1429,13 +1429,6 @@ void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
     vram[vramBank * 0x2000 + address - 0x8000] = value;
 }
 
-// DMG CPU-side gate timing (mooneye lcdon_timing-GS / lcdon_write_timing-GS):
-// relative to the machinery line boundary, OAM reads lock 4 dots before the
-// OAM scan starts and OAM writes unlock for the scan's last 4 dots, while
-// VRAM reads lock 4 dots before mode 3 begins. Writes to VRAM follow the
-// plain mode-3 rule. The LCD-enable line has no OAM scan, so only its mode 3
-// blocks (plus the end-of-line OAM read lock ahead of line 1's scan). CGB
-// read/write gates have separate phases at the start and end of each mode
 bool GPU::CpuOamReadBlocked() const {
     if (is_cgb && !LCDDisabled()) {
         if (stat.mode == GPUMode::MODE_2)
@@ -1480,7 +1473,9 @@ bool GPU::CpuVramReadBlocked() const {
     return stat.mode == GPUMode::MODE_2 && scanlineCounter >= 76;
 }
 
-bool GPU::CpuVramWriteBlocked() const { return is_cgb ? CpuVramReadBlocked() : stat.mode == GPUMode::MODE_3; }
+bool GPU::CpuVramWriteBlocked() const {
+    return is_cgb ? CpuVramReadBlocked() : stat.mode == GPUMode::MODE_3 && (lcdEnableLine0_ || !StatMode0Visible());
+}
 
 bool GPU::cpu_palette_blocked() const {
     if (LCDDisabled() || currentLine >= SCREEN_HEIGHT)
