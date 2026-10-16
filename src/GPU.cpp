@@ -1609,6 +1609,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
 
 void GPU::ApplyLCDC(const uint8_t value) {
     const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+    const bool old_coincidence = ReadRegisters(LCD_STATUS) & 4;
     if (is_cgb && isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && !Bit<LCDC_WINDOW_ENABLE>(value)) {
         isFetchingWindow_ = false;
         fetcherTileX_ = (pixelsDrawn + backgroundQueue.size() + initialScrollXFine_) / 8;
@@ -1628,6 +1629,7 @@ void GPU::ApplyLCDC(const uint8_t value) {
     Observe(diagnostics::EventKind::RegisterApply, 0xFF40, lcdc);
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
+        stat.coincidence_flag = old_coincidence;
         m1_irq_delay = 0;
         m0_irq_delay = 0;
         m0_irq_active = false;
@@ -1764,6 +1766,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             if (is_cgb && !LCDDisabled() && !lcdEnableLine0_ && currentLine == 0 && scanlineCounter == 0 &&
                 !(old_stat & 0x20) && (value & 0x20) && !(old_stat & 0x10) && !((old_stat & 0x40) && lyc == 0))
                 interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 3 : 5, true, doubleSpeed ? 1 : 4);
+            if (LCDDisabled() && stat.coincidence_flag && !(old_stat & 0x40) && (!is_cgb || (value & 0x40)))
+                interrupts_.set(InterruptType::LCDStat, false);
             stat.enable_ly_interrupt = value & 0x40;
             stat.enable_m2_interrupt = value & 0x20;
             stat.enable_m1_interrupt = value & 0x10;

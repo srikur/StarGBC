@@ -1019,3 +1019,58 @@ TEST_CASE("ppu: DMG OAM selection uses the second object-size sample across the 
             CHECK(gpu.spriteBuffer.begin()->sprite_num / 2 == index);
     }
 }
+
+
+TEST_CASE("ppu: disabled LCD retains the readable comparison for STAT write interrupts") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array match_values = {false, true};
+    constexpr std::array previously_enabled_values = {false, true};
+    constexpr std::array enable_values = {false, true};
+    constexpr std::array<uint8_t, 2> new_lyc_values = {0, 0xFF};
+    for (const auto [model, optimized, match, previously_enabled, enable, new_lyc] :
+         std::views::cartesian_product(models, optimizations, match_values, previously_enabled_values, enable_values, new_lyc_values)) {
+        CAPTURE(model);
+        CAPTURE(optimized);
+        CAPTURE(match);
+        CAPTURE(previously_enabled);
+        CAPTURE(enable);
+        CAPTURE(new_lyc);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.scanlineCounter = 300;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.lyc = match ? 10 : 11;
+        gpu.Update();
+        REQUIRE(((gpu.ReadRegisters(LCD_STATUS) & 4) != 0) == match);
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0x11);
+        gpu.WriteRegisters(SCANLINE_COMPARE, new_lyc);
+        gpu.WriteRegisters(LCD_STATUS, previously_enabled ? 0x40 : 0);
+        interrupts.interrupt_flag = 0;
+        gpu.WriteRegisters(LCD_STATUS, enable ? 0x40 : 0);
+        for (auto dot{0u}; dot < 16; ++dot)
+            gpu.Update();
+        CHECK(((gpu.ReadRegisters(LCD_STATUS) & 4) != 0) == match);
+        CHECK(gpu.ReadRegisters(CURRENT_SCANLINE) == 0);
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == (match && !previously_enabled && (!IsCgb(model) || enable)));
+    }
+    for (const auto [model, optimized] : std::views::cartesian_product(models, optimizations)) {
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.scanlineCounter = IsCgb(model) ? 0 : 452;
+        gpu.stat.mode = IsCgb(model) ? GPUMode::MODE_2 : GPUMode::MODE_0;
+        gpu.stat.coincidence_flag = true;
+        gpu.lyc = 10;
+        REQUIRE((gpu.ReadRegisters(LCD_STATUS) & 4) == 0);
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0x11);
+        CHECK((gpu.ReadRegisters(LCD_STATUS) & 4) == 0);
+    }
+}

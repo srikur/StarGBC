@@ -75,6 +75,8 @@ static constexpr u16 SCANLINE_COMPARE = 0xFF45;
 
 static constexpr u16 VRAM_BANK = 0xFF4F;
 
+static constexpr u16 CURRENT_SCANLINE = 0xFF44;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;
