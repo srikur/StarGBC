@@ -797,3 +797,58 @@ TEST_CASE("ppu: HBlank interrupts retain STAT and LYC values captured before lat
         CHECK(interrupts.is_set(InterruptType::LCDStat) == (disable_lyc ? early : !early));
     }
 }
+
+TEST_CASE("ppu: right-edge fetches can delay STAT mode 0 after the HBlank interrupt") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    for (const auto [model, double_speed, optimized] : std::views::cartesian_product(models, speeds, optimizations)) {
+        if (double_speed && model == Model::DMGB)
+            continue;
+
+        CAPTURE(model);
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        const auto measure = [&](const unsigned object_x, const unsigned window_x) {
+            Interrupts interrupts;
+            GPU gpu(interrupts);
+            gpu.SetModel(model);
+            gpu.optimized_execution = optimized;
+            gpu.doubleSpeed = double_speed;
+            gpu.lcdc = window_x ? 0xB3 : 0x93;
+            gpu.currentLine = 10;
+            gpu.lyc = 255;
+            gpu.windowTriggeredThisFrame = true;
+            gpu.windowX = window_x;
+            gpu.stat.enable_m0_interrupt = true;
+            gpu.oam[0] = 26;
+            gpu.oam[1] = object_x;
+            interrupts.interrupt_flag = 0;
+            std::array<unsigned, 3> times{};
+            while (gpu.scanlineCounter < 400) {
+                gpu.Update();
+                if (!times[0] && ((interrupts.interrupt_flag | interrupts.interrupt_visible_pending) & 2))
+                    times[0] = gpu.scanlineCounter;
+                if (!times[1] && gpu.scanlineCounter > 100 && (gpu.ReadRegisters(LCD_STATUS) & 3) == 0)
+                    times[1] = gpu.scanlineCounter;
+                if (!times[2] && gpu.pixelsDrawn == SCREEN_WIDTH)
+                    times[2] = gpu.scanlineCounter;
+            }
+            REQUIRE(times[0] != 0);
+            REQUIRE(times[1] != 0);
+            REQUIRE(times[2] != 0);
+            return times;
+        };
+        const auto baseline = measure(200, 0);
+        const auto last_object = measure(167, 0);
+        const auto last_window = measure(167, 166);
+        const auto earlier_object = measure(166, 0);
+        CHECK(last_object[0] == baseline[0]);
+        CHECK(last_object[1] > last_object[0]);
+        CHECK(last_object[2] > last_object[0]);
+        CHECK(last_window[0] == baseline[0]);
+        CHECK(last_window[1] > last_window[0]);
+        CHECK(last_window[2] > last_window[0]);
+        CHECK(earlier_object[0] > baseline[0]);
+    }
+}

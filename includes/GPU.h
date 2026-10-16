@@ -267,6 +267,8 @@ public:
     uint8_t clockPause_{0};
     bool doubleSpeed{false};
     uint8_t mode3EndDelay_{0};
+    uint8_t m0_irq_delay{};
+    bool m0_irq_active{};
     uint16_t mode3EndDot_{0};
     std::array<Pixel, 3> recentPixels_{};
     std::array<uint16_t, 3> recentPixelOffsets_{0xFFFF, 0xFFFF, 0xFFFF};
@@ -365,7 +367,7 @@ private:
 
     [[nodiscard]] bool StatLineHigh(bool register_write = false, bool previous = false) const;
 
-    [[nodiscard]] bool StatMode0Visible(unsigned lead = 3) const;
+    [[nodiscard]] bool StatMode0Visible(unsigned lead = 3, bool interrupt = false) const;
 
     void Fetcher_StepSpriteFetch();
 
