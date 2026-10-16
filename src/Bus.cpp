@@ -385,9 +385,11 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
             interrupts_.interrupt_flag_delayed &= value | ~interrupts_.interrupt_visible_pending;
             interrupts_.interrupt_visible_pending &= value;
             break;
-        case 0xFF10 ... 0xFF3F:
-            audio_.WriteByte(address, value, timer_.divCounter & (speed == Speed::Double ? 0x2000 : 0x1000), speed == Speed::Double);
+        case PULSE1_SWEEP ... WAVE_RAM_END: {
+            const auto startup_divider = timer_.divCounter + 4;
+            audio_.WriteByte(address, value, startup_divider & (speed == Speed::Double ? 0x2000 : 0x1000), speed == Speed::Double);
             break;
+        }
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) {
                 dma_.Set(value);
