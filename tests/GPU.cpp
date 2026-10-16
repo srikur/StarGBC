@@ -1074,3 +1074,38 @@ TEST_CASE("ppu: disabled LCD retains the readable comparison for STAT write inte
         CHECK((gpu.ReadRegisters(LCD_STATUS) & 4) == 0);
     }
 }
+
+
+TEST_CASE("ppu: CGB LYC comparisons retain sampled STAT enable and blocking inputs") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<unsigned, 3> change_values = {0u, 1u, 2u};
+    constexpr std::array<unsigned, 4> lead_values = {0u, 1u, 2u, 3u};
+    for (const auto [double_speed, optimized, change, lead] : std::views::cartesian_product(speeds, optimizations, change_values, lead_values)) {
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        CAPTURE(change);
+        CAPTURE(lead);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::CGBC);
+        gpu.doubleSpeed = double_speed;
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 153;
+        gpu.scanlineCounter = 8 - lead;
+        gpu.stat.mode = GPUMode::MODE_1;
+        gpu.stat.enable_ly_interrupt = true;
+        gpu.stat.enable_m1_interrupt = change == 1;
+        gpu.lyc = 0;
+        gpu.lycInterruptLine_ = false;
+        gpu.WriteRegisters(LCD_STATUS, change == 0 ? 0 : change == 1 ? 0x40 : 0x50);
+        interrupts.interrupt_flag = 0;
+        interrupts.cancel_pending(InterruptType::LCDStat);
+        while (gpu.scanlineCounter < 16)
+            gpu.Update();
+        const bool retained = lead < (double_speed ? 1u : 2u);
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == (change == 1 ? !retained : retained));
+        CHECK((gpu.ReadRegisters(LCD_STATUS) & 4) != 0);
+    }
+}

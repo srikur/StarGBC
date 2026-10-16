@@ -311,8 +311,9 @@ void GPU::Update() {
         const bool startup_edge = lcdEnableLine0_ && scanlineCounter == 0;
         const bool compare_edge = scanlineCounter == 0 || (currentLine == 153 && scanlineCounter == 8);
         const bool matches = compared_line == (lyc_irq_delay ? lyc_irq_old : lyc);
-        const bool blocked = !startup_edge && (compared_line > 0 && compared_line <= 144 ? stat.enable_m2_interrupt : stat.enable_m1_interrupt);
-        if (compare_edge && matches && (startup_edge ? !statTriggered : !lycInterruptLine_) && stat.enable_ly_interrupt && !blocked)
+        const auto previous_stat = stat_irq_delay ? stat_irq_old : stat.value();
+        const bool blocked = !startup_edge && (previous_stat & (compared_line > 0 && compared_line <= 144 ? 0x20 : 0x10));
+        if (compare_edge && matches && (startup_edge ? !statTriggered : !lycInterruptLine_) && ((previous_stat | stat.value()) & 0x40) && !blocked)
             interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 5, true, doubleSpeed ? 0 : 1);
         lycInterruptLine_ = matches;
         stat.coincidence_flag = lyCompare == lyc;
