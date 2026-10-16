@@ -1,6 +1,8 @@
 #include "GPU.h"
 #include <algorithm>
+#include <array>
 #include <doctest/doctest.h>
+#include <iterator>
 #include <string_view>
 #include "diagnostics/Provenance.h"
 
@@ -315,7 +317,7 @@ TEST_CASE("diagnostics: Crystal sprite overlap provenance identifies transparent
     REQUIRE(pixel->sprites.count == 2);
     CHECK(std::ranges::any_of(std::span(pixel->sprites.candidates).first(pixel->sprites.count), [](const auto &candidate) {
         return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 && candidate.decision == diagnostics::SpriteDecision::Transparent;
-        }));
+    }));
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick <= pixel->emission.tick);
     CHECK(pixel->selected.lowRead == 0);
@@ -427,5 +429,50 @@ TEST_CASE("ppu: CGB window enable qualifies the retained WY match") {
         REQUIRE(gpu.currentLine == 11);
         REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
         CHECK(gpu.windowWasActiveThisLine_ == (enable_dot == 450));
+    }
+}
+
+TEST_CASE("ppu: blocked CGB palette writes preserve RAM and advance the address") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizeds = {false, true};
+    constexpr std::array<u16, 2> addresses = {BACKGROUND_PALETTE_INDEX, OBJ_PALETTE_INDEX};
+    for (const auto [model, speed, optimized, address] : std::views::cartesian_product(models, speeds, optimizeds, addresses)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(speed);
+        CAPTURE(optimized);
+        CAPTURE(address);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.doubleSpeed = speed;
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0;
+        gpu.WriteRegisters(address, 0x3F);
+        gpu.WriteRegisters(address + 1, 0x12);
+        gpu.WriteRegisters(address, 0);
+        gpu.WriteRegisters(address + 1, 0x34);
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.stat.mode = GPUMode::MODE_2;
+        for (auto dot{0uz}; dot < 100 && !gpu.cpu_palette_blocked(); ++dot)
+            gpu.Update();
+        REQUIRE(gpu.cpu_palette_blocked());
+        gpu.WriteRegisters(address, 0xBF);
+        CHECK(gpu.ReadRegisters(address + 1) == 0xFF);
+        gpu.WriteRegisters(address + 1, 0x56);
+        CHECK((gpu.ReadRegisters(address) & 0x3F) == 0);
+        gpu.WriteRegisters(address + 1, 0x78);
+        CHECK((gpu.ReadRegisters(address) & 0x3F) == 1);
+        for (auto dot{0uz}; dot < 300 && gpu.cpu_palette_blocked(); ++dot)
+            gpu.Update();
+        REQUIRE_FALSE(gpu.cpu_palette_blocked());
+        REQUIRE(gpu.stat.mode == GPUMode::MODE_0);
+        gpu.WriteRegisters(address, 0x3F);
+        CHECK(gpu.ReadRegisters(address + 1) == 0x12);
+        gpu.WriteRegisters(address, 0);
+        CHECK(gpu.ReadRegisters(address + 1) == 0x34);
+        gpu.WriteRegisters(address + 1, 0x56);
+        CHECK(gpu.ReadRegisters(address + 1) == 0x56);
     }
 }

@@ -64,7 +64,7 @@ void GPU::RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel 
 void GPU::RecordRecolor(const uint16_t offset, const uint16_t address, const Pixel &selected, const diagnostics::PixelDecision decision) {
     if (!provenance->recolor)
         return;
-    const auto source = selected.is_sprite                                            ? diagnostics::PixelSource::Sprite
+    const auto source = selected.is_sprite                                           ? diagnostics::PixelSource::Sprite
                         : decision == diagnostics::PixelDecision::BackgroundDisabled ? diagnostics::PixelSource::Backdrop
                                                                                      : diagnostics::PixelSource::Background;
     auto position = provenance->position;

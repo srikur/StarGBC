@@ -5,8 +5,7 @@
 #include "Interrupts.h"
 
 struct Serial {
-    explicit Serial(Interrupts &interrupts) :
-        interrupts(interrupts) {}
+    explicit Serial(Interrupts &interrupts) : interrupts(interrupts) {}
 
     [[nodiscard]] u8 read_serial(u16) const;
 

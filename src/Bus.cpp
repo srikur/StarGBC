@@ -161,6 +161,8 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
         return source == ComponentSource::CPU ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
     if (address >= 0xFE00 && address <= 0xFEFF)
         return source == ComponentSource::CPU ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
+    if (address == BACKGROUND_PALETTE_DATA || address == OBJ_PALETTE_DATA)
+        return false;
     return false;
 }
 

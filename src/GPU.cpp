@@ -24,11 +24,9 @@ void GPU::Observe(const diagnostics::EventKind kind, const uint16_t address, con
 void GPU::ObserveStall(const diagnostics::StallReason reason) const {
     Observe(diagnostics::EventKind::PixelStall, pixelsDrawn, static_cast<uint32_t>(reason), backgroundQueue.size());
     if (provenance) {
-        const auto explanation = reason == diagnostics::StallReason::FifoStarvation
-                                     ? diagnostics::PipelineReason::FifoStarvation
-                                     : reason == diagnostics::StallReason::SpriteAlignment
-                                     ? diagnostics::PipelineReason::SpriteAlignment
-                                     : diagnostics::PipelineReason::SpriteFetch;
+        const auto explanation = reason == diagnostics::StallReason::FifoStarvation    ? diagnostics::PipelineReason::FifoStarvation
+                                 : reason == diagnostics::StallReason::SpriteAlignment ? diagnostics::PipelineReason::SpriteAlignment
+                                                                                       : diagnostics::PipelineReason::SpriteFetch;
         provenance->Pipeline(pixelsDrawn, currentLine, explanation);
     }
 }
@@ -43,17 +41,14 @@ void GPU::initialize_palette_ram() {
     if (!is_cgb)
         return;
     static constexpr std::array<uint16_t, 32> objectColors{
-            0x0000, 0xABF2, 0xC261, 0xBAD9, 0x6E88, 0x63DD, 0x2728, 0x9FFB,
-            0x4235, 0xD4D6, 0x4850, 0x5E57, 0x3E23, 0xCA3D, 0x2171, 0xC037,
-            0xB3C6, 0xF9FB, 0x0008, 0x298D, 0x20A3, 0x87DB, 0x0562, 0xD45D,
-            0x080E, 0xAFFE, 0x0220, 0xFFD7, 0x6A07, 0xEC55, 0x4083, 0x770B,
+            0x0000, 0xABF2, 0xC261, 0xBAD9, 0x6E88, 0x63DD, 0x2728, 0x9FFB, 0x4235, 0xD4D6, 0x4850, 0x5E57, 0x3E23, 0xCA3D, 0x2171, 0xC037,
+            0xB3C6, 0xF9FB, 0x0008, 0x298D, 0x20A3, 0x87DB, 0x0562, 0xD45D, 0x080E, 0xAFFE, 0x0220, 0xFFD7, 0x6A07, 0xEC55, 0x4083, 0x770B,
     };
     for (const u8 palette : std::views::indices(8)) {
         for (const u8 color : std::views::indices(4)) {
             bgpd[palette][color].fill(31);
             const auto object = objectColors[palette * 4 + color];
-            obpd[palette][color] = {static_cast<uint8_t>(object & 31), static_cast<uint8_t>((object >> 5) & 31),
-                                    static_cast<uint8_t>(object >> 10)};
+            obpd[palette][color] = {static_cast<uint8_t>(object & 31), static_cast<uint8_t>((object >> 5) & 31), static_cast<uint8_t>(object >> 10)};
         }
     }
     RebuildColorLuts();
@@ -342,8 +337,7 @@ void GPU::Update() {
                 }
                 break;
             }
-        }
-        break;
+        } break;
         default:
             break;
     }
@@ -353,8 +347,8 @@ void GPU::Update() {
     // A condition that stays true across a boundary (hblank into a new line,
     // LYC held while modes cycle) never re-fires
     const bool statLine = StatLineHigh();
-    if (!is_cgb && !lcdEnableLine0_ && !statTriggered && statLine && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.
-        enable_m0_interrupt) {
+    if (!is_cgb && !lcdEnableLine0_ && !statTriggered && statLine && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) &&
+        stat.enable_m0_interrupt) {
         interrupts_.set_after(InterruptType::LCDStat, 3, true);
     }
     statTriggered = statLine;
@@ -981,9 +975,8 @@ void GPU::Fetcher_StepSpriteFetch() {
             // takeover+2 and takeover+4, with the merge dot unchanged. Each read
             // samples the OBJ size bit independently, so an LCDC write between
             // them mixes rows from two different tiles
-            const unsigned oamAddress = oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0
-                                            ? (oamDmaDest_ & ~1)
-                                            : (sprite.sprite_num / 2) * 4 + 2;
+            const unsigned oamAddress =
+                    oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0 ? (oamDmaDest_ & ~1) : (sprite.sprite_num / 2) * 4 + 2;
             sprite.tile_index = oam[oamAddress];
             Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tile_index,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteOam));
@@ -995,9 +988,8 @@ void GPU::Fetcher_StepSpriteFetch() {
                                            .tile = sprite.tile_index,
                                            .attributes = oam[oamAddress + 1],
                                            .bank = static_cast<uint8_t>(is_cgb && sprite.attributes.vram_bank),
-                                           .palette = is_cgb && !dmg_compat
-                                                          ? sprite.attributes.palette_number_cgb
-                                                          : static_cast<uint8_t>(sprite.attributes.palette_number_dmg),
+                                           .palette = is_cgb && !dmg_compat ? sprite.attributes.palette_number_cgb
+                                                                            : static_cast<uint8_t>(sprite.attributes.palette_number_dmg),
                                            .oamIndex = static_cast<uint8_t>(sprite.sprite_num / 2),
                                            .spriteX = sprite.x,
                                            .spriteY = sprite.y,
@@ -1342,6 +1334,14 @@ bool GPU::CpuVramReadBlocked() const {
 
 bool GPU::CpuVramWriteBlocked() const { return stat.mode == GPUMode::MODE_3; }
 
+bool GPU::cpu_palette_blocked() const {
+    if (LCDDisabled() || currentLine >= SCREEN_HEIGHT)
+        return false;
+    if (stat.mode == GPUMode::MODE_3)
+        return scanlineCounter >= (lcdEnableLine0_ ? (doubleSpeed ? 83u : 82u) : 84u);
+    return stat.mode == GPUMode::MODE_0 && mode3EndDot_ && scanlineCounter < mode3EndDot_ + (doubleSpeed ? 2u : 4u);
+}
+
 bool GPU::StatMode0Visible(const unsigned lead) const {
     // Map the renderer's dot phase to the CPU-visible STAT phase: normal DMG
     // lines report mode 0 three dots before the pixel pipe drains. The LCD
@@ -1352,13 +1352,10 @@ bool GPU::StatMode0Visible(const unsigned lead) const {
     if (remaining > lead)
         return false;
     if (isFetchingWindow_ && fetcherTileX_ == 0 && backgroundQueue.empty()) {
-        const unsigned fetchDots = fetcherState_ == FetcherState::GetTile
-                                       ? 6
-                                       : fetcherState_ == FetcherState::GetTileDataLow
-                                       ? 4
-                                       : fetcherState_ == FetcherState::GetTileDataHigh
-                                       ? 2
-                                       : 0;
+        const unsigned fetchDots = fetcherState_ == FetcherState::GetTile           ? 6
+                                   : fetcherState_ == FetcherState::GetTileDataLow  ? 4
+                                   : fetcherState_ == FetcherState::GetTileDataHigh ? 2
+                                                                                    : 0;
         return remaining + fetchDots + fetcherDelay_ <= lead;
     }
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdcWriteStage == 1 ? lcdcPending : lcdc);

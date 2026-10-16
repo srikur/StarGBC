@@ -1,9 +1,9 @@
+#include "Serial.h"
 #include <doctest/doctest.h>
 #include "Audio.h"
 #include "Gameboy.h"
-#include "Serial.h"
-#include "Timer.h"
 #include "TestUtilities.h"
+#include "Timer.h"
 
 TEST_CASE("Internal serial clocks use divider edges at both serial rates") {
     for (const bool fast : {false, true}) {

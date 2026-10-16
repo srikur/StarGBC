@@ -66,16 +66,14 @@ struct Stat {
     GPUMode mode{GPUMode::MODE_2};
 
     [[nodiscard]] uint8_t value() const {
-        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 | coincidence_flag <<
-               2 |
-               static_cast<uint8_t>(mode);
+        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 |
+               coincidence_flag << 2 | static_cast<uint8_t>(mode);
     }
 };
 
 class GPU {
 public:
-    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) :
-        color_correction(colorCorrection), interrupts_(interrupts) {}
+    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {}
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
     [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
@@ -334,6 +332,8 @@ public:
     [[nodiscard]] bool CpuVramReadBlocked() const;
 
     [[nodiscard]] bool CpuVramWriteBlocked() const;
+
+    [[nodiscard]] bool cpu_palette_blocked() const;
 
     [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
 

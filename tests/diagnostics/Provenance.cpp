@@ -34,7 +34,7 @@ TEST_CASE("diagnostics: provenance does not change pixels hardware state or time
             CHECK(continuous.SaveState() == observed.SaveState());
             CHECK(continuous.TimelineTicks() == observed.TimelineTicks());
             CHECK(std::ranges::equal(std::span(continuous.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT),
-                std::span(observed.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
+                                     std::span(observed.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
         }
         REQUIRE(recorder.Query(20, 10));
         CHECK(recorder.Query(20, 10)->finalColor == observed.GetScreenData()[10 * SCREEN_WIDTH + 20]);

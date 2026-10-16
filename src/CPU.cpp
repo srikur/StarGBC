@@ -295,12 +295,12 @@ bool CPU<BusT>::ProcessInterrupts() {
             // CGB VBlank reaches interrupt dispatch one M-cycle before its
             // IME=0 HALT-wake path; STAT retains its own propagation delay
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
-                                        ? (halted_ ? haltPending_ : runningPending_)
-                                        : interrupts_.interrupt_enable &
-                                          ((interrupts_.interrupt_flag & ~0x0C) |
-                                           ((speedSwitchWakePending_ ? interrupts_.interrupt_flag : runningPending_) & 0x0C) |
-                                           (interrupts_.interrupt_master_enable ? interrupts_.interrupt_visible_pending & 0x01 : 0)) &
-                                          0x1F;
+                                            ? (halted_ ? haltPending_ : runningPending_)
+                                            : interrupts_.interrupt_enable &
+                                                      ((interrupts_.interrupt_flag & ~0x0C) |
+                                                       ((speedSwitchWakePending_ ? interrupts_.interrupt_flag : runningPending_) & 0x0C) |
+                                                       (interrupts_.interrupt_master_enable ? interrupts_.interrupt_visible_pending & 0x01 : 0)) &
+                                                      0x1F;
             if (pending == 0) {
                 return false;
             }

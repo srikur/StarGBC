@@ -42,6 +42,10 @@ static constexpr u16 SERIAL_TRANSFER_DATA = 0xFF01;
 static constexpr u16 SERIAL_TRANSFER_CONTROL = 0xFF02;
 static constexpr u16 LCD_CONTROL_BIT = 0xFF40;
 static constexpr u16 OAM_DMA_TRANSFER_REG = 0xFF46;
+static constexpr u16 BACKGROUND_PALETTE_INDEX = 0xFF68;
+static constexpr u16 BACKGROUND_PALETTE_DATA = 0xFF69;
+static constexpr u16 OBJ_PALETTE_INDEX = 0xFF6A;
+static constexpr u16 OBJ_PALETTE_DATA = 0xFF6B;
 
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
@@ -102,8 +106,7 @@ enum class InterruptType {
 enum class ComponentSource { CPU, DMA, PPU, HDMA };
 
 template<typename T>
-concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source)
-{
+concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source) {
     { bus.ReadByte(addr, source) } -> std::same_as<uint8_t>;
     { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };
@@ -127,8 +130,7 @@ class UnreachableCodeException final : public GameboyException {
     UnreachableCodeException() = default;
 
 public:
-    explicit UnreachableCodeException(std::string message) :
-        message_(std::move(message)) { this->message(); }
+    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) { this->message(); }
 };
 
 class FatalErrorException final : public GameboyException {
@@ -143,6 +145,5 @@ class FatalErrorException final : public GameboyException {
     FatalErrorException() = default;
 
 public:
-    explicit FatalErrorException(std::string message) :
-        message_(std::move(message)) { this->message(); }
+    explicit FatalErrorException(std::string message) : message_(std::move(message)) { this->message(); }
 };
