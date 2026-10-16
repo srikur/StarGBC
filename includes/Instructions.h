@@ -221,7 +221,7 @@ private:
             if (interrupts_.interrupt_master_enable)
                 --cpu.pc();
         } else {
-            cpu.haltBug(false);
+            cpu.haltBug(cpu.bus_.gpu_.hdma.block_requested);
             cpu.halted(true);
         }
         cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
@@ -597,6 +597,7 @@ private:
         const bool speedSwitchRequested = cpu.bus_.prepareSpeedShift && (key1 & 0x01);
         if (speedSwitchRequested) {
             if (cpu.mCycleCounter() == 2) {
+                cpu.sample_speed_switch_dma();
                 cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
                 return false;
             }

@@ -89,7 +89,7 @@ void Gameboy::ApplyButtons(const uint8_t buttons) {
 const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
 
 bool Gameboy::LoadedStateValid() const {
-    return gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
+    return gpu_.dmg_palette_sampling <= DmgPaletteSampling::NewValue && gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
            gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) && gpu_.doubleSpeed == (bus_.speed == Speed::Double) &&
            gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() && gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 &&
            gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 && cartridge_.BankingStateValid() &&
@@ -103,7 +103,7 @@ bool Gameboy::LoadedStateValid() const {
 uint32_t Gameboy::AdvanceMCycle() {
     const auto dot = [&](const unsigned phase) {
         if (phase == 3)
-            cpu_.SampleRunningInterrupts();
+            cpu_.sample_running_inputs();
         if (phase == 1)
             cpu_.SampleHaltInterrupts();
         timer_.Tick(Speed::Regular);
@@ -134,7 +134,7 @@ uint32_t Gameboy::AdvanceMCycle() {
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
-                cpu_.halted(false);
+                cpu_.halted(false, true);
                 if (observations_ && wasHalted)
                     observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
             }
@@ -157,7 +157,7 @@ uint32_t Gameboy::AdvanceMCycle() {
 uint32_t Gameboy::AdvanceMCycleDouble() {
     const auto cycle = [&](const unsigned phase) {
         if (phase == 3)
-            cpu_.SampleRunningInterrupts();
+            cpu_.sample_running_inputs();
         if (phase == 1)
             cpu_.SampleHaltInterrupts();
         timer_.Tick(Speed::Double);
@@ -195,7 +195,7 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
-                cpu_.halted(false);
+                cpu_.halted(false, true);
                 if (observations_ && wasHalted)
                     observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
             }
@@ -230,7 +230,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
             return 1;
         }
         if ((cpuTickPhase_ & 3) == 3)
-            cpu_.SampleRunningInterrupts();
+            cpu_.sample_running_inputs();
         if ((cpuTickPhase_ & 3) == 1)
             cpu_.SampleHaltInterrupts();
         timer_.Tick(bus_.speed);
@@ -253,7 +253,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
-                cpu_.halted(false);
+                cpu_.halted(false, true);
                 if (observations_ && wasHalted)
                     observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
             }
@@ -267,7 +267,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     }
     const bool evenCycle = masterCycles % 2 == 0;
     if ((cpuTickPhase_ & 3) == 3)
-        cpu_.SampleRunningInterrupts();
+        cpu_.sample_running_inputs();
     if ((cpuTickPhase_ & 3) == 1)
         cpu_.SampleHaltInterrupts();
     timer_.Tick(bus_.speed);
@@ -298,7 +298,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
             bus_.speedSwitchHalt = 0;
         else if (bus_.speedSwitchHalt == 0) {
             const bool wasHalted = cpu_.IsHalted();
-            cpu_.halted(false);
+            cpu_.halted(false, true);
             if (observations_ && wasHalted)
                 observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::Halt, 0, false);
         }

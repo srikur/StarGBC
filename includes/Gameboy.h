@@ -22,6 +22,8 @@ struct GameboySettings {
     bool noAudio{false};
     bool colorCorrection{true};
     ExecutionPolicy executionPolicy{ExecutionPolicy::Optimized};
+    DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
+    bool force_cgb_mode{false};
 };
 
 class Gameboy {
@@ -35,9 +37,10 @@ public:
         initialSettings_(settings), romPath_(settings.romName), biosPath_(settings.biosPath), rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
         joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_),
         gpu_(interrupts_, settings.colorCorrection), bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
-        cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_), instructions_(registers_, interrupts_),
+        cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_, settings.force_cgb_mode), instructions_(registers_, interrupts_),
         executionPolicy_(settings.executionPolicy) {
         timer_.serial = &serial_;
+        gpu_.dmg_palette_sampling = settings.dmg_palette_sampling;
     }
 
     Gameboy(const Gameboy &other) = delete;

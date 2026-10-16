@@ -58,6 +58,7 @@ struct Sweep {
     // computed addend to the frequency, then schedules a recalculation
     // (and overflow check) a few 1MHz ticks later
     uint8_t countdown{0}; // 128Hz counter, triggers at 7
+    uint8_t counter_reload_delay{0};
     uint8_t calcCountdown{0}; // 1MHz delay until the recalculation
     uint8_t calcReloadTimer{0}; // 1MHz delay before calcCountdown may run
     uint16_t lengthAddend{0};
@@ -84,6 +85,7 @@ struct Envelope {
     // zero on an active channel it reloads to the pace and latches the clock;
     // the volume tick then fires on the next DIV event
     uint8_t volumeCountdown{0};
+    uint8_t counter_reload_delay{0};
     uint8_t currentVolume{0};
     bool clock{false};
     bool shouldLock{false};
@@ -159,6 +161,8 @@ struct Channel1 final : Channel {
     // trigger delay depends on the 1MHz phase (lfDiv) at the write
     uint16_t sampleCountdown{0xFFFF};
     uint8_t trigDelay{0};
+    uint8_t frequency_reload_delay{0};
+    uint16_t frequency_reload_value{0};
     // Blocks sweep shadow/addend updates right after a trigger (2MHz ticks)
     uint8_t restartHold{0};
     bool sampleSurpressed{false};
@@ -166,9 +170,10 @@ struct Channel1 final : Channel {
     bool justReloaded{false};
     uint8_t sampleOut{0};
     uint8_t dutyStep{0};
+    uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
     void TickLength();
 
@@ -188,9 +193,10 @@ struct Channel1 final : Channel {
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                   bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -202,14 +208,17 @@ struct Channel2 final : Channel {
 
     uint16_t sampleCountdown{0xFFFF};
     uint8_t trigDelay{0};
+    uint8_t frequency_reload_delay{0};
+    uint16_t frequency_reload_value{0};
     bool sampleSurpressed{false};
     bool didTick{false};
     bool justReloaded{false};
     uint8_t sampleOut{0};
     uint8_t dutyStep{0};
+    uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
     void TickLength();
 
@@ -219,11 +228,12 @@ struct Channel2 final : Channel {
 
     void UpdateOutput();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                   bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -345,6 +355,7 @@ class Audio {
     // &7==7 the envelope countdowns
     uint8_t frameSeqStep{0};
     bool speedSwitchFrameSeqDelay{false};
+    uint8_t speed_switch_pause{0};
     uint8_t pcm12Mask_{0xFF};
     SkipState skipState{SkipState::Inactive};
     uint32_t tickCounter{0};
@@ -383,6 +394,10 @@ class Audio {
     [[=NotStateAware]] uint64_t emissionTick_{};
     [[=NotStateAware]] bool optimizedExecution_{true};
 
+    [[nodiscard]] uint32_t mixer_registers() const;
+
+    [[nodiscard]] bool mixer_needs_update() const;
+
     void InitBandLimitedTable();
 
     void BandLimitedUpdate(int channel, double left, double right, int phase);
@@ -398,8 +413,11 @@ public:
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
 
     void OnSpeedSwitch(bool doubleSpeed) {
-        if (doubleSpeed && audioEnabled)
+        CatchUp();
+        if (doubleSpeed && audioEnabled) {
             speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
+            speed_switch_pause = 1;
+        }
     }
 
     explicit Audio(const bool noAudio = false) : emulatorAudioDisabled(noAudio) {
@@ -422,6 +440,8 @@ public:
         model_ = model;
         hasEarlyPcmGlitch_ = HasEarlyCgbPcmGlitch(model);
     }
+
+    void initialize_post_boot();
 
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
@@ -454,6 +474,10 @@ public:
     }
 
     void Tick() {
+        if (speed_switch_pause) {
+            --speed_switch_pause;
+            return;
+        }
         if (observations_ && pendingTicks_ == 0)
             pendingFirstTick_ = observations_->position.tick;
         ++pendingTicks_;

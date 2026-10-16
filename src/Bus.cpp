@@ -95,7 +95,8 @@ uint8_t Bus::ReadOAM(const uint16_t address, const ComponentSource source) const
 void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentSource source) const {
     if (source == ComponentSource::CPU)
         HandleOAMCorruption(address, CorruptionType::Write);
-    const bool blocked = source == ComponentSource::CPU ? gpu_.CpuOamWriteBlocked() : gpu_.stat.mode == GPUMode::MODE_3;
+    const bool blocked = source == ComponentSource::CPU ? gpu_.CpuOamWriteBlocked()
+                                                       : source != ComponentSource::DMA && gpu_.stat.mode == GPUMode::MODE_3;
     if (blocked)
         return;
     if (address < 0xFEA0) {
@@ -162,7 +163,7 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
     if (address >= 0xFE00 && address <= 0xFEFF)
         return source == ComponentSource::CPU ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
     if (address == BACKGROUND_PALETTE_DATA || address == OBJ_PALETTE_DATA)
-        return false;
+        return (!cgbMode && !bootromRunning) || gpu_.cpu_palette_blocked();
     return false;
 }
 
@@ -182,8 +183,8 @@ u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
             if (IsCgb(gpu_.model) && DmaBusFor(dma_.startAddress) == 1) {
                 gpu_.oam[dma_.currentByte - 1] = 0;
             }
-            return value;
         }
+        return value;
     }
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
         DmaBusFor(address) == DmaBusFor(dma_.startAddress)) {
@@ -381,13 +382,13 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
             timer_.WriteByte(address, value, speed);
             break;
         case 0xFF0F:
-            interrupts_.interrupt_flag = value;
-            interrupts_.interrupt_flag_delayed &= value | ~interrupts_.interrupt_visible_pending;
-            interrupts_.interrupt_visible_pending &= value;
+            interrupts_.write_flag(value, speed == Speed::Double);
             break;
-        case 0xFF10 ... 0xFF3F:
-            audio_.WriteByte(address, value, timer_.divCounter & (speed == Speed::Double ? 0x2000 : 0x1000), speed == Speed::Double);
+        case PULSE1_SWEEP ... WAVE_RAM_END: {
+            const auto startup_divider = timer_.divCounter + 4;
+            audio_.WriteByte(address, value, startup_divider & (speed == Speed::Double ? 0x2000 : 0x1000), speed == Speed::Double);
             break;
+        }
         case 0xFF40 ... 0xFF4F: {
             if (address == 0xFF46) {
                 dma_.Set(value);
@@ -412,7 +413,9 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
         }
         case 0xFF51 ... 0xFF55:
             if (cgbMode) {
-                gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), gpu_.stat.mode == GPUMode::MODE_0);
+                const bool immediate_start = gpu_.stat.mode == GPUMode::MODE_0 &&
+                                            (gpu_.LCDDisabled() || gpu_.scanlineCounter < (gpu_.doubleSpeed ? 454u : 453u));
+                gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), immediate_start);
             }
             break;
         case 0xFF56:
@@ -469,6 +472,9 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
 }
 
 void Bus::UpdateDMAWork() {
+    if (gpu_.cpu_halted && !dma_.halt_step_pending)
+        return;
+    dma_.halt_step_pending = false;
     if (dma_.transferComplete) {
         dma_.transferActive = false;
         dma_.transferComplete = false;
@@ -495,17 +501,58 @@ void Bus::UpdateDMAWork() {
     if (observations && dma_.ticks == DMA::STARTUP_CYCLES + 1)
         observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
                            diagnostics::Initiator::DMA);
-    gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+    const bool shared_bus = IsCgb(gpu_.model) && gpu_.hdma.transferringBlock && gpu_.hdma.release_delay == 0;
+    const uint16_t source = shared_bus ? gpu_.hdma.hdmaSource : dma_.startAddress + dma_.currentByte;
+    const uint8_t offset = shared_bus ? source & 0xFF : dma_.currentByte;
+    const uint8_t value = shared_bus ? (gpu_.hdma.step == HDMAStep::Write ? gpu_.hdma.byte : ReadHDMASource(source)) : ReadDMASource(source);
+    dmaReadByte = value;
+    if (offset < DMA::TOTAL_BYTES) {
+        gpu_.oam_dma_write_offset = offset;
+        gpu_.oam_dma_old_value = gpu_.oam[offset];
+    }
+    WriteOAM(OAM_BEGIN + offset, value, ComponentSource::DMA);
     if (observations)
-        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, 0xFE00 + dma_.currentByte, gpu_.oam[dma_.currentByte],
-                           dma_.startAddress + dma_.currentByte, diagnostics::Initiator::DMA);
+        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, OAM_BEGIN + offset, value, source,
+                           diagnostics::Initiator::DMA);
     ++dma_.currentByte;
     if (dma_.currentByte == DMA::TOTAL_BYTES) {
         dma_.transferComplete = true;
     }
 }
 
+bool Bus::hdma_hblank_active() const {
+    return gpu_.hdma.hdmaActive && gpu_.hdma.hdmaMode == HDMAMode::HDMA && gpu_.hblank && !gpu_.vblank &&
+           gpu_.scanlineCounter > gpu_.mode3EndDot_ + 1u && gpu_.scanlineCounter < (gpu_.doubleSpeed ? 454u : 456u);
+}
+
+void Bus::set_cpu_halted(const bool value, const bool preserve_dma_request, const bool immediate_wake) const {
+    auto &hdma = gpu_.hdma;
+    if (gpu_.cpu_halted == value)
+        return;
+    const bool hblank_active =
+            immediate_wake ? hdma_hblank_active() : hdma.hdmaActive && (value ? hdma.entry_hblank_sample : hdma.wake_hblank_sample);
+    gpu_.cpu_halted = value;
+    dma_.halt_step_pending = false;
+    if (value) {
+        hdma.halt_hblank_active = hblank_active;
+        hdma.halt_request_pending = hdma.block_requested && !preserve_dma_request;
+        hdma.block_requested &= preserve_dma_request;
+    } else {
+        if (hdma.halt_request_pending || (hblank_active && !hdma.halt_hblank_active))
+            hdma.block_requested = true;
+        else if (hdma.halt_hblank_active && hdma.hdmaActive && gpu_.hblank && !gpu_.vblank)
+            hdma.hblankBlockFinished = true;
+        hdma.halt_hblank_active = false;
+    }
+}
+
 void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
+    if (gpu_.hdma.release_delay) {
+        if (--gpu_.hdma.release_delay == 0)
+            gpu_.hdma.transferringBlock = false;
+        return;
+    }
+    const uint16_t destination = VRAM_BEGIN | (gpu_.hdma.hdmaDestination & 0x1FFF);
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
             if (!gpu_.hdma.transferringBlock) {
@@ -517,9 +564,9 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
-                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.WriteVRAM(destination, gpu_.hdma.byte);
                 if (observations)
-                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination, gpu_.hdma.byte,
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, destination, gpu_.hdma.byte,
                                        gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
@@ -529,36 +576,43 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
                     gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
+                    if (gpu_.hdma.hdmaDestination == 0) {
+                        gpu_.hdma.hdmaActive = false;
+                        gpu_.hdma.hdma5 |= 0x80;
+                    }
                 }
             }
-            if (gpu_.hdma.hdmaRemain == 0) {
+            if (gpu_.hdma.hdmaRemain == 0 || !gpu_.hdma.hdmaActive) {
                 gpu_.hdma.hdmaActive = false;
-                gpu_.hdma.transferringBlock = false;
+                gpu_.hdma.release_delay = gpu_.doubleSpeed ? 3 : 5;
             }
             return;
         }
         case HDMAMode::HDMA: {
-            // Once a block starts, all sixteen bytes transfer even if the PPU enters the next scanline
             if (!gpu_.hdma.transferringBlock) {
-                // Delay is always 4 cycles whether in single or double speed mode
-                if (gpu_.hdma.hdmaStartDelay > 0) {
-                    gpu_.hdma.hdmaStartDelay--;
-                    return;
+                if (!gpu_.hdma.block_requested) {
+                    if (gpu_.cpu_halted)
+                        return;
+                    if (gpu_.hdma.hdmaStartDelay > 0) {
+                        --gpu_.hdma.hdmaStartDelay;
+                        return;
+                    }
+                    if (!gpu_.hblank || gpu_.vblank || speedShiftActive)
+                        return;
+                    if (!gpu_.LCDDisabled()) {
+                        if (gpu_.hdma.hblankBlockFinished || gpu_.scanlineCounter <= gpu_.mode3EndDot_ + (gpu_.doubleSpeed ? 0u : 1u) ||
+                            gpu_.scanlineCounter >= 455)
+                            return;
+                    } else if (!gpu_.hdma.singleBlockTransfer) {
+                        return;
+                    }
+                    gpu_.hdma.block_requested = true;
+                    if (!gpu_.LCDDisabled() && gpu_.scanlineCounter == gpu_.mode3EndDot_ + (gpu_.doubleSpeed ? 1u : 2u))
+                        return;
                 }
-                // No new block outside HBlank or during a speed shift
-                if (!gpu_.hblank || gpu_.vblank || speedShiftActive)
+                if (!cpuAtInstructionBoundary || speedShiftActive)
                     return;
-                // When LCD is on: one block per H-blank period
-                if (!gpu_.LCDDisabled() && gpu_.hdma.hblankBlockFinished)
-                    return;
-                // HBlank DMA request follows the PPU mode-0 transition by 2 dots
-                if (!gpu_.LCDDisabled() && gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u)
-                    return;
-                // When LCD is off: only one block transfers until LCD turns back on
-                if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer)
-                    return;
-
-                // We're actively transferring
+                gpu_.hdma.block_requested = false;
                 gpu_.hdma.transferringBlock = true;
             }
 
@@ -566,9 +620,9 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
-                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.WriteVRAM(destination, gpu_.hdma.byte);
                 if (observations)
-                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination, gpu_.hdma.byte,
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, destination, gpu_.hdma.byte,
                                        gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
@@ -577,10 +631,20 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.singleBlockTransfer = false;
                     gpu_.hdma.hblankBlockFinished = true;
-                    gpu_.hdma.transferringBlock = false; // Block complete, CPU can resume
+                    gpu_.hdma.release_delay = gpu_.hdma.halt_request_pending ? 1 : (gpu_.doubleSpeed ? 3 : 5);
+                    gpu_.hdma.halt_request_pending = false;
                     gpu_.hdma.bytesThisBlock = 0;
-                    gpu_.hdma.hdmaRemain -= 1;
-                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
+                    if (gpu_.cpu_halted) {
+                        gpu_.hdma.hdmaActive = false;
+                        gpu_.hdma.hdma5 |= 0x80;
+                    } else {
+                        gpu_.hdma.hdmaRemain -= 1;
+                        gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) | (gpu_.hdma.hdmaActive ? 0 : 0x80) : 0xFF;
+                    }
+                    if (gpu_.hdma.hdmaDestination == 0) {
+                        gpu_.hdma.hdmaActive = false;
+                        gpu_.hdma.hdma5 |= 0x80;
+                    }
                 }
             }
             if (gpu_.hdma.hdmaRemain == 0x00)

@@ -25,7 +25,8 @@ namespace diagnostics {
         SpriteFetch,
         SpriteAlignment,
         FifoStarvation,
-        RestoredWithoutHistory
+        RestoredWithoutHistory,
+        WindowFetch
     };
 
     struct PixelOrigin {

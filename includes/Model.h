@@ -29,6 +29,8 @@ enum class Model : uint8_t {
     AGBBE,
 };
 
+enum class DmgPaletteSampling : uint8_t { BitwiseOr, NewValue };
+
 template<typename E>
     requires std::is_enum_v<E>
 constexpr std::string_view model_name(E value) {

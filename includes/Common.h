@@ -47,6 +47,53 @@ static constexpr u16 BACKGROUND_PALETTE_DATA = 0xFF69;
 static constexpr u16 OBJ_PALETTE_INDEX = 0xFF6A;
 static constexpr u16 OBJ_PALETTE_DATA = 0xFF6B;
 
+static constexpr u16 SOUND_PANNING = 0xFF25;
+static constexpr u16 SOUND_CONTROL = 0xFF26;
+static constexpr u16 WAVE_RAM_BEGIN = 0xFF30;
+static constexpr u16 WAVE_RAM_END = 0xFF3F;
+
+static constexpr u16 PULSE1_ENVELOPE = 0xFF12;
+static constexpr u16 PULSE1_FREQUENCY_HIGH = 0xFF14;
+static constexpr u16 MASTER_VOLUME = 0xFF24;
+
+static constexpr u16 PULSE1_SWEEP = 0xFF10;
+static constexpr u16 PULSE2_REGISTERS_BEGIN = 0xFF15;
+
+static constexpr u16 INTERRUPT_FLAG = 0xFF0F;
+
+static constexpr u16 LCD_STATUS = 0xFF41;
+static constexpr u16 WINDOW_Y = 0xFF4A;
+static constexpr u16 HDMA_SOURCE_HIGH = 0xFF51;
+static constexpr u16 HDMA_SOURCE_LOW = 0xFF52;
+static constexpr u16 HDMA_DESTINATION_HIGH = 0xFF53;
+static constexpr u16 HDMA_DESTINATION_LOW = 0xFF54;
+static constexpr u16 HDMA_CONTROL = 0xFF55;
+
+static constexpr u16 WINDOW_X = 0xFF4B;
+
+static constexpr u16 SCANLINE_COMPARE = 0xFF45;
+
+static constexpr u16 VRAM_BANK = 0xFF4F;
+
+static constexpr u16 CURRENT_SCANLINE = 0xFF44;
+
+static constexpr u16 PULSE1_DUTY_LENGTH = 0xFF11;
+static constexpr u16 PULSE2_DUTY_LENGTH = 0xFF16;
+static constexpr u16 PULSE2_ENVELOPE = 0xFF17;
+static constexpr u16 PULSE2_FREQUENCY_HIGH = 0xFF19;
+static constexpr u16 WAVE_DAC_ENABLE = 0xFF1A;
+static constexpr u16 WAVE_LENGTH = 0xFF1B;
+static constexpr u16 WAVE_FREQUENCY_HIGH = 0xFF1E;
+static constexpr u16 NOISE_LENGTH = 0xFF20;
+static constexpr u16 NOISE_ENVELOPE = 0xFF21;
+static constexpr u16 NOISE_CONTROL = 0xFF23;
+
+static constexpr u16 DMG_BACKGROUND_PALETTE = 0xFF47;
+static constexpr u16 DMG_OBJ_PALETTE_0 = 0xFF48;
+static constexpr u16 DMG_OBJ_PALETTE_1 = 0xFF49;
+
+static constexpr u16 SPEED_SWITCH = 0xFF4D;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;

@@ -123,6 +123,12 @@ def reproduce(bundle, executable, output, trace_capacity=0, trace_begin=0, trace
             command.extend(map(str, (trace_capacity, trace_begin, trace_end)))
             if provenance_line is not None:
                 command.append(str(provenance_line))
+        sampling = spec.get("dmg_palette_sampling", "BitwiseOr")
+        if sampling not in ("BitwiseOr", "NewValue"):
+            raise ValueError("Unsupported DMG palette sampling setting")
+        command.append(f"--dmg-palette-sampling={sampling}")
+        if spec.get("force_cgb_mode", False):
+            command.append("--force-cgb-mode")
     else:
         if (spec["noBootrom"] or spec["realRTC"] or spec["noAudio"] or not spec["colorCorrection"]
                 or not 1 <= spec["intervals"] <= 1000000):

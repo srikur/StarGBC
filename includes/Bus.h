@@ -45,6 +45,7 @@ public:
     // Inline fast path: 3 of 4 calls only advance the phase counter, and the
     // 4th is idle unless a transfer is active or just finished
     void UpdateDMA() {
+        gpu_.oam_dma_write_offset = 0xFF;
         if (++dma_.dmaTickCounter % 4 != 0)
             return;
         dma_.dmaTickCounter = 0;
@@ -57,8 +58,13 @@ public:
 
     // Inline idle fast path; HDMA is inactive almost always
     void RunHDMA(const bool cpuAtInstructionBoundary) const {
-        if (!gpu_.hdma.hdmaActive || !gpu_.is_cgb)
+        if ((!gpu_.hdma.hdmaActive && !gpu_.hdma.block_requested && !gpu_.hdma.transferringBlock) || !gpu_.is_cgb)
             return;
+        if (cpuAtInstructionBoundary && gpu_.cpu_halted)
+            gpu_.hdma.wake_hblank_sample = gpu_.hdma.hblank_sample;
+        if (!gpu_.doubleSpeed || cpuAtInstructionBoundary)
+            gpu_.hdma.entry_hblank_sample = gpu_.hdma.hblank_sample;
+        gpu_.hdma.hblank_sample = hdma_hblank_active();
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork(cpuAtInstructionBoundary);
         if (observations && wasOwned != gpu_.hdma.ShouldHaltCPU())
@@ -67,6 +73,10 @@ public:
     }
 
     void RunHDMAWork(bool cpuAtInstructionBoundary) const;
+
+    void set_cpu_halted(bool value, bool preserve_dma_request = false, bool immediate_wake = false) const;
+
+    [[nodiscard]] bool hdma_hblank_active() const;
 
 
     void ChangeSpeed();

@@ -166,6 +166,8 @@ void CPU<BusT>::InitializeSystem() {
         bus_.WriteByte(address, effective, ComponentSource::CPU);
     }
 
+    bus_.audio_.initialize_post_boot();
+
     // Prevent DMA transfer of 128 blocks due to FF55 reading 0xFF
     bus_.gpu_.hdma.hdma5 = 0xFF;
 
@@ -206,6 +208,14 @@ void CPU<BusT>::ExecuteMicroOpValue(Instructions<Self> &instructions, const bool
     if (hdmaActive || locked_)
         return;
     if (!instrRunning) {
+        if (speed_switch_resume_pending && !halted_) {
+            speed_switch_resume_pending = false;
+            if (!speed_switch_prefetch_retained) {
+                SetInstructionLocation(pc_);
+                currentInstruction = bus_.ReadByte(pc_++, ComponentSource::CPU);
+            }
+            return;
+        }
         if (ProcessInterrupts())
             return;
         if (halted_)
@@ -244,6 +254,7 @@ void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
     prefixed = currentInstruction >> 8 == 0xCB;
     if (!prefixed)
         ++instructionsCompleted_;
+    const auto next_instruction_address = static_cast<uint16_t>(pc_ - 1);
     currentInstruction = nextInstruction_;
     mCycleCounter_ = 1;
     if (haltBug_) {
@@ -251,7 +262,7 @@ void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
         pc_ -= 1;
     }
     if (!prefixed)
-        SetInstructionLocation(pc_ - 1);
+        SetInstructionLocation(next_instruction_address);
     instructions.ResetState();
     instrRunning = false;
 }
@@ -281,6 +292,10 @@ uint8_t CPU<BusT>::InterruptAddress(const uint8_t bit) const {
 
 template<BusLike BusT>
 bool CPU<BusT>::ProcessInterrupts() {
+    if (halt_resume_prefetch_pending) {
+        halt_resume_prefetch_pending = false;
+        return false;
+    }
     if (prefixed)
         return false;
     using enum InterruptState;
@@ -291,21 +306,29 @@ bool CPU<BusT>::ProcessInterrupts() {
                 interrupts_.interrupt_master_enable = true;
                 icount_ = 0;
             }
+            if (halted_ && halt_entry_cycles) {
+                --halt_entry_cycles;
+                return false;
+            }
             // DMG samples HALT wake at T2 and running instructions at T4
-            // CGB VBlank reaches interrupt dispatch one M-cycle before its
-            // IME=0 HALT-wake path; STAT retains its own propagation delay
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
                                             ? (halted_ ? haltPending_ : runningPending_)
                                             : interrupts_.interrupt_enable &
                                                       ((interrupts_.interrupt_flag & ~0x0C) |
                                                        ((speedSwitchWakePending_ ? interrupts_.interrupt_flag : runningPending_) & 0x0C) |
-                                                       (interrupts_.interrupt_master_enable ? interrupts_.interrupt_visible_pending & 0x01 : 0)) &
+                                                       (interrupts_.interrupt_master_enable && (halted_ || bus_.gpu_.doubleSpeed) &&
+                                                                interrupts_.interrupt_set_delays[0] <= (bus_.gpu_.doubleSpeed ? 2 : 4)
+                                                                ? interrupts_.interrupt_visible_pending & 0x01
+                                                                : 0)) &
                                                       0x1F;
             if (pending == 0) {
                 return false;
             }
             if (halted_ && !interrupts_.interrupt_master_enable) {
-                halted_ = false;
+                speed_switch_resume_pending = false;
+                if (IsCgb(bus_.gpu_.model) && !speedSwitchWakePending_ && !halt_prefetch_retained)
+                    currentInstruction = bus_.ReadByte(pc_ - 1, ComponentSource::CPU);
+                halted(false);
                 speedSwitchWakePending_ = false;
                 return IsCgb(bus_.gpu_.model);
             }
@@ -316,14 +339,16 @@ bool CPU<BusT>::ProcessInterrupts() {
 
             if (halted_ && IsCgb(bus_.gpu_.model)) {
                 if (speedSwitchWakePending_) {
+                    speed_switch_resume_pending = false;
                     speedSwitchWakePending_ = false;
                     ++pc_;
                     return true;
                 }
-                halted_ = false;
+                halt_resume_prefetch_pending = halt_prefetch_retained;
+                halted(false);
                 return true;
             }
-            halted_ = false;
+            halted(false);
 
             interruptState = M2;
             interrupts_.interrupt_master_enable = false;
@@ -350,7 +375,7 @@ bool CPU<BusT>::ProcessInterrupts() {
         case M4: {
             // The vector is selected at the low-byte stack write. A newly
             // pending higher-priority source can replace the original request
-            const uint8_t newPending = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
+            const uint8_t newPending = interrupts_.interrupt_enable & (interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending) & 0x1F;
             if (!newPending) {
                 sp_--;
                 bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);

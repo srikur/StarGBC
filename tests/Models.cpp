@@ -211,3 +211,77 @@ TEST_CASE("models: early CGB envelope writes pass through an intermediate value"
         CHECK(audio.ch4.envelope.currentVolume == (early ? 3 : 2));
     }
 }
+
+TEST_CASE("apu: NR52 power-on captures the divider phase at its startup edge") {
+    struct StartupPhase {
+        unsigned boundary;
+        int offset;
+        bool high;
+    };
+    constexpr std::array<StartupPhase, 8> phases{{
+            {1, -5, false}, {1, -4, true}, {1, -1, true}, {1, 0, true},
+            {2, -5, true}, {2, -4, false}, {2, -1, false}, {2, 0, false},
+    }};
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array speed_values = {Speed::Regular, Speed::Double};
+    constexpr std::array optimizations = {false, true};
+    for (const auto [model, speed, optimized, phase] : std::views::cartesian_product(models, speed_values, optimizations, phases)) {
+        if (IsDmg(model) && speed == Speed::Double)
+            continue;
+
+
+        CAPTURE(ModelName(model));
+        CAPTURE(speed);
+        CAPTURE(optimized);
+        CAPTURE(phase.boundary);
+        CAPTURE(phase.offset);
+        Gameboy gameboy(settings(model, IsCgb(model)));
+        auto &bus = gameboy.[:busMember:];
+        bus.speed = speed;
+        bus.audio_.SetOptimizedExecution(optimized);
+        const auto write = [&](uint16_t address, uint8_t value) { bus.WriteByte(address, value, ComponentSource::CPU); };
+        const auto read_control = [&] { return bus.ReadByte(SOUND_CONTROL, ComponentSource::CPU); };
+        write(SOUND_CONTROL, 0);
+        const unsigned divider_bit = speed == Speed::Double ? 0x2000 : 0x1000;
+        const uint16_t divider = phase.boundary * divider_bit + phase.offset;
+        bus.timer_.divCounter = divider;
+        write(SOUND_CONTROL, 0x80);
+        CHECK(bus.timer_.divCounter == divider);
+        write(PULSE2_DUTY_LENGTH, 62);
+        write(PULSE2_ENVELOPE, 0xF0);
+        write(PULSE2_FREQUENCY_HIGH, 0xC0);
+        CHECK(read_control() == 0xF2);
+        bus.audio_.TickFrameSequencer();
+        CHECK(read_control() == 0xF2);
+        bus.timer_.divCounter = phase.high ? 0 : divider_bit;
+        write(SOUND_CONTROL, 0x80);
+        bus.audio_.TickFrameSequencer();
+        CHECK(read_control() == (phase.high ? 0xF0 : 0xF2));
+        bus.audio_.TickFrameSequencer();
+        CHECK(read_control() == 0xF0);
+    }
+}
+
+TEST_CASE("models: forced CGB startup preserves the ROM header and enables native registers") {
+    constexpr std::array models = {Model::CGB0, Model::CGBC, Model::CGBE};
+    constexpr std::array forced_values = {false, true};
+    for (const auto [model, forced] : std::views::cartesian_product(models, forced_values)) {
+        CAPTURE(model);
+        CAPTURE(forced);
+        Gameboy gameboy({.romName = "roms/acid/dmg-acid2.gb", .model = model, .noBootrom = true, .force_cgb_mode = forced});
+        auto &bus = gameboy.[:busMember:];
+        CHECK(gameboy.GetModel() == model);
+        CHECK(gameboy.IsInCgbMode() == forced);
+        CHECK(bus.gpu_.dmg_compat == !forced);
+        CHECK(bus.cartridge_.ReadByte(0x143) == 0);
+        bus.WriteByte(BACKGROUND_PALETTE_INDEX, 0, ComponentSource::CPU);
+        bus.WriteByte(BACKGROUND_PALETTE_DATA, 0x12, ComponentSource::CPU);
+        CHECK(bus.ReadByte(BACKGROUND_PALETTE_DATA, ComponentSource::CPU) == (forced ? 0x12 : 0xFF));
+        CHECK(bus.ReadByte(SPEED_SWITCH, ComponentSource::CPU) == (forced ? 0x7E : 0xFF));
+    }
+    constexpr std::array invalid_models = {Model::DMGB, Model::CGBC};
+    for (const auto model : invalid_models) {
+        GameboySettings invalid{.romName = "roms/acid/dmg-acid2.gb", .model = model, .noBootrom = model == Model::DMGB, .force_cgb_mode = true};
+        CHECK_THROWS_AS(Gameboy{invalid}, std::invalid_argument);
+    }
+}

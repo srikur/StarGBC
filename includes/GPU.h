@@ -81,6 +81,8 @@ public:
 
     void set_mode(GPUMode mode);
 
+    [[nodiscard]] uint8_t cgb_lyc_compare_line(unsigned lead) const;
+
     void initialize_palette_ram();
 
     void initialize_post_boot();
@@ -112,7 +114,7 @@ public:
     uint8_t spriteArrayHead_{0};
 
     [[nodiscard]] bool window_y_matched() const {
-        return windowTriggeredThisFrame || (is_cgb && currentLine == (wy_write_stage ? wy_trigger_old : windowY));
+        return windowTriggeredThisFrame || currentLine == (wy_write_stage ? wy_trigger_old : windowY);
     }
 
     bool windowTriggeredThisFrame{false};
@@ -139,6 +141,7 @@ public:
     // first sprite fetch overlaps its tile step with the background fetch tail,
     // so later fetches do their VRAM reads one dot later
     uint8_t spriteFetchWait_{0};
+    uint16_t sprite_alignment_end_x{};
     uint8_t spriteMergeDelay_{0};
     bool spriteFetchAbort_{false};
     bool spriteFetchedThisLine_{false};
@@ -147,11 +150,16 @@ public:
     // on a fresh transition into the match state, not on the match that keeps
     // holding while pixel output is stalled after a window activation
     bool windowMatchLatch_{false};
-    bool windowWasActiveThisLine_{false};
     bool windowEndPending_{false};
     uint8_t windowEndStage_{0};
     bool windowActivatePending_{false};
+    bool window_fetch_startup{};
+    bool window_pixel_stalled{};
+    uint8_t window_startup_discard{};
+    int16_t window_start_x{};
     bool windowPixel0Triggered_{false};
+    bool window_line_start_pending{};
+    bool window_line_start_counted{};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
     uint8_t savedBgTileNum_{0};
@@ -160,7 +168,7 @@ public:
     uint8_t savedBgTileDataHigh_{0};
     uint16_t savedBgLastAddress_{0};
 
-    uint8_t windowLineCounter_{0x00};
+    uint8_t windowLineCounter_{0xFF};
 
     FixedVector<Sprite, 10> spriteBuffer;
     uint8_t initialScrollXDiscard_{0x00};
@@ -194,6 +202,12 @@ public:
     uint64_t displayFrames_{};
     bool statTriggered{false};
     bool lycInterruptLine_{false};
+    uint8_t stat_irq_old{};
+    uint8_t stat_irq_delay{};
+    uint8_t m1_irq_delay{};
+    uint8_t lyc_irq_old{};
+    uint8_t lyc_irq_delay{};
+    uint8_t lyc_mode_delay{};
     bool m2IrqRaisedEarly{false};
     // First line after LCD enable: starts in mode 0, skips OAM scan, and
     // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
@@ -254,10 +268,13 @@ public:
     uint8_t clockPause_{0};
     bool doubleSpeed{false};
     uint8_t mode3EndDelay_{0};
+    uint8_t m0_irq_delay{};
+    bool m0_irq_active{};
     uint16_t mode3EndDot_{0};
     std::array<Pixel, 3> recentPixels_{};
     std::array<uint16_t, 3> recentPixelOffsets_{0xFFFF, 0xFFFF, 0xFFFF};
     Model model = Model::DMGB;
+    DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
     // Cached IsCgb(model): read dozens of times per dot, and the compiler
     // cannot hoist the range compares across non-inlined calls
     [[=NotStateAware]] bool is_cgb{false};
@@ -269,12 +286,19 @@ public:
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
     bool dmg_compat{false};
+    bool cpu_halted{};
     // Mirrored from the DMA unit each tick: an active OAM DMA blocks the
     // PPU's OAM scan (stale bus) and redirects tile/attr reads
     bool oam_dma_active{false};
     uint8_t oamDmaDest_{0};
+    uint8_t oam_dma_write_offset{0xFF};
+    uint8_t oam_dma_old_value{};
     uint8_t mode2YBus_{0xFF};
     uint8_t mode2XBus_{0xFF};
+    bool mode2_large_sprite{};
+    bool mode2_size_old{};
+    uint8_t mode2_size_delay{};
+    bool mode2_entry_valid{};
 
     void SetModel(const Model m) {
         model = m;
@@ -350,9 +374,9 @@ public:
 private:
     Interrupts &interrupts_;
 
-    [[nodiscard]] bool StatLineHigh() const;
+    [[nodiscard]] bool StatLineHigh(bool register_write = false, bool previous = false) const;
 
-    [[nodiscard]] bool StatMode0Visible(unsigned lead = 3) const;
+    [[nodiscard]] bool StatMode0Visible(unsigned lead = 3, bool interrupt = false) const;
 
     void Fetcher_StepSpriteFetch();
 
@@ -374,6 +398,10 @@ private:
 
     uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
 
+    [[nodiscard]] uint8_t sample_dmg_palette(const uint8_t previous, const uint8_t next) const {
+        return dmg_palette_sampling == DmgPaletteSampling::BitwiseOr ? previous | next : next;
+    }
+
     [[nodiscard]] uint32_t GetBackgroundColor(uint8_t color, uint8_t palette = 0) const;
 
     [[nodiscard]] uint32_t GetSpriteColor(uint8_t color, uint8_t palette) const;
@@ -381,6 +409,8 @@ private:
     void CheckForSpriteTrigger();
 
     void CheckForWindowTrigger();
+
+    void discard_background_for_window();
 
     static Attributes GetAttrsFrom(uint8_t byte);
 

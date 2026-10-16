@@ -20,6 +20,13 @@ struct HDMA {
     bool hdmaActive{};
     bool hblankBlockFinished{};
     bool singleBlockTransfer{};
+    bool block_requested{};
+    bool halt_request_pending{};
+    bool halt_hblank_active{};
+    bool entry_hblank_sample{};
+    bool hblank_sample{};
+    bool wake_hblank_sample{};
+    uint8_t release_delay{};
     bool transferringBlock{}; // True when actively transferring bytes (CPU should halt)
 
     void WriteHDMA(uint16_t, uint8_t, bool, bool);
