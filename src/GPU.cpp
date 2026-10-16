@@ -23,9 +23,11 @@ void GPU::Observe(const diagnostics::EventKind kind, const uint16_t address, con
 void GPU::ObserveStall(const diagnostics::StallReason reason) const {
     Observe(diagnostics::EventKind::PixelStall, pixelsDrawn, static_cast<uint32_t>(reason), backgroundQueue.size());
     if (provenance) {
-        const auto explanation = reason == diagnostics::StallReason::FifoStarvation    ? diagnostics::PipelineReason::FifoStarvation
-                                 : reason == diagnostics::StallReason::SpriteAlignment ? diagnostics::PipelineReason::SpriteAlignment
-                                                                                       : diagnostics::PipelineReason::SpriteFetch;
+        const auto explanation = reason == diagnostics::StallReason::FifoStarvation
+                                     ? diagnostics::PipelineReason::FifoStarvation
+                                     : reason == diagnostics::StallReason::SpriteAlignment
+                                     ? diagnostics::PipelineReason::SpriteAlignment
+                                     : diagnostics::PipelineReason::SpriteFetch;
         provenance->Pipeline(pixelsDrawn, currentLine, explanation);
     }
 }
@@ -228,7 +230,7 @@ void GPU::Update() {
         // arms a delayed-write stage (writes clear lcdOffIdle_)
         if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scyJustApplied_ &&
             (bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) ==
-                    0) {
+            0) {
             lcdOffIdle_ = true;
         }
         return;
@@ -312,7 +314,8 @@ void GPU::Update() {
                 }
                 break;
             }
-        } break;
+        }
+        break;
         default:
             break;
     }
@@ -322,7 +325,8 @@ void GPU::Update() {
     // A condition that stays true across a boundary (hblank into a new line,
     // LYC held while modes cycle) never re-fires
     const bool statLine = StatLineHigh();
-    if (!is_cgb && !lcdEnableLine0_ && !statTriggered && statLine && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.enable_m0_interrupt) {
+    if (!is_cgb && !lcdEnableLine0_ && !statTriggered && statLine && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.
+        enable_m0_interrupt) {
         interrupts_.set_after(InterruptType::LCDStat, 3, true);
     }
     statTriggered = statLine;
@@ -951,7 +955,9 @@ void GPU::Fetcher_StepSpriteFetch() {
             // takeover+2 and takeover+4, with the merge dot unchanged. Each read
             // samples the OBJ size bit independently, so an LCDC write between
             // them mixes rows from two different tiles
-            const unsigned oamAddress = oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0 ? (oamDmaDest_ & ~1) : (sprite.sprite_num / 2) * 4 + 2;
+            const unsigned oamAddress = oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0
+                                            ? (oamDmaDest_ & ~1)
+                                            : (sprite.sprite_num / 2) * 4 + 2;
             sprite.tile_index = oam[oamAddress];
             Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tile_index,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteOam));
@@ -963,8 +969,9 @@ void GPU::Fetcher_StepSpriteFetch() {
                                            .tile = sprite.tile_index,
                                            .attributes = oam[oamAddress + 1],
                                            .bank = static_cast<uint8_t>(is_cgb && sprite.attributes.vram_bank),
-                                           .palette = is_cgb && !dmg_compat ? sprite.attributes.palette_number_cgb
-                                                                           : static_cast<uint8_t>(sprite.attributes.palette_number_dmg),
+                                           .palette = is_cgb && !dmg_compat
+                                                          ? sprite.attributes.palette_number_cgb
+                                                          : static_cast<uint8_t>(sprite.attributes.palette_number_dmg),
                                            .oamIndex = static_cast<uint8_t>(sprite.sprite_num / 2),
                                            .spriteX = sprite.x,
                                            .spriteY = sprite.y,
@@ -1318,10 +1325,13 @@ bool GPU::StatMode0Visible(const unsigned lead) const {
     if (remaining > lead)
         return false;
     if (isFetchingWindow_ && fetcherTileX_ == 0 && backgroundQueue.empty()) {
-        const unsigned fetchDots = fetcherState_ == FetcherState::GetTile           ? 6
-                                   : fetcherState_ == FetcherState::GetTileDataLow  ? 4
-                                   : fetcherState_ == FetcherState::GetTileDataHigh ? 2
-                                                                                    : 0;
+        const unsigned fetchDots = fetcherState_ == FetcherState::GetTile
+                                       ? 6
+                                       : fetcherState_ == FetcherState::GetTileDataLow
+                                       ? 4
+                                       : fetcherState_ == FetcherState::GetTileDataHigh
+                                       ? 2
+                                       : 0;
         return remaining + fetchDots + fetcherDelay_ <= lead;
     }
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdcWriteStage == 1 ? lcdcPending : lcdc);
@@ -1581,11 +1591,12 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         case 0xFF43:
             // The fine-scroll consumers see an SCX write immediately, but the
             // fetcher's tile-map read keeps seeing the old value for two dots
-            if (!is_cgb && stat.mode == GPUMode::MODE_3 && initialSCXSet && !isFetchingWindow_ && !LCDDisabled()) {
+            if (stat.mode == GPUMode::MODE_3 && initialSCXSet && !isFetchingWindow_ && !LCDDisabled()) {
                 // Fine scrolling ends when the startup pixel counter matches
                 // SCX. A write after the new low bits have already passed
                 // wraps the comparison to the next group of eight dots
-                const int phase = static_cast<int>(scanlineCounter) - (lcdEnableLine0_ ? 83 : 84);
+                const int fineStart = is_cgb ? (lcdEnableLine0_ ? (lcdStartDoubleSpeed_ ? 85 : 84) : 86) : (lcdEnableLine0_ ? 83 : 84);
+                const int phase = static_cast<int>(scanlineCounter) - fineStart;
                 if (phase < initialScrollXFine_) {
                     const int fine = phase < 0 ? value & 7 : phase + 1 + ((value - phase - 1) & 7);
                     initialScrollXDiscard_ += fine - initialScrollXFine_;
