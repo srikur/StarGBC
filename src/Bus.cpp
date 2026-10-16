@@ -95,7 +95,8 @@ uint8_t Bus::ReadOAM(const uint16_t address, const ComponentSource source) const
 void Bus::WriteOAM(const uint16_t address, const uint8_t value, const ComponentSource source) const {
     if (source == ComponentSource::CPU)
         HandleOAMCorruption(address, CorruptionType::Write);
-    const bool blocked = source == ComponentSource::CPU ? gpu_.CpuOamWriteBlocked() : gpu_.stat.mode == GPUMode::MODE_3;
+    const bool blocked = source == ComponentSource::CPU ? gpu_.CpuOamWriteBlocked()
+                                                       : source != ComponentSource::DMA && gpu_.stat.mode == GPUMode::MODE_3;
     if (blocked)
         return;
     if (address < 0xFEA0) {
@@ -498,12 +499,19 @@ void Bus::UpdateDMAWork() {
     if (observations && dma_.ticks == DMA::STARTUP_CYCLES + 1)
         observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, dma_.startAddress, true, 0,
                            diagnostics::Initiator::DMA);
-    gpu_.oam_dma_write_offset = dma_.currentByte;
-    gpu_.oam_dma_old_value = gpu_.oam[dma_.currentByte];
-    gpu_.oam[dma_.currentByte] = ReadDMASource(dma_.startAddress + dma_.currentByte);
+    const bool shared_bus = IsCgb(gpu_.model) && gpu_.hdma.transferringBlock && gpu_.hdma.release_delay == 0;
+    const uint16_t source = shared_bus ? gpu_.hdma.hdmaSource : dma_.startAddress + dma_.currentByte;
+    const uint8_t offset = shared_bus ? source & 0xFF : dma_.currentByte;
+    const uint8_t value = shared_bus ? (gpu_.hdma.step == HDMAStep::Write ? gpu_.hdma.byte : ReadHDMASource(source)) : ReadDMASource(source);
+    dmaReadByte = value;
+    if (offset < DMA::TOTAL_BYTES) {
+        gpu_.oam_dma_write_offset = offset;
+        gpu_.oam_dma_old_value = gpu_.oam[offset];
+    }
+    WriteOAM(OAM_BEGIN + offset, value, ComponentSource::DMA);
     if (observations)
-        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, 0xFE00 + dma_.currentByte, gpu_.oam[dma_.currentByte],
-                           dma_.startAddress + dma_.currentByte, diagnostics::Initiator::DMA);
+        observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, OAM_BEGIN + offset, value, source,
+                           diagnostics::Initiator::DMA);
     ++dma_.currentByte;
     if (dma_.currentByte == DMA::TOTAL_BYTES) {
         dma_.transferComplete = true;
