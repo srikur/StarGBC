@@ -1125,7 +1125,7 @@ void GPU::Fetcher_StepSpriteFetch() {
             const unsigned oamAddress = oam_dma_active && !cpu_halted && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0
                                                 ? (oamDmaDest_ & ~1)
                                                 : (sprite.sprite_num / 2) * 4 + 2;
-            sprite.tile_index = oam[oamAddress];
+            mode2YBus_ = sprite.tile_index = oam[oamAddress];
             Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tile_index,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteOam));
             sprite.attributes = GetAttrsFrom(oam[oamAddress + 1]);

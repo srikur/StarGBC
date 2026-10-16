@@ -1276,3 +1276,42 @@ TEST_CASE("ppu: LCD palette sampling changes the transient shade without shiftin
         CHECK(gpu.GetScreenData()[42] == 0xFF606060u);
     }
 }
+
+
+TEST_CASE("ppu: sprite tile reads drive the position bus retained during OAM DMA") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array<uint8_t, 2> tile_values = {0, 27};
+    for (const auto [model, double_speed, tile] : std::views::cartesian_product(models, speeds, tile_values)) {
+        if (model == Model::DMGB && double_speed)
+            continue;
+
+        CAPTURE(ModelName(model));
+        CAPTURE(double_speed);
+        CAPTURE(tile);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.doubleSpeed = double_speed;
+        gpu.lcdc = 0x93;
+        gpu.currentLine = 10;
+        gpu.oam.fill(0xA0);
+        gpu.oam[156] = 26;
+        gpu.oam[157] = 24;
+        gpu.oam[158] = tile;
+        prime_dmg_oam_scan(gpu);
+        unsigned elapsed = 0;
+        while (gpu.stat.mode != GPUMode::MODE_0 && elapsed++ < 456)
+            gpu.Update();
+        REQUIRE(elapsed < 456);
+        REQUIRE(gpu.spriteFetchedThisLine_);
+        gpu.oam_dma_active = true;
+        elapsed = 0;
+        while ((gpu.currentLine != 11 || gpu.scanlineCounter < 84) && elapsed++ < 456)
+            gpu.Update();
+        REQUIRE(elapsed < 456);
+        CHECK(gpu.spriteBuffer.size() == (tile == 27 ? 10u : 0u));
+        for (const auto &sprite : gpu.spriteBuffer)
+            CHECK(sprite.y == 11);
+    }
+}
