@@ -13,7 +13,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
             hdmaSource = (hdmaSource & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF53:
-            hdmaDestination = 0x8000 | ((static_cast<uint16_t>(value & 0x1F) << 8) | (hdmaDestination & 0xF0));
+            hdmaDestination = (static_cast<uint16_t>(value) << 8) | (hdmaDestination & 0xF0);
             break;
         case 0xFF54:
             hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);

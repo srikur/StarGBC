@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include "Gameboy.h"
+#include "diagnostics/Trace.h"
 
 namespace {
     template<class T>
@@ -235,5 +236,67 @@ TEST_CASE("HALT suspends HBlank DMA until the CPU wakes") {
         CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0xFF);
         for (auto offset{0_u16}; offset < 16; ++offset)
             CHECK(gameboy.DebugPeek(VRAM_BEGIN + offset) == offset + 1);
+    }
+}
+
+TEST_CASE("dma: VRAM address wrapping retains the selected bank and full destination counter") {
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array modes = {HDMAMode::GDMA, HDMAMode::HDMA};
+    constexpr std::array<uint8_t, 2> bank_values = {0, 1};
+    constexpr std::array<uint16_t, 4> start_values = {0x1FF0, 0x9FF0, 0xDFF0, 0xFFF0};
+    for (const auto [policy, double_speed, mode, bank, start] : std::views::cartesian_product(policies, speeds, modes, bank_values, start_values)) {
+        CAPTURE(policy);
+        CAPTURE(double_speed);
+        CAPTURE(mode);
+        CAPTURE(bank);
+        CAPTURE(start);
+        const unsigned length = start == 0xFFF0 ? 16 : 32;
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        bus.WriteByte(VRAM_BANK, bank, ComponentSource::CPU);
+        bus.gpu_.vram.fill(0xA5);
+        for (auto i{0u}; i < 32; ++i)
+            gameboy.DebugPoke(WRAM_BEGIN + i, i + 1);
+        if (mode == HDMAMode::HDMA)
+            bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
+        diagnostics::TraceRecorder recorder(64, {
+            .components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::DMA),
+            .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::DmaTransfer)
+        });
+        gameboy.ObserveWith(&recorder.Context());
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{
+                 {HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, static_cast<uint8_t>(start >> 8)}, {HDMA_DESTINATION_LOW, 0xF0},
+                 {HDMA_CONTROL, mode == HDMAMode::HDMA ? 0x81 : 0x01}}})
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(3 * 912, policy));
+        REQUIRE_FALSE(bus.gpu_.hdma.hdmaActive);
+        CHECK_FALSE(bus.gpu_.hdma.ShouldHaltCPU());
+        CHECK(bus.gpu_.hdma.hdmaSource == WRAM_BEGIN + length);
+        CHECK(bus.gpu_.hdma.hdmaDestination == static_cast<uint16_t>(start + length));
+        CHECK(gameboy.InspectCpuRead(HDMA_CONTROL) == (length == 16 ? 0x80 : 0xFF));
+        const auto events = recorder.Events();
+        REQUIRE(events.size() == length);
+        for (auto i{0u}; i < length; ++i) {
+            const uint16_t address = i < 16 ? 0x9FF0 + i : VRAM_BEGIN + i - 16;
+            CAPTURE(i);
+            REQUIRE(gameboy.DebugPeek(address) == i + 1);
+            CHECK(events[i].address == address);
+            CHECK(events[i].bank == bank);
+            CHECK(events[i].detail == WRAM_BEGIN + i);
+            CHECK(events[i].value == i + 1);
+        }
+        if (length == 16)
+            CHECK(gameboy.DebugPeek(VRAM_BEGIN) == 0xA5);
+        bus.WriteByte(VRAM_BANK, bank ^ 1, ComponentSource::CPU);
+        for (auto address{VRAM_BEGIN}; address < 0xA000; ++address)
+            REQUIRE(gameboy.DebugPeek(address) == 0xA5);
+        gameboy.ObserveWith(nullptr);
     }
 }

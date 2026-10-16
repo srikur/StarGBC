@@ -539,6 +539,7 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
             gpu_.hdma.transferringBlock = false;
         return;
     }
+    const uint16_t destination = VRAM_BEGIN | (gpu_.hdma.hdmaDestination & 0x1FFF);
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
             if (!gpu_.hdma.transferringBlock) {
@@ -550,9 +551,9 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
-                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.WriteVRAM(destination, gpu_.hdma.byte);
                 if (observations)
-                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination, gpu_.hdma.byte,
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, destination, gpu_.hdma.byte,
                                        gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
@@ -562,9 +563,13 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
                     gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
+                    if (gpu_.hdma.hdmaDestination == 0) {
+                        gpu_.hdma.hdmaActive = false;
+                        gpu_.hdma.hdma5 |= 0x80;
+                    }
                 }
             }
-            if (gpu_.hdma.hdmaRemain == 0) {
+            if (gpu_.hdma.hdmaRemain == 0 || !gpu_.hdma.hdmaActive) {
                 gpu_.hdma.hdmaActive = false;
                 gpu_.hdma.release_delay = gpu_.doubleSpeed ? 3 : 5;
             }
@@ -599,9 +604,9 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 gpu_.hdma.byte = ReadHDMASource(gpu_.hdma.hdmaSource);
                 gpu_.hdma.step = HDMAStep::Write;
             } else {
-                gpu_.WriteVRAM(gpu_.hdma.hdmaDestination, gpu_.hdma.byte);
+                gpu_.WriteVRAM(destination, gpu_.hdma.byte);
                 if (observations)
-                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, gpu_.hdma.hdmaDestination, gpu_.hdma.byte,
+                    observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaTransfer, destination, gpu_.hdma.byte,
                                        gpu_.hdma.hdmaSource, diagnostics::Initiator::HDMA, false, gpu_.vramBank);
                 gpu_.hdma.bytesThisBlock++;
                 gpu_.hdma.step = HDMAStep::Read;
@@ -619,6 +624,10 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                     } else {
                         gpu_.hdma.hdmaRemain -= 1;
                         gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) | (gpu_.hdma.hdmaActive ? 0 : 0x80) : 0xFF;
+                    }
+                    if (gpu_.hdma.hdmaDestination == 0) {
+                        gpu_.hdma.hdmaActive = false;
+                        gpu_.hdma.hdma5 |= 0x80;
                     }
                 }
             }
