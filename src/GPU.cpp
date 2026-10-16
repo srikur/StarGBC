@@ -426,6 +426,14 @@ void GPU::Update() {
             interrupts_.set_after(InterruptType::LCDStat, 3, true);
         m2IrqRaisedEarly = true;
     }
+    if (is_cgb && doubleSpeed && currentLine < 143 && scanlineCounter == scanlineDuration - 1 && stat.enable_m2_interrupt) {
+        const auto previous_stat = stat_irq_delay > 1 ? stat_irq_old : stat.value();
+        const auto previous_lyc = lyc_mode_delay > 1 ? lyc_irq_old : lyc;
+        if (!(previous_stat & 8) && !((previous_stat & 0x40) && previous_lyc == currentLine)) {
+            interrupts_.set_after(InterruptType::LCDStat, 2, true);
+            statTriggered = true;
+        }
+    }
     if (lcdEnableLine0_ && scanlineCounter == (is_cgb ? (doubleSpeed ? 79u : 78u) : 79u) && stat.mode == GPUMode::MODE_0) {
         set_mode(GPUMode::MODE_3);
         pixelsDrawn = 0;
@@ -497,7 +505,7 @@ void GPU::Update() {
         const auto previous_lyc = lyc_mode_delay ? lyc_irq_old : lyc;
         const bool m2_blocked = (currentLine != 0 && (previous_stat & 8)) || (currentLine == 0 && (previous_stat & 0x10)) ||
                                ((previous_stat & 0x40) && previous_lyc == (currentLine == 0 ? 0 : currentLine - 1));
-        if (is_cgb && currentLine < 144 && stat.enable_m2_interrupt && !m2_blocked) {
+        if (is_cgb && (!doubleSpeed || currentLine == 0) && currentLine < 144 && stat.enable_m2_interrupt && !m2_blocked) {
             interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 3 : 5) : (doubleSpeed ? 1 : 4), true,
                                  currentLine == 0 ? (doubleSpeed ? 1 : 4) : 0);
             statTriggered = true;
