@@ -321,7 +321,7 @@ TEST_CASE("interrupts: CGB VBlank dispatch distinguishes normal and double speed
         interrupts.interrupt_flag = 0;
         interrupts.interrupt_enable = 1;
         interrupts.interrupt_master_enable = true;
-        interrupts.set_after(InterruptType::VBlank, double_speed ? 4 : 8, true, double_speed ? 2 : 4);
+        interrupts.set_after(InterruptType::VBlank, double_speed ? 4 : 8, true, double_speed ? 1 : 2);
         static_cast<void>(gameboy.AdvanceTicks(double_speed ? 4 : 8, policy));
         CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 1) == 1);
         CHECK_FALSE(interrupts.is_set(InterruptType::VBlank));
@@ -333,5 +333,47 @@ TEST_CASE("interrupts: CGB VBlank dispatch distinguishes normal and double speed
         static_cast<void>(gameboy.AdvanceTicks(double_speed ? 4 : 8, policy));
         CHECK(interrupts.interrupt_master_enable == (clear && (halted || !double_speed)));
         CHECK(cpu.InstructionsCompleted() == (halted ? (clear ? 1u : 0u) : double_speed ? 0u : clear ? 2u : 1u));
+    }
+}
+
+
+TEST_CASE("interrupts: VBlank visibility precedes dispatch and acknowledgment preserves STAT") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array acknowledge_values = {false, true};
+    for (const auto [model, double_speed, optimized, acknowledge] : std::views::cartesian_product(models, speeds, optimizations, acknowledge_values)) {
+        if (!IsCgb(model) && double_speed)
+            continue;
+
+        CAPTURE(model);
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        CAPTURE(acknowledge);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.doubleSpeed = double_speed;
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 143;
+        gpu.scanlineCounter = 450;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.stat.enable_m1_interrupt = true;
+        interrupts.interrupt_flag = 0;
+        const unsigned visible_at = !IsCgb(model) ? 3 : double_speed ? 6 : 7;
+        const unsigned dispatch_at = !IsCgb(model) ? 5 : double_speed ? 9 : 13;
+        for (auto dot{0u}; dot < 20; ++dot) {
+            for (auto tick{0u}; tick < (double_speed ? 2u : 1u); ++tick)
+                interrupts.tick_cpu();
+            gpu.Update();
+            CHECK(((interrupts.interrupt_flag | interrupts.interrupt_visible_pending) & 1) ==
+                  (!acknowledge && dot >= visible_at ? 1 : 0));
+            CHECK(interrupts.is_set(InterruptType::VBlank) == (!acknowledge && dot >= dispatch_at));
+            if (acknowledge && dot + 1 == visible_at)
+                interrupts.acknowledge(1, IsCgb(model));
+        }
+        CHECK(interrupts.is_set(InterruptType::LCDStat));
+        CHECK_FALSE(interrupts.delays_pending);
     }
 }

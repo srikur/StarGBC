@@ -340,8 +340,11 @@ void GPU::Update() {
         statTriggered = true;
     }
 
-    if (!is_cgb && currentLine == 143 && scanlineCounter == 453 && stat.enable_m1_interrupt && !(stat.value() & 0x28))
-        interrupts_.set_after(InterruptType::LCDStat, 2, true);
+    if (!is_cgb && currentLine == 143 && scanlineCounter == 453) {
+        interrupts_.set_after(InterruptType::VBlank, 2, true);
+        if (stat.enable_m1_interrupt && !(stat.value() & 0x28))
+            interrupts_.set_after(InterruptType::LCDStat, 2, true);
+    }
 
     if (is_cgb && doubleSpeed && currentLine == 143 && scanlineCounter == 454 && stat.enable_m2_interrupt && !statTriggered) {
         interrupts_.set_after(InterruptType::LCDStat, 1, true);
@@ -468,12 +471,8 @@ void GPU::Update() {
             frameReady = true;
             ++displayFrames_;
             hblank = false;
-            // On DMG the request reaches IF before the first half-cycle HALT
-            // sample of the new line. CGB retains its later VBlank request.
-            interrupts_.set_after(InterruptType::VBlank, is_cgb ? (doubleSpeed ? 4 : 8) : 0, is_cgb, doubleSpeed ? 2 : 4);
-            // Model quirk: entering vblank also asserts the mode 2 (OAM) STAT
-            // condition — on DMG together with the vblank IF, on CGB one M-cycle
-            // ahead of it (mooneye vblank_stat_intr-GS / -C)
+            if (is_cgb)
+                interrupts_.set_after(InterruptType::VBlank, doubleSpeed ? 4 : 8, true, doubleSpeed ? 1 : 2);
             if ((!is_cgb || !doubleSpeed) && stat.enable_m2_interrupt && !statTriggered) {
                 interrupts_.set(InterruptType::LCDStat, !is_cgb);
                 statTriggered = true;

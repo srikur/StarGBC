@@ -12,7 +12,7 @@ void Interrupts::acknowledge(const uint8_t mask, const bool cgb) {
         }
         recompute_pending();
     }
-    acknowledge_cycles = (mask == 0x08 || mask == 0x04) ? 3 + cgb : mask == 0x02 ? 3 : 0;
+    acknowledge_cycles = (mask == 0x08 || mask == 0x04) ? 3 + cgb : (mask == 0x02 || mask == 0x01) ? 3 : 0;
     acknowledge_mask = acknowledge_cycles ? mask : 0;
 }
 

@@ -308,7 +308,8 @@ bool CPU<BusT>::ProcessInterrupts() {
                                             : interrupts_.interrupt_enable &
                                                       ((interrupts_.interrupt_flag & ~0x0C) |
                                                        ((speedSwitchWakePending_ ? interrupts_.interrupt_flag : runningPending_) & 0x0C) |
-                                                       (interrupts_.interrupt_master_enable && (halted_ || bus_.gpu_.doubleSpeed)
+                                                       (interrupts_.interrupt_master_enable && (halted_ || bus_.gpu_.doubleSpeed) &&
+                                                                interrupts_.interrupt_set_delays[0] <= (bus_.gpu_.doubleSpeed ? 2 : 4)
                                                                 ? interrupts_.interrupt_visible_pending & 0x01
                                                                 : 0)) &
                                                       0x1F;
