@@ -154,6 +154,9 @@ public:
     bool windowEndPending_{false};
     uint8_t windowEndStage_{0};
     bool windowActivatePending_{false};
+    bool window_fetch_startup{};
+    bool window_pixel_stalled{};
+    uint8_t window_startup_discard{};
     bool windowPixel0Triggered_{false};
     FetcherState savedBgFetcherState_{FetcherState::GetTile};
     uint8_t savedBgFetcherDelay_{0};
@@ -389,6 +392,8 @@ private:
     void CheckForSpriteTrigger();
 
     void CheckForWindowTrigger();
+
+    void discard_background_for_window();
 
     static Attributes GetAttrsFrom(uint8_t byte);
 

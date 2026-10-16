@@ -575,3 +575,59 @@ TEST_CASE("ppu: DMG live WY comparison applies before the horizontal window matc
         CHECK(gpu.windowTriggeredThisFrame);
     }
 }
+
+TEST_CASE("ppu: disabling a CGB window fetch resumes its retained background pixels") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array observed_values = {false, true};
+    constexpr std::array objects_values = {false, true};
+    for (const auto [model, observed, objects] : std::views::cartesian_product(models, observed_values, objects_values)) {
+
+        CAPTURE(model);
+        CAPTURE(observed);
+        CAPTURE(objects);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
+        gpu.SetModel(model);
+        if (observed)
+            gpu.provenance = &recorder.Context();
+        gpu.lcdc = 0xF3;
+        gpu.currentLine = 10;
+        recorder.Context().position.ly = 10;
+        gpu.windowX = objects ? 15 : 7;
+        if (objects) {
+            gpu.oam[0] = 26;
+            gpu.oam[1] = 16;
+        }
+        gpu.windowTriggeredThisFrame = true;
+        gpu.bgpd[0][1] = {8, 8, 8};
+        gpu.bgpd[0][2] = {16, 16, 16};
+        gpu.RebuildColorLuts();
+        std::fill(gpu.vram.begin() + 0x1800, gpu.vram.begin() + 0x1C00, 1);
+        std::fill(gpu.vram.begin() + 0x1C00, gpu.vram.begin() + 0x2000, 2);
+        for (auto row{0u}; row < 8; ++row) {
+            gpu.vram[16 + row * 2] = 0xFF;
+            gpu.vram[33 + row * 2] = 0xFF;
+        }
+        while (gpu.scanlineCounter < (objects ? 104u : 96u))
+            gpu.Update();
+        REQUIRE(gpu.window_fetch_startup);
+        REQUIRE(gpu.pixelsDrawn == (objects ? 8u : 0u));
+        REQUIRE(gpu.backgroundQueue.size() == 8);
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0xD3);
+        CHECK(gpu.pixelsDrawn == (objects ? 8u : 1u));
+        while (gpu.stat.mode != GPUMode::MODE_0)
+            gpu.Update();
+        CHECK(gpu.scanlineCounter == renderLine(model, false, {}).rendered + (objects ? 17u : 3u));
+        for (auto x{0u}; x < SCREEN_WIDTH; ++x) {
+            CAPTURE(x);
+            CHECK(gpu.GetScreenData()[10 * SCREEN_WIDTH + x] == (x >= (objects ? 16u : 8u) && x < (objects ? 24u : 16u) ? 0xFF848484 : 0xFF424242));
+        }
+        if (observed) {
+            const auto pixel = recorder.Query(0, 10);
+            REQUIRE(pixel);
+            CHECK(pixel->selected.source == diagnostics::PixelSource::Background);
+            CHECK(pixel->selected.mapAddress == 0x9820);
+        }
+    }
+}

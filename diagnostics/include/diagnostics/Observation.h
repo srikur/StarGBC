@@ -54,7 +54,7 @@ namespace diagnostics {
 
     enum class FetchStage : uint8_t { Map, Attributes, BackgroundLow, BackgroundHigh, SpriteOam, SpriteLow, SpriteHigh };
 
-    enum class StallReason : uint8_t { FifoStarvation, SpriteFetch, SpriteAlignment };
+    enum class StallReason : uint8_t { FifoStarvation, SpriteFetch, SpriteAlignment, WindowFetch };
 
     enum class DiscardReason : uint8_t { FineScroll, WindowClipping, WindowRestart };
 

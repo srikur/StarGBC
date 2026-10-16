@@ -26,6 +26,7 @@ void GPU::ObserveStall(const diagnostics::StallReason reason) const {
     if (provenance) {
         const auto explanation = reason == diagnostics::StallReason::FifoStarvation    ? diagnostics::PipelineReason::FifoStarvation
                                  : reason == diagnostics::StallReason::SpriteAlignment ? diagnostics::PipelineReason::SpriteAlignment
+                                 : reason == diagnostics::StallReason::WindowFetch     ? diagnostics::PipelineReason::WindowFetch
                                                                                        : diagnostics::PipelineReason::SpriteFetch;
         provenance->Pipeline(pixelsDrawn, currentLine, explanation);
     }
@@ -124,6 +125,9 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     windowEndPending_ = false;
     windowEndStage_ = 0;
     windowActivatePending_ = false;
+    window_fetch_startup = false;
+    window_pixel_stalled = false;
+    window_startup_discard = 0;
     windowPixel0Triggered_ = false;
 }
 
@@ -571,6 +575,18 @@ void GPU::TickOAMScan() {
 }
 
 void GPU::OutputPixel(const bool lcdcAhead) {
+    if (window_fetch_startup && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
+        window_pixel_stalled = true;
+        ObserveStall(diagnostics::StallReason::WindowFetch);
+        return;
+    }
+    window_pixel_stalled = false;
+    if (window_fetch_startup && std::ranges::any_of(spriteBuffer, [&](const Sprite &sprite) {
+            return !sprite.processed && std::max<int>(0, sprite.x) == pixelsDrawn;
+        })) {
+        ObserveStall(diagnostics::StallReason::SpriteAlignment);
+        return;
+    }
     if (backgroundQueue.empty()) {
         ObserveStall(diagnostics::StallReason::FifoStarvation);
         return;
@@ -657,6 +673,7 @@ uint32_t GPU::MixPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 }
 
 void GPU::TickMode3() {
+    window_pixel_stalled = false;
     // scx discard pixels get delayed activation on window, rather than being discarded
     if (pixelsDrawn == 0 && windowX <= 7 && window_y_matched() &&
         scanlineCounter == 85u + windowX + (windowX == 0 ? ((scrollX & 7) != 0 ? 1u : 0u) : initialScrollXFine_)) {
@@ -705,7 +722,7 @@ void GPU::TickMode3() {
             // so no background pixel ships before the window claims the line
             const bool windowPendingAtStart =
                     pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7;
-            if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty() && !windowPendingAtStart) {
+            if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && (backgroundQueue.empty() || window_fetch_startup) && !windowPendingAtStart) {
                 Fetcher_StepBackgroundFetch();
             }
             // The takeover lands exactly when the background fetcher reaches
@@ -793,6 +810,8 @@ void GPU::CheckForSpriteTrigger() {
     // over the moment pixel output would begin (dot 92), even if a window
     // restart has claimed the fetcher
     const bool pushReady = fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0;
+    if (window_fetch_startup && !pushReady)
+        return;
     for (auto &sprite : spriteBuffer) {
         if (sprite.processed)
             continue;
@@ -857,16 +876,14 @@ void GPU::CheckForWindowTrigger() {
         if (windowWasActiveThisLine_)
             windowLineCounter_++;
         windowWasActiveThisLine_ = true;
+        if (is_cgb && backgroundQueue.empty() && fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0)
+            Fetcher_StepBackgroundFetch();
+        window_fetch_startup = is_cgb;
+        window_startup_discard = initialScrollXDiscard_;
         isFetchingWindow_ = true;
         Observe(diagnostics::EventKind::WindowActivate, 0xFF4B, windowX, pixelsDrawn);
-        if (!backgroundQueue.empty())
-            Observe(diagnostics::EventKind::PixelDiscard, pixelsDrawn, backgroundQueue.size(),
-                    static_cast<uint32_t>(diagnostics::DiscardReason::WindowRestart));
-        if (provenance) {
-            while (provenance->backgroundCount)
-                provenance->Pipeline(pixelsDrawn, currentLine, diagnostics::PipelineReason::WindowRestart, provenance->PopBackground());
-        }
-        backgroundQueue.clear();
+        if (!is_cgb)
+            discard_background_for_window();
         fetcherState_ = FetcherState::GetTile;
         fetcherDelay_ = 0;
         fetcherTileX_ = 0;
@@ -894,6 +911,17 @@ void GPU::CheckForWindowTrigger() {
                 .is_placeholder = false,
         });
     }
+}
+
+void GPU::discard_background_for_window() {
+    if (!backgroundQueue.empty())
+        Observe(diagnostics::EventKind::PixelDiscard, pixelsDrawn, backgroundQueue.size(),
+                static_cast<uint32_t>(diagnostics::DiscardReason::WindowRestart));
+    if (provenance) {
+        while (provenance->backgroundCount)
+            provenance->Pipeline(pixelsDrawn, currentLine, diagnostics::PipelineReason::WindowRestart, provenance->PopBackground());
+    }
+    backgroundQueue.clear();
 }
 
 void GPU::Fetcher_StepBackgroundFetch() {
@@ -957,8 +985,13 @@ void GPU::Fetcher_StepBackgroundFetch() {
             fetcherDelay_ = 1;
             break;
         case PushToFIFO: {
-            if (!backgroundQueue.empty())
+            if (window_fetch_startup) {
+                if (Bit<LCDC_WINDOW_ENABLE>(lcdc))
+                    discard_background_for_window();
+                window_fetch_startup = false;
+            } else if (!backgroundQueue.empty()) {
                 break;
+            }
             const uint8_t dmgPalette = backgroundPalette ? obp1Palette : obp0Palette;
             for (int i = 0; i < 8; i++) {
                 const uint8_t pixelBit = backgroundTileAttributes_.xflip ? i : 7 - i;
@@ -1522,7 +1555,15 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
 
 void GPU::ApplyLCDC(const uint8_t value) {
     const bool oldEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
+    if (is_cgb && isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && !Bit<LCDC_WINDOW_ENABLE>(value)) {
+        isFetchingWindow_ = false;
+        fetcherTileX_ = (pixelsDrawn + backgroundQueue.size() + initialScrollXFine_) / 8;
+        if (window_fetch_startup)
+            initialScrollXDiscard_ = window_startup_discard;
+    }
     lcdc = value;
+    if (is_cgb && window_fetch_startup && window_pixel_stalled && Bit<LCDC_ENABLE_BIT>(lcdc) && !Bit<LCDC_WINDOW_ENABLE>(lcdc))
+        OutputPixel();
     Observe(diagnostics::EventKind::RegisterApply, 0xFF40, lcdc);
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
