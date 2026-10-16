@@ -47,6 +47,11 @@ static constexpr u16 BACKGROUND_PALETTE_DATA = 0xFF69;
 static constexpr u16 OBJ_PALETTE_INDEX = 0xFF6A;
 static constexpr u16 OBJ_PALETTE_DATA = 0xFF6B;
 
+static constexpr u16 SOUND_PANNING = 0xFF25;
+static constexpr u16 SOUND_CONTROL = 0xFF26;
+static constexpr u16 WAVE_RAM_BEGIN = 0xFF30;
+static constexpr u16 WAVE_RAM_END = 0xFF3F;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;

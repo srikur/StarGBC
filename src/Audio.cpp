@@ -217,7 +217,6 @@ void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
     audioEnabled = (value & 0x80) != 0;
 
     if (wasEnabled && !audioEnabled) {
-        // Turning APU off clears all registers except for Wave RAM on DMG
         audioEnabled = false;
         ch1 = {};
         ch2 = {};
@@ -269,7 +268,7 @@ uint8_t Audio::ReadByte(const uint16_t address) {
 void Audio::WriteByte(const uint16_t address, const uint8_t value, const bool divBit4High, const bool doubleSpeed) {
     CatchUp();
     static const std::set<uint16_t> allowedAddresses = {0xFF26, 0xFF11, 0xFF16, 0xFF1B, 0xFF20};
-    if (!audioEnabled && address != 0xFF26 && (!IsDMG() || !allowedAddresses.contains(address))) {
+    if (!audioEnabled && (address < WAVE_RAM_BEGIN || address > WAVE_RAM_END) && address != SOUND_CONTROL && (!IsDMG() || !allowedAddresses.contains(address))) {
         return;
     }
     const uint8_t lfDiv = (tickCounter & 2) ? 0 : 1;
