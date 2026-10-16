@@ -232,3 +232,30 @@ TEST_CASE("diagnostics: LCD palette sampling survives replay and distinguishes i
     }
     std::filesystem::remove_all(directory);
 }
+
+TEST_CASE("diagnostics: forced CGB startup is retained by recorded inputs") {
+    const auto directory = replayDirectory();
+    constexpr std::array forced_values = {false, true};
+    for (const auto forced : forced_values) {
+        const GameboySettings settings{.romName = "roms/acid/dmg-acid2.gb", .model = Model::CGBC, .noBootrom = true, .force_cgb_mode = forced};
+        Gameboy original(settings);
+        const auto inputs = diagnostics::IdentifyInitialInputs(original, settings);
+        auto alternate_settings = settings;
+        alternate_settings.force_cgb_mode = !forced;
+        Gameboy alternate(alternate_settings);
+        CHECK(inputs.configuration != diagnostics::IdentifyInitialInputs(alternate, alternate_settings).configuration);
+        diagnostics::InputRecorder recorder(original, inputs, 1000, settings);
+        static_cast<void>(original.AdvanceTicks(1000));
+        const auto path = directory / "cgb-startup.replay";
+        diagnostics::WriteInputLog(path, recorder.Log());
+        const auto log = diagnostics::ReadInputLog(path);
+        REQUIRE(log.settings.has_value());
+        CHECK(log.settings->force_cgb_mode == forced);
+        Gameboy replayed(*log.settings);
+        CHECK(replayed.IsInCgbMode() == forced);
+        diagnostics::ReplayPlayer player(replayed, log, diagnostics::IdentifyInitialInputs(replayed, *log.settings));
+        static_cast<void>(player.AdvanceTicks(1000));
+        CHECK(replayed.SaveDebugState() == original.SaveDebugState());
+    }
+    std::filesystem::remove_all(directory);
+}

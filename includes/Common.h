@@ -92,6 +92,8 @@ static constexpr u16 DMG_BACKGROUND_PALETTE = 0xFF47;
 static constexpr u16 DMG_OBJ_PALETTE_0 = 0xFF48;
 static constexpr u16 DMG_OBJ_PALETTE_1 = 0xFF49;
 
+static constexpr u16 SPEED_SWITCH = 0xFF4D;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;

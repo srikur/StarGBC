@@ -25,6 +25,7 @@ namespace {
         [[=Opt{"Skip boot ROM execution"}]] bool no_bootrom{};
         [[=Opt{"Disable color correction"}]] bool raw_color{};
         [[=Opt{"DMG LCD sampling during palette writes"}]] DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
+        [[=Opt{"Force native CGB mode when skipping the boot ROM"}]] bool force_cgb_mode{};
         [[=Opt{"Fixed RunFrame intervals before inspection"}, =Range{0, 1'000'000}]] unsigned intervals{};
         [[=Opt{"Master ticks to advance after the intervals"}]] uint64_t ticks{};
         [[=Opt{"Scheduler execution policy"}]] ExecutionPolicy policy{ExecutionPolicy::Ordinary};
@@ -114,7 +115,8 @@ int main(const int argc, char **argv) {
                                  .noBootrom = arguments->no_bootrom,
                                  .colorCorrection = !arguments->raw_color,
                                  .executionPolicy = arguments->policy,
-                                 .dmg_palette_sampling = arguments->dmg_palette_sampling};
+                                 .dmg_palette_sampling = arguments->dmg_palette_sampling,
+                                 .force_cgb_mode = arguments->force_cgb_mode};
         std::optional<diagnostics::InputLog> inputLog;
         if (!arguments->replay_inputs.empty()) {
             if (!arguments->input_at.empty())

@@ -14,6 +14,9 @@ namespace diagnostics {
             if (log.settings && (log.settings->model == Model::Auto || log.settings->model > Model::AGBBE || log.settings->realRTC ||
                                  log.settings->dmg_palette_sampling > DmgPaletteSampling::NewValue))
                 throw std::invalid_argument("Replay settings require a concrete model and virtual RTC");
+            if (log.settings && log.settings->force_cgb_mode &&
+                (!log.settings->noBootrom || !log.settings->biosPath.empty() || !IsCgb(log.settings->model)))
+                throw std::invalid_argument("Forced CGB replay startup requires skipped boot on CGB hardware");
             uint64_t tick{};
             for (size_t i = 0; i < log.events.size(); ++i) {
                 const auto &event = log.events[i];
@@ -42,7 +45,7 @@ namespace diagnostics {
                 WriteString(output, settings.biosPath);
                 WriteUnsigned(output, static_cast<uint8_t>(settings.model), 1);
                 WriteUnsigned(output, settings.noBootrom | (settings.realRTC << 1) | (settings.noAudio << 2) | (settings.colorCorrection << 3) |
-                                              ((settings.dmg_palette_sampling == DmgPaletteSampling::NewValue) << 4),
+                                              ((settings.dmg_palette_sampling == DmgPaletteSampling::NewValue) << 4) | (settings.force_cgb_mode << 5),
                               1);
             }
             WriteUnsigned(output, log.initialButtons, 1);
@@ -119,13 +122,14 @@ namespace diagnostics {
             settings.biosPath = ReadString(input);
             settings.model = static_cast<Model>(ReadUnsigned(input, 1));
             const auto flags = ReadUnsigned(input, 1);
-            if (flags > 31)
+            if (flags > 63)
                 throw std::invalid_argument("Invalid replay settings flags");
             settings.noBootrom = flags & 1;
             settings.realRTC = flags & 2;
             settings.noAudio = flags & 4;
             settings.colorCorrection = flags & 8;
             settings.dmg_palette_sampling = flags & 16 ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
+            settings.force_cgb_mode = flags & 32;
             log.settings = std::move(settings);
         }
         log.initialButtons = ReadUnsigned(input, 1);
@@ -151,10 +155,11 @@ namespace diagnostics {
             bool noAudio;
             bool colorCorrection;
             DmgPaletteSampling dmg_palette_sampling;
+            bool force_cgb_mode;
         };
         std::ostringstream configuration;
         WriteJson(configuration, Configuration{machine.GetModel(), settings.noBootrom, settings.realRTC, settings.noAudio,
-                                               settings.colorCorrection, settings.dmg_palette_sampling});
+                                               settings.colorCorrection, settings.dmg_palette_sampling, settings.force_cgb_mode});
         auto save = std::filesystem::path(settings.romName);
         save.replace_extension(".sav");
         return {.rom = FileHash(settings.romName),

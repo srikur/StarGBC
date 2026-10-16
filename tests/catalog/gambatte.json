@@ -12,6 +12,7 @@
     "colorCorrection": false,
     "realRTC": false,
     "dmg_palette_sampling": "NewValue",
+    "force_cgb_mode_for_color_models": true,
     "sourceRepository": "https://github.com/pokemon-speedrunning/gambatte-core",
     "sourceRevision": "5a41a68c25402421fb1983ddadc9faf2418ddb0f",
     "buildProvenance": "Byte-identical rebuild of every bundled ROM with upstream test/qdgbas.py and Python 3",

@@ -40,6 +40,7 @@ namespace diagnostics {
         std::string executableHash;
         bool fixedIntervals{};
         std::string dmg_palette_sampling{"BitwiseOr"};
+        bool force_cgb_mode{};
     };
 
     struct TerminalState {

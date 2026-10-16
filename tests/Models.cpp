@@ -261,3 +261,27 @@ TEST_CASE("apu: NR52 power-on captures the divider phase at its startup edge") {
         CHECK(read_control() == 0xF0);
     }
 }
+
+TEST_CASE("models: forced CGB startup preserves the ROM header and enables native registers") {
+    constexpr std::array models = {Model::CGB0, Model::CGBC, Model::CGBE};
+    constexpr std::array forced_values = {false, true};
+    for (const auto [model, forced] : std::views::cartesian_product(models, forced_values)) {
+        CAPTURE(model);
+        CAPTURE(forced);
+        Gameboy gameboy({.romName = "roms/acid/dmg-acid2.gb", .model = model, .noBootrom = true, .force_cgb_mode = forced});
+        auto &bus = gameboy.[:busMember:];
+        CHECK(gameboy.GetModel() == model);
+        CHECK(gameboy.IsInCgbMode() == forced);
+        CHECK(bus.gpu_.dmg_compat == !forced);
+        CHECK(bus.cartridge_.ReadByte(0x143) == 0);
+        bus.WriteByte(BACKGROUND_PALETTE_INDEX, 0, ComponentSource::CPU);
+        bus.WriteByte(BACKGROUND_PALETTE_DATA, 0x12, ComponentSource::CPU);
+        CHECK(bus.ReadByte(BACKGROUND_PALETTE_DATA, ComponentSource::CPU) == (forced ? 0x12 : 0xFF));
+        CHECK(bus.ReadByte(SPEED_SWITCH, ComponentSource::CPU) == (forced ? 0x7E : 0xFF));
+    }
+    constexpr std::array invalid_models = {Model::DMGB, Model::CGBC};
+    for (const auto model : invalid_models) {
+        GameboySettings invalid{.romName = "roms/acid/dmg-acid2.gb", .model = model, .noBootrom = model == Model::DMGB, .force_cgb_mode = true};
+        CHECK_THROWS_AS(Gameboy{invalid}, std::invalid_argument);
+    }
+}

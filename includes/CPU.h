@@ -12,8 +12,10 @@ public:
     using Self = CPU<BusT>;
 
     explicit CPU(const Model requestedModel, const std::string &biosPath, const bool noBootrom, BusT &bus, Interrupts &interrupts,
-                 Registers &registers) : bus_(bus), interrupts_(interrupts), regs_(registers) {
+                 Registers &registers, const bool force_cgb_mode = false) : bus_(bus), interrupts_(interrupts), regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
+        if (force_cgb_mode && (!noBootrom || !biosPath.empty() || !IsCgb(hw)))
+            throw std::invalid_argument("Forcing CGB mode requires skipped boot on CGB hardware");
         bus.memory_.initialize_power_on(hw);
         bus.gpu_.SetModel(hw);
         bus.gpu_.initialize_palette_ram();
@@ -38,7 +40,7 @@ public:
             embeddedBootrom_ = true;
             pc_ = 0x0000;
         } else {
-            bus.cgbMode = IsCgb(hw) && (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
+            bus.cgbMode = IsCgb(hw) && (force_cgb_mode || (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80);
             bus.gpu_.dmg_compat = IsCgb(hw) && !bus.cgbMode;
             pc_ = 0x100;
             InitializeSystem();

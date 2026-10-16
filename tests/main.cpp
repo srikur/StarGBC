@@ -102,14 +102,23 @@ int main(const int argc, char **argv) {
     if (argc > 1 && std::string_view(argv[1]) == "--reproduce-gambatte") {
         int input_count = argc;
         auto palette_sampling = DmgPaletteSampling::BitwiseOr;
+        bool force_cgb_mode{};
         constexpr std::string_view palette_option = "--dmg-palette-sampling=";
-        if (std::string_view(argv[argc - 1]).starts_with(palette_option)) {
-            const auto value = std::string_view(argv[--input_count]).substr(palette_option.size());
-            if (value != "BitwiseOr" && value != "NewValue") {
-                std::cerr << "Invalid DMG palette sampling setting\n";
-                return 2;
+        while (input_count > 2) {
+            const auto option = std::string_view(argv[input_count - 1]);
+            if (option == "--force-cgb-mode") {
+                force_cgb_mode = true;
+            } else if (option.starts_with(palette_option)) {
+                const auto value = option.substr(palette_option.size());
+                if (value != "BitwiseOr" && value != "NewValue") {
+                    std::cerr << "Invalid DMG palette sampling setting\n";
+                    return 2;
+                }
+                palette_sampling = value == "NewValue" ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
+            } else {
+                break;
             }
-            palette_sampling = value == "NewValue" ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
+            --input_count;
         }
         if (input_count != 8 && input_count != 11 && input_count != 12) {
             std::cerr << "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH [TRACE_CAPACITY TRACE_BEGIN TRACE_END "
@@ -155,7 +164,7 @@ int main(const int argc, char **argv) {
             const auto saveHash = std::filesystem::exists(save) ? diagnostics::FileHash(save) : "absent";
             if (saveHash != argv[7])
                 throw std::invalid_argument("Reproduction cartridge save changed");
-            const auto result = runGambatteTest({argv[5], argv[2], argv[4], *model, "reproduction", 1, "reproduction"}, palette_sampling);
+            const auto result = runGambatteTest({argv[5], argv[2], argv[4], *model, "reproduction", 1, "reproduction"}, palette_sampling, force_cgb_mode);
             testReport->Write(result);
             testReport->Write(diagnostics::RunCompletion{.cases = 1, .failed = result.Passed() ? 0u : 1u});
             std::cout << result.details << '\n';
