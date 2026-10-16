@@ -127,7 +127,7 @@ namespace {
         gpu.SetModel(model);
         gpu.provenance = provenance;
         gpu.doubleSpeed = doubleSpeed;
-        gpu.dmgCompat = compatibility;
+        gpu.dmg_compat = compatibility;
         gpu.lcdc = 0xF1;
         gpu.currentLine = 10;
         gpu.windowX = wx;
@@ -189,7 +189,7 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                     gpu->lcdc = 0x91;
                     gpu->currentLine = gpu->lyc = line;
                     gpu->stat.mode = mode == GPUMode::MODE_1 ? GPUMode::MODE_1 : GPUMode::MODE_2;
-                    gpu->stat.enableLYInterrupt = true;
+                    gpu->stat.enable_ly_interrupt = true;
                     for (auto i{0u}; i < dot; ++i)
                         gpu->Update();
                     REQUIRE(gpu->stat.mode == mode);
@@ -351,10 +351,10 @@ TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping
             gpu->currentLine = 150;
             gpu->scanlineCounter = 455;
             gpu->stat.mode = GPUMode::MODE_1;
-            gpu->stat.enableLYInterrupt = true;
+            gpu->stat.enable_ly_interrupt = true;
             gpu->lyc = 151;
         }
-        ordinary.optimizedExecution = false;
+        ordinary.optimized_execution = false;
         for (auto dot{0u}; dot < 460; ++dot) {
             CAPTURE(model);
             CAPTURE(dot);
@@ -378,9 +378,9 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
             gpu->lcdc = 0x91;
             gpu->currentLine = 10;
             gpu->stat.mode = GPUMode::MODE_2;
-            gpu->stat.enableM2Interrupt = true;
+            gpu->stat.enable_m2_interrupt = true;
         }
-        ordinary.optimizedExecution = false;
+        ordinary.optimized_execution = false;
         for (auto dot{0u}; dot < 80; ++dot) {
             CAPTURE(model);
             CAPTURE(dot);

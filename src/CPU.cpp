@@ -180,6 +180,9 @@ void CPU<BusT>::InitializeSystem() {
             setBits += std::popcount(bus_.cartridge_.ReadByte(address));
         }
         bus_.timer_.divCounter = static_cast<uint16_t>(0xDC88 - 4 * setBits);
+    } else {
+        bus_.timer_.divCounter = hw == Model::DMG0 ? 0x1830 : hw == Model::CGB0 ? 0x20AC : IsCgb(hw) ? 0x1EA0 + 4 * IsAgb(hw) : 0xABCC;
+        bus_.gpu_.initialize_post_boot();
     }
 }
 
@@ -225,7 +228,7 @@ void CPU<BusT>::BeginMCycle() {
         // with the mode implied by the cart header
         if (IsCgb(bus_.gpu_.model) && !bus_.key0Written) {
             bus_.cgbMode = (bus_.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
-            bus_.gpu_.dmgCompat = !bus_.cgbMode;
+            bus_.gpu_.dmg_compat = !bus_.cgbMode;
         }
         if (embeddedBootrom_)
             regs_.SetStartupValues(bus_.gpu_.model, bus_.cgbMode);

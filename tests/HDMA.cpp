@@ -61,6 +61,8 @@ TEST_CASE("Disabling the LCD during VBlank transfers one pending HDMA block") {
         Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
         if (doubleSpeed) {
             bus.prepareSpeedShift = true;
             bus.ChangeSpeed();
@@ -108,6 +110,8 @@ TEST_CASE("An HDMA block started at the end of HBlank completes in the next scan
         Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
         if (doubleSpeed) {
             bus.prepareSpeedShift = true;
             bus.ChangeSpeed();

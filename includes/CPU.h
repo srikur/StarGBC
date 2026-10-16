@@ -37,7 +37,7 @@ public:
             pc_ = 0x0000;
         } else {
             bus.cgbMode = IsCgb(hw) && (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
-            bus.gpu_.dmgCompat = IsCgb(hw) && !bus.cgbMode;
+            bus.gpu_.dmg_compat = IsCgb(hw) && !bus.cgbMode;
             pc_ = 0x100;
             InitializeSystem();
         }

@@ -177,7 +177,7 @@ namespace diagnostics {
         void configureGpu(GPU &gpu, const Scenario &scenario) {
             gpu.SetModel(scenario.model);
             gpu.doubleSpeed = scenario.doubleSpeed;
-            gpu.optimizedExecution = false;
+            gpu.optimized_execution = false;
             gpu.currentLine = 1;
             gpu.lcdc = scenario.family == ExperimentFamily::Window ? 0xF1 : 0x93;
             gpu.windowX = scenario.wx;

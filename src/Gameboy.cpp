@@ -90,7 +90,7 @@ const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
 
 bool Gameboy::LoadedStateValid() const {
     return gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
-           gpu_.dmgCompat == (IsCgb(gpu_.model) && !bus_.cgbMode) && gpu_.doubleSpeed == (bus_.speed == Speed::Double) &&
+           gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) && gpu_.doubleSpeed == (bus_.speed == Speed::Double) &&
            gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() && gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 &&
            gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 && cartridge_.BankingStateValid() &&
            (!bus_.bootromRunning || !bus_.bootrom.empty());
@@ -112,10 +112,10 @@ uint32_t Gameboy::AdvanceMCycle() {
         serial_.update(timer_.divCounter);
         interrupts_.tick_cpu();
         if (dma_.transferActive) {
-            gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+            gpu_.oam_dma_active = dma_.ticks > DMA::STARTUP_CYCLES;
             gpu_.oamDmaDest_ = dma_.currentByte;
-        } else if (gpu_.oamDmaActive) {
-            gpu_.oamDmaActive = false;
+        } else if (gpu_.oam_dma_active) {
+            gpu_.oam_dma_active = false;
         }
         bus_.UpdateDMA();
         if (gpu_.idleDots_ > 0) {
@@ -170,10 +170,10 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
         interrupts_.tick_cpu();
         if (evenCycle) {
             if (dma_.transferActive) {
-                gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+                gpu_.oam_dma_active = dma_.ticks > DMA::STARTUP_CYCLES;
                 gpu_.oamDmaDest_ = dma_.currentByte;
-            } else if (gpu_.oamDmaActive) {
-                gpu_.oamDmaActive = false;
+            } else if (gpu_.oam_dma_active) {
+                gpu_.oam_dma_active = false;
             }
         }
         bus_.UpdateDMA();
@@ -239,10 +239,10 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         serial_.update(timer_.divCounter);
         interrupts_.tick_cpu();
         if (dma_.transferActive) {
-            gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+            gpu_.oam_dma_active = dma_.ticks > DMA::STARTUP_CYCLES;
             gpu_.oamDmaDest_ = dma_.currentByte;
-        } else if (gpu_.oamDmaActive) {
-            gpu_.oamDmaActive = false;
+        } else if (gpu_.oam_dma_active) {
+            gpu_.oam_dma_active = false;
         }
         bus_.UpdateDMA();
         gpu_.Update();
@@ -279,10 +279,10 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     interrupts_.tick_cpu();
     if (evenCycle) {
         if (dma_.transferActive) {
-            gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
+            gpu_.oam_dma_active = dma_.ticks > DMA::STARTUP_CYCLES;
             gpu_.oamDmaDest_ = dma_.currentByte;
-        } else if (gpu_.oamDmaActive) {
-            gpu_.oamDmaActive = false;
+        } else if (gpu_.oam_dma_active) {
+            gpu_.oam_dma_active = false;
         }
     }
     bus_.UpdateDMA();
@@ -316,9 +316,9 @@ ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolic
     const auto begin = timelineTicks_;
     const auto instructions = cpu_.InstructionsCompleted();
     const bool optimized = policy == ExecutionPolicy::Optimized;
-    if (gpu_.optimizedExecution != optimized) {
+    if (gpu_.optimized_execution != optimized) {
         gpu_.InvalidateIdle();
-        gpu_.optimizedExecution = optimized;
+        gpu_.optimized_execution = optimized;
     }
     audio_.SetOptimizedExecution(optimized);
     uint64_t remaining = ticks;

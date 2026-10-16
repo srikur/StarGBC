@@ -395,7 +395,7 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
                 if (IsCgb(gpu_.model) && bootromRunning) {
                     key0Written = true;
                     cgbMode = (value & 0x0C) == 0;
-                    gpu_.dmgCompat = !cgbMode;
+                    gpu_.dmg_compat = !cgbMode;
                 }
             } else if (address == 0xFF4D) {
                 if (cgbMode)
