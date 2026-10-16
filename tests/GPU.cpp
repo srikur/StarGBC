@@ -1146,3 +1146,43 @@ TEST_CASE("ppu: CGB LYC cancellation and mode-2 blocking use separate capture in
         }
     }
 }
+
+
+TEST_CASE("ppu: DMG mode-1 entry has independent mode-source blocking") {
+    constexpr std::array models = {Model::DMGB, Model::DMGC};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array match_values = {false, true};
+    constexpr std::array<unsigned, 8> enables_values = {0, 1, 2, 3, 4, 5, 6, 7};
+    for (const auto [model, optimized, match, enables] : std::views::cartesian_product(models, optimizations, match_values, enables_values)) {
+        CAPTURE(model);
+        CAPTURE(optimized);
+        CAPTURE(match);
+        CAPTURE(enables);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 143;
+        gpu.scanlineCounter = 450;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.stat.enable_m0_interrupt = enables & 1;
+        gpu.stat.enable_m1_interrupt = true;
+        gpu.stat.enable_m2_interrupt = enables & 2;
+        gpu.stat.enable_ly_interrupt = enables & 4;
+        gpu.lyc = match ? 143 : 0xFF;
+        gpu.lycInterruptLine_ = match;
+        gpu.stat.coincidence_flag = match;
+        gpu.m2IrqRaisedEarly = gpu.stat.enable_m2_interrupt;
+        gpu.statTriggered = gpu.stat.enable_m0_interrupt || gpu.m2IrqRaisedEarly || (match && gpu.stat.enable_ly_interrupt);
+        interrupts.interrupt_flag = 0;
+        while (gpu.currentLine == 143)
+            gpu.Update();
+        CHECK(interrupts.is_set(InterruptType::VBlank));
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == ((enables & 3) == 0));
+        interrupts.interrupt_flag = 0;
+        while (gpu.scanlineCounter < 20)
+            gpu.Update();
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+    }
+}

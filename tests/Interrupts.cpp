@@ -262,21 +262,24 @@ TEST_CASE("interrupts: a CGB LYC request on the final CPU tick waits for the nex
 }
 
 TEST_CASE("interrupts: a STAT edge during acknowledgment cannot reappear after its visibility delay") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC};
     constexpr std::array acknowledge_values = {false, true};
-    for (const auto acknowledge : acknowledge_values) {
+    for (const auto [model, acknowledge] : std::views::cartesian_product(models, acknowledge_values)) {
+        CAPTURE(model);
+
         CAPTURE(acknowledge);
         Interrupts interrupts;
         GPU gpu(interrupts);
-        gpu.SetModel(Model::CGBC);
+        gpu.SetModel(model);
         gpu.lcdc = 0x91;
         gpu.currentLine = 143;
-        gpu.scanlineCounter = 455;
+        gpu.scanlineCounter = IsCgb(model) ? 455 : 451;
         gpu.stat.mode = GPUMode::MODE_0;
         gpu.stat.enable_m1_interrupt = true;
         interrupts.interrupt_flag = 2;
         gpu.Update();
         if (acknowledge)
-            interrupts.acknowledge(2, true);
+            interrupts.acknowledge(2, IsCgb(model));
         else
             interrupts.interrupt_flag = 0;
         for (auto dot{0u}; dot < 10; ++dot) {

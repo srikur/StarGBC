@@ -88,7 +88,9 @@ bool GPU::StatLineHigh(const bool register_write, const bool previous) const {
               (!cgb_write || !doubleSpeed || scanlineCounter < 455 || currentLine == 143) &&
               (!lcdEnableLine0_ || scanlineCounter >= 80)) ||
              (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && m0_irq_active))) ||
-           (stat.enable_m1_interrupt && (stat.mode == GPUMode::MODE_1 || (cgb_write && previous && !doubleSpeed && currentLine == 0 && scanlineCounter == 0))) ||
+           (stat.enable_m1_interrupt &&
+            (stat.mode == GPUMode::MODE_1 || (!is_cgb && currentLine == 143 && scanlineCounter >= 453) ||
+             (cgb_write && previous && !doubleSpeed && currentLine == 0 && scanlineCounter == 0))) ||
            (!cgb_write && stat.enable_m2_interrupt && ((stat.mode == GPUMode::MODE_2 && scanlineCounter == 0) || m2IrqRaisedEarly));
 }
 
@@ -338,6 +340,9 @@ void GPU::Update() {
         statTriggered = true;
     }
 
+    if (!is_cgb && currentLine == 143 && scanlineCounter == 453 && stat.enable_m1_interrupt && !(stat.value() & 0x28))
+        interrupts_.set_after(InterruptType::LCDStat, 2, true);
+
     if (is_cgb && doubleSpeed && currentLine == 143 && scanlineCounter == 454 && stat.enable_m2_interrupt && !statTriggered) {
         interrupts_.set_after(InterruptType::LCDStat, 1, true);
         statTriggered = true;
@@ -475,8 +480,7 @@ void GPU::Update() {
             }
             if (is_cgb) {
                 m1_irq_delay = 1;
-            } else if (stat.enable_m1_interrupt && !statTriggered) {
-                interrupts_.set(InterruptType::LCDStat, false);
+            } else if (stat.enable_m1_interrupt) {
                 statTriggered = true;
             }
         } else if (currentLine < 144) {
