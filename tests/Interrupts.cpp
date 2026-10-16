@@ -81,7 +81,7 @@ TEST_CASE("interrupts: serial acknowledgment holds only the selected request thr
         Interrupts interrupts;
         interrupts.interrupt_flag = 0x0C;
         interrupts.acknowledge(0x08, cgb);
-        for (auto _ : std::views::indices(3)) {
+        for (auto _ : std::views::indices(3 + cgb)) {
             interrupts.set(InterruptType::Serial, false);
             CHECK_FALSE(interrupts.is_set(InterruptType::Serial));
             CHECK(interrupts.is_set(InterruptType::Timer));
