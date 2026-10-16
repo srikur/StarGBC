@@ -1841,7 +1841,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         case 0xFF45:
             if (is_cgb && value != lyc && !LCDDisabled() && stat.enable_ly_interrupt) {
-                const auto compared_line = cgb_lyc_compare_line(doubleSpeed ? 3 : 2);
+                const auto compared_line = cgb_lyc_compare_line(4);
                 const bool continuous = compared_line != cgb_lyc_compare_line(0) && lyc == cgb_lyc_compare_line(0);
                 const bool mode_blocked = (stat.mode == GPUMode::MODE_0 && stat.enable_m0_interrupt && value == currentLine) ||
                                          (stat.mode == GPUMode::MODE_1 && stat.enable_m1_interrupt);
