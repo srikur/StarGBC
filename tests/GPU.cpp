@@ -7,6 +7,20 @@
 #include "diagnostics/Provenance.h"
 
 namespace {
+    void prime_dmg_oam_scan(GPU &gpu) {
+        if (gpu.is_cgb)
+            return;
+        const auto saved_stat = gpu.stat;
+        gpu.stat = {};
+        gpu.stat.mode = GPUMode::MODE_0;
+        --gpu.currentLine;
+        gpu.scanlineCounter = 455;
+        while (gpu.scanlineCounter != 0)
+            gpu.Update();
+        gpu.stat = saved_stat;
+        gpu.statTriggered = false;
+    }
+
     struct LineResult {
         unsigned statMode0;
         unsigned rendered;
@@ -39,6 +53,7 @@ namespace {
         for (auto row{0u}; row < 8; ++row)
             gpu.vram[16 + row * 2] = 0xFF;
 
+        prime_dmg_oam_scan(gpu);
         LineResult result{};
         bool enteredMode3 = false;
         for (unsigned dot = 1; dot < 456; ++dot) {
@@ -103,6 +118,7 @@ namespace {
             }
             ++index;
         }
+        prime_dmg_oam_scan(gpu);
         for (auto dot{0u}; dot < 456 && gpu.pixelsDrawn < SCREEN_WIDTH; ++dot) {
             if (provenance)
                 provenance->position = {.tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
@@ -823,6 +839,7 @@ TEST_CASE("ppu: right-edge fetches can delay STAT mode 0 after the HBlank interr
             gpu.stat.enable_m0_interrupt = true;
             gpu.oam[0] = 26;
             gpu.oam[1] = object_x;
+            prime_dmg_oam_scan(gpu);
             interrupts.interrupt_flag = 0;
             std::array<unsigned, 3> times{};
             while (gpu.scanlineCounter < 400) {
@@ -896,6 +913,7 @@ TEST_CASE("ppu: DMG scans objects while disabled so a later enable can fetch the
         gpu.oam[2] = 1;
         for (auto row{0u}; row < 8; ++row)
             gpu.vram[16 + row * 2] = 255;
+        prime_dmg_oam_scan(gpu);
         while (gpu.scanlineCounter < 400) {
             if (enable_dot && gpu.scanlineCounter == enable_dot)
                 gpu.WriteRegisters(LCD_CONTROL_BIT, 0x93);
@@ -923,6 +941,7 @@ TEST_CASE("ppu: DMG object disable releases alignment and active fetch stalls") 
         gpu.currentLine = 10;
         gpu.oam[0] = 26;
         gpu.oam[1] = 25;
+        prime_dmg_oam_scan(gpu);
         while (gpu.scanlineCounter < 400) {
             if (gpu.scanlineCounter == disable_dot)
                 gpu.WriteRegisters(LCD_CONTROL_BIT, 0x91);
@@ -961,6 +980,40 @@ TEST_CASE("ppu: CGB OAM selection combines both object-size samples") {
             gpu.Update();
         }
         const bool selected = initially_large ? offset >= 0 : offset <= 0;
+        REQUIRE(gpu.spriteBuffer.size() == unsigned(selected));
+        if (selected)
+            CHECK(gpu.spriteBuffer.begin()->sprite_num / 2 == index);
+    }
+}
+
+TEST_CASE("ppu: DMG OAM selection uses the second object-size sample across the line boundary") {
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<unsigned, 3> index_values = {0, 1, 39};
+    constexpr std::array<int, 3> offset_values = {-1, 0, 1};
+    constexpr std::array initially_large_values = {false, true};
+    for (const auto [optimized, index, offset, initially_large] : std::views::cartesian_product(optimizations, index_values, offset_values, initially_large_values)) {
+        CAPTURE(optimized);
+        CAPTURE(index);
+        CAPTURE(offset);
+        CAPTURE(initially_large);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::DMGB);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = initially_large ? 0x97 : 0x93;
+        gpu.currentLine = 9;
+        gpu.scanlineCounter = 450;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.oam[index * 4] = 18;
+        gpu.oam[index * 4 + 1] = 24;
+        const unsigned write_dot = 456 + index * 2 - 2 + offset;
+        for (auto dot{450u}; dot < 456 + 90; ++dot) {
+            if (dot == write_dot)
+                gpu.WriteRegisters(LCD_CONTROL_BIT, initially_large ? 0x93 : 0x97);
+            gpu.Update();
+        }
+        REQUIRE(gpu.currentLine == 10);
+        const bool selected = initially_large ? offset > 0 : offset <= 0;
         REQUIRE(gpu.spriteBuffer.size() == unsigned(selected));
         if (selected)
             CHECK(gpu.spriteBuffer.begin()->sprite_num / 2 == index);

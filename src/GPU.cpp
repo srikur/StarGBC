@@ -291,6 +291,9 @@ void GPU::Update() {
         return;
     }
 
+    if (!is_cgb && scanlineCounter == 455)
+        TickOAMScan();
+
     // Line 153 quirk: LY flips to 0 early in the line, so the LYC comparison
     // (and a LYC=0 interrupt) sees 0 during line 153, not at line 0's start.
     // The flip dot is calibrated per model against daid's ppu_scanline_bgp
@@ -540,7 +543,10 @@ void GPU::MaybeArmIdle() {
 }
 
 void GPU::TickOAMScan() {
-    const unsigned scan_position = is_cgb ? scanlineCounter - (doubleSpeed ? 1 : 3) : scanlineCounter;
+    const bool early_scan = !is_cgb && scanlineCounter == 455;
+    if (early_scan && currentLine >= 143 && currentLine != 153)
+        return;
+    const unsigned scan_position = is_cgb ? scanlineCounter - (doubleSpeed ? 1 : 3) : (scanlineCounter + 1) % 456;
     if (is_cgb && scan_position == 80) {
         if (objectPriority)
             std::ranges::sort(spriteBuffer, std::less{});
@@ -553,26 +559,17 @@ void GPU::TickOAMScan() {
     const uint16_t base = index * 4;
     const bool large_sprite = mode2_size_delay ? mode2_size_old : Bit<LCDC_OBJ_SIZE>(lcdc);
     const bool scan_blocked = oam_dma_active && cpu_halted && model < Model::CGBE;
-    if (is_cgb) {
-        if (!(scan_position & 1)) {
-            mode2_entry_valid = !scan_blocked;
-            if (!scan_blocked && (!oam_dma_active || cpu_halted)) {
-                mode2YBus_ = oam_dma_write_offset == base ? oam_dma_old_value : oam[base];
-                mode2XBus_ = oam_dma_write_offset == base + 1 ? oam_dma_old_value : oam[base + 1];
-            }
-            mode2_large_sprite = large_sprite;
-            return;
-        }
-        if (scan_blocked || !mode2_entry_valid)
-            return;
-    } else {
-        if (!(scan_position & 1) || scan_blocked)
-            return;
-        if (!oam_dma_active || cpu_halted) {
+    if (!(scan_position & 1)) {
+        mode2_entry_valid = !scan_blocked;
+        if (!scan_blocked && (!oam_dma_active || cpu_halted)) {
             mode2YBus_ = oam_dma_write_offset == base ? oam_dma_old_value : oam[base];
             mode2XBus_ = oam_dma_write_offset == base + 1 ? oam_dma_old_value : oam[base + 1];
         }
+        mode2_large_sprite = large_sprite;
+        return;
     }
+    if (scan_blocked || !mode2_entry_valid)
+        return;
     const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(mode2YBus_) - 16);
     const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(mode2XBus_) - 8);
     const bool dmaRedirect = oam_dma_active && !cpu_halted && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
@@ -1677,7 +1674,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     InvalidateIdle();
     switch (address) {
         case 0xFF40: {
-            if (is_cgb && !LCDDisabled() && Bit<LCDC_ENABLE_BIT>(value) && ((lcdc ^ value) & (1 << LCDC_OBJ_SIZE))) {
+            if (!LCDDisabled() && Bit<LCDC_ENABLE_BIT>(value) && ((lcdc ^ value) & (1 << LCDC_OBJ_SIZE))) {
                 if (!mode2_size_delay)
                     mode2_size_old = Bit<LCDC_OBJ_SIZE>(lcdc);
                 mode2_size_delay = doubleSpeed ? 1 : 3;
