@@ -347,6 +347,12 @@ void GPU::Update() {
         statTriggered = true;
     }
 
+    if (!is_cgb && currentLine == 153 && scanlineCounter == 453 && stat.enable_m2_interrupt) {
+        if (!statTriggered)
+            interrupts_.set_after(InterruptType::LCDStat, 2, true);
+        m2IrqRaisedEarly = true;
+    }
+
     if (!is_cgb && currentLine == 143 && scanlineCounter == 453) {
         interrupts_.set_after(InterruptType::VBlank, 2, true);
         if (stat.enable_m1_interrupt && !(stat.value() & 0x28))
@@ -476,10 +482,6 @@ void GPU::Update() {
             ResetScanlineState(true);
             windowTriggeredThisFrame = !is_cgb && windowY == 0 && Bit<LCDC_WINDOW_ENABLE>(lcdc);
             initialSCXSet = false;
-            if (!is_cgb && stat.enable_m2_interrupt && !statTriggered) {
-                interrupts_.set(InterruptType::LCDStat, false);
-                statTriggered = true;
-            }
         } else if (currentLine == 144) {
             set_mode(GPUMode::MODE_1);
             vblank = true;
