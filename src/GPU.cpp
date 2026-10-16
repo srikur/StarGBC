@@ -999,7 +999,9 @@ void GPU::discard_background_for_window() {
 void GPU::Fetcher_StepBackgroundFetch() {
     if (fetcherDelay_ > 0) {
         fetcherDelay_--;
-        return;
+        if (fetcherDelay_ || !window_fetch_startup || Bit<LCDC_WINDOW_ENABLE>(lcdc) || !backgroundQueue.empty() ||
+            fetcherState_ != FetcherState::PushToFIFO)
+            return;
     }
 
     using enum FetcherState;
