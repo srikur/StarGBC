@@ -1818,10 +1818,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 // Fine scrolling ends when the startup pixel counter matches
                 // SCX. A write after the new low bits have already passed
                 // wraps the comparison to the next group of eight dots
-                const int fineStart = is_cgb ? (lcdEnableLine0_ ? (lcdStartDoubleSpeed_ ? 85 : 84) : 86) : (lcdEnableLine0_ ? 83 : 84);
+                const int fineStart = is_cgb ? (lcdEnableLine0_ ? (lcdStartDoubleSpeed_ ? 85 : 84) : 86) : (lcdEnableLine0_ ? 85 : 84);
                 const int phase = static_cast<int>(scanlineCounter) - fineStart;
                 if (phase < initialScrollXFine_) {
-                    const int fine = phase < 0 ? value & 7 : phase + 1 + ((value - phase - 1) & 7);
+                    const int next_compare = phase + (is_cgb ? 1 : 2);
+                    const int fine = phase < 0 ? value & 7 : next_compare + ((value - next_compare) & 7);
                     initialScrollXDiscard_ += fine - initialScrollXFine_;
                     initialScrollXFine_ = fine;
                 }
