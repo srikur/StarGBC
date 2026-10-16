@@ -27,3 +27,35 @@ TEST_CASE("apu: wave RAM remains writable and retained across power cycles") {
         }
     }
 }
+
+TEST_CASE("apu: batching preserves mixer transitions between waveform events") {
+    Audio optimized, ordinary;
+    ordinary.SetOptimizedExecution(false);
+    for (auto *audio : {&optimized, &ordinary}) {
+        audio->SetModel(Model::CGBC);
+        audio->WriteByte(SOUND_CONTROL, 0x80, false);
+        audio->WriteByte(PULSE1_ENVELOPE, 0xF3, false);
+        audio->WriteByte(PULSE1_FREQUENCY_HIGH, 0x87, false);
+        audio->WriteByte(MASTER_VOLUME, 0x77, false);
+        audio->WriteByte(SOUND_PANNING, 0x11, false);
+        audio->initialize_post_boot();
+    }
+    for (auto phase{0u}; phase < 4; ++phase) {
+        CAPTURE(phase);
+        for (auto *audio : {&optimized, &ordinary}) {
+            if (phase == 1)
+                audio->WriteByte(SOUND_PANNING, 0x10, false);
+            if (phase == 2)
+                audio->WriteByte(MASTER_VOLUME, 0x13, false);
+            if (phase == 3)
+                audio->WriteByte(SOUND_CONTROL, 0, false);
+            for (auto tick{0u}; tick < 1000; ++tick)
+                audio->Tick();
+        }
+        std::array<float, 256> left{}, right{};
+        const auto count = optimized.ReadSamples(left.data(), 128);
+        CHECK(count > 0);
+        CHECK(ordinary.ReadSamples(right.data(), 128) == count);
+        CHECK(left == right);
+    }
+}

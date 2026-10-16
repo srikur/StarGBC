@@ -52,6 +52,10 @@ static constexpr u16 SOUND_CONTROL = 0xFF26;
 static constexpr u16 WAVE_RAM_BEGIN = 0xFF30;
 static constexpr u16 WAVE_RAM_END = 0xFF3F;
 
+static constexpr u16 PULSE1_ENVELOPE = 0xFF12;
+static constexpr u16 PULSE1_FREQUENCY_HIGH = 0xFF14;
+static constexpr u16 MASTER_VOLUME = 0xFF24;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;

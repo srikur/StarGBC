@@ -88,7 +88,7 @@ void Audio::CatchUpWork() {
         // this advances in bulk, bit-identically. Event ticks (duty steps,
         // wave steps, noise counter increments, emissions) and any hairy
         // transient state are processed one tick at a time below.
-        uint32_t quiet = optimizedExecution_ ? n : 0;
+        uint32_t quiet = optimizedExecution_ && !mixer_needs_update() ? n : 0;
         {
             // Emission: sample due when sampleAcc_ crosses the APU rate
             const uint32_t untilEmit = (APU_CLOCK_RATE_INT - sampleAcc_ + AUDIO_SAMPLE_RATE - 1) / AUDIO_SAMPLE_RATE;
@@ -210,6 +210,27 @@ void Audio::CatchUpWork() {
         emissionTick_ += 2;
         --n;
     }
+}
+
+void Audio::initialize_post_boot() {
+    if (IsSgb(model_) || model_ == Model::DMG0)
+        return;
+    const bool cgb = IsCgb(model_);
+    frameSeqStep = cgb ? 0 : 1;
+    ch1.frequency.Write(0x7C1);
+    ch1.dutyStep = cgb ? 6 : 2;
+    ch1.sampleCountdown = cgb ? (IsAgb(model_) ? 71 : 73) : 11;
+    ch1.trigDelay = ch1.restartHold = 0;
+    ch1.didTick = true;
+    ch1.justReloaded = ch1.sampleSurpressed = false;
+    ch1.lengthTimer.lengthTimer = 0;
+    ch1.envelope.currentVolume = 0;
+    ch1.envelope.volumeCountdown = cgb ? 2 : 1;
+    ch1.envelope.locked = true;
+    ch1.UpdateOutput();
+    ch2.lengthTimer.lengthTimer = ch3.lengthTimer = ch4.lengthTimer.lengthTimer = 0;
+    ch2.frequency.Write(0);
+    ch3.frequency.Write(0);
 }
 
 void Audio::WriteAudioControl(const uint8_t value, const bool divBit4High) {
@@ -1459,6 +1480,17 @@ void Audio::BandLimitedRead(const int channel, double &outLeft, double &outRight
     outRight = bl.outputRight;
 }
 
+uint32_t Audio::mixer_registers() const {
+    return static_cast<uint32_t>(nr50) << 16 | static_cast<uint32_t>(nr51) << 8 | ch1.enabled | ch1.dacEnabled << 1 |
+           ch2.enabled << 2 | ch2.dacEnabled << 3 | ch3.enabled << 4 | ch3.dacEnabled << 5 | ch4.enabled << 6 | ch4.dacEnabled << 7;
+}
+
+bool Audio::mixer_needs_update() const {
+    return !emulatorAudioDisabled &&
+           (mixer_registers() != lastMixRegs_ || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1] ||
+            ch3.currentOutput != lastMixOutputs_[2] || ch4.currentOutput != lastMixOutputs_[3]);
+}
+
 void Audio::GenerateSample() {
     if (emulatorAudioDisabled)
         return;
@@ -1466,11 +1498,8 @@ void Audio::GenerateSample() {
     // Channel levels are a pure function of these inputs; when none changed
     // since the last tick, every BandLimitedUpdate below would compute an
     // exact-zero delta and deposit nothing, so the whole block is skippable
-    const uint32_t mixRegs = static_cast<uint32_t>(nr50) << 16 | static_cast<uint32_t>(nr51) << 8 | ch1.enabled | ch1.dacEnabled << 1 |
-                             ch2.enabled << 2 | ch2.dacEnabled << 3 | ch3.enabled << 4 | ch3.dacEnabled << 5 | ch4.enabled << 6 | ch4.dacEnabled << 7;
-    if (!optimizedExecution_ || mixRegs != lastMixRegs_ || ch1.currentOutput != lastMixOutputs_[0] || ch2.currentOutput != lastMixOutputs_[1] ||
-        ch3.currentOutput != lastMixOutputs_[2] || ch4.currentOutput != lastMixOutputs_[3]) {
-        lastMixRegs_ = mixRegs;
+    if (!optimizedExecution_ || mixer_needs_update()) {
+        lastMixRegs_ = mixer_registers();
         lastMixOutputs_ = {ch1.currentOutput, ch2.currentOutput, ch3.currentOutput, ch4.currentOutput};
 
         auto dac = [](const double digital, const bool dacOn) -> double {

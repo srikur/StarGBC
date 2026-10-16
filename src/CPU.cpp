@@ -166,6 +166,8 @@ void CPU<BusT>::InitializeSystem() {
         bus_.WriteByte(address, effective, ComponentSource::CPU);
     }
 
+    bus_.audio_.initialize_post_boot();
+
     // Prevent DMA transfer of 128 blocks due to FF55 reading 0xFF
     bus_.gpu_.hdma.hdma5 = 0xFF;
 

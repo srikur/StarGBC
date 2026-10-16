@@ -383,6 +383,10 @@ class Audio {
     [[=NotStateAware]] uint64_t emissionTick_{};
     [[=NotStateAware]] bool optimizedExecution_{true};
 
+    [[nodiscard]] uint32_t mixer_registers() const;
+
+    [[nodiscard]] bool mixer_needs_update() const;
+
     void InitBandLimitedTable();
 
     void BandLimitedUpdate(int channel, double left, double right, int phase);
@@ -422,6 +426,8 @@ public:
         model_ = model;
         hasEarlyPcmGlitch_ = HasEarlyCgbPcmGlitch(model);
     }
+
+    void initialize_post_boot();
 
     [[nodiscard]] Model GetModel() const { return model_; }
     [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
