@@ -1449,10 +1449,10 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             return wxWriteStage > 0 ? wxPending : windowX;
         case 0xFF4F:
             return is_cgb ? (0xFE | vramBank) : 0xFF;
-        case 0xFF68:
+        case BACKGROUND_PALETTE_INDEX:
             return is_cgb ? ReadGpi(bgpi) : 0xFF;
-        case 0xFF69: {
-            if (!is_cgb)
+        case BACKGROUND_PALETTE_DATA: {
+            if (!is_cgb || cpu_palette_blocked())
                 return 0xFF;
             const uint8_t r = bgpi.index >> 3;
             const uint8_t c = (bgpi.index >> 1) & 3;
@@ -1461,10 +1461,10 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             }
             return (bgpd[r][c][1] >> 3) | (bgpd[r][c][2] << 2);
         }
-        case 0xFF6A:
+        case OBJ_PALETTE_INDEX:
             return is_cgb ? ReadGpi(obpi) : 0xFF;
-        case 0xFF6B: {
-            if (!is_cgb)
+        case OBJ_PALETTE_DATA: {
+            if (!is_cgb || cpu_palette_blocked())
                 return 0xFF;
             const uint8_t r = obpi.index >> 3;
             const uint8_t c = (obpi.index >> 1) & 3;
@@ -1712,38 +1712,42 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         case 0xFF4F:
             vramBank = value & 0x01;
             break;
-        case 0xFF68:
+        case BACKGROUND_PALETTE_INDEX:
             WriteGpi(bgpi, value);
             break;
-        case 0xFF69: {
+        case BACKGROUND_PALETTE_DATA: {
             const uint8_t r = bgpi.index >> 3;
             const uint8_t c = (bgpi.index >> 1) & 0x03;
-            if ((bgpi.index & 0x01) == 0) {
-                bgpd[r][c][0] = value & 0x1F;
-                bgpd[r][c][1] = (bgpd[r][c][1] & 0x18) | (value >> 5);
-            } else {
-                bgpd[r][c][1] = (bgpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
-                bgpd[r][c][2] = (value >> 2) & 0x1F;
+            if (!cpu_palette_blocked()) {
+                if ((bgpi.index & 0x01) == 0) {
+                    bgpd[r][c][0] = value & 0x1F;
+                    bgpd[r][c][1] = (bgpd[r][c][1] & 0x18) | (value >> 5);
+                } else {
+                    bgpd[r][c][1] = (bgpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
+                    bgpd[r][c][2] = (value >> 2) & 0x1F;
+                }
+                bgColorLut_[r * 4 + c] = ComputeCgbColor(bgpd[r][c], color_correction);
             }
-            bgColorLut_[r * 4 + c] = ComputeCgbColor(bgpd[r][c], color_correction);
             if (bgpi.auto_increment)
                 bgpi.index = (bgpi.index + 1) & 0x3F;
             break;
         }
-        case 0xFF6A:
+        case OBJ_PALETTE_INDEX:
             WriteGpi(obpi, value);
             break;
-        case 0xFF6B: {
+        case OBJ_PALETTE_DATA: {
             const uint8_t r = obpi.index >> 3;
             const uint8_t c = (obpi.index >> 1) & 0x03;
-            if ((obpi.index & 0x01) == 0) {
-                obpd[r][c][0] = value & 0x1F;
-                obpd[r][c][1] = (obpd[r][c][1] & 0x18) | (value >> 5);
-            } else {
-                obpd[r][c][1] = (obpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
-                obpd[r][c][2] = (value >> 2) & 0x1F;
+            if (!cpu_palette_blocked()) {
+                if ((obpi.index & 0x01) == 0) {
+                    obpd[r][c][0] = value & 0x1F;
+                    obpd[r][c][1] = (obpd[r][c][1] & 0x18) | (value >> 5);
+                } else {
+                    obpd[r][c][1] = (obpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
+                    obpd[r][c][2] = (value >> 2) & 0x1F;
+                }
+                objColorLut_[r * 4 + c] = ComputeCgbColor(obpd[r][c], color_correction);
             }
-            objColorLut_[r * 4 + c] = ComputeCgbColor(obpd[r][c], color_correction);
             if (obpi.auto_increment)
                 obpi.index = (obpi.index + 1) & 0x3F;
             break;
@@ -1754,7 +1758,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         default:
             break;
     }
-    if (observations && address != 0xFF40) {
+    if (observations && address != LCD_CONTROL_BIT &&
+        !((address == BACKGROUND_PALETTE_DATA || address == OBJ_PALETTE_DATA) && cpu_palette_blocked())) {
         const auto stage = [this, address] {
             switch (address) {
                 case 0xFF42:

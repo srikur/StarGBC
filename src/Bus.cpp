@@ -162,7 +162,7 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
     if (address >= 0xFE00 && address <= 0xFEFF)
         return source == ComponentSource::CPU ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
     if (address == BACKGROUND_PALETTE_DATA || address == OBJ_PALETTE_DATA)
-        return false;
+        return (!cgbMode && !bootromRunning) || gpu_.cpu_palette_blocked();
     return false;
 }
 
@@ -182,8 +182,8 @@ u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
             if (IsCgb(gpu_.model) && DmaBusFor(dma_.startAddress) == 1) {
                 gpu_.oam[dma_.currentByte - 1] = 0;
             }
-            return value;
         }
+        return value;
     }
     if (source == ComponentSource::CPU && dma_.transferActive && dma_.ticks > DMA::STARTUP_CYCLES && !dma_.transferComplete && address <= 0xFDFF &&
         DmaBusFor(address) == DmaBusFor(dma_.startAddress)) {
