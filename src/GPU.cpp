@@ -495,7 +495,7 @@ void GPU::Update() {
         const bool m2_blocked = (currentLine != 0 && (previous_stat & 8)) || (currentLine == 0 && (previous_stat & 0x10)) ||
                                ((previous_stat & 0x40) && previous_lyc == (currentLine == 0 ? 0 : currentLine - 1));
         if (is_cgb && currentLine < 144 && stat.enable_m2_interrupt && !m2_blocked) {
-            interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 3 : 5) : 1, true,
+            interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 3 : 5) : (doubleSpeed ? 1 : 4), true,
                                  currentLine == 0 ? (doubleSpeed ? 1 : 4) : 0);
             statTriggered = true;
         }
