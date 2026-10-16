@@ -291,3 +291,47 @@ TEST_CASE("interrupts: a STAT edge during acknowledgment cannot reappear after i
         CHECK_FALSE(interrupts.delays_pending);
     }
 }
+
+
+TEST_CASE("interrupts: CGB VBlank dispatch distinguishes normal and double speed visibility") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array halted_values = {false, true};
+    constexpr std::array clear_values = {false, true};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    for (const auto [double_speed, halted, clear, policy] : std::views::cartesian_product(speeds, halted_values, clear_values, policies)) {
+        CAPTURE(halted);
+
+        CAPTURE(double_speed);
+        CAPTURE(clear);
+        CAPTURE(policy);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        cpu.pc(0xC001);
+        cpu.currentInstruction = 0;
+        cpu.halted(halted);
+        gameboy.DebugPoke(0xC001, 0);
+        gameboy.DebugPoke(0xC002, 0);
+        interrupts.interrupt_flag = 0;
+        interrupts.interrupt_enable = 1;
+        interrupts.interrupt_master_enable = true;
+        interrupts.set_after(InterruptType::VBlank, double_speed ? 4 : 8, true, double_speed ? 2 : 4);
+        static_cast<void>(gameboy.AdvanceTicks(double_speed ? 4 : 8, policy));
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 1) == 1);
+        CHECK_FALSE(interrupts.is_set(InterruptType::VBlank));
+        CHECK_FALSE(cpu.IsHalted());
+        CHECK(interrupts.interrupt_master_enable == (halted || !double_speed));
+        CHECK(cpu.InstructionsCompleted() == (halted || double_speed ? 0u : 1u));
+        if (clear)
+            bus.WriteByte(INTERRUPT_FLAG, 0, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(double_speed ? 4 : 8, policy));
+        CHECK(interrupts.interrupt_master_enable == (clear && (halted || !double_speed)));
+        CHECK(cpu.InstructionsCompleted() == (halted ? (clear ? 1u : 0u) : double_speed ? 0u : clear ? 2u : 1u));
+    }
+}
