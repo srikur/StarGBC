@@ -892,7 +892,7 @@ void GPU::CheckForSpriteTrigger() {
     if (!spriteFetchQueue.empty()) {
         const int phase = spriteFetchQueue.front().x == -8
                                   ? 0
-                                  : (spriteFetchQueue.front().x + (isFetchingWindow_ ? -window_start_x : scrollX)) & 7;
+                                  : (spriteFetchQueue.front().x + (isFetchingWindow_ ? -window_start_x : initialScrollXFine_)) & 7;
         spriteFetchWait_ = static_cast<uint8_t>(phase < 5 ? 5 - phase : 0);
         if (spriteFetchQueue.front().x >= 0) {
             if (pixelsDrawn < sprite_alignment_end_x)
