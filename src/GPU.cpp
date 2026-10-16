@@ -507,7 +507,7 @@ void GPU::Update() {
                                ((previous_stat & 0x40) && previous_lyc == (currentLine == 0 ? 0 : currentLine - 1));
         if (is_cgb && (!doubleSpeed || currentLine == 0) && currentLine < 144 && stat.enable_m2_interrupt && !m2_blocked) {
             interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 3 : 5) : (doubleSpeed ? 1 : 4), true,
-                                 currentLine == 0 ? (doubleSpeed ? 1 : 4) : 0);
+                                 currentLine == 0 ? (doubleSpeed ? 1 : 2) : 0);
             statTriggered = true;
         }
     }
