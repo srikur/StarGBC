@@ -20,11 +20,7 @@ struct Interrupts {
     [[=NotStateAware]] bool delays_pending{false};
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
 
-    void acknowledge(const uint8_t mask, const bool cgb) {
-        interrupt_flag &= ~mask;
-        acknowledge_cycles = mask == 0x08 ? 3 + cgb : 0;
-        acknowledge_mask = acknowledge_cycles ? mask : 0;
-    }
+    void acknowledge(uint8_t mask, bool cgb);
 
     void tick_cpu() {
         if (acknowledge_cycles && --acknowledge_cycles == 0) {

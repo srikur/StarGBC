@@ -352,7 +352,7 @@ bool CPU<BusT>::ProcessInterrupts() {
         case M4: {
             // The vector is selected at the low-byte stack write. A newly
             // pending higher-priority source can replace the original request
-            const uint8_t newPending = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
+            const uint8_t newPending = interrupts_.interrupt_enable & (interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending) & 0x1F;
             if (!newPending) {
                 sp_--;
                 bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);

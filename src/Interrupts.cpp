@@ -1,5 +1,21 @@
 #include "Interrupts.h"
 
+void Interrupts::acknowledge(const uint8_t mask, const bool cgb) {
+    const uint8_t visible = interrupt_visible_pending & mask;
+    interrupt_flag &= ~mask;
+    interrupt_visible_pending &= ~mask;
+    interrupt_flag_delayed &= ~visible;
+    if (visible) {
+        for (auto i{0u}; i < interrupt_set_delays.size(); ++i) {
+            if (visible & (1u << i))
+                interrupt_set_delays[i] = interrupt_visible_delays[i] = 0;
+        }
+        recompute_pending();
+    }
+    acknowledge_cycles = mask == 0x08 ? 3 + cgb : 0;
+    acknowledge_mask = acknowledge_cycles ? mask : 0;
+}
+
 void Interrupts::set(const InterruptType interrupt, const bool delayed) {
     const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
     if (!delayed) {

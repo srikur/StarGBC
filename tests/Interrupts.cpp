@@ -91,3 +91,53 @@ TEST_CASE("interrupts: serial acknowledgment holds only the selected request thr
         CHECK(interrupts.is_set(InterruptType::Serial));
     }
 }
+
+TEST_CASE("interrupts: acknowledging a visible request retires its delayed dispatch copy") {
+    Interrupts interrupts;
+    interrupts.interrupt_flag = 0;
+    interrupts.set_after(InterruptType::LCDStat, 4, true);
+    interrupts.set_after(InterruptType::Timer, 8, true);
+    interrupts.acknowledge(2, true);
+    CHECK(interrupts.interrupt_visible_pending == 4);
+    CHECK(interrupts.interrupt_flag_delayed == 4);
+    for (auto dot{0u}; dot < 8; ++dot) {
+        interrupts.tick();
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+    }
+    CHECK(interrupts.is_set(InterruptType::Timer));
+    CHECK_FALSE(interrupts.delays_pending);
+
+    interrupts.set_after(InterruptType::LCDStat, 4);
+    interrupts.acknowledge(2, true);
+    for (auto dot{0u}; dot < 4; ++dot)
+        interrupts.tick();
+    CHECK(interrupts.is_set(InterruptType::LCDStat));
+}
+
+TEST_CASE("interrupts: vector selection sees higher-priority IF before dispatch propagation completes") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    for (const auto [model, policy] : std::views::cartesian_product(models, policies)) {
+        CAPTURE(model);
+        CAPTURE(policy);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        cpu.pc(0xC124);
+        cpu.sp(0xD002);
+        cpu.currentInstruction = 0;
+        interrupts.interrupt_enable = 6;
+        interrupts.interrupt_flag = 4;
+        interrupts.interrupt_master_enable = true;
+        static_cast<void>(gameboy.AdvanceTicks(24, policy));
+        interrupts.set_after(InterruptType::LCDStat, 8, true);
+        CHECK(bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) == 0xE6);
+        static_cast<void>(gameboy.AdvanceTicks(8, policy));
+        CHECK(cpu.pc() == 0x48);
+        CHECK(bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) == 0xE4);
+        static_cast<void>(gameboy.AdvanceTicks(8, policy));
+        CHECK(bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) == 0xE4);
+    }
+}
