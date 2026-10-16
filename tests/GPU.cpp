@@ -877,3 +877,32 @@ TEST_CASE("ppu: sprite fetch alignment follows the window tile origin independen
 
     }
 }
+
+TEST_CASE("ppu: DMG scans objects while disabled so a later enable can fetch them") {
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<unsigned, 3> enable_dot_values = {0, 100, 120};
+    for (const auto [optimized, enable_dot] : std::views::cartesian_product(optimizations, enable_dot_values)) {
+        CAPTURE(optimized);
+        CAPTURE(enable_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::DMGB);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.backgroundPalette = gpu.obp0Palette = 0xE4;
+        gpu.oam[0] = 26;
+        gpu.oam[1] = 24;
+        gpu.oam[2] = 1;
+        for (auto row{0u}; row < 8; ++row)
+            gpu.vram[16 + row * 2] = 255;
+        while (gpu.scanlineCounter < 400) {
+            if (enable_dot && gpu.scanlineCounter == enable_dot)
+                gpu.WriteRegisters(LCD_CONTROL_BIT, 0x93);
+            gpu.Update();
+        }
+        const bool visible = enable_dot == 100;
+        CHECK(gpu.GetScreenData()[10 * SCREEN_WIDTH + 16] == GPU::DMG_SHADE[visible ? 1 : 0]);
+        CHECK(gpu.mode3EndDot_ == (visible ? 263 : 252));
+    }
+}

@@ -538,9 +538,6 @@ void GPU::MaybeArmIdle() {
 }
 
 void GPU::TickOAMScan() {
-    // On CGB, OBJ enable gates the mixer; OAM scan and fetching keep running.
-    if (!is_cgb && !Bit<LCDC_OBJ_ENABLE>(lcdc))
-        return;
     if (!(scanlineCounter % 2))
         return;
     const uint8_t index = scanlineCounter / 2;
