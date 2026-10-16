@@ -185,3 +185,41 @@ TEST_CASE("interrupts: the STAT clear interval applies when a queued request bec
         CHECK_FALSE(interrupts.delays_pending);
     }
 }
+
+TEST_CASE("interrupts: clearing an IF-visible CGB LYC request prevents delayed reassertion") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array line_values = {1, 153};
+    constexpr std::array clear_values = {false, true};
+    for (const auto [double_speed, line, clear] : std::views::cartesian_product(speeds, line_values, clear_values)) {
+        CAPTURE(double_speed);
+        CAPTURE(line);
+        CAPTURE(clear);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto &gpu = bus.gpu_;
+        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        gpu.InvalidateIdle();
+        gpu.doubleSpeed = double_speed;
+        gpu.currentLine = line;
+        gpu.scanlineCounter = line == 153 ? 8 : 0;
+        gpu.lyc = line == 153 ? 0 : 1;
+        gpu.lycInterruptLine_ = false;
+        gpu.stat.enable_ly_interrupt = true;
+        gpu.stat.enable_m0_interrupt = gpu.stat.enable_m1_interrupt = gpu.stat.enable_m2_interrupt = false;
+        gpu.stat.mode = line == 153 ? GPUMode::MODE_1 : GPUMode::MODE_2;
+        interrupts.interrupt_flag = 0;
+        gpu.Update();
+        if (!double_speed) {
+            CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 0);
+            gpu.Update();
+        }
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 2);
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+        if (clear)
+            bus.WriteByte(INTERRUPT_FLAG, 0, ComponentSource::CPU);
+        for (auto dot{0u}; dot < 8; ++dot)
+            gpu.Update();
+        CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == (clear ? 0 : 2));
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == !clear);
+    }
+}

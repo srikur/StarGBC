@@ -301,7 +301,7 @@ void GPU::Update() {
         const bool matches = compared_line == (lyc_irq_delay ? lyc_irq_old : lyc);
         const bool blocked = !startup_edge && (compared_line > 0 && compared_line <= 144 ? stat.enable_m2_interrupt : stat.enable_m1_interrupt);
         if (compare_edge && matches && (startup_edge ? !statTriggered : !lycInterruptLine_) && stat.enable_ly_interrupt && !blocked)
-            interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 4);
+            interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 4, true, doubleSpeed ? 0 : 1);
         lycInterruptLine_ = matches;
         stat.coincidence_flag = lyCompare == lyc;
     } else {
@@ -1773,8 +1773,9 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 }
             }
             if (is_cgb && value != lyc) {
+                const bool continuous = lyc == cgb_lyc_compare_line(0) && value == cgb_lyc_compare_line(4);
                 lyc_irq_old = lyc;
-                lyc_irq_delay = doubleSpeed ? 4 : 5;
+                lyc_irq_delay = continuous ? 6 : doubleSpeed ? 4 : 5;
             }
             lyc = value;
             break;

@@ -737,3 +737,31 @@ TEST_CASE("ppu: CGB STAT readback separates line comparisons from rendering mode
         }
     }
 }
+
+TEST_CASE("ppu: CGB LYC writes preserve a continuous match across the next comparison") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array write_dot_values = {450u, 452u};
+    for (const auto [double_speed, write_dot] : std::views::cartesian_product(speeds, write_dot_values)) {
+        CAPTURE(double_speed);
+        CAPTURE(write_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::CGBC);
+        gpu.doubleSpeed = double_speed;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 5;
+        gpu.scanlineCounter = write_dot;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.lyc = 5;
+        gpu.lycInterruptLine_ = true;
+        gpu.stat.enable_ly_interrupt = true;
+        gpu.statTriggered = true;
+        interrupts.interrupt_flag = 0;
+        gpu.WriteRegisters(SCANLINE_COMPARE, 6);
+        CHECK(gpu.ReadRegisters(SCANLINE_COMPARE) == 6);
+        while (gpu.currentLine == 5 || gpu.scanlineCounter < 10)
+            gpu.Update();
+        REQUIRE(gpu.currentLine == 6);
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == (write_dot == 450));
+    }
+}
