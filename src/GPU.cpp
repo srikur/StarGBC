@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <list>
+#include <ranges>
 
 #include "Common.h"
 #include "GPU.h"
@@ -36,6 +37,26 @@ void GPU::set_mode(const GPUMode mode) {
     if (observations && stat.mode != mode)
         Observe(diagnostics::EventKind::PpuMode, 0xFF41, static_cast<uint32_t>(mode), static_cast<uint32_t>(stat.mode));
     stat.mode = mode;
+}
+
+void GPU::initialize_palette_ram() {
+    if (!is_cgb)
+        return;
+    static constexpr std::array<uint16_t, 32> objectColors{
+            0x0000, 0xABF2, 0xC261, 0xBAD9, 0x6E88, 0x63DD, 0x2728, 0x9FFB,
+            0x4235, 0xD4D6, 0x4850, 0x5E57, 0x3E23, 0xCA3D, 0x2171, 0xC037,
+            0xB3C6, 0xF9FB, 0x0008, 0x298D, 0x20A3, 0x87DB, 0x0562, 0xD45D,
+            0x080E, 0xAFFE, 0x0220, 0xFFD7, 0x6A07, 0xEC55, 0x4083, 0x770B,
+    };
+    for (const u8 palette : std::views::indices(8)) {
+        for (const u8 color : std::views::indices(4)) {
+            bgpd[palette][color].fill(31);
+            const auto object = objectColors[palette * 4 + color];
+            obpd[palette][color] = {static_cast<uint8_t>(object & 31), static_cast<uint8_t>((object >> 5) & 31),
+                                    static_cast<uint8_t>(object >> 10)};
+        }
+    }
+    RebuildColorLuts();
 }
 
 void GPU::initialize_post_boot() {

@@ -83,6 +83,8 @@ public:
 
     void set_mode(GPUMode mode);
 
+    void initialize_palette_ram();
+
     void initialize_post_boot();
 
     void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
