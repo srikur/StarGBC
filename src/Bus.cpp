@@ -595,6 +595,8 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                         return;
                     }
                     gpu_.hdma.block_requested = true;
+                    if (!gpu_.doubleSpeed && !gpu_.LCDDisabled() && gpu_.scanlineCounter == gpu_.mode3EndDot_ + 2u)
+                        return;
                 }
                 if (!cpuAtInstructionBoundary || speedShiftActive)
                     return;

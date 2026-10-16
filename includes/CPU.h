@@ -61,7 +61,9 @@ public:
 
     [[nodiscard]] bool IsHalted() const { return halted_; }
 
-    [[nodiscard]] bool AtInstructionBoundary() const { return !instrRunning && !prefixed && interruptState == InterruptState::M1; }
+    [[nodiscard]] bool AtInstructionBoundary() const {
+        return !instrRunning && !prefixed && (interruptState == InterruptState::M1 || interruptState == InterruptState::M6);
+    }
 
     [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
 
