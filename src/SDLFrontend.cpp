@@ -52,6 +52,7 @@ namespace {
         [[=Opt{"Window size scale"}, =Alias{"scale"}, =Range{1, 5}]] int window_scale{3};
         [[=Opt{'b', "Bios path"}, =Alias{"bios"}]] std::string bios_path;
         [[=Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
+        [[=Opt{"DMG LCD sampling during palette writes"}]] DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
         [[=Opt{"Lua script to start/stop with Shift+F5"}]] std::string script;
         [[=Opt{"Lua instructions per frame"}]] uint64_t script_instruction_budget{1'000'000};
         [[=Opt{"Lua memory limit in MiB"}]] uint64_t script_memory_mib{32};
@@ -137,7 +138,8 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
                               .model = args->model,
                               .noBootrom = args->no_bootrom,
                               .realRTC = args->real_rtc,
-                              .noAudio = !audioEnabled_});
+                              .noAudio = !audioEnabled_,
+                              .dmg_palette_sampling = args->dmg_palette_sampling});
 
     lastTitleTime_ = std::chrono::steady_clock::now();
     session_ = std::make_unique<EmulationSession>(*gameboy_);

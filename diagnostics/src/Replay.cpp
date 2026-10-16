@@ -11,7 +11,8 @@ namespace diagnostics {
         void Validate(const InputLog &log) {
             if (log.schemaVersion != SchemaVersion || log.initial.rom.empty() || log.initial.configuration.empty() || log.events.size() > 1'000'000)
                 throw std::invalid_argument("Invalid replay identity or input count");
-            if (log.settings && (log.settings->model == Model::Auto || log.settings->model > Model::AGBBE || log.settings->realRTC))
+            if (log.settings && (log.settings->model == Model::Auto || log.settings->model > Model::AGBBE || log.settings->realRTC ||
+                                 log.settings->dmg_palette_sampling > DmgPaletteSampling::NewValue))
                 throw std::invalid_argument("Replay settings require a concrete model and virtual RTC");
             uint64_t tick{};
             for (size_t i = 0; i < log.events.size(); ++i) {
@@ -40,7 +41,9 @@ namespace diagnostics {
                 WriteString(output, settings.romName);
                 WriteString(output, settings.biosPath);
                 WriteUnsigned(output, static_cast<uint8_t>(settings.model), 1);
-                WriteUnsigned(output, settings.noBootrom | (settings.realRTC << 1) | (settings.noAudio << 2) | (settings.colorCorrection << 3), 1);
+                WriteUnsigned(output, settings.noBootrom | (settings.realRTC << 1) | (settings.noAudio << 2) | (settings.colorCorrection << 3) |
+                                              ((settings.dmg_palette_sampling == DmgPaletteSampling::NewValue) << 4),
+                              1);
             }
             WriteUnsigned(output, log.initialButtons, 1);
             WriteUnsigned(output, log.events.size());
@@ -116,12 +119,13 @@ namespace diagnostics {
             settings.biosPath = ReadString(input);
             settings.model = static_cast<Model>(ReadUnsigned(input, 1));
             const auto flags = ReadUnsigned(input, 1);
-            if (flags > 15)
+            if (flags > 31)
                 throw std::invalid_argument("Invalid replay settings flags");
             settings.noBootrom = flags & 1;
             settings.realRTC = flags & 2;
             settings.noAudio = flags & 4;
             settings.colorCorrection = flags & 8;
+            settings.dmg_palette_sampling = flags & 16 ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
             log.settings = std::move(settings);
         }
         log.initialButtons = ReadUnsigned(input, 1);
@@ -146,9 +150,11 @@ namespace diagnostics {
             bool realRTC;
             bool noAudio;
             bool colorCorrection;
+            DmgPaletteSampling dmg_palette_sampling;
         };
         std::ostringstream configuration;
-        WriteJson(configuration, Configuration{machine.GetModel(), settings.noBootrom, settings.realRTC, settings.noAudio, settings.colorCorrection});
+        WriteJson(configuration, Configuration{machine.GetModel(), settings.noBootrom, settings.realRTC, settings.noAudio,
+                                               settings.colorCorrection, settings.dmg_palette_sampling});
         auto save = std::filesystem::path(settings.romName);
         save.replace_extension(".sav");
         return {.rom = FileHash(settings.romName),

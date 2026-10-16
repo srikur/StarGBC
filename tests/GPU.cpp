@@ -1238,3 +1238,41 @@ TEST_CASE("ppu: LCD startup retains the qualified window match before WY changes
         CHECK(gpu.GetScreenData()[80] == (initially_enabled && initial_wy == 0 ? 0xFF000000u : 0xFFFFFFFFu));
     }
 }
+
+TEST_CASE("ppu: LCD palette sampling changes the transient shade without shifting pixels") {
+    constexpr std::array sampling_values = {DmgPaletteSampling::BitwiseOr, DmgPaletteSampling::NewValue};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<uint16_t, 3> addresses = {DMG_BACKGROUND_PALETTE, DMG_OBJ_PALETTE_0, DMG_OBJ_PALETTE_1};
+    for (const auto [sampling, optimized, address] : std::views::cartesian_product(sampling_values, optimizations, addresses)) {
+        CAPTURE(sampling);
+        CAPTURE(optimized);
+        CAPTURE(address);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::DMGB);
+        gpu.dmg_palette_sampling = sampling;
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x93;
+        gpu.stat.mode = GPUMode::MODE_3;
+        gpu.scanlineCounter = 120;
+        gpu.pixelsDrawn = 40;
+        gpu.initialSCXSet = true;
+        gpu.backgroundPalette = gpu.obp0Palette = gpu.obp1Palette = 0x55;
+        for (auto pixel{0u}; pixel < 8; ++pixel) {
+            gpu.backgroundQueue.push_back(Pixel{.color = 1});
+            gpu.spriteArray[pixel] = address == DMG_BACKGROUND_PALETTE
+                                            ? Pixel{.is_placeholder = true}
+                                            : Pixel{.color = 1, .dmg_palette = static_cast<uint8_t>(address == DMG_OBJ_PALETTE_1),
+                                                    .is_sprite = true, .is_placeholder = false};
+        }
+        gpu.WriteRegisters(address, 0xAA);
+        for (auto dot{0u}; dot < 3; ++dot) {
+            gpu.Update();
+            CHECK(gpu.pixelsDrawn == 41 + dot);
+            CHECK(gpu.scanlineCounter == 121 + dot);
+        }
+        CHECK(gpu.GetScreenData()[40] == 0xFFC0C0C0u);
+        CHECK(gpu.GetScreenData()[41] == (sampling == DmgPaletteSampling::BitwiseOr ? 0xFF000000u : 0xFF606060u));
+        CHECK(gpu.GetScreenData()[42] == 0xFF606060u);
+    }
+}

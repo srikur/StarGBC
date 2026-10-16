@@ -202,12 +202,11 @@ void GPU::Update() {
     backgroundDataReadThisDot_ = false;
     pixelOutputThisDot_ = false;
 
-    // DMG BGP write glitch: a mode-3 write reaches the pixel pipe late — one dot where the palette reads as old|new, then the new value.
     if (bgpWriteStage > 0) {
         bgpWriteStage--;
         if (bgpWriteStage == 1) {
             if (!is_cgb)
-                backgroundPalette |= bgpPending;
+                backgroundPalette = sample_dmg_palette(backgroundPalette, bgpPending);
         } else if (bgpWriteStage == 0) {
             backgroundPalette = bgpPending;
         }
@@ -264,7 +263,7 @@ void GPU::Update() {
     if (obp0WriteStage > 0) {
         obp0WriteStage--;
         if (obp0WriteStage == 1) {
-            obp0Palette |= obp0Pending;
+            obp0Palette = sample_dmg_palette(obp0Palette, obp0Pending);
         } else if (obp0WriteStage == 0) {
             obp0Palette = obp0Pending;
         }
@@ -274,7 +273,7 @@ void GPU::Update() {
     if (obp1WriteStage > 0) {
         obp1WriteStage--;
         if (obp1WriteStage == 1) {
-            obp1Palette |= obp1Pending;
+            obp1Palette = sample_dmg_palette(obp1Palette, obp1Pending);
         } else if (obp1WriteStage == 0) {
             obp1Palette = obp1Pending;
         }

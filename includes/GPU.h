@@ -274,6 +274,7 @@ public:
     std::array<Pixel, 3> recentPixels_{};
     std::array<uint16_t, 3> recentPixelOffsets_{0xFFFF, 0xFFFF, 0xFFFF};
     Model model = Model::DMGB;
+    DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
     // Cached IsCgb(model): read dozens of times per dot, and the compiler
     // cannot hoist the range compares across non-inlined calls
     [[=NotStateAware]] bool is_cgb{false};
@@ -396,6 +397,10 @@ private:
     uint8_t ReadBackgroundTileData(bool high);
 
     uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
+
+    [[nodiscard]] uint8_t sample_dmg_palette(const uint8_t previous, const uint8_t next) const {
+        return dmg_palette_sampling == DmgPaletteSampling::BitwiseOr ? previous | next : next;
+    }
 
     [[nodiscard]] uint32_t GetBackgroundColor(uint8_t color, uint8_t palette = 0) const;
 

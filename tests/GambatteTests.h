@@ -63,7 +63,8 @@ static char readGambatteHexTile(const uint32_t *screen, const size_t index) {
     return '?';
 }
 
-static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
+static GambatteResult runGambatteTest(const GambatteCase &gambatte_case,
+                                      const DmgPaletteSampling palette_sampling = DmgPaletteSampling::NewValue) {
     ThreadPermit _permit;
     TestObservationSession observations;
     const std::string label = std::string(gambatte_case.rom) + " [" + std::string(ModelName(gambatte_case.model)) + "]";
@@ -90,13 +91,15 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
         result.inputs.bootrom = "none";
         result.inputs.reference = variant == "screen" ? diagnostics::FileHash(gambatte_case.expected) : diagnostics::TextHash(expected);
         result.inputs.configuration =
-                diagnostics::TextHash(result.test.model + "|skip-bootrom|virtual-rtc|color-correction-off|15-intervals|gambatte-v1");
+                diagnostics::TextHash(result.test.model + "|skip-bootrom|virtual-rtc|color-correction-off|15-intervals|" +
+                                      (palette_sampling == DmgPaletteSampling::NewValue ? "dmg-lcd-new-value|gambatte-v2" : "gambatte-v1"));
         gameboy = Gameboy::init({
                 .romName = gambatte_case.rom,
                 .model = gambatte_case.model,
                 .noBootrom = true,
                 .colorCorrection = false,
                 .executionPolicy = testExecutionPolicy,
+                .dmg_palette_sampling = palette_sampling,
         });
         observations.Attach(*gameboy);
         for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame)
@@ -174,7 +177,8 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case) {
                                                      .normalization = variant == "digits" ? "gambatte-digits-f8-mask-compared-tiles-only-v1"
                                                                                           : "gambatte-rgb5-to-stargbc-uncorrected-v1",
                                                      .completion = "FixedInterval",
-                                                     .executableHash = testExecutableHash};
+                                                     .executableHash = testExecutableHash,
+                                                     .dmg_palette_sampling = std::string(model_name(palette_sampling))};
         diagnostics::WriteFailureBundle(failureDirectory / diagnostics::TextHash(result.test.id), result, reproduction, terminal,
                                         gameboy ? std::span(gameboy->GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT) : std::span<const uint32_t>{},
                                         expectedPixels, variant == "digits" ? 0xF8F8F8 : 0xFFFFFFFF);

@@ -89,7 +89,7 @@ void Gameboy::ApplyButtons(const uint8_t buttons) {
 const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
 
 bool Gameboy::LoadedStateValid() const {
-    return gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
+    return gpu_.dmg_palette_sampling <= DmgPaletteSampling::NewValue && gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
            gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) && gpu_.doubleSpeed == (bus_.speed == Speed::Double) &&
            gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() && gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 &&
            gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 && cartridge_.BankingStateValid() &&

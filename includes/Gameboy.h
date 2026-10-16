@@ -22,6 +22,7 @@ struct GameboySettings {
     bool noAudio{false};
     bool colorCorrection{true};
     ExecutionPolicy executionPolicy{ExecutionPolicy::Optimized};
+    DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
 };
 
 class Gameboy {
@@ -38,6 +39,7 @@ public:
         cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_), instructions_(registers_, interrupts_),
         executionPolicy_(settings.executionPolicy) {
         timer_.serial = &serial_;
+        gpu_.dmg_palette_sampling = settings.dmg_palette_sampling;
     }
 
     Gameboy(const Gameboy &other) = delete;

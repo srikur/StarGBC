@@ -39,6 +39,7 @@ namespace diagnostics {
         std::string completion;
         std::string executableHash;
         bool fixedIntervals{};
+        std::string dmg_palette_sampling{"BitwiseOr"};
     };
 
     struct TerminalState {
