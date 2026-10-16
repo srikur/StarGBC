@@ -1,6 +1,8 @@
 #include "GPU.h"
 #include <algorithm>
+#include <array>
 #include <doctest/doctest.h>
+#include <iterator>
 #include <string_view>
 #include "diagnostics/Provenance.h"
 
@@ -127,7 +129,7 @@ namespace {
         gpu.SetModel(model);
         gpu.provenance = provenance;
         gpu.doubleSpeed = doubleSpeed;
-        gpu.dmgCompat = compatibility;
+        gpu.dmg_compat = compatibility;
         gpu.lcdc = 0xF1;
         gpu.currentLine = 10;
         gpu.windowX = wx;
@@ -189,7 +191,7 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                     gpu->lcdc = 0x91;
                     gpu->currentLine = gpu->lyc = line;
                     gpu->stat.mode = mode == GPUMode::MODE_1 ? GPUMode::MODE_1 : GPUMode::MODE_2;
-                    gpu->stat.enableLYInterrupt = true;
+                    gpu->stat.enable_ly_interrupt = true;
                     for (auto i{0u}; i < dot; ++i)
                         gpu->Update();
                     REQUIRE(gpu->stat.mode == mode);
@@ -205,7 +207,7 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                     control.Update();
                     CHECK(written.ReadRegisters(0xFF44) == control.ReadRegisters(0xFF44));
                     CHECK(written.ReadRegisters(0xFF41) == control.ReadRegisters(0xFF41));
-                    CHECK(writtenInterrupts.interruptFlag == controlInterrupts.interruptFlag);
+                    CHECK(writtenInterrupts.interrupt_flag == controlInterrupts.interrupt_flag);
                 }
                 CHECK(std::equal(written.GetScreenData(), written.GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT, control.GetScreenData()));
             }
@@ -351,21 +353,21 @@ TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping
             gpu->currentLine = 150;
             gpu->scanlineCounter = 455;
             gpu->stat.mode = GPUMode::MODE_1;
-            gpu->stat.enableLYInterrupt = true;
+            gpu->stat.enable_ly_interrupt = true;
             gpu->lyc = 151;
         }
-        ordinary.optimizedExecution = false;
+        ordinary.optimized_execution = false;
         for (auto dot{0u}; dot < 460; ++dot) {
             CAPTURE(model);
             CAPTURE(dot);
             optimized.Update();
             ordinary.Update();
             CHECK(optimized.ReadRegisters(0xFF41) == ordinary.ReadRegisters(0xFF41));
-            CHECK(optimizedInterrupts.interruptFlag == ordinaryInterrupts.interruptFlag);
-            CHECK(optimizedInterrupts.interruptVisiblePending == ordinaryInterrupts.interruptVisiblePending);
-            CHECK(optimizedInterrupts.interruptSetDelays == ordinaryInterrupts.interruptSetDelays);
+            CHECK(optimizedInterrupts.interrupt_flag == ordinaryInterrupts.interrupt_flag);
+            CHECK(optimizedInterrupts.interrupt_visible_pending == ordinaryInterrupts.interrupt_visible_pending);
+            CHECK(optimizedInterrupts.interrupt_set_delays == ordinaryInterrupts.interrupt_set_delays);
         }
-        CHECK((optimizedInterrupts.interruptFlag & 2) != 0);
+        CHECK((optimizedInterrupts.interrupt_flag & 2) != 0);
     }
 }
 
@@ -378,16 +380,16 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
             gpu->lcdc = 0x91;
             gpu->currentLine = 10;
             gpu->stat.mode = GPUMode::MODE_2;
-            gpu->stat.enableM2Interrupt = true;
+            gpu->stat.enable_m2_interrupt = true;
         }
-        ordinary.optimizedExecution = false;
+        ordinary.optimized_execution = false;
         for (auto dot{0u}; dot < 80; ++dot) {
             CAPTURE(model);
             CAPTURE(dot);
             optimized.Update();
             ordinary.Update();
             CHECK(optimized.statTriggered == ordinary.statTriggered);
-            CHECK(optimizedInterrupts.interruptFlag == ordinaryInterrupts.interruptFlag);
+            CHECK(optimizedInterrupts.interrupt_flag == ordinaryInterrupts.interrupt_flag);
             if (dot == 7) {
                 for (auto *gpu : {&optimized, &ordinary}) {
                     gpu->WriteRegisters(0xFF45, 10);
@@ -395,5 +397,82 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
                 }
             }
         }
+    }
+}
+
+TEST_CASE("ppu: CGB window enable qualifies the retained WY match") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array optimizeds = {false, true};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array<u32, 2> enable_dots = {450, 452};
+    for (const auto [model, optimized, speed, enable_dot] : std::views::cartesian_product(models, optimizeds, speeds, enable_dots)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(optimized);
+        CAPTURE(speed);
+        CAPTURE(enable_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.doubleSpeed = speed;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.windowY = 10;
+        gpu.windowX = 7;
+        for (auto _ : std::views::indices(enable_dot)) {
+            gpu.Update();
+        }
+        REQUIRE(gpu.scanlineCounter == enable_dot);
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0xB1);
+        for (u32 dot{enable_dot}; dot < 456 + 280; ++dot)
+            gpu.Update();
+        REQUIRE(gpu.currentLine == 11);
+        REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
+        CHECK(gpu.windowWasActiveThisLine_ == (enable_dot == 450));
+    }
+}
+
+TEST_CASE("ppu: blocked CGB palette writes preserve RAM and advance the address") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array optimizeds = {false, true};
+    constexpr std::array<u16, 2> addresses = {BACKGROUND_PALETTE_INDEX, OBJ_PALETTE_INDEX};
+    for (const auto [model, speed, optimized, address] : std::views::cartesian_product(models, speeds, optimizeds, addresses)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(speed);
+        CAPTURE(optimized);
+        CAPTURE(address);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.doubleSpeed = speed;
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0;
+        gpu.WriteRegisters(address, 0x3F);
+        gpu.WriteRegisters(address + 1, 0x12);
+        gpu.WriteRegisters(address, 0);
+        gpu.WriteRegisters(address + 1, 0x34);
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.stat.mode = GPUMode::MODE_2;
+        for (auto dot{0uz}; dot < 100 && !gpu.cpu_palette_blocked(); ++dot)
+            gpu.Update();
+        REQUIRE(gpu.cpu_palette_blocked());
+        gpu.WriteRegisters(address, 0xBF);
+        CHECK(gpu.ReadRegisters(address + 1) == 0xFF);
+        gpu.WriteRegisters(address + 1, 0x56);
+        CHECK((gpu.ReadRegisters(address) & 0x3F) == 0);
+        gpu.WriteRegisters(address + 1, 0x78);
+        CHECK((gpu.ReadRegisters(address) & 0x3F) == 1);
+        for (auto dot{0uz}; dot < 300 && gpu.cpu_palette_blocked(); ++dot)
+            gpu.Update();
+        REQUIRE_FALSE(gpu.cpu_palette_blocked());
+        REQUIRE(gpu.stat.mode == GPUMode::MODE_0);
+        gpu.WriteRegisters(address, 0x3F);
+        CHECK(gpu.ReadRegisters(address + 1) == 0x12);
+        gpu.WriteRegisters(address, 0);
+        CHECK(gpu.ReadRegisters(address + 1) == 0x34);
+        gpu.WriteRegisters(address + 1, 0x56);
+        CHECK(gpu.ReadRegisters(address + 1) == 0x56);
     }
 }

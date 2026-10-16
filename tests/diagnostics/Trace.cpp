@@ -1,16 +1,7 @@
 #include "diagnostics/Trace.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
-
-namespace {
-    template<class T>
-    consteval std::meta::info traceTestMember(const std::string_view name) {
-        for (const auto member : std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::unchecked()))
-            if (std::meta::identifier_of(member) == name)
-                return member;
-        throw "Unknown trace test member";
-    }
-} // namespace
+#include "TestUtilities.h"
 
 TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardware and pixels") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
@@ -50,8 +41,8 @@ TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and
     Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
     diagnostics::TraceRecorder recorder(64);
     gameboy.ObserveWith(&recorder.Context());
-    auto &gpu = gameboy.[:traceTestMember<Gameboy>("gpu_"):];
-    auto &bus = gameboy.[:traceTestMember<Gameboy>("bus_"):];
+    auto &gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
+    auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
     gpu.vramBank = 1;
     gpu.vram[0x2000] = 0xFF;
     gpu.lcdc = 0;
@@ -75,7 +66,7 @@ TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and re
     for (const bool doubleSpeed : {false, true}) {
         Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
         if (doubleSpeed) {
-            auto &bus = gameboy.[:traceTestMember<Gameboy>("bus_"):];
+            auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
             bus.prepareSpeedShift = true;
             bus.ChangeSpeed();
             REQUIRE(gameboy.Inspect().speed == Speed::Double);
@@ -127,4 +118,29 @@ TEST_CASE("diagnostics: trace filters combine component kind address PC bank lin
     event.pcBank = 3;
     event.blocked = true;
     CHECK(filter.Matches(event));
+}
+
+TEST_CASE("diagnostics: palette bus restrictions are observable without applying blocked writes") {
+    Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto &gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
+    auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+    gpu.lcdc = 0;
+    bus.WriteByte(BACKGROUND_PALETTE_INDEX, 0x80, ComponentSource::CPU);
+    gpu.lcdc = 0x91;
+    gpu.currentLine = 10;
+    gpu.stat.mode = GPUMode::MODE_3;
+    gpu.scanlineCounter = 100;
+    diagnostics::TraceRecorder recorder(16);
+    gameboy.ObserveWith(&recorder.Context());
+    CHECK(bus.ReadByte(BACKGROUND_PALETTE_DATA, ComponentSource::CPU) == 0xFF);
+    bus.WriteByte(BACKGROUND_PALETTE_DATA, 0x12, ComponentSource::CPU);
+    const auto events = recorder.Events();
+    REQUIRE(events.size() == 3);
+    CHECK(events[0].kind == diagnostics::EventKind::BusRead);
+    CHECK(events[1].kind == diagnostics::EventKind::BusWrite);
+    CHECK(events[2].kind == diagnostics::EventKind::RegisterWrite);
+    CHECK(std::ranges::all_of(events, [](const auto &event) { return event.blocked; }));
+    CHECK((bus.InspectRead(BACKGROUND_PALETTE_INDEX, ComponentSource::CPU) & 0x3F) == 1);
+    CHECK(bus.InspectRead(BACKGROUND_PALETTE_DATA, ComponentSource::CPU) == 0xFF);
+    CHECK(recorder.Events().size() == 3);
 }

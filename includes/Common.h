@@ -38,8 +38,14 @@ static constexpr u16 WRAM_END = 0xDFFF;
 static constexpr u16 ERAM_BEGIN = 0xE000;
 static constexpr u16 ERAM_END = 0xFDFF;
 
+static constexpr u16 SERIAL_TRANSFER_DATA = 0xFF01;
+static constexpr u16 SERIAL_TRANSFER_CONTROL = 0xFF02;
 static constexpr u16 LCD_CONTROL_BIT = 0xFF40;
 static constexpr u16 OAM_DMA_TRANSFER_REG = 0xFF46;
+static constexpr u16 BACKGROUND_PALETTE_INDEX = 0xFF68;
+static constexpr u16 BACKGROUND_PALETTE_DATA = 0xFF69;
+static constexpr u16 OBJ_PALETTE_INDEX = 0xFF6A;
+static constexpr u16 OBJ_PALETTE_DATA = 0xFF6B;
 
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
@@ -62,9 +68,11 @@ static constexpr u8 LCDC_OBJ_SIZE = 2;
 static constexpr u8 LCDC_OBJ_ENABLE = 1;
 static constexpr u8 LCDC_BG_WINDOW_ENABLE = 0;
 
-constexpr u8 operator""_u8(unsigned long long value) { return static_cast<u8>(value); }
+constexpr u8 operator""_u8(const unsigned long long value) { return static_cast<u8>(value); }
 
-constexpr u16 operator""_u16(unsigned long long value) { return static_cast<u16>(value); }
+constexpr u16 operator""_u16(const unsigned long long value) { return static_cast<u16>(value); }
+
+constexpr u32 operator""_u32(const unsigned long long value) { return static_cast<u32>(value); }
 
 template<uint8_t bit>
 static constexpr bool Bit(const u8 value) {

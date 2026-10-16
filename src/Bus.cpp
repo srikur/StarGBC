@@ -161,6 +161,8 @@ bool Bus::AccessBlocked(const uint16_t address, const ComponentSource source, co
         return source == ComponentSource::CPU ? (write ? gpu_.CpuVramWriteBlocked() : gpu_.CpuVramReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
     if (address >= 0xFE00 && address <= 0xFEFF)
         return source == ComponentSource::CPU ? (write ? gpu_.CpuOamWriteBlocked() : gpu_.CpuOamReadBlocked()) : gpu_.stat.mode == GPUMode::MODE_3;
+    if (address == BACKGROUND_PALETTE_DATA || address == OBJ_PALETTE_DATA)
+        return false;
     return false;
 }
 
@@ -221,7 +223,7 @@ u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
         case 0xFF00:
             return joypad_.GetJoypadState() | 0xC0;
         case 0xFF01 ... 0xFF02: {
-            uint8_t value = serial_.ReadSerial(address);
+            uint8_t value = serial_.read_serial(address);
             // The clock-speed bit only exists in CGB mode; it reads 1 otherwise
             if (address == 0xFF02 && !cgbMode)
                 value |= 0x02;
@@ -230,7 +232,7 @@ u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
         case 0xFF04 ... 0xFF07:
             return timer_.ReadByte(address);
         case 0xFF0F:
-            return interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0;
+            return interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0;
         case 0xFF10 ... 0xFF3F:
             if constexpr (Inspect)
                 return audio_.InspectRegister(address);
@@ -289,7 +291,7 @@ u8 Bus::ReadByteValue(const u16 address, const ComponentSource source) const {
         case 0xFF80 ... 0xFFFE:
             return memory_.hram_[address - 0xFF80];
         case 0xFFFF:
-            return interrupts_.interruptEnable;
+            return interrupts_.interrupt_enable;
         default:
             return 0xFF;
     }
@@ -311,7 +313,7 @@ void Bus::WriteByte(const uint16_t address, const uint8_t value, const Component
                            diagnostics::Initiator::HDMA);
     if (observations && address == 0xFF0F)
         observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
-                           interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+                           interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0);
 }
 
 void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const ComponentSource source) {
@@ -373,15 +375,15 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
             joypad_.SetJoypadState(value);
             break;
         case 0xFF01 ... 0xFF02:
-            serial_.WriteSerial(address, value, speed == Speed::Double, cgbMode);
+            serial_.write_serial(address, value, cgbMode);
             break;
         case 0xFF04 ... 0xFF07:
             timer_.WriteByte(address, value, speed);
             break;
         case 0xFF0F:
-            interrupts_.interruptFlag = value;
-            interrupts_.interruptFlagDelayed &= value | ~interrupts_.interruptVisiblePending;
-            interrupts_.interruptVisiblePending &= value;
+            interrupts_.interrupt_flag = value;
+            interrupts_.interrupt_flag_delayed &= value | ~interrupts_.interrupt_visible_pending;
+            interrupts_.interrupt_visible_pending &= value;
             break;
         case 0xFF10 ... 0xFF3F:
             audio_.WriteByte(address, value, timer_.divCounter & (speed == Speed::Double ? 0x2000 : 0x1000), speed == Speed::Double);
@@ -395,7 +397,7 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
                 if (IsCgb(gpu_.model) && bootromRunning) {
                     key0Written = true;
                     cgbMode = (value & 0x0C) == 0;
-                    gpu_.dmgCompat = !cgbMode;
+                    gpu_.dmg_compat = !cgbMode;
                 }
             } else if (address == 0xFF4D) {
                 if (cgbMode)
@@ -459,7 +461,7 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
             memory_.hram_[address - 0xFF80] = value;
             break;
         case 0xFFFF:
-            interrupts_.interruptEnable = value;
+            interrupts_.interrupt_enable = value;
             break;
         default:
             break;

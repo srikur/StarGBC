@@ -7,32 +7,32 @@
 
 struct Pixel {
     uint8_t color{0x00};
-    uint8_t dmgPalette{0x00};
-    uint8_t cgbPalette{0x00};
+    uint8_t dmg_palette{0x00};
+    uint8_t cgb_palette{0x00};
     bool priority{false};
-    bool isSprite{false};
-    bool isPlaceholder{true};
-    uint8_t spriteNum{0x00};
+    bool is_sprite{false};
+    bool is_placeholder{true};
+    uint8_t sprite_num{0x00};
 };
 
 struct Attributes {
     bool priority{false};
     bool yflip{false};
     bool xflip{false};
-    bool paletteNumberDMG{false};
-    bool vramBank{false};
-    uint8_t paletteNumberCGB{0x00};
+    bool palette_number_dmg{false};
+    bool vram_bank{false};
+    uint8_t palette_number_cgb{0x00};
 };
 
 struct Sprite {
-    uint8_t spriteNum{0x00};
+    uint8_t sprite_num{0x00};
     int16_t x{0x00};
     int16_t y{0x00};
-    uint8_t tileIndex{0x00};
+    uint8_t tile_index{0x00};
     Attributes attributes{};
     bool processed{false};
 
-    bool operator<(const Sprite &s) const { return x < s.x || (x == s.x && spriteNum < s.spriteNum); }
+    bool operator<(const Sprite &s) const { return x < s.x || (x == s.x && sprite_num < s.sprite_num); }
 };
 
 // State for the pixel fetcher
@@ -46,7 +46,7 @@ enum class FetcherState {
 
 struct Gpi {
     uint8_t index{};
-    bool autoIncrement{};
+    bool auto_increment{};
 };
 
 enum class GPUMode { MODE_0, MODE_1, MODE_2, MODE_3 };
@@ -58,28 +58,32 @@ enum class CorruptionType {
 };
 
 struct Stat {
-    bool enableLYInterrupt{false};
-    bool enableM2Interrupt{false};
-    bool enableM1Interrupt{false};
-    bool enableM0Interrupt{false};
-    bool coincidenceFlag{false};
+    bool enable_ly_interrupt{false};
+    bool enable_m2_interrupt{false};
+    bool enable_m1_interrupt{false};
+    bool enable_m0_interrupt{false};
+    bool coincidence_flag{false};
     GPUMode mode{GPUMode::MODE_2};
 
     [[nodiscard]] uint8_t value() const {
-        return 0x80 | enableLYInterrupt << 6 | enableM2Interrupt << 5 | enableM1Interrupt << 4 | enableM0Interrupt << 3 | coincidenceFlag << 2 |
-               static_cast<uint8_t>(mode);
+        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 |
+               coincidence_flag << 2 | static_cast<uint8_t>(mode);
     }
 };
 
 class GPU {
 public:
-    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : colorCorrection_(colorCorrection), interrupts_(interrupts) {}
+    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {}
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
     [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
-    [[=NotStateAware]] bool optimizedExecution{true};
+    [[=NotStateAware]] bool optimized_execution{true};
 
-    void SetMode(GPUMode mode);
+    void set_mode(GPUMode mode);
+
+    void initialize_palette_ram();
+
+    void initialize_post_boot();
 
     void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
 
@@ -106,6 +110,10 @@ public:
     // structs on every output pixel. Indexed with & 7 throughout.
     std::array<Pixel, 8> spriteArray;
     uint8_t spriteArrayHead_{0};
+
+    [[nodiscard]] bool window_y_matched() const {
+        return windowTriggeredThisFrame || (is_cgb && currentLine == (wy_write_stage ? wy_trigger_old : windowY));
+    }
 
     bool windowTriggeredThisFrame{false};
     Sprite spriteToFetch_{};
@@ -202,10 +210,13 @@ public:
     bool pixelOutputThisDot_{false};
     Pixel outputBackground_{};
     Pixel outputSprite_{};
+    uint8_t wy_trigger_old{0};
+    uint8_t wy_write_stage{0};
     uint8_t wxPending{0};
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
     uint8_t scxWriteStage{0};
+    bool scx_just_applied{false};
     uint8_t scyFetcherOld{0};
     uint8_t scyWriteStage{0};
     bool scyJustApplied_{false};
@@ -249,25 +260,25 @@ public:
     Model model = Model::DMGB;
     // Cached IsCgb(model): read dozens of times per dot, and the compiler
     // cannot hoist the range compares across non-inlined calls
-    [[=NotStateAware]] bool isCgb_{false};
-    [[=NotStateAware]] bool colorCorrection_{true};
+    [[=NotStateAware]] bool is_cgb{false};
+    [[=NotStateAware]] bool color_correction{true};
     // Color-corrected ARGB for every CGB palette entry (8 palettes x 4
     // colors), maintained on palette-RAM writes instead of per pixel
     [[=NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
     [[=NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
     // CGB hardware running a DMG cart: render through the DMG palette
     // registers into the bootrom's compatibility palettes
-    bool dmgCompat{false};
+    bool dmg_compat{false};
     // Mirrored from the DMA unit each tick: an active OAM DMA blocks the
     // PPU's OAM scan (stale bus) and redirects tile/attr reads
-    bool oamDmaActive{false};
+    bool oam_dma_active{false};
     uint8_t oamDmaDest_{0};
     uint8_t mode2YBus_{0xFF};
     uint8_t mode2XBus_{0xFF};
 
     void SetModel(const Model m) {
         model = m;
-        isCgb_ = IsCgb(m);
+        is_cgb = IsCgb(m);
         RebuildColorLuts();
     }
 
@@ -321,6 +332,8 @@ public:
     [[nodiscard]] bool CpuVramReadBlocked() const;
 
     [[nodiscard]] bool CpuVramWriteBlocked() const;
+
+    [[nodiscard]] bool cpu_palette_blocked() const;
 
     [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
 

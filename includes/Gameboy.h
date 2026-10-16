@@ -36,7 +36,9 @@ public:
         joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_),
         gpu_(interrupts_, settings.colorCorrection), bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
         cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_), instructions_(registers_, interrupts_),
-        executionPolicy_(settings.executionPolicy) {}
+        executionPolicy_(settings.executionPolicy) {
+        timer_.serial = &serial_;
+    }
 
     Gameboy(const Gameboy &other) = delete;
 
@@ -252,7 +254,7 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
     rtc_.RecalculateZeroTime();
     cartridge_.MarkRamDirty();
     audio_.ClearBuffer();
-    interrupts_.RecomputePending();
+    interrupts_.recompute_pending();
     gpu_.SetModel(gpu_.model);
     gpu_.InvalidateIdle();
     gpu_.RecomputeSpritePending();

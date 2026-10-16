@@ -26,9 +26,9 @@ TEST_CASE("diagnostics: provenance does not change pixels hardware state or time
         const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
         Gameboy continuous(settings);
         Gameboy observed(settings);
-        diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
+        diagnostics::ProvenanceRecorder recorder({.y = {.first = 10, .last = 10}});
         observed.RecordPixelsWith(&recorder.Context());
-        for (unsigned interval = 0; interval < 3; ++interval) {
+        for (auto interval{0uz}; interval < 60 && (interval < 3 || !recorder.Query(20, 10)); ++interval) {
             continuous.RunFrame();
             observed.RunFrame();
             CHECK(continuous.SaveState() == observed.SaveState());
@@ -81,7 +81,7 @@ TEST_CASE("diagnostics: post-output palette changes retain both emitted and fina
     GPU gpu(interrupts);
     configurePixelLine(gpu);
     gpu.SetModel(Model::CGBE);
-    gpu.dmgCompat = true;
+    gpu.dmg_compat = true;
     diagnostics::ProvenanceRecorder recorder;
     gpu.provenance = &recorder.Context();
     for (uint64_t tick = 0; tick < 900 && gpu.pixelsDrawn < 3; tick += 2)
@@ -104,9 +104,12 @@ TEST_CASE("diagnostics: post-output palette changes retain both emitted and fina
 
 TEST_CASE("diagnostics: restoring without provenance history marks a new branch with unknown in-flight origins") {
     Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
-    diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
+    diagnostics::ProvenanceRecorder recorder({.y = {.first = 10, .last = 10}});
     machine.RecordPixelsWith(&recorder.Context());
-    machine.RunFrame();
+    for (auto interval{0uz}; interval < 60 && !recorder.Query(20, 10); ++interval) {
+        machine.RunFrame();
+    }
+    REQUIRE(recorder.Query(20, 10));
     const auto checkpoint = machine.SaveDebugState();
     machine.RunFrame();
     REQUIRE(recorder.Query(20, 10));

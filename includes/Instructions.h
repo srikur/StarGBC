@@ -184,7 +184,7 @@ private:
         }
         if (cpu.mCycleCounter() == 4) {
             cpu.pc() = word;
-            interrupts_.interruptMasterEnable = true;
+            interrupts_.interrupt_master_enable = true;
             return false;
         }
         if (cpu.mCycleCounter() == 5) {
@@ -195,30 +195,30 @@ private:
     }
 
     bool DI(CPUType &cpu) const {
-        interrupts_.interruptDelay = false;
-        interrupts_.interruptMasterEnable = false;
+        interrupts_.interrupt_delay = false;
+        interrupts_.interrupt_master_enable = false;
         cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool EI(CPUType &cpu) const {
-        if (!interrupts_.interruptMasterEnable) {
+        if (!interrupts_.interrupt_master_enable) {
             cpu.icount(0);
-            interrupts_.interruptDelay = true;
-            interrupts_.interruptMasterEnable = true;
+            interrupts_.interrupt_delay = true;
+            interrupts_.interrupt_master_enable = true;
         }
         cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
         return true;
     }
 
     bool HALT(CPUType &cpu) const {
-        if ((interrupts_.interruptEnable & (interrupts_.interruptFlag | interrupts_.interruptVisiblePending) & 0x1F) != 0) {
-            cpu.haltBug(!interrupts_.interruptMasterEnable);
+        if ((interrupts_.interrupt_enable & (interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending) & 0x1F) != 0) {
+            cpu.haltBug(!interrupts_.interrupt_master_enable);
             cpu.halted(false);
             // With IME set, the interrupt replaces HALT's fetch. Returning
             // from the handler executes HALT again; IME-clear instead causes missing PC
             // increment on the following opcode
-            if (interrupts_.interruptMasterEnable)
+            if (interrupts_.interrupt_master_enable)
                 --cpu.pc();
         } else {
             cpu.haltBug(false);
@@ -603,7 +603,7 @@ private:
             cpu.bus_.timer_.WriteDIV(cpu.bus_.speed == Speed::Double, true);
             cpu.bus_.ChangeSpeed();
             cpu.bus_.speedSwitchHalt = 0x20004;
-            cpu.SpeedSwitchHalt((interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F) != 0);
+            cpu.SpeedSwitchHalt((interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F) != 0);
         } else {
             cpu.bus_.WriteByte(0xFF04, 0x00, ComponentSource::CPU);
             cpu.stopped(true);

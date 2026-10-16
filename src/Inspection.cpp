@@ -59,9 +59,9 @@ RegisterInspection Gameboy::InspectRegister(const uint16_t address) const {
         case 0xFF07:
             return simple(timer_.tac, timer_.ReadByte(address));
         case 0xFF0F:
-            return simple(interrupts_.interruptFlag, interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+            return simple(interrupts_.interrupt_flag, interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0);
         case 0xFFFF:
-            return simple(interrupts_.interruptEnable, interrupts_.interruptEnable);
+            return simple(interrupts_.interrupt_enable, interrupts_.interrupt_enable);
         case 0xFF40:
             return delayed(gpu_.lcdc, gpu_.lcdcPending, gpu_.lcdcWriteStage);
         case 0xFF41:
@@ -153,15 +153,15 @@ MachineInspection Gameboy::Inspect() const {
             .bootromRunning = bus_.bootromRunning,
             .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3),
             .cpu = cpu_.Inspect(),
-            .interrupts = {.enable = interrupts_.interruptEnable,
-                           .storedFlags = interrupts_.interruptFlag,
-                           .cpuVisibleFlags = static_cast<uint8_t>(interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0),
-                           .delayedRequests = interrupts_.interruptFlagDelayed,
-                           .visiblePending = interrupts_.interruptVisiblePending,
-                           .requestDelays = interrupts_.interruptSetDelays,
-                           .visibilityDelays = interrupts_.interruptVisibleDelays,
-                           .masterEnable = interrupts_.interruptMasterEnable,
-                           .enablePending = interrupts_.interruptDelay},
+            .interrupts = {.enable = interrupts_.interrupt_enable,
+                           .storedFlags = interrupts_.interrupt_flag,
+                           .cpuVisibleFlags = static_cast<uint8_t>(interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0),
+                           .delayedRequests = interrupts_.interrupt_flag_delayed,
+                           .visiblePending = interrupts_.interrupt_visible_pending,
+                           .requestDelays = interrupts_.interrupt_set_delays,
+                           .visibilityDelays = interrupts_.interrupt_visible_delays,
+                           .masterEnable = interrupts_.interrupt_master_enable,
+                           .enablePending = interrupts_.interrupt_delay},
             .timer = {.divider = timer_.divCounter,
                       .tima = timer_.tima,
                       .tma = timer_.tma,

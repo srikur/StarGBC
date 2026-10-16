@@ -15,6 +15,7 @@ public:
                  Registers &registers) : bus_(bus), interrupts_(interrupts), regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
         bus.gpu_.SetModel(hw);
+        bus.gpu_.initialize_palette_ram();
         bus.audio_.SetModel(hw);
         const bool sgbFamily = IsSgb(hw);
         // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts
@@ -37,7 +38,7 @@ public:
             pc_ = 0x0000;
         } else {
             bus.cgbMode = IsCgb(hw) && (bus.cartridge_.ReadByte(0x143) & 0x80) == 0x80;
-            bus.gpu_.dmgCompat = IsCgb(hw) && !bus.cgbMode;
+            bus.gpu_.dmg_compat = IsCgb(hw) && !bus.cgbMode;
             pc_ = 0x100;
             InitializeSystem();
         }
@@ -96,14 +97,14 @@ public:
 
     void SampleHaltInterrupts() {
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
-        haltPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+        haltPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)
             observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, haltPending_, 1);
     }
 
     void SampleRunningInterrupts() {
         // The DMG instruction boundary samples before this T4's peripheral edges
-        runningPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+        runningPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)
             observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, runningPending_, 3);
     }
@@ -135,7 +136,7 @@ public:
     void SpeedSwitchHalt(const bool pending) {
         halted_ = !pending;
         speedSwitchWakePending_ = !pending;
-        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interruptMasterEnable || interrupts_.interruptDelay);
+        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
     }
 
     void haltBug(const bool value) { haltBug_ = value; }

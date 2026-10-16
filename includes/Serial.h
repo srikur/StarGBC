@@ -1,40 +1,40 @@
-#ifndef STARGBC_SERIAL_H
-#define STARGBC_SERIAL_H
+#pragma once
 
 #include <fstream>
 #include "Common.h"
 #include "Interrupts.h"
 
 struct Serial {
-    explicit Serial(Interrupts &interrupts) : interrupts_(interrupts) {}
+    explicit Serial(Interrupts &interrupts) : interrupts(interrupts) {}
 
-    [[nodiscard]] uint8_t ReadSerial(uint16_t) const;
+    [[nodiscard]] u8 read_serial(u16) const;
 
-    void WriteSerial(uint16_t, uint8_t, bool, bool);
+    void write_serial(u16, u8, bool);
 
-    void ShiftOneBit();
+    void shift_one_bit();
 
     // Inline idle fast path: nothing to do unless a transfer is shifting
-    void Update() {
-        if (!active_)
-            return;
-        UpdateActive();
+    void update(const u16 divider) {
+        if (active && (divider & (ticks_per_bit / 2 - 1)) == 0)
+            clock_edge();
     }
 
-    void UpdateActive();
+    void divider_reset(const u16 divider) {
+        if (active && divider & ticks_per_bit / 4)
+            clock_edge();
+    }
 
-    bool SaveState(std::ofstream &) const;
+    void clock_edge();
 
-    bool LoadState(std::ifstream &);
+    bool save_state(std::ofstream &) const;
 
-    uint16_t ticksUntilShift_{0};
-    uint16_t ticksPerBit_{0};
-    uint8_t data_{0}; // SB
-    uint8_t control_{0}; // SC
-    uint8_t bitsShifted_{0};
-    bool active_{false};
-    Interrupts &interrupts_;
+    bool load_state(std::ifstream &);
+
+    u16 ticks_per_bit{512};
+    bool clock_high{false};
+    u8 data{0}; // SB
+    u8 control{0}; // SC
+    u8 bits_shifted{0};
+    bool active{false};
+    Interrupts &interrupts;
 };
-
-
-#endif // STARGBC_SERIAL_H

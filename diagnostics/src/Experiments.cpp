@@ -177,7 +177,7 @@ namespace diagnostics {
         void configureGpu(GPU &gpu, const Scenario &scenario) {
             gpu.SetModel(scenario.model);
             gpu.doubleSpeed = scenario.doubleSpeed;
-            gpu.optimizedExecution = false;
+            gpu.optimized_execution = false;
             gpu.currentLine = 1;
             gpu.lcdc = scenario.family == ExperimentFamily::Window ? 0xF1 : 0x93;
             gpu.windowX = scenario.wx;
@@ -300,7 +300,7 @@ namespace diagnostics {
                 }
                 timer.Tick(scenario.doubleSpeed ? Speed::Double : Speed::Regular);
                 if (tick % 2 == 0)
-                    interrupts.Tick();
+                    interrupts.tick();
             }
             result.completedTick = scenario.budgetTicks;
             completed = actionTick < scenario.budgetTicks;
@@ -366,8 +366,8 @@ namespace diagnostics {
             }
             if (scenario.family == ExperimentFamily::Stat) {
                 gpu.WriteRegisters(0xFF41, 0x20);
-                interrupts.interruptFlag = interrupts.interruptFlagDelayed = 0;
-                interrupts.interruptEnable = 2;
+                interrupts.interrupt_flag = interrupts.interrupt_flag_delayed = 0;
+                interrupts.interrupt_enable = 2;
             }
             const uint64_t actionTick = (78 + scenario.phase) * 2;
             const uint16_t address = scenario.family == ExperimentFamily::Window ? 0xFF4B
@@ -392,7 +392,7 @@ namespace diagnostics {
             }
             completed = provenance.Pixels().size() == 160 && actionTick < scenario.budgetTicks;
             result.completedTick = scenario.budgetTicks;
-            result.probeValue = scenario.family == ExperimentFamily::Stat ? interrupts.interruptFlag & 2 : gpu.ReadRegisters(address);
+            result.probeValue = scenario.family == ExperimentFamily::Stat ? interrupts.interrupt_flag & 2 : gpu.ReadRegisters(address);
             std::ranges::copy(std::span(gpu.GetScreenData(), pixels.size()), pixels.begin());
         }
         const auto events = trace.Events();

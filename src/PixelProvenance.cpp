@@ -11,7 +11,7 @@ void GPU::RecordSpriteCandidate(const unsigned slot, const uint8_t bit, const ui
 
 diagnostics::PixelDecision GPU::ExplainSelection(const Pixel &background, const Pixel &sprite, const bool bgEnable) const {
     using enum diagnostics::PixelDecision;
-    if (!bgEnable && (IsDmg(model) || dmgCompat) && (sprite.color == 0 || !Bit<LCDC_OBJ_ENABLE>(lcdc)))
+    if (!bgEnable && (IsDmg(model) || dmg_compat) && (sprite.color == 0 || !Bit<LCDC_OBJ_ENABLE>(lcdc)))
         return BackgroundDisabled;
     if (sprite.color == 0)
         return SpriteTransparent;
@@ -46,9 +46,9 @@ void GPU::RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel 
     explanation.emission.ly = currentLine;
     explanation.emission.dot = scanlineCounter;
     explanation.emission.frame = displayFrames_;
-    if (selected.isSprite) {
+    if (selected.is_sprite) {
         explanation.selected = explanation.sprites.selected;
-    } else if (!bgEnable && (IsDmg(model) || dmgCompat)) {
+    } else if (!bgEnable && (IsDmg(model) || dmg_compat)) {
         explanation.selected = {.valid = true, .source = diagnostics::PixelSource::Backdrop};
     } else {
         explanation.selected = explanation.background;
@@ -56,7 +56,7 @@ void GPU::RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel 
     explanation.emittedSource = explanation.selected.source;
     explanation.emittedDecision = explanation.decision;
     explanation.selected.color = selected.color;
-    explanation.selected.palette = isCgb_ && !dmgCompat ? selected.cgbPalette : selected.dmgPalette;
+    explanation.selected.palette = is_cgb && !dmg_compat ? selected.cgb_palette : selected.dmg_palette;
     if (provenance->output)
         provenance->output(provenance->owner, explanation);
 }
@@ -64,7 +64,7 @@ void GPU::RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel 
 void GPU::RecordRecolor(const uint16_t offset, const uint16_t address, const Pixel &selected, const diagnostics::PixelDecision decision) {
     if (!provenance->recolor)
         return;
-    const auto source = selected.isSprite                                            ? diagnostics::PixelSource::Sprite
+    const auto source = selected.is_sprite                                           ? diagnostics::PixelSource::Sprite
                         : decision == diagnostics::PixelDecision::BackgroundDisabled ? diagnostics::PixelSource::Backdrop
                                                                                      : diagnostics::PixelSource::Background;
     auto position = provenance->position;
@@ -81,5 +81,5 @@ void GPU::RecordRecolor(const uint16_t offset, const uint16_t address, const Pix
                                             .selectedSource = source,
                                             .decision = decision,
                                             .rawColor = selected.color,
-                                            .palette = isCgb_ && !dmgCompat ? selected.cgbPalette : selected.dmgPalette});
+                                            .palette = is_cgb && !dmg_compat ? selected.cgb_palette : selected.dmg_palette});
 }

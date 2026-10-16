@@ -61,8 +61,8 @@ TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") 
         REQUIRE(cpu.locked());
         CHECK(cpu.pc() == 0xC001);
 
-        interrupts.interruptEnable = interrupts.interruptFlag = 0x1F;
-        interrupts.interruptMasterEnable = true;
+        interrupts.interrupt_enable = interrupts.interrupt_flag = 0x1F;
+        interrupts.interrupt_master_enable = true;
         const auto div = bus.timer_.divCounter;
         gameboy.RunFrame();
         CHECK(cpu.pc() == 0xC001);
@@ -81,8 +81,8 @@ TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
         CHECK(cgbCart.GetModel() == model);
         CHECK_FALSE(dmgCart.IsInCgbMode());
         CHECK(cgbCart.IsInCgbMode());
-        CHECK(dmgCart.[:busMember:].gpu_.dmgCompat);
-        CHECK_FALSE(cgbCart.[:busMember:].gpu_.dmgCompat);
+        CHECK(dmgCart.[:busMember:].gpu_.dmg_compat);
+        CHECK_FALSE(cgbCart.[:busMember:].gpu_.dmg_compat);
         CHECK(dmgCart.[:regsMember:].b == (IsAgb(model) ? 1 : 0));
         CHECK(cgbCart.[:regsMember:].b == (IsAgb(model) ? 1 : 0));
     }
@@ -120,6 +120,7 @@ TEST_CASE("models: unused OAM follows revision-specific address decoding") {
         }
         bus.gpu_.lcdc = 0x80;
         bus.gpu_.stat.mode = GPUMode::MODE_3;
+        bus.gpu_.pixelsDrawn = 0;
         CHECK(read(0xFEA0) == 0xFF);
         write(0xFEA0, 0x99);
         bus.gpu_.stat.mode = GPUMode::MODE_0;

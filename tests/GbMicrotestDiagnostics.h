@@ -62,7 +62,7 @@ public:
                 return std::ranges::equal(std::span(gameboy.GetScreenData(), screen_.size()), screen_);
             case MicrotestOutput::Dma:
                 details << " OAM copy from 8000-809F";
-                return cpu.pc() >= 0xFF82 && cpu.pc() <= 0xFF84 && !gpu.oamDmaActive && gpu.vram[0] == 0xFF && gpu.vram[0x9F] == 0xFF &&
+                return cpu.pc() >= 0xFF82 && cpu.pc() <= 0xFF84 && !gpu.oam_dma_active && gpu.vram[0] == 0xFF && gpu.vram[0x9F] == 0xFF &&
                        std::ranges::equal(gpu.oam, std::span(gpu.vram.data(), gpu.oam.size()));
             case MicrotestOutput::Vram:
                 details << " BC=" << regs.GetBC() << " HL=" << regs.GetHL() << " VRAM contents";

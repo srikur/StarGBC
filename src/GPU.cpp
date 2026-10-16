@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <list>
+#include <ranges>
 
 #include "Common.h"
 #include "GPU.h"
@@ -30,10 +31,40 @@ void GPU::ObserveStall(const diagnostics::StallReason reason) const {
     }
 }
 
-void GPU::SetMode(const GPUMode mode) {
+void GPU::set_mode(const GPUMode mode) {
     if (observations && stat.mode != mode)
         Observe(diagnostics::EventKind::PpuMode, 0xFF41, static_cast<uint32_t>(mode), static_cast<uint32_t>(stat.mode));
     stat.mode = mode;
+}
+
+void GPU::initialize_palette_ram() {
+    if (!is_cgb)
+        return;
+    static constexpr std::array<uint16_t, 32> objectColors{
+            0x0000, 0xABF2, 0xC261, 0xBAD9, 0x6E88, 0x63DD, 0x2728, 0x9FFB, 0x4235, 0xD4D6, 0x4850, 0x5E57, 0x3E23, 0xCA3D, 0x2171, 0xC037,
+            0xB3C6, 0xF9FB, 0x0008, 0x298D, 0x20A3, 0x87DB, 0x0562, 0xD45D, 0x080E, 0xAFFE, 0x0220, 0xFFD7, 0x6A07, 0xEC55, 0x4083, 0x770B,
+    };
+    for (const u8 palette : std::views::indices(8)) {
+        for (const u8 color : std::views::indices(4)) {
+            bgpd[palette][color].fill(31);
+            const auto object = objectColors[palette * 4 + color];
+            obpd[palette][color] = {static_cast<uint8_t>(object & 31), static_cast<uint8_t>((object >> 5) & 31), static_cast<uint8_t>(object >> 10)};
+        }
+    }
+    RebuildColorLuts();
+}
+
+void GPU::initialize_post_boot() {
+    InvalidateIdle();
+    lcdEnableLine0_ = false;
+    currentLine = is_cgb ? 144 : model == Model::DMG0 ? 145 : 153;
+    scanlineCounter = is_cgb ? 168 + 4 * IsAgb(model) : model == Model::DMG0 ? 92 : 396;
+    set_mode(GPUMode::MODE_1);
+    stat.coincidence_flag = lycInterruptLine_ = currentLine == 153 && lyc == 0;
+    vblank = true;
+    hblank = false;
+    pixelsDrawn = SCREEN_WIDTH;
+    windowTriggeredThisFrame = true;
 }
 
 bool GPU::LCDDisabled() const { return !Bit<LCDC_ENABLE_BIT>(lcdc); }
@@ -41,12 +72,12 @@ bool GPU::LCDDisabled() const { return !Bit<LCDC_ENABLE_BIT>(lcdc); }
 bool GPU::StatLineHigh() const {
     // HBlank falls before the next LYC comparison. An enabled OAM pulse
     // overlaps that fall even when another source blocked its interrupt
-    return (stat.enableLYInterrupt && (isCgb_ ? stat.coincidenceFlag : lycInterruptLine_)) ||
-           (stat.enableM0Interrupt &&
-            ((stat.mode == GPUMode::MODE_0 && (isCgb_ || scanlineCounter < 452) && (!lcdEnableLine0_ || scanlineCounter >= 80)) ||
-             (!isCgb_ && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2)))) ||
-           (stat.enableM1Interrupt && stat.mode == GPUMode::MODE_1) ||
-           (stat.enableM2Interrupt && ((stat.mode == GPUMode::MODE_2 && scanlineCounter == 0) || m2IrqRaisedEarly));
+    return (stat.enable_ly_interrupt && (is_cgb ? stat.coincidence_flag : lycInterruptLine_)) ||
+           (stat.enable_m0_interrupt &&
+            ((stat.mode == GPUMode::MODE_0 && (is_cgb || scanlineCounter < 452) && (!lcdEnableLine0_ || scanlineCounter >= 80)) ||
+             (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2)))) ||
+           (stat.enable_m1_interrupt && stat.mode == GPUMode::MODE_1) ||
+           (stat.enable_m2_interrupt && ((stat.mode == GPUMode::MODE_2 && scanlineCounter == 0) || m2IrqRaisedEarly));
 }
 
 void GPU::ResetScanlineState(const bool clearBuffer) {
@@ -56,7 +87,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     mode3EndDelay_ = 0;
     mode3EndDot_ = 0;
     backgroundQueue.clear();
-    spriteArray.fill({.isPlaceholder = true});
+    spriteArray.fill({.is_placeholder = true});
     spriteArrayHead_ = 0;
     if (clearBuffer) {
         spriteBuffer.clear();
@@ -87,23 +118,23 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
 uint8_t GPU::GetOAMScanRow() const { return scanlineCounter / 4; }
 
 void GPU::Update() {
-    interrupts_.Tick();
+    interrupts_.tick();
     // Batched-idle fast paths: a quiet HBlank/VBlank dot only advances the
     // dot counter, and an idle disabled LCD does nothing at all
-    if (optimizedExecution && idleDots_ > 0) {
+    if (optimized_execution && idleDots_ > 0) {
         --idleDots_;
         ++scanlineCounter;
         return;
     }
-    if (optimizedExecution && lcdOffIdle_)
+    if (optimized_execution && lcdOffIdle_)
         return;
-    if (optimizedExecution && scanFastDots_ > 0) {
+    if (optimized_execution && scanFastDots_ > 0) {
         --scanFastDots_;
         TickOAMScan();
         ++scanlineCounter;
         return;
     }
-    if (optimizedExecution && mode3Quiet_) {
+    if (optimized_execution && mode3Quiet_) {
         // CGB non-compat mode-3 dot with no delayed writes in flight: the
         // preamble, LY/LYC chain, STAT latch and boundary checks are all
         // provably constant; only the pixel pipeline advances
@@ -120,7 +151,7 @@ void GPU::Update() {
         --clockPause_;
         return;
     }
-    if (isCgb_ && dmgCompat) {
+    if (is_cgb && dmg_compat) {
         // Only the CGB dmgCompat mid-mode-3 BGP patch-up reads this history
         for (unsigned i = recentPixels_.size() - 1; i > 0; --i) {
             recentPixels_[i] = recentPixels_[i - 1];
@@ -137,7 +168,7 @@ void GPU::Update() {
     if (bgpWriteStage > 0) {
         bgpWriteStage--;
         if (bgpWriteStage == 1) {
-            if (!isCgb_)
+            if (!is_cgb)
                 backgroundPalette |= bgpPending;
         } else if (bgpWriteStage == 0) {
             backgroundPalette = bgpPending;
@@ -150,7 +181,7 @@ void GPU::Update() {
     // background-enable rising edge reaches the mixer one dot earlier
     if (lcdcWriteStage > 0) {
         lcdcWriteStage--;
-        if (!isCgb_ && lcdcWriteStage == 1) {
+        if (!is_cgb && lcdcWriteStage == 1) {
             lcdc |= lcdcPending & 1;
             Observe(diagnostics::EventKind::RegisterApply, 0xFF40, lcdc, 1);
         }
@@ -158,8 +189,10 @@ void GPU::Update() {
             ApplyLCDC(lcdcPending);
     }
 
-    // DMG: a mode-3 WX write reaches the window comparator with the same
-    // latency, so a trigger racing the write still sees the old value
+    if (wy_write_stage > 0 && --wy_write_stage == 0) {
+        Observe(diagnostics::EventKind::RegisterApply, 0xFF4A, windowY);
+    }
+
     if (wxWriteStage > 0) {
         wxWriteStage--;
         if (wxWriteStage == 0) {
@@ -171,6 +204,7 @@ void GPU::Update() {
     // DMG: mode-3 SCX/SCY writes reach the fetcher's reads two dots late,
     // same latency class as BGP. The warmup fetch's reads run just ahead of
     // the apply point, so a value landing on the read dot is still seen old
+    scx_just_applied = scxWriteStage == 1;
     if (scxWriteStage > 0 && --scxWriteStage == 0)
         Observe(diagnostics::EventKind::RegisterApply, 0xFF43, scrollX);
     scyJustApplied_ = false;
@@ -213,9 +247,9 @@ void GPU::Update() {
     if (LCDDisabled()) {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
-        if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scyJustApplied_ &&
-            (bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) ==
-                    0) {
+        if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scx_just_applied && !scyJustApplied_ &&
+            (bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
+             obp1WriteStage) == 0) {
             lcdOffIdle_ = true;
         }
         return;
@@ -226,54 +260,58 @@ void GPU::Update() {
     // The flip dot is calibrated per model against daid's ppu_scanline_bgp
     int lyCompare = currentLine;
     if (currentLine == 153) {
-        if (isCgb_)
+        if (is_cgb)
             lyCompare = scanlineCounter >= 8 ? 0 : 153;
         else
             lyCompare = scanlineCounter < 3 ? 153 : scanlineCounter < 7 ? -1 : 0;
-    } else if (!isCgb_ && scanlineCounter >= 452) {
+    } else if (!is_cgb && scanlineCounter >= 452) {
         lyCompare = -1;
     }
     if (lyCompare >= 0)
         lycInterruptLine_ = lyCompare == lyc;
     if (lyCompare == lyc) {
-        stat.coincidenceFlag = true;
-        if (stat.enableLYInterrupt && !statTriggered) {
+        stat.coincidence_flag = true;
+        if (stat.enable_ly_interrupt && !statTriggered) {
             // DMG's LYC request follows the comparison by one dot; CGB retains its machine-cycle delay
-            if (isCgb_) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+            if (is_cgb) {
+                interrupts_.set(InterruptType::LCDStat, true);
             } else {
-                interrupts_.SetAfter(InterruptType::LCDStat, 1);
+                interrupts_.set_after(InterruptType::LCDStat, 1);
             }
             statTriggered = true;
         }
     } else {
-        stat.coincidenceFlag = false;
+        stat.coincidence_flag = false;
     }
 
-    if (!isCgb_ && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.enableM0Interrupt && !statTriggered) {
-        interrupts_.SetAfter(InterruptType::LCDStat, 3, true);
+    if (is_cgb && currentLine < 144 && scanlineCounter == 451 && currentLine == windowY && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
+        windowTriggeredThisFrame = true;
+    }
+
+    if (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.enable_m0_interrupt && !statTriggered) {
+        interrupts_.set_after(InterruptType::LCDStat, 3, true);
         statTriggered = true;
     }
 
     switch (stat.mode) {
         case GPUMode::MODE_0:
-            if (stat.enableM0Interrupt && (isCgb_ || scanlineCounter < 452) && (!lcdEnableLine0_ || scanlineCounter >= 80) && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, true);
+            if (stat.enable_m0_interrupt && (is_cgb || scanlineCounter < 452) && (!lcdEnableLine0_ || scanlineCounter >= 80) && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, true);
                 statTriggered = true;
             }
             break;
         case GPUMode::MODE_1:
             // The mode 1 STAT condition asserts at the line boundary. HALT's
             // sampling phase determines which CPU cycle accepts this edge.
-            if (stat.enableM1Interrupt && !statTriggered) {
-                interrupts_.SetAfter(InterruptType::LCDStat, isCgb_ ? (doubleSpeed ? 2 : 8) : 0);
+            if (stat.enable_m1_interrupt && !statTriggered) {
+                interrupts_.set_after(InterruptType::LCDStat, is_cgb ? (doubleSpeed ? 2 : 8) : 0);
                 statTriggered = true;
             }
             break;
         case GPUMode::MODE_2:
-            if (isCgb_ && stat.enableM2Interrupt && scanlineCounter == 0 && !statTriggered) {
+            if (is_cgb && stat.enable_m2_interrupt && scanlineCounter == 0 && !statTriggered) {
                 // CGB's first line has a later OAM request than steady lines
-                interrupts_.Set(InterruptType::LCDStat, currentLine == 0);
+                interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 2 : 4) : 0);
                 statTriggered = true;
             }
             TickOAMScan();
@@ -283,17 +321,17 @@ void GPU::Update() {
                 TickMode3();
             if (pixelsDrawn == SCREEN_WIDTH && mode3EndDelay_ == 0) {
                 mode3EndDot_ = scanlineCounter + 1;
-                SetMode(GPUMode::MODE_0);
+                set_mode(GPUMode::MODE_0);
                 hblank = true;
                 hdma.bytesThisBlock = 0;
                 hdma.hblankBlockFinished = false;
-                if (stat.enableM0Interrupt && !statTriggered) {
+                if (stat.enable_m0_interrupt && !statTriggered) {
                     // DMG: the IF bit trails the visible transition by one more
                     // dot (mooneye intr_2_0_timing round E vs hblank_ly_scx)
-                    if (isCgb_) {
-                        interrupts_.SetAfter(InterruptType::LCDStat, doubleSpeed ? 2 : 5, true, 1);
+                    if (is_cgb) {
+                        interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 5, true, 1);
                     } else {
-                        interrupts_.SetAfter(InterruptType::LCDStat, lcdEnableLine0_ ? 4 : 1, lcdEnableLine0_);
+                        interrupts_.set_after(InterruptType::LCDStat, lcdEnableLine0_ ? 4 : 1, lcdEnableLine0_);
                     }
                     statTriggered = true;
                 }
@@ -309,8 +347,9 @@ void GPU::Update() {
     // A condition that stays true across a boundary (hblank into a new line,
     // LYC held while modes cycle) never re-fires
     const bool statLine = StatLineHigh();
-    if (!isCgb_ && !lcdEnableLine0_ && !statTriggered && statLine && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.enableM0Interrupt) {
-        interrupts_.SetAfter(InterruptType::LCDStat, 3, true);
+    if (!is_cgb && !lcdEnableLine0_ && !statTriggered && statLine && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) &&
+        stat.enable_m0_interrupt) {
+        interrupts_.set_after(InterruptType::LCDStat, 3, true);
     }
     statTriggered = statLine;
 
@@ -319,26 +358,26 @@ void GPU::Update() {
     // DMG: the LCD-enable line runs full length (mooneye lcdon_timing-GS pins
     // its whole absolute timeline). CGB shortens the enable line by four
     // dots at normal speed or three dots when enabled at double speed
-    const uint32_t scanlineDuration = lcdEnableLine0_ ? (isCgb_ ? (lcdStartDoubleSpeed_ ? 453u : 452u) : 456u) : 456;
+    const uint32_t scanlineDuration = lcdEnableLine0_ ? (is_cgb ? (lcdStartDoubleSpeed_ ? 453u : 452u) : 456u) : 456;
     // DMG's OAM pulse rises four dots before the boundary, including entry
     // into VBlank. IF is readable immediately; CPU acceptance follows later
     // Keep the source high even when another STAT source blocks this edge
-    if (!isCgb_ && scanlineCounter == scanlineDuration - 4 && currentLine <= 143 && stat.mode == GPUMode::MODE_0 && stat.enableM2Interrupt) {
+    if (!is_cgb && scanlineCounter == scanlineDuration - 4 && currentLine <= 143 && stat.mode == GPUMode::MODE_0 && stat.enable_m2_interrupt) {
         if (!statTriggered)
-            interrupts_.SetAfter(InterruptType::LCDStat, 3, true);
+            interrupts_.set_after(InterruptType::LCDStat, 3, true);
         m2IrqRaisedEarly = true;
     }
-    if (lcdEnableLine0_ && scanlineCounter == (isCgb_ ? (doubleSpeed ? 79u : 78u) : 79u) && stat.mode == GPUMode::MODE_0) {
-        SetMode(GPUMode::MODE_3);
+    if (lcdEnableLine0_ && scanlineCounter == (is_cgb ? (doubleSpeed ? 79u : 78u) : 79u) && stat.mode == GPUMode::MODE_0) {
+        set_mode(GPUMode::MODE_3);
         pixelsDrawn = 0;
         ResetScanlineState(false);
     } else if (scanlineCounter == 80 && stat.mode == GPUMode::MODE_2) {
-        SetMode(GPUMode::MODE_3);
+        set_mode(GPUMode::MODE_3);
         pixelsDrawn = 0;
-        if (!isCgb_ || objectPriority) {
+        if (!is_cgb || objectPriority) {
             std::ranges::sort(spriteBuffer, std::less{});
-        } else if (isCgb_ && !objectPriority) {
-            std::ranges::sort(spriteBuffer, [](const Sprite &a, const Sprite &b) { return a.spriteNum < b.spriteNum; });
+        } else if (is_cgb && !objectPriority) {
+            std::ranges::sort(spriteBuffer, [](const Sprite &a, const Sprite &b) { return a.sprite_num < b.sprite_num; });
         }
         ResetScanlineState(false);
     } else if (scanlineCounter == scanlineDuration) {
@@ -346,11 +385,11 @@ void GPU::Update() {
         scanlineCounter = 0;
         currentLine++;
         m2IrqRaisedEarly = false;
-        if (!isCgb_) {
+        if (!is_cgb) {
             const auto comparedLine = currentLine == 154 ? 0 : currentLine;
-            stat.coincidenceFlag = lycInterruptLine_ = lyc == comparedLine;
-            if (stat.enableLYInterrupt && lycInterruptLine_ && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, false);
+            stat.coincidence_flag = lycInterruptLine_ = lyc == comparedLine;
+            if (stat.enable_ly_interrupt && lycInterruptLine_ && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
         }
@@ -363,47 +402,47 @@ void GPU::Update() {
             vblank = false;
             hblank = false;
             currentLine = 0;
-            SetMode(GPUMode::MODE_2);
+            set_mode(GPUMode::MODE_2);
             windowLineCounter_ = 0;
             ResetScanlineState(true);
             windowTriggeredThisFrame = false;
-            if (currentLine == windowY) {
+            if (currentLine == windowY && (!is_cgb || Bit<LCDC_WINDOW_ENABLE>(lcdc))) {
                 windowTriggeredThisFrame = true;
             }
             initialSCXSet = false;
-            if (!isCgb_ && stat.enableM2Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, false);
+            if (!is_cgb && stat.enable_m2_interrupt && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
         } else if (currentLine == 144) {
-            SetMode(GPUMode::MODE_1);
+            set_mode(GPUMode::MODE_1);
             vblank = true;
             frameReady = true;
             ++displayFrames_;
             hblank = false;
             // On DMG the request reaches IF before the first half-cycle HALT
             // sample of the new line. CGB retains its later VBlank request.
-            interrupts_.SetAfter(InterruptType::VBlank, isCgb_ ? 8 : 0, isCgb_, 4);
+            interrupts_.set_after(InterruptType::VBlank, is_cgb ? 8 : 0, is_cgb, 4);
             // Model quirk: entering vblank also asserts the mode 2 (OAM) STAT
             // condition — on DMG together with the vblank IF, on CGB one M-cycle
             // ahead of it (mooneye vblank_stat_intr-GS / -C)
-            if (stat.enableM2Interrupt && !statTriggered) {
-                interrupts_.Set(InterruptType::LCDStat, !isCgb_);
+            if (stat.enable_m2_interrupt && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, !is_cgb);
                 statTriggered = true;
             }
             // The mode 1 STAT condition asserts on the line boundary itself,
             // before the VBlank request propagates to IF.
-            if (stat.enableM1Interrupt && !statTriggered) {
-                interrupts_.SetAfter(InterruptType::LCDStat, isCgb_ ? (doubleSpeed ? 2 : 8) : 0);
+            if (stat.enable_m1_interrupt && !statTriggered) {
+                interrupts_.set_after(InterruptType::LCDStat, is_cgb ? (doubleSpeed ? 2 : 8) : 0);
                 statTriggered = true;
             }
         } else if (currentLine < 144) {
             hblank = false;
-            SetMode(GPUMode::MODE_2);
+            set_mode(GPUMode::MODE_2);
             // The DMG comparison is visible on the boundary dot itself
-            if (!isCgb_)
-                stat.coincidenceFlag = currentLine == lyc;
-            if (currentLine == windowY) {
+            if (!is_cgb)
+                stat.coincidence_flag = currentLine == lyc;
+            if (currentLine == windowY && (!is_cgb || Bit<LCDC_WINDOW_ENABLE>(lcdc))) {
                 windowTriggeredThisFrame = true;
             }
             ResetScanlineState(true);
@@ -419,17 +458,18 @@ void GPU::Update() {
 // reads or writes anything except scanlineCounter, as long as no CPU register
 // write intervenes (writes call InvalidateIdle)
 void GPU::MaybeArmIdle() {
-    if (!optimizedExecution)
+    if (!optimized_execution)
         return;
-    if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_)
+    if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scx_just_applied || scyJustApplied_)
         return;
-    if ((bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
+    if ((bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
+         obp1WriteStage) != 0)
         return;
 
     if (stat.mode == GPUMode::MODE_3) {
         // Only CGB outside DMG-compat: DMG has mode-3 STAT probes and the
         // compat mode needs the recent-pixel history aged per dot
-        if (isCgb_ && !dmgCompat)
+        if (is_cgb && !dmg_compat)
             mode3Quiet_ = true;
         return;
     }
@@ -445,10 +485,7 @@ void GPU::MaybeArmIdle() {
     if (currentLine == 153 && scanlineCounter < 9)
         return;
 
-    // DMG events resume at dot 451 (post-increment 452: the early mode-2 STAT
-    // pulse and the end-of-line LYC lull); CGB runs quiet to the dot before
-    // the line boundary (post-increment 456)
-    const uint32_t limit = isCgb_ ? 455 : 451;
+    const uint32_t limit = is_cgb && scanlineCounter > 451 ? 455 : 451;
     if (scanlineCounter >= limit)
         return;
     idleDots_ = limit - scanlineCounter;
@@ -456,7 +493,7 @@ void GPU::MaybeArmIdle() {
 
 void GPU::TickOAMScan() {
     // On CGB, OBJ enable gates the mixer; OAM scan and fetching keep running.
-    if (!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdc))
+    if (!is_cgb && !Bit<LCDC_OBJ_ENABLE>(lcdc))
         return;
     if (!(scanlineCounter % 2))
         return;
@@ -466,13 +503,13 @@ void GPU::TickOAMScan() {
     // An active OAM DMA blocks the scan's OAM reads: the y/x bus keeps its
     // previous values, and tile/attr reads see the word the DMA is currently
     // writing (hacktix strikethrough)
-    if (!oamDmaActive) {
+    if (!oam_dma_active) {
         mode2YBus_ = oam[base];
         mode2XBus_ = oam[base + 1];
     }
     const auto spriteY = static_cast<int16_t>(static_cast<int16_t>(mode2YBus_) - 16);
     const auto spriteX = static_cast<int16_t>(static_cast<int16_t>(mode2XBus_) - 8);
-    const bool dmaRedirect = oamDmaActive && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
+    const bool dmaRedirect = oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0;
     const uint8_t spriteTileIndex = dmaRedirect ? oam[oamDmaDest_ & ~1] : oam[base + 2];
     const Attributes attr = GetAttrsFrom(dmaRedirect ? oam[(oamDmaDest_ & ~1) | 1] : oam[base + 3]);
     const uint8_t spriteSize = Bit<LCDC_OBJ_SIZE>(lcdc) ? 16 : 8;
@@ -483,10 +520,10 @@ void GPU::TickOAMScan() {
     const bool cond3 = currentLine < spriteY + spriteSize;
     const bool cond4 = spriteBuffer.size() < 10;
     if (cond2 && cond3 && cond4) {
-        spriteBuffer.push_back(Sprite{.spriteNum = static_cast<uint8_t>(scanlineCounter),
+        spriteBuffer.push_back(Sprite{.sprite_num = static_cast<uint8_t>(scanlineCounter),
                                       .x = spriteX,
                                       .y = spriteY,
-                                      .tileIndex = spriteTileIndex,
+                                      .tile_index = spriteTileIndex,
                                       .attributes = attr,
                                       .processed = false});
         ++spritesPending_;
@@ -520,33 +557,33 @@ void GPU::OutputPixel(const bool lcdcAhead) {
     Observe(diagnostics::EventKind::FifoPop, pixelsDrawn, bgPixel.color, backgroundQueue.size());
 
     const auto spritePixel = spriteArray[spriteArrayHead_ & 7];
-    spriteArray[spriteArrayHead_ & 7] = {.isSprite = true, .isPlaceholder = true};
+    spriteArray[spriteArrayHead_ & 7] = {.is_sprite = true, .is_placeholder = true};
     spriteArrayHead_ = (spriteArrayHead_ + 1) & 7;
 
     // OBJ enable gates sprite pixels at mix time: pixels already in the FIFO
     // keep shifting while disabled, but display as background. A pixel shipped
     // on a sprite-merge dot samples LCDC one dot ahead of the applied value
-    const bool bgWinEnable = lcdcAhead && !isCgb_ && lcdcWriteStage == 1 ? Bit<LCDC_BG_WINDOW_ENABLE>(lcdcPending) : Bit<LCDC_BG_WINDOW_ENABLE>(lcdc);
+    const bool bgWinEnable = lcdcAhead && !is_cgb && lcdcWriteStage == 1 ? Bit<LCDC_BG_WINDOW_ENABLE>(lcdcPending) : Bit<LCDC_BG_WINDOW_ENABLE>(lcdc);
     outputBackground_ = bgPixel;
     outputSprite_ = spritePixel;
     pixelOutputThisDot_ = true;
     const auto finalPixel = SelectPixel(bgPixel, spritePixel, bgWinEnable);
     const auto palette = backgroundPalette;
-    if (!isCgb_ && pixelsDrawn == 0 && bgpWriteStage == 1)
+    if (!is_cgb && pixelsDrawn == 0 && bgpWriteStage == 1)
         backgroundPalette = bgpPending;
     screenData[currentLine * SCREEN_WIDTH + pixelsDrawn] = ResolveColor(finalPixel);
     Observe(diagnostics::EventKind::PixelOutput, currentLine * SCREEN_WIDTH + pixelsDrawn, screenData[currentLine * SCREEN_WIDTH + pixelsDrawn],
-            finalPixel.color | (finalPixel.isSprite << 8) | (finalPixel.cgbPalette << 16));
+            finalPixel.color | (finalPixel.is_sprite << 8) | (finalPixel.cgb_palette << 16));
     if (provenance)
         RecordPixel(bgPixel, spritePixel, finalPixel, bgWinEnable, screenData[currentLine * SCREEN_WIDTH + pixelsDrawn]);
     backgroundPalette = palette;
-    if (isCgb_ && dmgCompat) {
+    if (is_cgb && dmg_compat) {
         // Only the CGB dmgCompat mid-mode-3 BGP patch-up reads these
         recentPixels_[0] = finalPixel;
         recentPixelOffsets_[0] = currentLine * SCREEN_WIDTH + pixelsDrawn;
     }
     pixelsDrawn++;
-    if (isCgb_ && pixelsDrawn == SCREEN_WIDTH)
+    if (is_cgb && pixelsDrawn == SCREEN_WIDTH)
         mode3EndDelay_ = 1;
 }
 
@@ -564,7 +601,7 @@ Pixel GPU::SelectPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 
     Pixel finalPixel = spritePixel;
     if (backgroundWins) {
-        if (bgWinEnable || (isCgb_ && !dmgCompat)) {
+        if (bgWinEnable || (is_cgb && !dmg_compat)) {
             finalPixel = bgPixel;
         } else {
             finalPixel = Pixel{.color = 0};
@@ -575,8 +612,8 @@ Pixel GPU::SelectPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 }
 
 uint32_t GPU::ResolveColor(const Pixel &finalPixel) const {
-    const uint8_t palette = isCgb_ && !dmgCompat ? finalPixel.cgbPalette : finalPixel.dmgPalette;
-    return finalPixel.isSprite ? GetSpriteColor(finalPixel.color, palette) : GetBackgroundColor(finalPixel.color, palette);
+    const uint8_t palette = is_cgb && !dmg_compat ? finalPixel.cgb_palette : finalPixel.dmg_palette;
+    return finalPixel.is_sprite ? GetSpriteColor(finalPixel.color, palette) : GetBackgroundColor(finalPixel.color, palette);
 }
 
 uint32_t GPU::MixPixel(const Pixel &bgPixel, const Pixel &spritePixel, const bool bgWinEnable) const {
@@ -585,7 +622,7 @@ uint32_t GPU::MixPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 
 void GPU::TickMode3() {
     // scx discard pixels get delayed activation on window, rather than being discarded
-    if (pixelsDrawn == 0 && windowX <= 7 &&
+    if (pixelsDrawn == 0 && windowX <= 7 && window_y_matched() &&
         scanlineCounter == 85u + windowX + (windowX == 0 ? ((scrollX & 7) != 0 ? 1u : 0u) : initialScrollXFine_)) {
         windowPixel0Triggered_ = true;
     }
@@ -623,7 +660,7 @@ void GPU::TickMode3() {
         // the fetcher: the sprite is dropped outright and background output
         // resumes this very dot. The check sees the raw written LCDC value one
         // dot before it reaches the fetcher and mixer
-        if (!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdcWriteStage > 0 ? lcdcPending : lcdc)) {
+        if (!is_cgb && !Bit<LCDC_OBJ_ENABLE>(lcdcWriteStage > 0 ? lcdcPending : lcdc)) {
             spriteFetchQueue.pop_front();
         } else {
             // A background push that is ready on the takeover tick runs first, so the
@@ -631,7 +668,7 @@ void GPU::TickMode3() {
             // window trigger is pending at pixel 0, whose restart discards that push
             // so no background pixel ships before the window claims the line
             const bool windowPendingAtStart =
-                    pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7;
+                    pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7;
             if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty() && !windowPendingAtStart) {
                 Fetcher_StepBackgroundFetch();
             }
@@ -673,9 +710,9 @@ void GPU::TickMode3() {
             // execute on the merge dot itself when the fetcher's 2-dot
             // cadence allows it
             if ((scanlineCounter & 1) == 0) {
-                if (pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7 &&
+                if (pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7 &&
                     backgroundQueue.empty()) {
-                    if (windowActivatePending_ || (windowTriggeredThisFrame && (!isCgb_ || !isFetchingWindow_))) {
+                    if (windowActivatePending_ || (window_y_matched() && (!is_cgb || !isFetchingWindow_))) {
                         CheckForWindowTrigger();
                     } else {
                         // The full check reduces to the match latch when the window cannot
@@ -708,10 +745,10 @@ void GPU::TickMode3() {
 }
 
 void GPU::CheckForSpriteTrigger() {
-    if ((optimizedExecution && spritesPending_ == 0) || (!isCgb_ && !Bit<LCDC_OBJ_ENABLE>(lcdc)) || spriteFetchActive_ || !spriteFetchQueue.empty())
+    if ((optimized_execution && spritesPending_ == 0) || (!is_cgb && !Bit<LCDC_OBJ_ENABLE>(lcdc)) || spriteFetchActive_ || !spriteFetchQueue.empty())
         return;
     // Superset filter: no pending sprite can trigger at this pixel
-    if (optimizedExecution && !(spriteXBits_[pixelsDrawn >> 5] & (1u << (pixelsDrawn & 31))) && !(pixelsDrawn == 0 && spriteNegX_)) {
+    if (optimized_execution && !(spriteXBits_[pixelsDrawn >> 5] & (1u << (pixelsDrawn & 31))) && !(pixelsDrawn == 0 && spriteNegX_)) {
         return;
     }
     // Pixel-0 triggers for on-screen sprites hold until the first background
@@ -760,12 +797,12 @@ void GPU::CheckForWindowTrigger() {
     // warmup dot — latched in TickMode3 so a sprite claim can defer the
     // restart — and a WX rewrite landing on that dot pre-empts it
     const bool windowMatch =
-            (pixelsDrawn == 0 && windowPixel0Triggered_) || (pixelsDrawn > 0 && pixelsDrawn + 7 == windowX && (isCgb_ || windowX < 166));
+            (pixelsDrawn == 0 && windowPixel0Triggered_) || (pixelsDrawn > 0 && pixelsDrawn + 7 == windowX && (is_cgb || windowX < 166));
     // The rising enable edge can latch a match one dot before LCDC settles
     // The falling edge follows the full LCDC delay. A late activation starts
     // fetching on the next dot and moves the LCD output back one pixel
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdc | (lcdcWriteStage == 1 ? lcdcPending : 0));
-    if (windowActivatePending_ || (winEnabled && !isFetchingWindow_ && windowTriggeredThisFrame && windowMatch)) {
+    if (windowActivatePending_ || (winEnabled && !isFetchingWindow_ && window_y_matched() && windowMatch)) {
         if (!windowActivatePending_ && lcdcWriteStage == 1 && !Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
             windowActivatePending_ = true;
             return;
@@ -796,7 +833,7 @@ void GPU::CheckForWindowTrigger() {
                 initialScrollXDiscard_ = 0;
             initialScrollXDiscard_ += 7 - windowX;
         }
-    } else if (!isCgb_ && windowTriggeredThisFrame && pixelsDrawn != 0 && windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
+    } else if (!is_cgb && window_y_matched() && pixelsDrawn != 0 && windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
                fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
         // On DMG a WX re-match that does not activate the window — because it is
         // already active, or WIN_EN is currently off — emits a single color-0
@@ -808,11 +845,11 @@ void GPU::CheckForWindowTrigger() {
             provenance->PushBackground({.valid = true, .source = diagnostics::PixelSource::WindowGlitch, .mapTick = provenance->position.tick}, true);
         backgroundQueue.push_front(Pixel{
                 .color = 0,
-                .dmgPalette = backgroundPalette ? obp1Palette : obp0Palette,
-                .cgbPalette = 0,
+                .dmg_palette = backgroundPalette ? obp1Palette : obp0Palette,
+                .cgb_palette = 0,
                 .priority = false,
-                .isSprite = false,
-                .isPlaceholder = false,
+                .is_sprite = false,
+                .is_placeholder = false,
         });
     }
 }
@@ -833,7 +870,7 @@ void GPU::Fetcher_StepBackgroundFetch() {
             }
             fetcherTileRow_ = (isFetchingWindow_ ? windowLineCounter_ : currentLine + scrollY) & 7;
             const auto tileMapAddress = CalculateBGTileMapAddress();
-            if (isCgb_)
+            if (is_cgb)
                 backgroundTileAttributes_ = GetAttrsFrom(vram[tileMapAddress - 0x6000]);
             fetcherTileNum_ = vram[tileMapAddress - 0x8000];
             if (provenance)
@@ -841,13 +878,13 @@ void GPU::Fetcher_StepBackgroundFetch() {
                                                .source = isFetchingWindow_ ? diagnostics::PixelSource::Window : diagnostics::PixelSource::Background,
                                                .mapAddress = tileMapAddress,
                                                .tile = fetcherTileNum_,
-                                               .attributes = isCgb_ ? vram[tileMapAddress - 0x6000] : uint8_t{0},
-                                               .bank = static_cast<uint8_t>(isCgb_ && backgroundTileAttributes_.vramBank),
-                                               .palette = backgroundTileAttributes_.paletteNumberCGB,
+                                               .attributes = is_cgb ? vram[tileMapAddress - 0x6000] : uint8_t{0},
+                                               .bank = static_cast<uint8_t>(is_cgb && backgroundTileAttributes_.vram_bank),
+                                               .palette = backgroundTileAttributes_.palette_number_cgb,
                                                .priority = backgroundTileAttributes_.priority,
                                                .mapTick = provenance->position.tick};
             Observe(diagnostics::EventKind::TileFetch, tileMapAddress, fetcherTileNum_, static_cast<uint32_t>(diagnostics::FetchStage::Map));
-            if (isCgb_)
+            if (is_cgb)
                 Observe(diagnostics::EventKind::TileFetch, tileMapAddress, vram[tileMapAddress - 0x6000],
                         static_cast<uint32_t>(diagnostics::FetchStage::Attributes), 1);
             fetcherState_ = GetTileDataLow;
@@ -897,11 +934,11 @@ void GPU::Fetcher_StepBackgroundFetch() {
                 }
                 backgroundQueue.push_back(Pixel{
                         .color = color,
-                        .dmgPalette = dmgPalette,
-                        .cgbPalette = backgroundTileAttributes_.paletteNumberCGB,
+                        .dmg_palette = dmgPalette,
+                        .cgb_palette = backgroundTileAttributes_.palette_number_cgb,
                         .priority = backgroundTileAttributes_.priority,
-                        .isSprite = false,
-                        .isPlaceholder = false,
+                        .is_sprite = false,
+                        .is_placeholder = false,
                 });
             }
             Observe(diagnostics::EventKind::FifoPush, pixelsDrawn, 8, isFetchingWindow_);
@@ -938,26 +975,27 @@ void GPU::Fetcher_StepSpriteFetch() {
             // takeover+2 and takeover+4, with the merge dot unchanged. Each read
             // samples the OBJ size bit independently, so an LCDC write between
             // them mixes rows from two different tiles
-            const unsigned oamAddress = oamDmaActive && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0 ? (oamDmaDest_ & ~1) : (sprite.spriteNum / 2) * 4 + 2;
-            sprite.tileIndex = oam[oamAddress];
-            Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tileIndex,
+            const unsigned oamAddress =
+                    oam_dma_active && oamDmaDest_ > 0 && oamDmaDest_ < 0xA0 ? (oamDmaDest_ & ~1) : (sprite.sprite_num / 2) * 4 + 2;
+            sprite.tile_index = oam[oamAddress];
+            Observe(diagnostics::EventKind::TileFetch, 0xFE00 + oamAddress, sprite.tile_index,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteOam));
             sprite.attributes = GetAttrsFrom(oam[oamAddress + 1]);
             if (provenance)
                 provenance->spriteFetch = {.valid = true,
                                            .source = diagnostics::PixelSource::Sprite,
                                            .mapAddress = static_cast<uint16_t>(0xFE00 + oamAddress),
-                                           .tile = sprite.tileIndex,
+                                           .tile = sprite.tile_index,
                                            .attributes = oam[oamAddress + 1],
-                                           .bank = static_cast<uint8_t>(isCgb_ && sprite.attributes.vramBank),
-                                           .palette = isCgb_ && !dmgCompat ? sprite.attributes.paletteNumberCGB
-                                                                           : static_cast<uint8_t>(sprite.attributes.paletteNumberDMG),
-                                           .oamIndex = static_cast<uint8_t>(sprite.spriteNum / 2),
+                                           .bank = static_cast<uint8_t>(is_cgb && sprite.attributes.vram_bank),
+                                           .palette = is_cgb && !dmg_compat ? sprite.attributes.palette_number_cgb
+                                                                            : static_cast<uint8_t>(sprite.attributes.palette_number_dmg),
+                                           .oamIndex = static_cast<uint8_t>(sprite.sprite_num / 2),
                                            .spriteX = sprite.x,
                                            .spriteY = sprite.y,
                                            .priority = sprite.attributes.priority,
                                            .mapTick = provenance->position.tick};
-            fetcherTileNum_ = sprite.tileIndex;
+            fetcherTileNum_ = sprite.tile_index;
             fetcherState_ = GetTileDataLow;
             spriteFetchIsFirst_ = !spriteFetchedThisLine_;
             spriteFetchedThisLine_ = true;
@@ -966,7 +1004,7 @@ void GPU::Fetcher_StepSpriteFetch() {
         }
         case GetTileDataLow: {
             const auto tileAddress = CalculateSpriteDataAddress(sprite);
-            const bool bank1 = (isCgb_) && sprite.attributes.vramBank;
+            const bool bank1 = (is_cgb) && sprite.attributes.vram_bank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
             fetcherTileDataLow_ = vram[tileAddress - base];
             if (provenance) {
@@ -984,7 +1022,7 @@ void GPU::Fetcher_StepSpriteFetch() {
         }
         case GetTileDataHigh: {
             const auto tileAddress = CalculateSpriteDataAddress(sprite);
-            const bool bank1 = (isCgb_) && sprite.attributes.vramBank;
+            const bool bank1 = (is_cgb) && sprite.attributes.vram_bank;
             const uint16_t base = bank1 ? 0x6000 : 0x8000;
             fetcherTileDataHigh_ = vram[(tileAddress + 1) - base];
             if (provenance) {
@@ -996,7 +1034,7 @@ void GPU::Fetcher_StepSpriteFetch() {
             }
             Observe(diagnostics::EventKind::TileFetch, tileAddress + 1, fetcherTileDataHigh_,
                     static_cast<uint32_t>(diagnostics::FetchStage::SpriteHigh), bank1);
-            if (isCgb_)
+            if (is_cgb)
                 cgbTileDataBus_ = fetcherTileDataHigh_;
             fetcherDelay_ = (spriteFetchIsFirst_ ? 2 : 1) + spriteMergeDelay_;
             spriteMergeDelay_ = 0;
@@ -1013,7 +1051,7 @@ void GPU::Fetcher_StepSpriteFetch() {
             // Only the palette SELECT is latched into the FIFO — the OBP
             // register itself is read when the pixel is output, so a mode-3
             // palette write lands on pixels still queued
-            const uint8_t paletteSelect = attrs.paletteNumberDMG ? 1 : 0;
+            const uint8_t paletteSelect = attrs.palette_number_dmg ? 1 : 0;
 
             const auto xPos = sprite.x;
             unsigned mergedPixels{};
@@ -1041,8 +1079,8 @@ void GPU::Fetcher_StepSpriteFetch() {
                 }
                 const auto &current = spriteArray[(spriteArrayHead_ + i) & 7];
                 // only CGB check needed since DMG priority resolved by the sprite fetch order
-                const bool hasHigherPriority = isCgb_ && !objectPriority && sprite.spriteNum < current.spriteNum;
-                if (!hasHigherPriority && current.color != 0 && !current.isPlaceholder) {
+                const bool hasHigherPriority = is_cgb && !objectPriority && sprite.sprite_num < current.sprite_num;
+                if (!hasHigherPriority && current.color != 0 && !current.is_placeholder) {
                     if (provenance)
                         RecordSpriteCandidate(i, pixelIndex, color, diagnostics::SpriteDecision::KeptEarlier);
                     continue;
@@ -1052,15 +1090,15 @@ void GPU::Fetcher_StepSpriteFetch() {
                 ++mergedPixels;
                 spriteArray[(spriteArrayHead_ + i) & 7] = Pixel{
                         .color = color,
-                        .dmgPalette = paletteSelect,
-                        .cgbPalette = attrs.paletteNumberCGB,
+                        .dmg_palette = paletteSelect,
+                        .cgb_palette = attrs.palette_number_cgb,
                         .priority = attrs.priority,
-                        .isSprite = true,
-                        .isPlaceholder = false,
-                        .spriteNum = sprite.spriteNum,
+                        .is_sprite = true,
+                        .is_placeholder = false,
+                        .sprite_num = sprite.sprite_num,
                 };
             }
-            Observe(diagnostics::EventKind::FifoPush, pixelsDrawn, mergedPixels, 0x100 | (sprite.spriteNum / 2));
+            Observe(diagnostics::EventKind::FifoPush, pixelsDrawn, mergedPixels, 0x100 | (sprite.sprite_num / 2));
             spriteFetchQueue.pop_front();
             if (spriteFetchQueue.empty())
                 spriteFetchActive_ = false;
@@ -1085,15 +1123,16 @@ uint16_t GPU::CalculateBGTileMapAddress() const {
         return tileMapBase + tileRow * 32 + tileCol;
     } else {
         tileMapBase = Bit<LCDC_BG_TILE_MAP_AREA>(lcdc) ? 0x9C00 : 0x9800;
-        const uint8_t scxForFetch = scxWriteStage > 0 ? scxFetcherOld : scrollX;
+        const bool scx_old = scxWriteStage > 0 || (scx_just_applied && scanlineCounter < 92);
+        const uint8_t scx_for_fetch = scx_old ? scxFetcherOld : scrollX;
         const bool scyOld = scyWriteStage > 0 || (scyJustApplied_ && scanlineCounter < 92);
         const uint8_t scyForFetch = scyOld ? scyFetcherOld : scrollY;
         const uint8_t tileRow = (((scyForFetch + currentLine) & 0xFF) >> 3) & 0x1F;
         // Later map reads use pixel position plus live SCX, including any
         // carry from changed fine bits. DMG reads one dot after the FIFO push
-        const int readOffset = fetcherTileX_ ? (isCgb_ ? 0 : 1) - initialScrollXFine_ : 0;
+        const int readOffset = fetcherTileX_ ? (is_cgb ? 0 : 1) - initialScrollXFine_ : 0;
         const uint8_t fetchX = fetcherTileX_ * 8 + readOffset;
-        const uint8_t tileCol = ((fetchX + scxForFetch) / 8) & 0x1F;
+        const uint8_t tileCol = ((fetchX + scx_for_fetch) / 8) & 0x1F;
         return tileMapBase + tileRow * 32 + tileCol;
     }
 }
@@ -1123,7 +1162,7 @@ uint8_t GPU::ReadBackgroundTileData(const bool high) {
     backgroundDataReadHigh_ = high;
     cgbPreviousTileDataBus_ = cgbTileDataBus_;
     const auto address = CalculateTileDataAddress() + (high ? 1 : 0);
-    const uint16_t base = isCgb_ && backgroundTileAttributes_.vramBank ? 0x6000 : 0x8000;
+    const uint16_t base = is_cgb && backgroundTileAttributes_.vram_bank ? 0x6000 : 0x8000;
     const uint8_t data = vram[address - base];
     if (provenance) {
         auto &origin = provenance->backgroundFetch;
@@ -1141,7 +1180,7 @@ uint8_t GPU::ReadBackgroundTileData(const bool high) {
     }
     Observe(diagnostics::EventKind::TileFetch, address, data,
             static_cast<uint32_t>(high ? diagnostics::FetchStage::BackgroundHigh : diagnostics::FetchStage::BackgroundLow), base == 0x6000);
-    if (isCgb_) {
+    if (is_cgb) {
         if (high && Bit<LCDC_BG_AND_WINDOW_TILE_DATA>(lcdc))
             cgbTileDataBus_ = data;
     }
@@ -1154,7 +1193,7 @@ uint16_t GPU::CalculateSpriteDataAddress(const Sprite &sprite) {
     // with row bit 3, 8x8 ignores row bit 3 entirely
     const uint8_t effLcdc = lcdcWriteStage > 0 ? lcdcPending : lcdc;
     const uint8_t spriteHeight = Bit<LCDC_OBJ_SIZE>(effLcdc) ? 16 : 8;
-    uint8_t tile = sprite.tileIndex;
+    uint8_t tile = sprite.tile_index;
     if (spriteHeight == 16)
         tile &= 0xFE;
     const auto row = static_cast<uint8_t>((currentLine - sprite.y) & (spriteHeight - 1));
@@ -1188,18 +1227,18 @@ static uint32_t ComputeCgbColor(const std::array<uint8_t, 3> &rgb, const bool co
 void GPU::RebuildColorLuts() {
     for (unsigned p = 0; p < 8; ++p) {
         for (unsigned c = 0; c < 4; ++c) {
-            bgColorLut_[p * 4 + c] = ComputeCgbColor(bgpd[p][c], colorCorrection_);
-            objColorLut_[p * 4 + c] = ComputeCgbColor(obpd[p][c], colorCorrection_);
+            bgColorLut_[p * 4 + c] = ComputeCgbColor(bgpd[p][c], color_correction);
+            objColorLut_[p * 4 + c] = ComputeCgbColor(obpd[p][c], color_correction);
         }
     }
 }
 
 uint32_t GPU::GetSpriteColor(uint8_t color, const uint8_t palette) const {
-    if (!isCgb_) {
+    if (!is_cgb) {
         const uint8_t reg = palette ? obp1Palette : obp0Palette;
         return DMG_SHADE[(reg >> (color * 2)) & 0x03];
     }
-    if (dmgCompat) {
+    if (dmg_compat) {
         // OBP0/OBP1 index into the two compatibility palettes
         const uint8_t reg = palette ? obp1Palette : obp0Palette;
         color = (reg >> (color * 2)) & 0x03;
@@ -1208,9 +1247,9 @@ uint32_t GPU::GetSpriteColor(uint8_t color, const uint8_t palette) const {
 }
 
 uint32_t GPU::GetBackgroundColor(uint8_t color, uint8_t palette) const {
-    if (!isCgb_)
+    if (!is_cgb)
         return DMG_SHADE[(backgroundPalette >> (color * 2)) & 0x03];
-    if (dmgCompat) {
+    if (dmg_compat) {
         // BGP indexes into compatibility palette 0
         color = (backgroundPalette >> (color * 2)) & 0x03;
         palette = 0;
@@ -1222,15 +1261,15 @@ Attributes GPU::GetAttrsFrom(const uint8_t byte) {
     return {.priority = Bit<OAM_PRIORITY_BIT>(byte),
             .yflip = Bit<OAM_Y_FLIP_BIT>(byte),
             .xflip = Bit<OAM_X_FLIP_BIT>(byte),
-            .paletteNumberDMG = Bit<OAM_PALETTE_NUMBER_DMG_BIT>(byte),
-            .vramBank = Bit<OAM_VRAM_BANK_BIT>(byte),
-            .paletteNumberCGB = static_cast<uint8_t>(byte & 0x07)};
+            .palette_number_dmg = Bit<OAM_PALETTE_NUMBER_DMG_BIT>(byte),
+            .vram_bank = Bit<OAM_VRAM_BANK_BIT>(byte),
+            .palette_number_cgb = static_cast<uint8_t>(byte & 0x07)};
 }
 
-uint8_t GPU::ReadGpi(const Gpi &gpi) { return (gpi.autoIncrement ? 0x80 : 0x00) | gpi.index | 0x40; }
+uint8_t GPU::ReadGpi(const Gpi &gpi) { return (gpi.auto_increment ? 0x80 : 0x00) | gpi.index | 0x40; }
 
 void GPU::WriteGpi(Gpi &gpi, const uint8_t value) {
-    gpi.autoIncrement = (value & 0x80) != 0x00;
+    gpi.auto_increment = (value & 0x80) != 0x00;
     gpi.index = value & 0x3F;
 }
 
@@ -1250,7 +1289,7 @@ void GPU::WriteVRAM(const uint16_t address, const uint8_t value) {
 // blocks (plus the end-of-line OAM read lock ahead of line 1's scan). CGB
 // read/write gates have separate phases at the start and end of each mode
 bool GPU::CpuOamReadBlocked() const {
-    if (isCgb_ && !LCDDisabled()) {
+    if (is_cgb && !LCDDisabled()) {
         if (stat.mode == GPUMode::MODE_2)
             return true;
         if (model == Model::CGBE && doubleSpeed && scanlineCounter == (lcdEnableLine0_ ? 452u : 455u) && (currentLine < 143 || currentLine == 153))
@@ -1259,8 +1298,8 @@ bool GPU::CpuOamReadBlocked() const {
             return true;
     }
     if (stat.mode == GPUMode::MODE_3)
-        return isCgb_ || lcdEnableLine0_ || !StatMode0Visible();
-    if (isCgb_ || LCDDisabled())
+        return is_cgb || lcdEnableLine0_ || !StatMode0Visible();
+    if (is_cgb || LCDDisabled())
         return false;
     if (stat.mode == GPUMode::MODE_2)
         return true;
@@ -1268,7 +1307,7 @@ bool GPU::CpuOamReadBlocked() const {
 }
 
 bool GPU::CpuOamWriteBlocked() const {
-    if (isCgb_ && !LCDDisabled()) {
+    if (is_cgb && !LCDDisabled()) {
         if (doubleSpeed && lcdEnableLine0_ && scanlineCounter >= 78 && scanlineCounter < 80)
             return true;
         if (stat.mode == GPUMode::MODE_2)
@@ -1277,23 +1316,31 @@ bool GPU::CpuOamWriteBlocked() const {
             return true;
     }
     if (stat.mode == GPUMode::MODE_3)
-        return isCgb_ || lcdEnableLine0_ || !StatMode0Visible();
-    if (isCgb_ || LCDDisabled())
+        return is_cgb || lcdEnableLine0_ || !StatMode0Visible();
+    if (is_cgb || LCDDisabled())
         return false;
     return stat.mode == GPUMode::MODE_2 && scanlineCounter < 76;
 }
 
 bool GPU::CpuVramReadBlocked() const {
-    if (isCgb_ && !doubleSpeed && stat.mode == GPUMode::MODE_3 && scanlineCounter < (lcdEnableLine0_ ? 82u : 84u))
+    if (is_cgb && !doubleSpeed && stat.mode == GPUMode::MODE_3 && scanlineCounter < (lcdEnableLine0_ ? 82u : 84u))
         return false;
     if (stat.mode == GPUMode::MODE_3)
-        return isCgb_ || lcdEnableLine0_ || !StatMode0Visible();
-    if (isCgb_ || LCDDisabled())
+        return is_cgb || lcdEnableLine0_ || !StatMode0Visible();
+    if (is_cgb || LCDDisabled())
         return false;
     return stat.mode == GPUMode::MODE_2 && scanlineCounter >= 76;
 }
 
 bool GPU::CpuVramWriteBlocked() const { return stat.mode == GPUMode::MODE_3; }
+
+bool GPU::cpu_palette_blocked() const {
+    if (LCDDisabled() || currentLine >= SCREEN_HEIGHT)
+        return false;
+    if (stat.mode == GPUMode::MODE_3)
+        return scanlineCounter >= (lcdEnableLine0_ ? (doubleSpeed ? 83u : 82u) : 84u);
+    return stat.mode == GPUMode::MODE_0 && mode3EndDot_ && scanlineCounter < mode3EndDot_ + (doubleSpeed ? 2u : 4u);
+}
 
 bool GPU::StatMode0Visible(const unsigned lead) const {
     // Map the renderer's dot phase to the CPU-visible STAT phase: normal DMG
@@ -1313,7 +1360,7 @@ bool GPU::StatMode0Visible(const unsigned lead) const {
     }
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdcWriteStage == 1 ? lcdcPending : lcdc);
     if (windowActivatePending_ ||
-        (winEnabled && windowTriggeredThisFrame && !isFetchingWindow_ && windowX >= pixelsDrawn + 7 && windowX < (isCgb_ ? SCREEN_WIDTH + 7 : 166)))
+        (winEnabled && window_y_matched() && !isFetchingWindow_ && windowX >= pixelsDrawn + 7 && windowX < (is_cgb ? SCREEN_WIDTH + 7 : 166)))
         return false;
     for (const auto &sprite : spriteBuffer) {
         if (!sprite.processed && sprite.x >= pixelsDrawn && sprite.x < SCREEN_WIDTH && Bit<LCDC_OBJ_ENABLE>(lcdc))
@@ -1331,22 +1378,22 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             return lcdc;
         case 0xFF41: {
             uint8_t value = stat.value();
-            if (!isCgb_ && currentLine == 153 && scanlineCounter >= 452)
+            if (!is_cgb && currentLine == 153 && scanlineCounter >= 452)
                 value &= ~3;
-            if (!isCgb_ && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible()) {
+            if (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible()) {
                 value &= ~0x03;
             }
             // CGB: the reported mode bits lag the line start by 4 dots — a
             // fresh line reads mode 0 first, and OAM scan / mode 3 assert late
             // (daid speed_switch_timing_stat)
-            if (isCgb_ && !LCDDisabled() && !lcdEnableLine0_) {
+            if (is_cgb && !LCDDisabled() && !lcdEnableLine0_) {
                 if (stat.mode == GPUMode::MODE_2 && scanlineCounter < (doubleSpeed ? 1u : 4u)) {
                     value &= ~0x03;
                 } else if (stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && scanlineCounter < (doubleSpeed ? 81u : 84u)) {
                     value = (value & ~0x03) | 0x02;
                 }
             }
-            if (isCgb_ && !LCDDisabled() && !lcdEnableLine0_) {
+            if (is_cgb && !LCDDisabled() && !lcdEnableLine0_) {
                 if (currentLine == 144 && scanlineCounter < (doubleSpeed ? 1u : 4u))
                     value &= ~3;
                 if (currentLine == 0 && scanlineCounter < (doubleSpeed ? 1u : 4u) && (model == Model::CGBE || doubleSpeed))
@@ -1355,7 +1402,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             // DMG: LY has already flipped during the last dots of a line while
             // the comparison only updates at the boundary, so the flag reads 0
             // there (mooneye lcdon_timing-GS, STAT LYC tables)
-            if (!isCgb_ && !LCDDisabled() && currentLine != 153 && scanlineCounter >= 452) {
+            if (!is_cgb && !LCDDisabled() && currentLine != 153 && scanlineCounter >= 452) {
                 value &= ~0x04;
             }
             return value;
@@ -1365,7 +1412,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
         case 0xFF43:
             return scrollX;
         case 0xFF44:
-            if (isCgb_ && !LCDDisabled()) {
+            if (is_cgb && !LCDDisabled()) {
                 // LY sampling trails the scanline machinery by one dot. The
                 // shortened startup line depends on the speed at LCD enable,
                 // even if STOP changes speed before that line has finished.
@@ -1384,7 +1431,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             // late enough that the hblank-interrupt-relative reads still see the
             // old line (mooneye hblank_ly_scx_timing-GS), early enough for the
             // lcdon_timing-GS LY table
-            if (!isCgb_ && !LCDDisabled() && currentLine != 153 && scanlineCounter >= 452) {
+            if (!is_cgb && !LCDDisabled() && currentLine != 153 && scanlineCounter >= 452) {
                 return currentLine + 1;
             }
             return currentLine;
@@ -1401,11 +1448,11 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
         case 0xFF4B:
             return wxWriteStage > 0 ? wxPending : windowX;
         case 0xFF4F:
-            return isCgb_ ? (0xFE | vramBank) : 0xFF;
+            return is_cgb ? (0xFE | vramBank) : 0xFF;
         case 0xFF68:
-            return isCgb_ ? ReadGpi(bgpi) : 0xFF;
+            return is_cgb ? ReadGpi(bgpi) : 0xFF;
         case 0xFF69: {
-            if (!isCgb_)
+            if (!is_cgb)
                 return 0xFF;
             const uint8_t r = bgpi.index >> 3;
             const uint8_t c = (bgpi.index >> 1) & 3;
@@ -1415,9 +1462,9 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             return (bgpd[r][c][1] >> 3) | (bgpd[r][c][2] << 2);
         }
         case 0xFF6A:
-            return isCgb_ ? ReadGpi(obpi) : 0xFF;
+            return is_cgb ? ReadGpi(obpi) : 0xFF;
         case 0xFF6B: {
-            if (!isCgb_)
+            if (!is_cgb)
                 return 0xFF;
             const uint8_t r = obpi.index >> 3;
             const uint8_t c = (obpi.index >> 1) & 3;
@@ -1427,7 +1474,7 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             return (obpd[r][c][1] >> 3) | (obpd[r][c][2] << 2);
         }
         case 0xFF6C:
-            return isCgb_ ? (0xFE | objectPriority) : 0xFF;
+            return is_cgb ? (0xFE | objectPriority) : 0xFF;
         default:
             throw UnreachableCodeException("GPU::ReadRegisters unreachable code at address: " + std::to_string(address));
     }
@@ -1443,7 +1490,7 @@ void GPU::ApplyLCDC(const uint8_t value) {
         if (hdma.hdmaActive && hdma.hdmaMode == HDMAMode::HDMA && stat.mode != GPUMode::MODE_0)
             hdma.singleBlockTransfer = true;
         scanlineCounter = currentLine = 0;
-        SetMode(GPUMode::MODE_0);
+        set_mode(GPUMode::MODE_0);
         screenData.fill(0);
         Observe(diagnostics::EventKind::FramebufferClear, 0xFF40, 0, lcdc);
         if (provenance && provenance->recolor)
@@ -1465,7 +1512,7 @@ void GPU::ApplyLCDC(const uint8_t value) {
         hdma.hblankBlockFinished = false;
         // Line 0 after enabling reads as mode 0 and never runs an OAM scan;
         // OAM and VRAM stay accessible until mode 3 begins
-        SetMode(GPUMode::MODE_0);
+        set_mode(GPUMode::MODE_0);
         lcdEnableLine0_ = true;
         lcdStartDoubleSpeed_ = doubleSpeed;
         ResetScanlineState(true);
@@ -1479,7 +1526,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
     InvalidateIdle();
     switch (address) {
         case 0xFF40: {
-            if (isCgb_ && stat.mode == GPUMode::MODE_3 && !LCDDisabled() && Bit<LCDC_ENABLE_BIT>(value) &&
+            if (is_cgb && stat.mode == GPUMode::MODE_3 && !LCDDisabled() && Bit<LCDC_ENABLE_BIT>(value) &&
                 ((lcdc ^ value) & (1 << LCDC_BG_AND_WINDOW_TILE_DATA))) {
                 if (backgroundDataReadThisDot_) {
                     const bool oldSelect = Bit<LCDC_BG_AND_WINDOW_TILE_DATA>(lcdc);
@@ -1495,7 +1542,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                     }
                 }
             }
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 // Clearing OBJ enable while a left-clipped sprite's fetch is in flight aborts the fetch — its pixels never reach the FIFO
                 // A fetch already on its load tick completes; an on-screen sprite's fetch is never aborted
                 if (!Bit<LCDC_OBJ_ENABLE>(value) && Bit<LCDC_OBJ_ENABLE>(lcdc) && spriteFetchActive_ && spriteFetchQueue.front().x < 0 &&
@@ -1520,7 +1567,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 lcdcPending = value;
                 lcdcWriteStage = 3;
             } else {
-                const bool updatePixel = isCgb_ && dmgCompat && pixelOutputThisDot_ && ((lcdc ^ value) & 1) && Bit<LCDC_ENABLE_BIT>(value);
+                const bool updatePixel = is_cgb && dmg_compat && pixelOutputThisDot_ && ((lcdc ^ value) & 1) && Bit<LCDC_ENABLE_BIT>(value);
                 ApplyLCDC(value);
                 if (updatePixel) {
                     screenData[currentLine * SCREEN_WIDTH + pixelsDrawn - 1] =
@@ -1539,15 +1586,15 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             // On monochrome hardware, a STAT write briefly enables every
             // source. OAM's source is a pulse at the line boundary, rather
             // than a level held throughout mode 2.
-            if (!isCgb_ && !LCDDisabled() && !statTriggered &&
+            if (!is_cgb && !LCDDisabled() && !statTriggered &&
                 ((stat.mode == GPUMode::MODE_0 && (!lcdEnableLine0_ || scanlineCounter >= 80)) || stat.mode == GPUMode::MODE_1 ||
-                 stat.coincidenceFlag || m2IrqRaisedEarly)) {
-                interrupts_.Set(InterruptType::LCDStat, false);
+                 stat.coincidence_flag || m2IrqRaisedEarly)) {
+                interrupts_.set(InterruptType::LCDStat, false);
             }
-            stat.enableLYInterrupt = value & 0x40;
-            stat.enableM2Interrupt = value & 0x20;
-            stat.enableM1Interrupt = value & 0x10;
-            stat.enableM0Interrupt = value & 0x08;
+            stat.enable_ly_interrupt = value & 0x40;
+            stat.enable_m2_interrupt = value & 0x20;
+            stat.enable_m1_interrupt = value & 0x10;
+            stat.enable_m0_interrupt = value & 0x08;
             // A write that leaves every enabled condition false drops the line
             // and re-arms the edge detector, so the next condition fires an IRQ
             // even if one was already taken this scanline. A write that raises
@@ -1558,7 +1605,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         }
         case 0xFF42:
             // Like SCX, a mode-3 SCY write reaches the fetcher two dots late
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 if (scyWriteStage == 0)
                     scyFetcherOld = scrollY;
                 scyWriteStage = 3;
@@ -1568,18 +1615,19 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
         case 0xFF43:
             // The fine-scroll consumers see an SCX write immediately, but the
             // fetcher's tile-map read keeps seeing the old value for two dots
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && initialSCXSet && !isFetchingWindow_ && !LCDDisabled()) {
+            if (stat.mode == GPUMode::MODE_3 && initialSCXSet && !isFetchingWindow_ && !LCDDisabled()) {
                 // Fine scrolling ends when the startup pixel counter matches
                 // SCX. A write after the new low bits have already passed
                 // wraps the comparison to the next group of eight dots
-                const int phase = static_cast<int>(scanlineCounter) - (lcdEnableLine0_ ? 83 : 84);
+                const int fineStart = is_cgb ? (lcdEnableLine0_ ? (lcdStartDoubleSpeed_ ? 85 : 84) : 86) : (lcdEnableLine0_ ? 83 : 84);
+                const int phase = static_cast<int>(scanlineCounter) - fineStart;
                 if (phase < initialScrollXFine_) {
                     const int fine = phase < 0 ? value & 7 : phase + 1 + ((value - phase - 1) & 7);
                     initialScrollXDiscard_ += fine - initialScrollXFine_;
                     initialScrollXFine_ = fine;
                 }
             }
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 if (scxWriteStage == 0)
                     scxFetcherOld = scrollX;
                 scxWriteStage = 3;
@@ -1593,7 +1641,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             lyc = value;
             break;
         case 0xFF47:
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 if (bgpWriteStage > 0)
                     backgroundPalette = bgpPending;
                 bgpPending = value;
@@ -1601,13 +1649,13 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 // With the shortest latency the glitch dot coincides with the write
                 if (bgpWriteStage == 1)
                     backgroundPalette |= value;
-            } else if (isCgb_ && dmgCompat && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
+            } else if (is_cgb && dmg_compat && stat.mode == GPUMode::MODE_3 && !LCDDisabled()) {
                 // CGB-E samples the register one dot ahead of earlier revisions
                 backgroundPalette = value;
                 bgpWriteStage = 0;
                 const unsigned pendingPixels = model == Model::CGBE ? 3 : 2;
                 for (unsigned i = 0; i < pendingPixels; ++i) {
-                    if (recentPixelOffsets_[i] != 0xFFFF && !recentPixels_[i].isSprite) {
+                    if (recentPixelOffsets_[i] != 0xFFFF && !recentPixels_[i].is_sprite) {
                         screenData[recentPixelOffsets_[i]] = GetBackgroundColor(recentPixels_[i].color, 0);
                         if (provenance)
                             RecordRecolor(recentPixelOffsets_[i], 0xFF47, recentPixels_[i], diagnostics::PixelDecision::SpriteTransparent);
@@ -1619,7 +1667,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         case 0xFF48:
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 if (obp0WriteStage > 0)
                     obp0Palette = obp0Pending;
                 obp0Pending = value;
@@ -1631,7 +1679,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         case 0xFF49:
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 if (obp1WriteStage > 0)
                     obp1Palette = obp1Pending;
                 obp1Pending = value;
@@ -1643,10 +1691,16 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         case 0xFF4A:
+            if (is_cgb && !LCDDisabled()) {
+                if (wy_write_stage == 0) {
+                    wy_trigger_old = windowY;
+                }
+                wy_write_stage = doubleSpeed ? 3 : 5;
+            }
             windowY = value;
             break;
         case 0xFF4B:
-            if (!isCgb_ && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
+            if (!is_cgb && stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && !LCDDisabled()) {
                 if (wxWriteStage > 0)
                     windowX = wxPending;
                 wxPending = value;
@@ -1671,8 +1725,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 bgpd[r][c][1] = (bgpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
                 bgpd[r][c][2] = (value >> 2) & 0x1F;
             }
-            bgColorLut_[r * 4 + c] = ComputeCgbColor(bgpd[r][c], colorCorrection_);
-            if (bgpi.autoIncrement)
+            bgColorLut_[r * 4 + c] = ComputeCgbColor(bgpd[r][c], color_correction);
+            if (bgpi.auto_increment)
                 bgpi.index = (bgpi.index + 1) & 0x3F;
             break;
         }
@@ -1689,8 +1743,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 obpd[r][c][1] = (obpd[r][c][1] & 0x07) | ((value & 0x03) << 3);
                 obpd[r][c][2] = (value >> 2) & 0x1F;
             }
-            objColorLut_[r * 4 + c] = ComputeCgbColor(obpd[r][c], colorCorrection_);
-            if (obpi.autoIncrement)
+            objColorLut_[r * 4 + c] = ComputeCgbColor(obpd[r][c], color_correction);
+            if (obpi.auto_increment)
                 obpi.index = (obpi.index + 1) & 0x3F;
             break;
         }
@@ -1713,6 +1767,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                     return obp0WriteStage;
                 case 0xFF49:
                     return obp1WriteStage;
+                case 0xFF4A:
+                    return wy_write_stage;
                 case 0xFF4B:
                     return wxWriteStage;
                 default:
