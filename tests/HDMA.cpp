@@ -302,10 +302,10 @@ TEST_CASE("dma: VRAM address wrapping retains the selected bank and full destina
 }
 
 TEST_CASE("STOP retains the HDMA inputs sampled before speed-switch completion") {
-    enum class Arrival { BeforeStop, DuringInternalCycle, OnFinalCycle };
+    enum class Arrival { BeforeStop, BeforeT2, BeforeT4, OnFinalCycle };
     constexpr std::array models = {Model::CGBC, Model::CGBE};
     constexpr std::array speeds = {false, true};
-    constexpr std::array arrival_values = {Arrival::BeforeStop, Arrival::DuringInternalCycle, Arrival::OnFinalCycle};
+    constexpr std::array arrival_values = {Arrival::BeforeStop, Arrival::BeforeT2, Arrival::BeforeT4, Arrival::OnFinalCycle};
     for (const auto [model, double_speed, arrival] : std::views::cartesian_product(models, speeds, arrival_values)) {
         CAPTURE(ModelName(model));
         CAPTURE(double_speed);
@@ -339,7 +339,10 @@ TEST_CASE("STOP retains the HDMA inputs sampled before speed-switch completion")
         if (arrival == Arrival::BeforeStop)
             request();
         cpu.sample_speed_switch_dma();
-        if (arrival == Arrival::DuringInternalCycle)
+        if (arrival == Arrival::BeforeT2)
+            request();
+        cpu.SampleHaltInterrupts();
+        if (arrival == Arrival::BeforeT4)
             request();
         cpu.sample_running_inputs();
         if (arrival == Arrival::OnFinalCycle)
@@ -347,7 +350,7 @@ TEST_CASE("STOP retains the HDMA inputs sampled before speed-switch completion")
         bus.prepareSpeedShift = true;
         bus.ChangeSpeed();
         cpu.SpeedSwitchHalt(false);
-        const bool retained = arrival == Arrival::BeforeStop || (double_speed && arrival == Arrival::DuringInternalCycle);
+        const bool retained = arrival == Arrival::BeforeStop || (double_speed && arrival == Arrival::BeforeT2);
         CHECK(hdma.block_requested == (retained && !double_speed));
         CHECK(hdma.halt_request_pending == (retained && double_speed));
         CHECK(hdma.halt_hblank_active == retained);

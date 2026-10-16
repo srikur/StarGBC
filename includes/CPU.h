@@ -101,6 +101,11 @@ public:
     }
 
     void SampleHaltInterrupts() {
+        if (speed_switch_dma_sample_pending) {
+            speed_switch_dma_sample_pending = false;
+            speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
+            speed_switch_hblank_active = bus_.hdma_hblank_active();
+        }
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
         haltPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (halted_ && haltPending_ && !IsCgb(bus_.gpu_.model))
@@ -110,11 +115,6 @@ public:
     }
 
     void sample_running_inputs() {
-        if (speed_switch_dma_sample_pending) {
-            speed_switch_dma_sample_pending = false;
-            speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
-            speed_switch_hblank_active = bus_.hdma_hblank_active();
-        }
         // The DMG instruction boundary samples before this T4's peripheral edges
         runningPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)

@@ -600,13 +600,14 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                     if (!gpu_.hblank || gpu_.vblank || speedShiftActive)
                         return;
                     if (!gpu_.LCDDisabled()) {
-                        if (gpu_.hdma.hblankBlockFinished || gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u || gpu_.scanlineCounter >= 455)
+                        if (gpu_.hdma.hblankBlockFinished || gpu_.scanlineCounter <= gpu_.mode3EndDot_ + (gpu_.doubleSpeed ? 0u : 1u) ||
+                            gpu_.scanlineCounter >= 455)
                             return;
                     } else if (!gpu_.hdma.singleBlockTransfer) {
                         return;
                     }
                     gpu_.hdma.block_requested = true;
-                    if (!gpu_.doubleSpeed && !gpu_.LCDDisabled() && gpu_.scanlineCounter == gpu_.mode3EndDot_ + 2u)
+                    if (!gpu_.LCDDisabled() && gpu_.scanlineCounter == gpu_.mode3EndDot_ + (gpu_.doubleSpeed ? 1u : 2u))
                         return;
                 }
                 if (!cpuAtInstructionBoundary || speedShiftActive)
