@@ -1780,8 +1780,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             // source. OAM's source is a pulse at the line boundary, rather
             // than a level held throughout mode 2.
             if (!is_cgb && !LCDDisabled() && !statTriggered &&
-                ((stat.mode == GPUMode::MODE_0 && (!lcdEnableLine0_ || scanlineCounter >= 80)) || stat.mode == GPUMode::MODE_1 ||
-                 stat.coincidence_flag || m2IrqRaisedEarly)) {
+                ((stat.mode == GPUMode::MODE_0 && (!lcdEnableLine0_ || scanlineCounter >= 80)) ||
+                 (stat.mode == GPUMode::MODE_3 && m0_irq_active) || stat.mode == GPUMode::MODE_1 || stat.coincidence_flag || m2IrqRaisedEarly)) {
                 interrupts_.set(InterruptType::LCDStat, false);
             }
             if (is_cgb && currentLine == 0 && !lcdEnableLine0_ && scanlineCounter < (doubleSpeed ? 2u : 4u) &&
