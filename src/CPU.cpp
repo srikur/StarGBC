@@ -283,31 +283,31 @@ bool CPU<BusT>::ProcessInterrupts() {
     using enum InterruptState;
     switch (interruptState) {
         case M1: {
-            if (interrupts_.interruptDelay && ++icount_ == 2) {
-                interrupts_.interruptDelay = false;
-                interrupts_.interruptMasterEnable = true;
+            if (interrupts_.interrupt_delay && ++icount_ == 2) {
+                interrupts_.interrupt_delay = false;
+                interrupts_.interrupt_master_enable = true;
                 icount_ = 0;
             }
             // DMG samples HALT wake at T2 and running instructions at T4
             // CGB VBlank reaches interrupt dispatch one M-cycle before its
             // IME=0 HALT-wake path; STAT retains its own propagation delay
             const uint8_t pending = !IsCgb(bus_.gpu_.model)
-                                            ? (halted_ ? haltPending_ : runningPending_)
-                                            : interrupts_.interruptEnable &
-                                                      ((interrupts_.interruptFlag & ~0x04) |
-                                                       ((speedSwitchWakePending_ ? interrupts_.interruptFlag : runningPending_) & 0x04) |
-                                                       (interrupts_.interruptMasterEnable ? interrupts_.interruptVisiblePending & 0x01 : 0)) &
-                                                      0x1F;
+                                        ? (halted_ ? haltPending_ : runningPending_)
+                                        : interrupts_.interrupt_enable &
+                                          ((interrupts_.interrupt_flag & ~0x0C) |
+                                           ((speedSwitchWakePending_ ? interrupts_.interrupt_flag : runningPending_) & 0x0C) |
+                                           (interrupts_.interrupt_master_enable ? interrupts_.interrupt_visible_pending & 0x01 : 0)) &
+                                          0x1F;
             if (pending == 0) {
                 return false;
             }
-            if (halted_ && !interrupts_.interruptMasterEnable) {
+            if (halted_ && !interrupts_.interrupt_master_enable) {
                 halted_ = false;
                 speedSwitchWakePending_ = false;
                 return IsCgb(bus_.gpu_.model);
             }
 
-            if (interrupts_.interruptDelay || !interrupts_.interruptMasterEnable) {
+            if (interrupts_.interrupt_delay || !interrupts_.interrupt_master_enable) {
                 return false;
             }
 
@@ -323,7 +323,7 @@ bool CPU<BusT>::ProcessInterrupts() {
             halted_ = false;
 
             interruptState = M2;
-            interrupts_.interruptMasterEnable = false;
+            interrupts_.interrupt_master_enable = false;
 
             interruptBit = static_cast<uint8_t>(std::countr_zero(pending));
             interruptMask = static_cast<uint8_t>(1u << interruptBit);
@@ -347,7 +347,7 @@ bool CPU<BusT>::ProcessInterrupts() {
         case M4: {
             // The vector is selected at the low-byte stack write. A newly
             // pending higher-priority source can replace the original request
-            const uint8_t newPending = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+            const uint8_t newPending = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
             if (!newPending) {
                 sp_--;
                 bus_.WriteByte(sp_, pc_ & 0xFF, ComponentSource::CPU);
@@ -361,10 +361,10 @@ bool CPU<BusT>::ProcessInterrupts() {
 
             sp_ -= 1;
             bus_.WriteByte(sp_, static_cast<uint8_t>(pc_ & 0xFF), ComponentSource::CPU);
-            interrupts_.interruptFlag &= ~interruptMask;
+            interrupts_.acknowledge(interruptMask, IsCgb(bus_.gpu_.model));
             if (observations_)
                 observations_->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
-                                    interrupts_.interruptFlag | interrupts_.interruptVisiblePending | 0xE0);
+                                    interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0);
             pc_ = InterruptAddress(interruptBit);
             interruptState = shortInterruptEntry_ ? M6 : M5;
             shortInterruptEntry_ = false;

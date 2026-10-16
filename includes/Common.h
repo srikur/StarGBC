@@ -38,6 +38,8 @@ static constexpr u16 WRAM_END = 0xDFFF;
 static constexpr u16 ERAM_BEGIN = 0xE000;
 static constexpr u16 ERAM_END = 0xFDFF;
 
+static constexpr u16 SERIAL_TRANSFER_DATA = 0xFF01;
+static constexpr u16 SERIAL_TRANSFER_CONTROL = 0xFF02;
 static constexpr u16 LCD_CONTROL_BIT = 0xFF40;
 static constexpr u16 OAM_DMA_TRANSFER_REG = 0xFF46;
 
@@ -62,9 +64,11 @@ static constexpr u8 LCDC_OBJ_SIZE = 2;
 static constexpr u8 LCDC_OBJ_ENABLE = 1;
 static constexpr u8 LCDC_BG_WINDOW_ENABLE = 0;
 
-constexpr u8 operator""_u8(unsigned long long value) { return static_cast<u8>(value); }
+constexpr u8 operator""_u8(const unsigned long long value) { return static_cast<u8>(value); }
 
-constexpr u16 operator""_u16(unsigned long long value) { return static_cast<u16>(value); }
+constexpr u16 operator""_u16(const unsigned long long value) { return static_cast<u16>(value); }
+
+constexpr u32 operator""_u32(const unsigned long long value) { return static_cast<u32>(value); }
 
 template<uint8_t bit>
 static constexpr bool Bit(const u8 value) {
@@ -98,7 +102,8 @@ enum class InterruptType {
 enum class ComponentSource { CPU, DMA, PPU, HDMA };
 
 template<typename T>
-concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source) {
+concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source)
+{
     { bus.ReadByte(addr, source) } -> std::same_as<uint8_t>;
     { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };
@@ -122,7 +127,8 @@ class UnreachableCodeException final : public GameboyException {
     UnreachableCodeException() = default;
 
 public:
-    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) { this->message(); }
+    explicit UnreachableCodeException(std::string message) :
+        message_(std::move(message)) { this->message(); }
 };
 
 class FatalErrorException final : public GameboyException {
@@ -137,5 +143,6 @@ class FatalErrorException final : public GameboyException {
     FatalErrorException() = default;
 
 public:
-    explicit FatalErrorException(std::string message) : message_(std::move(message)) { this->message(); }
+    explicit FatalErrorException(std::string message) :
+        message_(std::move(message)) { this->message(); }
 };

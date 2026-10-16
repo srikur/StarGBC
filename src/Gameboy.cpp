@@ -109,7 +109,8 @@ uint32_t Gameboy::AdvanceMCycle() {
         timer_.Tick(Speed::Regular);
         rtc_.Update();
         audio_.Tick();
-        serial_.Update();
+        serial_.update(timer_.divCounter);
+        interrupts_.tick_cpu();
         if (dma_.transferActive) {
             gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
             gpu_.oamDmaDest_ = dma_.currentByte;
@@ -118,18 +119,18 @@ uint32_t Gameboy::AdvanceMCycle() {
         }
         bus_.UpdateDMA();
         if (gpu_.idleDots_ > 0) {
-            interrupts_.Tick();
+            interrupts_.tick();
             --gpu_.idleDots_;
             ++gpu_.scanlineCounter;
         } else if (gpu_.lcdOffIdle_) {
-            interrupts_.Tick();
+            interrupts_.tick();
         } else {
             gpu_.Update();
         }
         bus_.RunHDMA(phase == 0 && cpu_.AtInstructionBoundary());
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
-            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+            if (interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F)
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
@@ -165,7 +166,8 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
             rtc_.Update();
             audio_.Tick();
         }
-        serial_.Update();
+        serial_.update(timer_.divCounter);
+        interrupts_.tick_cpu();
         if (evenCycle) {
             if (dma_.transferActive) {
                 gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
@@ -177,11 +179,11 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
         bus_.UpdateDMA();
         if (evenCycle) {
             if (gpu_.idleDots_ > 0) {
-                interrupts_.Tick();
+                interrupts_.tick();
                 --gpu_.idleDots_;
                 ++gpu_.scanlineCounter;
             } else if (gpu_.lcdOffIdle_) {
-                interrupts_.Tick();
+                interrupts_.tick();
             } else {
                 gpu_.Update();
             }
@@ -189,7 +191,7 @@ uint32_t Gameboy::AdvanceMCycleDouble() {
         }
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
-            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+            if (interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F)
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
@@ -234,7 +236,8 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         timer_.Tick(bus_.speed);
         rtc_.Update();
         audio_.Tick();
-        serial_.Update();
+        serial_.update(timer_.divCounter);
+        interrupts_.tick_cpu();
         if (dma_.transferActive) {
             gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
             gpu_.oamDmaDest_ = dma_.currentByte;
@@ -246,7 +249,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         bus_.RunHDMA((cpuTickPhase_ & 3) == 0 && cpu_.AtInstructionBoundary());
         if (bus_.speedSwitchHalt > 0) {
             --bus_.speedSwitchHalt;
-            if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+            if (interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F)
                 bus_.speedSwitchHalt = 0;
             else if (bus_.speedSwitchHalt == 0) {
                 const bool wasHalted = cpu_.IsHalted();
@@ -272,7 +275,8 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
         rtc_.Update();
         audio_.Tick();
     }
-    serial_.Update();
+    serial_.update(timer_.divCounter);
+    interrupts_.tick_cpu();
     if (evenCycle) {
         if (dma_.transferActive) {
             gpu_.oamDmaActive = dma_.ticks > DMA::STARTUP_CYCLES;
@@ -290,7 +294,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     }
     if (bus_.speedSwitchHalt > 0) {
         --bus_.speedSwitchHalt;
-        if (interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F)
+        if (interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F)
             bus_.speedSwitchHalt = 0;
         else if (bus_.speedSwitchHalt == 0) {
             const bool wasHalted = cpu_.IsHalted();

@@ -96,14 +96,14 @@ public:
 
     void SampleHaltInterrupts() {
         // Called before peripherals advance through T2. The DMG wake circuit uses this sample at T4; an edge later in the cycle waits for T2 again
-        haltPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+        haltPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)
             observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, haltPending_, 1);
     }
 
     void SampleRunningInterrupts() {
         // The DMG instruction boundary samples before this T4's peripheral edges
-        runningPending_ = interrupts_.interruptEnable & interrupts_.interruptFlag & 0x1F;
+        runningPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)
             observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, runningPending_, 3);
     }
@@ -135,7 +135,7 @@ public:
     void SpeedSwitchHalt(const bool pending) {
         halted_ = !pending;
         speedSwitchWakePending_ = !pending;
-        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interruptMasterEnable || interrupts_.interruptDelay);
+        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
     }
 
     void haltBug(const bool value) { haltBug_ = value; }

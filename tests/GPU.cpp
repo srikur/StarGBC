@@ -205,7 +205,7 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                     control.Update();
                     CHECK(written.ReadRegisters(0xFF44) == control.ReadRegisters(0xFF44));
                     CHECK(written.ReadRegisters(0xFF41) == control.ReadRegisters(0xFF41));
-                    CHECK(writtenInterrupts.interruptFlag == controlInterrupts.interruptFlag);
+                    CHECK(writtenInterrupts.interrupt_flag == controlInterrupts.interrupt_flag);
                 }
                 CHECK(std::equal(written.GetScreenData(), written.GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT, control.GetScreenData()));
             }
@@ -361,11 +361,11 @@ TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping
             optimized.Update();
             ordinary.Update();
             CHECK(optimized.ReadRegisters(0xFF41) == ordinary.ReadRegisters(0xFF41));
-            CHECK(optimizedInterrupts.interruptFlag == ordinaryInterrupts.interruptFlag);
-            CHECK(optimizedInterrupts.interruptVisiblePending == ordinaryInterrupts.interruptVisiblePending);
-            CHECK(optimizedInterrupts.interruptSetDelays == ordinaryInterrupts.interruptSetDelays);
+            CHECK(optimizedInterrupts.interrupt_flag == ordinaryInterrupts.interrupt_flag);
+            CHECK(optimizedInterrupts.interrupt_visible_pending == ordinaryInterrupts.interrupt_visible_pending);
+            CHECK(optimizedInterrupts.interrupt_set_delays == ordinaryInterrupts.interrupt_set_delays);
         }
-        CHECK((optimizedInterrupts.interruptFlag & 2) != 0);
+        CHECK((optimizedInterrupts.interrupt_flag & 2) != 0);
     }
 }
 
@@ -387,7 +387,7 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
             optimized.Update();
             ordinary.Update();
             CHECK(optimized.statTriggered == ordinary.statTriggered);
-            CHECK(optimizedInterrupts.interruptFlag == ordinaryInterrupts.interruptFlag);
+            CHECK(optimizedInterrupts.interrupt_flag == ordinaryInterrupts.interrupt_flag);
             if (dot == 7) {
                 for (auto *gpu : {&optimized, &ordinary}) {
                     gpu->WriteRegisters(0xFF45, 10);

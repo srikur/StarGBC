@@ -61,8 +61,8 @@ TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") 
         REQUIRE(cpu.locked());
         CHECK(cpu.pc() == 0xC001);
 
-        interrupts.interruptEnable = interrupts.interruptFlag = 0x1F;
-        interrupts.interruptMasterEnable = true;
+        interrupts.interrupt_enable = interrupts.interrupt_flag = 0x1F;
+        interrupts.interrupt_master_enable = true;
         const auto div = bus.timer_.divCounter;
         gameboy.RunFrame();
         CHECK(cpu.pc() == 0xC001);

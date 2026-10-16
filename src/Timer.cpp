@@ -50,6 +50,9 @@ void Timer::WriteDIV(const bool doubleSpeed, const bool duringStop) {
 
     const auto oldCounter = divCounter;
     divCounter = 0;
+    if (serial) {
+        serial->divider_reset(oldCounter);
+    }
 
     const bool delayedStopEdge = duringStop && ((tac & 3) == 0 || (audio_.GetModel() == Model::CGBE && (tac & 3) != 1)) &&
                                  (oldCounter & ((1u << (bit + 1)) - 1)) == (1u << bit);

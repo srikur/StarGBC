@@ -1,10 +1,10 @@
-#ifndef STARGBC_TIMER_H
-#define STARGBC_TIMER_H
+#pragma once
 
 #include <fstream>
 
 #include "Audio.h"
 #include "Interrupts.h"
+#include "Serial.h"
 
 class Timer {
 public:
@@ -29,6 +29,7 @@ public:
     [[=NotStateAware]] uint16_t frameSeqBitMask_{0};
     [[=NotStateAware]] uint16_t frameSeqToggleMask_{0};
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+    [[=NotStateAware]] Serial *serial{};
     Audio &audio_;
     Interrupts &interrupts_;
 
@@ -52,7 +53,7 @@ public:
             if (observations)
                 observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::TimerReload, 0xFF05, tima, divCounter);
             // DMG exposes IF before the request reaches the CPU wake/dispatch path
-            interrupts_.SetAfter(InterruptType::Timer, audio_.IsDMG() ? 4 : 0, audio_.IsDMG());
+            interrupts_.set_after(InterruptType::Timer, audio_.IsDMG() ? 4 : 0, audio_.IsDMG());
             overflowPending = false;
             reloadActive = true;
         }
@@ -94,7 +95,7 @@ public:
 
     void WriteTMA(uint8_t);
 
-    int TimerBit(uint8_t) const;
+    [[nodiscard]] int TimerBit(uint8_t) const;
 
     void IncrementTIMA();
 
@@ -102,5 +103,3 @@ public:
 
     bool LoadState(std::ifstream &);
 };
-
-#endif // STARGBC_TIMER_H
