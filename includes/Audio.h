@@ -166,6 +166,7 @@ struct Channel1 final : Channel {
     bool justReloaded{false};
     uint8_t sampleOut{0};
     uint8_t dutyStep{0};
+    uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
     void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
@@ -207,6 +208,7 @@ struct Channel2 final : Channel {
     bool justReloaded{false};
     uint8_t sampleOut{0};
     uint8_t dutyStep{0};
+    uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
     void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);

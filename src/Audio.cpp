@@ -219,6 +219,7 @@ void Audio::initialize_post_boot() {
     frameSeqStep = cgb ? 0 : 1;
     ch1.frequency.Write(0x7C1);
     ch1.dutyStep = cgb ? 6 : 2;
+    ch1.duty_sample = Channel::DUTY_PATTERNS[ch1.lengthTimer.dutyCycle][ch1.dutyStep];
     ch1.sampleCountdown = cgb ? (IsAgb(model_) ? 71 : 73) : 11;
     ch1.trigDelay = ch1.restartHold = 0;
     ch1.didTick = true;
@@ -416,6 +417,7 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
     if (!enabled) {
         if (HasLateCgbPulseTiming(model) && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
             dutyStep = (dutyStep + 1) & 7;
+            duty_sample = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep];
             forceUnsurpressed = true;
         }
         trigDelay = 6 + (doubleSpeed && HasEarlyCgbPulseTiming(model) ? lfDiv : -lfDiv);
@@ -424,6 +426,7 @@ void Channel1::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
         if (HasLateCgbPulseTiming(model)) {
             if (!justReloaded && !(value & 4) && !(((sampleCountdown - 1 - trigDelay) / 2) & 0x400)) {
                 dutyStep = (dutyStep + 1) & 7;
+                duty_sample = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep];
                 sampleSurpressed = false;
             } else if (frequency.Value() == 0x7FF && oldFreq != 0x7FF && sampleSurpressed) {
                 extraDelay += 2;
@@ -577,7 +580,7 @@ void Channel1::UpdateOutput() {
     // first duty advance
     if (sampleSurpressed)
         return;
-    sampleOut = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+    sampleOut = duty_sample * envelope.currentVolume;
     currentOutput = static_cast<float>(sampleOut);
 }
 
@@ -592,6 +595,7 @@ void Channel1::Tick2M() {
     if (sampleCountdown == 0) {
         sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
         dutyStep = (dutyStep + 1) & 7;
+        duty_sample = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep];
         sampleSurpressed = false;
         didTick = true;
         justReloaded = true;
@@ -720,6 +724,7 @@ void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
     if (!enabled) {
         if (HasLateCgbPulseTiming(model) && !(value & 4) && !(((sampleCountdown - trigDelay) / 2) & 0x400)) {
             dutyStep = (dutyStep + 1) & 7;
+            duty_sample = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep];
             forceUnsurpressed = true;
         }
         trigDelay = 6 + (doubleSpeed && HasEarlyCgbPulseTiming(model) ? lfDiv : -lfDiv);
@@ -728,6 +733,7 @@ void Channel2::Trigger(const uint8_t value, const uint16_t oldFreq, const uint8_
         if (HasLateCgbPulseTiming(model)) {
             if (!justReloaded && !(value & 4) && !(((sampleCountdown - 1 - trigDelay) / 2) & 0x400)) {
                 dutyStep = (dutyStep + 1) & 7;
+                duty_sample = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep];
                 sampleSurpressed = false;
             } else if (frequency.Value() == 0x7FF && oldFreq != 0x7FF && sampleSurpressed) {
                 extraDelay += 2;
@@ -770,7 +776,7 @@ void Channel2::TickEnvelope() {
 void Channel2::UpdateOutput() {
     if (sampleSurpressed)
         return;
-    sampleOut = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep] * envelope.currentVolume;
+    sampleOut = duty_sample * envelope.currentVolume;
     currentOutput = static_cast<float>(sampleOut);
 }
 
@@ -785,6 +791,7 @@ void Channel2::Tick2M() {
     if (sampleCountdown == 0) {
         sampleCountdown = (frequency.Value() ^ 0x7FF) * 2 + 1;
         dutyStep = (dutyStep + 1) & 7;
+        duty_sample = DUTY_PATTERNS[lengthTimer.dutyCycle][dutyStep];
         sampleSurpressed = false;
         didTick = true;
         justReloaded = true;

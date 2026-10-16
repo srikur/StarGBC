@@ -59,3 +59,41 @@ TEST_CASE("apu: batching preserves mixer transitions between waveform events") {
         CHECK(left == right);
     }
 }
+
+TEST_CASE("apu: duty writes affect the next pulse step while volume changes use the held sample") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array second_values = {false, true};
+    for (const auto [model, second] : std::views::cartesian_product(models, second_values)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(second);
+        Audio audio(true);
+        audio.SetModel(model);
+        audio.WriteByte(SOUND_CONTROL, 0x80, false);
+        const uint16_t base = second ? PULSE2_REGISTERS_BEGIN : PULSE1_SWEEP;
+        audio.WriteByte(base + 1, 0, false);
+        audio.WriteByte(base + 2, 0xF0, false);
+        audio.WriteByte(base + 3, 0xFE, false);
+        audio.WriteByte(base + 4, 0x87, false);
+        const auto position = [&] { return second ? audio.ch2.dutyStep : audio.ch1.dutyStep; };
+        const auto sample = [&] { return (audio.ReadPCM12() >> (second ? 4 : 0)) & 0xF; };
+        for (auto tick{0u}; tick < 100 && position() != 3; ++tick) {
+            audio.Tick();
+            audio.CatchUp();
+        }
+        REQUIRE(position() == 3);
+        CHECK(sample() == 0);
+        audio.WriteByte(base + 1, 0xC0, false);
+        audio.WriteByte(base + 2, 0xE0, false);
+        audio.WriteByte(base + 4, 0x87, false);
+        CHECK(sample() == 0);
+        for (auto tick{0u}; tick < 100 && position() == 3; ++tick) {
+            audio.Tick();
+            audio.CatchUp();
+        }
+        REQUIRE(position() == 4);
+        CHECK(sample() == (HasEarlyCgbPcmGlitch(model) ? 0 : 0xE));
+        audio.Tick();
+        audio.CatchUp();
+        CHECK(sample() == 0xE);
+    }
+}
