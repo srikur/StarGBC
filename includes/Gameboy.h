@@ -99,6 +99,22 @@ public:
 
     [[nodiscard]] MachineInspection Inspect() const;
 
+    [[nodiscard]] GraphicsInspection inspect_graphics() const;
+
+    [[nodiscard]] uint16_t debug_instruction_address() const {
+        const auto cpu{cpu_.Inspect()};
+        return cpu.interruptState == InterruptState::M6 ? cpu.pc : cpu_.InstructionAddress();
+    }
+
+    [[nodiscard]] uint16_t debug_instruction_bank() const {
+        const auto cpu{cpu_.Inspect()};
+        return cpu.interruptState == InterruptState::M6 ? bus_.DebugBank(cpu.pc) : cpu_.InstructionBank();
+    }
+
+    [[nodiscard]] bool debug_instruction_boundary() const { return cpu_.AtInstructionBoundary(); }
+
+    [[nodiscard]] uint16_t debug_bank(const uint16_t address) const { return bus_.DebugBank(address); }
+
     [[nodiscard]] CpuInspection InspectCpu() const { return cpu_.Inspect(); }
 
     [[nodiscard]] RegisterInspection InspectRegister(uint16_t address) const;

@@ -137,3 +137,18 @@ struct MachineInspection {
     PpuInspection ppu;
     AudioInspection audio;
 };
+
+struct GraphicsInspection {
+    std::array<uint8_t, VRAM_SIZE> vram;
+    std::array<uint8_t, 160> oam;
+    std::array<uint32_t, 32> background_colors;
+    std::array<uint32_t, 32> object_colors;
+    std::array<uint16_t, 32> background_rgb15;
+    std::array<uint16_t, 32> object_rgb15;
+    bool cgb_mode{};
+    uint8_t lcd_control{};
+    uint8_t scroll_x{};
+    uint8_t scroll_y{};
+    uint8_t window_x{};
+    uint8_t window_y{};
+};

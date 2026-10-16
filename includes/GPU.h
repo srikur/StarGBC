@@ -71,8 +71,12 @@ struct Stat {
     }
 };
 
+struct GraphicsInspection;
+
 class GPU {
 public:
+    [[nodiscard]] GraphicsInspection inspect_graphics(bool cgb_mode) const;
+
     explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {}
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};

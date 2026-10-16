@@ -15,6 +15,10 @@ public:
 
     bool RunFrame();
 
+    ExecutionResult run_slice(uint64_t max_ticks, const std::function<ExecutionResult(uint64_t)> &execute);
+
+    [[nodiscard]] uint64_t frame_ticks_remaining() const { return frame_ticks_remaining_; }
+
     [[nodiscard]] uint64_t FrameCount() const { return frameCount_; }
 
     [[nodiscard]] uint64_t StateGeneration() const { return stateGeneration_; }
@@ -59,4 +63,6 @@ private:
     bool paused_{false};
     bool running_{false};
     bool dispatching_{false};
+    uint64_t frame_ticks_remaining_{Gameboy::FRAME_CYCLES_DMG * 2};
+    bool frame_active_{false};
 };

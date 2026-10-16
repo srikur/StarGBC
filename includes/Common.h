@@ -37,6 +37,10 @@ static constexpr u16 WRAM_BEGIN = 0xC000;
 static constexpr u16 WRAM_END = 0xDFFF;
 static constexpr u16 ERAM_BEGIN = 0xE000;
 static constexpr u16 ERAM_END = 0xFDFF;
+static constexpr u16 HIGH_RAM_BEGIN = 0xFF80;
+static constexpr u16 INTERRUPT_ENABLE = 0xFFFF;
+static constexpr u16 BACKGROUND_MAP_LOW = 0x9800;
+static constexpr u16 BACKGROUND_MAP_HIGH = 0x9C00;
 
 static constexpr u16 SERIAL_TRANSFER_DATA = 0xFF01;
 static constexpr u16 SERIAL_TRANSFER_CONTROL = 0xFF02;

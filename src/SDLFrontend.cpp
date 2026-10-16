@@ -16,6 +16,9 @@ constexpr std::string_view kAppDescription = "GBC Emulator";
 constexpr std::string_view kAppIdentifier = "com.srikur.stargbc";
 
 SDLFrontend::~SDLFrontend() {
+#ifdef STARGBC_ENABLE_DEBUGGER
+    debugger_.reset();
+#endif
 #ifdef STARGBC_ENABLE_LUA
     lua_.reset();
 #endif
@@ -47,6 +50,7 @@ namespace {
         [[=Opt{"Start without speed limitations"}]] bool unthrottled{false};
         [[=Opt{"Use real time clock"}]] bool real_rtc{false};
         [[=Opt{"Start emulator paused"}]] bool debug_start{false};
+        [[=Opt{"Open the instruction debugger and start paused"}]] bool debugger{false};
         [[=Opt{"Disable built in bootrom"}]] bool no_bootrom{false};
         [[=Opt{"Disable audio"}]] bool no_audio{false};
         [[=Opt{"Window size scale"}, =Alias{"scale"}, =Range{1, 5}]] int window_scale{3};
@@ -145,6 +149,7 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
 
     lastTitleTime_ = std::chrono::steady_clock::now();
     session_ = std::make_unique<EmulationSession>(*gameboy_);
+    session_->SetPaused(paused_ || args->debugger);
 #ifdef STARGBC_ENABLE_LUA
     lua_ = std::make_unique<LuaRuntime>(*session_,
                                         LuaLimits{args->script_instruction_budget, static_cast<size_t>(args->script_memory_mib) * 1024 * 1024});
@@ -152,10 +157,35 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         SDL_Log("Lua script selected: %s. Press Shift+F5 to start/stop; F5 reloads while running.", scriptPath_.c_str());
 #endif
 
+    if (args->debugger || args->debug_start)
+        toggle_debugger();
+    PresentFrame();
+
     return SDL_APP_CONTINUE;
 }
 
+void SDLFrontend::toggle_debugger() {
+#ifdef STARGBC_ENABLE_DEBUGGER
+    try {
+        if (debugger_)
+            debugger_->toggle();
+        else
+            debugger_ = std::make_unique<DebuggerWindow>(*session_, window_, renderer_, [this](const uint8_t slot) { SaveState(slot); },
+                                                        [this](const uint8_t slot) { LoadState(slot); });
+        paused_ = false;
+    } catch (const std::exception &error) {
+        SDL_Log("Debugger: %s", error.what());
+    }
+#else
+    SDL_Log("This build does not include the debugger. Configure with STARGBC_ENABLE_DEBUGGER=ON.");
+#endif
+}
+
 SDL_AppResult SDLFrontend::HandleEvent(const SDL_Event &event) {
+#ifdef STARGBC_ENABLE_DEBUGGER
+    if (debugger_ && debugger_->handle_event(event))
+        return SDL_APP_CONTINUE;
+#endif
     switch (event.type) {
         case SDL_EVENT_QUIT:
             return SDL_APP_SUCCESS;
@@ -164,9 +194,13 @@ SDL_AppResult SDLFrontend::HandleEvent(const SDL_Event &event) {
             session_->FocusLost();
             break;
 
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            if (SDL_GetWindowFromID(event.window.windowID) == window_)
+                return SDL_APP_SUCCESS;
+            break;
+
         case SDL_EVENT_WINDOW_EXPOSED:
-            SDL_RenderTexture(renderer_, texture_, nullptr, nullptr);
-            SDL_RenderPresent(renderer_);
+            PresentFrame();
             break;
 
         case SDL_EVENT_KEY_DOWN:
@@ -183,6 +217,14 @@ SDL_AppResult SDLFrontend::HandleEvent(const SDL_Event &event) {
 }
 
 SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
+    if (key.key == SDLK_F12 && !key.repeat) {
+        toggle_debugger();
+        return SDL_APP_CONTINUE;
+    }
+#ifdef STARGBC_ENABLE_DEBUGGER
+    if (debugger_ && debugger_->visible() && debugger_->handle_shortcut(key))
+        return SDL_APP_CONTINUE;
+#endif
     switch (key.key) {
         case SDLK_ESCAPE:
             return SDL_APP_SUCCESS;
@@ -217,11 +259,15 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
             speedMultiplier_ = speedMultiplier_ == 1 ? 4 : 1;
             break;
         case SDLK_P:
-            paused_ = true;
+            session_->SetPaused(true);
             break;
         case SDLK_R:
             paused_ = false;
             session_->SetPaused(false);
+#ifdef STARGBC_ENABLE_DEBUGGER
+            if (debugger_)
+                debugger_->controller().resume();
+#endif
             break;
         case SDLK_F5:
 #ifdef STARGBC_ENABLE_LUA
@@ -310,9 +356,39 @@ void SDLFrontend::HandleKeyUp(const SDL_KeyboardEvent &key) {
 }
 
 SDL_AppResult SDLFrontend::Iterate() {
-    if (!paused_ && session_->RunFrame()) {
+    const auto previous_frame{session_->FrameCount()};
+#ifdef STARGBC_ENABLE_DEBUGGER
+    if (debugger_) {
+        try {
+            debugger_->controller().pump();
+        } catch (const std::exception &error) {
+            debugger_->controller().pause();
+            SDL_Log("Debugger execution: %s", error.what());
+        }
+    } else
+#endif
+    if (!paused_)
+        session_->RunFrame();
+    if (session_->FrameCount() != previous_frame) {
         ++framesSinceTitle_;
         ThrottleFrame();
+    }
+
+#ifdef STARGBC_ENABLE_DEBUGGER
+    if (debugger_ && debugger_->visible()) {
+        const auto now{std::chrono::steady_clock::now()};
+        if (now - last_debug_present_ >= std::chrono::milliseconds(16)) {
+            last_debug_present_ = now;
+            debugger_->render();
+        }
+    }
+#endif
+    const auto audio_paused{paused_ || session_->Paused()};
+    if (audio_paused != audio_paused_) {
+        audio_paused_ = audio_paused;
+        if (audioStream_)
+            SDL_ClearAudioStream(audioStream_);
+        nextFrameTime_ = std::chrono::steady_clock::now();
     }
     if (audioStateGeneration_ != session_->StateGeneration()) {
         audioStateGeneration_ = session_->StateGeneration();
@@ -331,6 +407,9 @@ SDL_AppResult SDLFrontend::Iterate() {
 
     PumpAudio();
     UpdateWindowTitle();
+
+    if (audio_paused)
+        SDL_Delay(4);
 
     return SDL_APP_CONTINUE;
 }
@@ -370,6 +449,10 @@ void SDLFrontend::UpdateWindowTitle() {
 }
 
 void SDLFrontend::PresentFrame() const {
+#ifdef STARGBC_ENABLE_DEBUGGER
+    if (debugger_ && debugger_->visible())
+        return;
+#endif
     SDL_UpdateTexture(texture_, nullptr, gameboy_->GetScreenData(), GB_SCREEN_W * sizeof(uint32_t));
 
     SDL_RenderTexture(renderer_, texture_, nullptr, nullptr);
@@ -383,7 +466,7 @@ void SDLFrontend::PumpAudio() {
     // Drain the emulator's ring buffer completely every frame: a throttled frame yields
     // ~804 sample frames, and anything left behind overflows the ring and gets dropped
     if (const size_t samplesRead = gameboy_->ReadAudioSamples(audioBuffer_.data(), AUDIO_BUFFER_SIZE);
-        samplesRead > 0 && SDL_GetAudioStreamQueued(audioStream_) <= MAX_AUDIO_QUEUE_BYTES) {
+        samplesRead > 0 && !audio_paused_ && SDL_GetAudioStreamQueued(audioStream_) <= MAX_AUDIO_QUEUE_BYTES) {
         // When the queue is backed up (unthrottled/4x speed), samples are consumed but dropped
         SDL_PutAudioStreamData(audioStream_, audioBuffer_.data(), static_cast<int>(samplesRead * 2 * sizeof(float)));
     }
