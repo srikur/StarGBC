@@ -16,12 +16,20 @@ void Interrupts::acknowledge(const uint8_t mask, const bool cgb) {
     acknowledge_mask = acknowledge_cycles ? mask : 0;
 }
 
+void Interrupts::write_flag(const uint8_t value, const bool double_speed) {
+    interrupt_flag = value;
+    interrupt_flag_delayed &= value | ~interrupt_visible_pending;
+    interrupt_visible_pending &= value;
+    lcd_write_mask = ~value & 3;
+    lcd_write_cycles = 2 + double_speed;
+}
+
 void Interrupts::set(const InterruptType interrupt, const bool delayed) {
     const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
     if (!delayed) {
         if (observations)
             observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F, mask);
-        interrupt_flag |= mask & ~acknowledge_mask;
+        interrupt_flag |= mask & ~blocked_requests();
         if (observations)
             observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
                                interrupt_flag | interrupt_visible_pending | 0xE0);
@@ -40,7 +48,7 @@ void Interrupts::set_after(const InterruptType interrupt, const uint8_t dots, co
     if (observations)
         observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F, mask,
                            dots | (visibleEarly << 8) | (visibleDelay << 16));
-    if (visibleEarly && !visibleDelay && (acknowledge_mask & mask))
+    if (visibleEarly && !visibleDelay && (blocked_requests() & mask))
         return;
     if (visibleEarly) {
         if (visibleDelay) {
@@ -64,7 +72,7 @@ void Interrupts::tick_pending() {
         const auto previous_flags = interrupt_flag | interrupt_visible_pending;
         const uint8_t mask = 1u << i;
         if (interrupt_visible_delays[i] && --interrupt_visible_delays[i] == 0) {
-            if (acknowledge_mask & mask) {
+            if (blocked_requests() & mask) {
                 interrupt_flag_delayed &= ~mask;
                 interrupt_set_delays[i] = 0;
             } else {
@@ -72,7 +80,7 @@ void Interrupts::tick_pending() {
             }
         }
         if (interrupt_set_delays[i] && --interrupt_set_delays[i] == 0) {
-            interrupt_flag |= interrupt_flag_delayed & mask & ~acknowledge_mask;
+            interrupt_flag |= interrupt_flag_delayed & mask & ~blocked_requests();
             interrupt_flag_delayed &= ~mask;
             interrupt_visible_pending &= ~mask;
         }

@@ -198,8 +198,18 @@ TEST_CASE("interrupts: clearing an IF-visible CGB LYC request prevents delayed r
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &gpu = bus.gpu_;
         auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        static_cast<void>(gameboy.AdvanceTicks(8, ExecutionPolicy::Ordinary));
         gpu.InvalidateIdle();
-        gpu.doubleSpeed = double_speed;
+        const auto update = [&] {
+            interrupts.tick_cpu();
+            if (double_speed)
+                interrupts.tick_cpu();
+            gpu.Update();
+        };
         gpu.currentLine = line;
         gpu.scanlineCounter = line == 153 ? 8 : 0;
         gpu.lyc = line == 153 ? 0 : 1;
@@ -208,17 +218,17 @@ TEST_CASE("interrupts: clearing an IF-visible CGB LYC request prevents delayed r
         gpu.stat.enable_m0_interrupt = gpu.stat.enable_m1_interrupt = gpu.stat.enable_m2_interrupt = false;
         gpu.stat.mode = line == 153 ? GPUMode::MODE_1 : GPUMode::MODE_2;
         interrupts.interrupt_flag = 0;
-        gpu.Update();
+        update();
         if (!double_speed) {
             CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 0);
-            gpu.Update();
+            update();
         }
         CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == 2);
         CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
         if (clear)
             bus.WriteByte(INTERRUPT_FLAG, 0, ComponentSource::CPU);
         for (auto dot{0u}; dot < 8; ++dot)
-            gpu.Update();
+            update();
         CHECK((bus.ReadByte(INTERRUPT_FLAG, ComponentSource::CPU) & 2) == (clear ? 0 : 2));
         CHECK(interrupts.is_set(InterruptType::LCDStat) == !clear);
     }
@@ -410,5 +420,37 @@ TEST_CASE("interrupts: DMG LYC source precedes coincidence visibility and dispat
             CHECK(gpu.lycInterruptLine_ == (dot >= 3));
             CHECK(interrupts.is_set(InterruptType::VBlank));
         }
+    }
+}
+
+TEST_CASE("interrupts: IF writes clear arriving LCD requests without changing other sources") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array sources = {InterruptType::VBlank, InterruptType::LCDStat};
+    constexpr std::array<uint8_t, 4> values = {0, 1, 2, 3};
+    constexpr std::array<unsigned, 4> arrival_values = {0, 1, 2, 3};
+    for (const auto [double_speed, source, value, arrival] : std::views::cartesian_product(speeds, sources, values, arrival_values)) {
+        CAPTURE(double_speed);
+        CAPTURE(source);
+        CAPTURE(value);
+        CAPTURE(arrival);
+        Interrupts interrupts;
+        const uint8_t mask = 1u << static_cast<uint8_t>(source);
+        if (arrival == 0)
+            interrupts.set_after(source, 4, true, 1);
+        interrupts.write_flag(value, double_speed);
+        for (auto clock{1u}; clock <= 16; ++clock) {
+            interrupts.tick_cpu();
+            if (!double_speed || clock % 2 == 0)
+                interrupts.tick();
+            if (clock == arrival)
+                interrupts.set_after(source, 4, true);
+            if (clock == 1)
+                interrupts.set(InterruptType::Serial, false);
+        }
+        const uint8_t expected = value | 8 | (arrival > 1u + double_speed ? mask : 0);
+        CHECK(interrupts.interrupt_flag == expected);
+        CHECK(interrupts.interrupt_visible_pending == 0);
+        CHECK(interrupts.interrupt_flag_delayed == 0);
+        CHECK_FALSE(interrupts.delays_pending);
     }
 }

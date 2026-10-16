@@ -381,9 +381,7 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
             timer_.WriteByte(address, value, speed);
             break;
         case 0xFF0F:
-            interrupts_.interrupt_flag = value;
-            interrupts_.interrupt_flag_delayed &= value | ~interrupts_.interrupt_visible_pending;
-            interrupts_.interrupt_visible_pending &= value;
+            interrupts_.write_flag(value, speed == Speed::Double);
             break;
         case PULSE1_SWEEP ... WAVE_RAM_END: {
             const auto startup_divider = timer_.divCounter + 4;
