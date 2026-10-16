@@ -129,6 +129,7 @@ public:
 
     void halted(const bool value) {
         halted_ = value;
+        halt_prefetch_retained = value && bus_.gpu_.hdma.block_requested;
         if (!value)
             speedSwitchWakePending_ = false;
     }
@@ -136,6 +137,8 @@ public:
     void SpeedSwitchHalt(const bool pending) {
         halted_ = !pending;
         speedSwitchWakePending_ = !pending;
+        speed_switch_resume_pending = !pending;
+        speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
         shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
     }
 
@@ -185,7 +188,10 @@ private:
     uint8_t mCycleCounter_{0x01};
     uint16_t nextInstruction_{0x0000};
     bool halted_{false};
+    bool halt_prefetch_retained{};
     bool speedSwitchWakePending_{false};
+    bool speed_switch_resume_pending{};
+    bool speed_switch_prefetch_retained{};
     bool shortInterruptEntry_{false};
     bool locked_{false};
     uint8_t haltPending_{0};

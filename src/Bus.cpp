@@ -506,6 +506,11 @@ void Bus::UpdateDMAWork() {
 }
 
 void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
+    if (gpu_.hdma.release_delay) {
+        if (--gpu_.hdma.release_delay == 0)
+            gpu_.hdma.transferringBlock = false;
+        return;
+    }
     switch (gpu_.hdma.hdmaMode) {
         case HDMAMode::GDMA: {
             if (!gpu_.hdma.transferringBlock) {
@@ -533,32 +538,30 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
             }
             if (gpu_.hdma.hdmaRemain == 0) {
                 gpu_.hdma.hdmaActive = false;
-                gpu_.hdma.transferringBlock = false;
+                gpu_.hdma.release_delay = gpu_.doubleSpeed ? 3 : 5;
             }
             return;
         }
         case HDMAMode::HDMA: {
-            // Once a block starts, all sixteen bytes transfer even if the PPU enters the next scanline
             if (!gpu_.hdma.transferringBlock) {
-                // Delay is always 4 cycles whether in single or double speed mode
-                if (gpu_.hdma.hdmaStartDelay > 0) {
-                    gpu_.hdma.hdmaStartDelay--;
-                    return;
+                if (!gpu_.hdma.block_requested) {
+                    if (gpu_.hdma.hdmaStartDelay > 0) {
+                        --gpu_.hdma.hdmaStartDelay;
+                        return;
+                    }
+                    if (!gpu_.hblank || gpu_.vblank || speedShiftActive)
+                        return;
+                    if (!gpu_.LCDDisabled()) {
+                        if (gpu_.hdma.hblankBlockFinished || gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u || gpu_.scanlineCounter >= 455)
+                            return;
+                    } else if (!gpu_.hdma.singleBlockTransfer) {
+                        return;
+                    }
+                    gpu_.hdma.block_requested = true;
                 }
-                // No new block outside HBlank or during a speed shift
-                if (!gpu_.hblank || gpu_.vblank || speedShiftActive)
+                if (!cpuAtInstructionBoundary || speedShiftActive)
                     return;
-                // When LCD is on: one block per H-blank period
-                if (!gpu_.LCDDisabled() && gpu_.hdma.hblankBlockFinished)
-                    return;
-                // HBlank DMA request follows the PPU mode-0 transition by 2 dots
-                if (!gpu_.LCDDisabled() && gpu_.scanlineCounter <= gpu_.mode3EndDot_ + 1u)
-                    return;
-                // When LCD is off: only one block transfers until LCD turns back on
-                if (gpu_.LCDDisabled() && !gpu_.hdma.singleBlockTransfer)
-                    return;
-
-                // We're actively transferring
+                gpu_.hdma.block_requested = false;
                 gpu_.hdma.transferringBlock = true;
             }
 
@@ -577,10 +580,10 @@ void Bus::RunHDMAWork(const bool cpuAtInstructionBoundary) const {
                 if (gpu_.hdma.bytesThisBlock == 0x10) {
                     gpu_.hdma.singleBlockTransfer = false;
                     gpu_.hdma.hblankBlockFinished = true;
-                    gpu_.hdma.transferringBlock = false; // Block complete, CPU can resume
+                    gpu_.hdma.release_delay = gpu_.doubleSpeed ? 3 : 5;
                     gpu_.hdma.bytesThisBlock = 0;
                     gpu_.hdma.hdmaRemain -= 1;
-                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) : 0xFF;
+                    gpu_.hdma.hdma5 = gpu_.hdma.hdmaRemain > 0 ? (gpu_.hdma.hdmaRemain - 1) | (gpu_.hdma.hdmaActive ? 0 : 0x80) : 0xFF;
                 }
             }
             if (gpu_.hdma.hdmaRemain == 0x00)

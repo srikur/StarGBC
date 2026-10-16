@@ -39,6 +39,8 @@ struct Interrupts {
 
     void tick_pending();
 
+    void cancel_pending(InterruptType interrupt);
+
     void recompute_pending() {
         u8 any = 0;
         for (const auto i : std::views::indices(interrupt_set_delays.size())) {

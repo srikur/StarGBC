@@ -208,6 +208,14 @@ void CPU<BusT>::ExecuteMicroOpValue(Instructions<Self> &instructions, const bool
     if (hdmaActive || locked_)
         return;
     if (!instrRunning) {
+        if (speed_switch_resume_pending && !halted_) {
+            speed_switch_resume_pending = false;
+            if (!speed_switch_prefetch_retained) {
+                SetInstructionLocation(pc_);
+                currentInstruction = bus_.ReadByte(pc_++, ComponentSource::CPU);
+            }
+            return;
+        }
         if (ProcessInterrupts())
             return;
         if (halted_)
@@ -246,6 +254,7 @@ void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
     prefixed = currentInstruction >> 8 == 0xCB;
     if (!prefixed)
         ++instructionsCompleted_;
+    const auto next_instruction_address = static_cast<uint16_t>(pc_ - 1);
     currentInstruction = nextInstruction_;
     mCycleCounter_ = 1;
     if (haltBug_) {
@@ -253,7 +262,7 @@ void CPU<BusT>::RunPostCompletion(Instructions<Self> &instructions) {
         pc_ -= 1;
     }
     if (!prefixed)
-        SetInstructionLocation(pc_ - 1);
+        SetInstructionLocation(next_instruction_address);
     instructions.ResetState();
     instrRunning = false;
 }
@@ -307,6 +316,9 @@ bool CPU<BusT>::ProcessInterrupts() {
                 return false;
             }
             if (halted_ && !interrupts_.interrupt_master_enable) {
+                speed_switch_resume_pending = false;
+                if (IsCgb(bus_.gpu_.model) && !speedSwitchWakePending_ && !halt_prefetch_retained)
+                    currentInstruction = bus_.ReadByte(pc_ - 1, ComponentSource::CPU);
                 halted_ = false;
                 speedSwitchWakePending_ = false;
                 return IsCgb(bus_.gpu_.model);
@@ -318,10 +330,13 @@ bool CPU<BusT>::ProcessInterrupts() {
 
             if (halted_ && IsCgb(bus_.gpu_.model)) {
                 if (speedSwitchWakePending_) {
+                    speed_switch_resume_pending = false;
                     speedSwitchWakePending_ = false;
                     ++pc_;
                     return true;
                 }
+                if (halt_prefetch_retained)
+                    ++pc_;
                 halted_ = false;
                 return true;
             }

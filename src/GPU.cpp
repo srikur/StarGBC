@@ -69,15 +69,26 @@ void GPU::initialize_post_boot() {
 
 bool GPU::LCDDisabled() const { return !Bit<LCDC_ENABLE_BIT>(lcdc); }
 
-bool GPU::StatLineHigh() const {
+uint8_t GPU::cgb_lyc_compare_line(const unsigned lead) const {
+    if (currentLine == 153)
+        return scanlineCounter >= 8 - lead ? 0 : 153;
+    const unsigned duration = lcdEnableLine0_ ? (lcdStartDoubleSpeed_ ? 453 : 452) : 456;
+    return scanlineCounter >= duration - lead ? currentLine + 1 : currentLine;
+}
+
+bool GPU::StatLineHigh(const bool register_write, const bool previous) const {
     // HBlank falls before the next LYC comparison. An enabled OAM pulse
     // overlaps that fall even when another source blocked its interrupt
-    return (stat.enable_ly_interrupt && (is_cgb ? stat.coincidence_flag : lycInterruptLine_)) ||
+    const bool cgb_write = is_cgb && register_write;
+    const bool coincidence = cgb_write ? cgb_lyc_compare_line(0) == lyc : is_cgb ? stat.coincidence_flag : lycInterruptLine_;
+    return (stat.enable_ly_interrupt && coincidence) ||
            (stat.enable_m0_interrupt &&
-            ((stat.mode == GPUMode::MODE_0 && (is_cgb || scanlineCounter < 452) && (!lcdEnableLine0_ || scanlineCounter >= 80)) ||
+            ((stat.mode == GPUMode::MODE_0 && (is_cgb || scanlineCounter < 452) && (!cgb_write || !doubleSpeed || scanlineCounter < 455 || currentLine == 143) &&
+              (!lcdEnableLine0_ || scanlineCounter >= 80)) ||
              (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2)))) ||
-           (stat.enable_m1_interrupt && stat.mode == GPUMode::MODE_1) ||
-           (stat.enable_m2_interrupt && ((stat.mode == GPUMode::MODE_2 && scanlineCounter == 0) || m2IrqRaisedEarly));
+           (stat.enable_m1_interrupt && (stat.mode == GPUMode::MODE_1 || (cgb_write && previous && !doubleSpeed && currentLine == 0 && scanlineCounter == 0))) ||
+           (stat.enable_m2_interrupt && ((stat.mode == GPUMode::MODE_2 && scanlineCounter == 0) || m2IrqRaisedEarly ||
+                                      (cgb_write && doubleSpeed && currentLine == 143 && scanlineCounter == 455)));
 }
 
 void GPU::ResetScanlineState(const bool clearBuffer) {
@@ -104,6 +115,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     fetcherDelay_ = 0;
     spriteFetchQueue.clear();
     spriteFetchWait_ = 0;
+    sprite_alignment_end_x = 0;
     spriteMergeDelay_ = 0;
     spriteFetchAbort_ = false;
     spriteFetchedThisLine_ = false;
@@ -158,6 +170,17 @@ void GPU::Update() {
             recentPixelOffsets_[i] = recentPixelOffsets_[i - 1];
         }
         recentPixelOffsets_[0] = 0xFFFF;
+    }
+    if (stat_irq_delay)
+        --stat_irq_delay;
+    if (lyc_irq_delay)
+        --lyc_irq_delay;
+    if (m1_irq_delay && --m1_irq_delay == 0) {
+        const auto previous_stat = stat_irq_delay ? stat_irq_old : stat.value();
+        if (stat.enable_m1_interrupt && !(previous_stat & 0x28)) {
+            interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 1 : 7, true);
+            statTriggered = true;
+        }
     }
     if (mode3EndDelay_ > 0)
         --mode3EndDelay_;
@@ -248,8 +271,9 @@ void GPU::Update() {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
         if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scx_just_applied && !scyJustApplied_ &&
-            (bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
-             obp1WriteStage) == 0) {
+            (stat_irq_delay | lyc_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage |
+             windowEndStage_ | obp0WriteStage | obp1WriteStage) ==
+                    0) {
             lcdOffIdle_ = true;
         }
         return;
@@ -267,35 +291,46 @@ void GPU::Update() {
     } else if (!is_cgb && scanlineCounter >= 452) {
         lyCompare = -1;
     }
-    if (lyCompare >= 0)
-        lycInterruptLine_ = lyCompare == lyc;
-    if (lyCompare == lyc) {
-        stat.coincidence_flag = true;
-        if (stat.enable_ly_interrupt && !statTriggered) {
-            // DMG's LYC request follows the comparison by one dot; CGB retains its machine-cycle delay
-            if (is_cgb) {
-                interrupts_.set(InterruptType::LCDStat, true);
-            } else {
-                interrupts_.set_after(InterruptType::LCDStat, 1);
-            }
+    if (is_cgb) {
+        const auto compared_line = cgb_lyc_compare_line(0);
+        const bool startup_edge = lcdEnableLine0_ && scanlineCounter == 0;
+        const bool compare_edge = scanlineCounter == 0 || (currentLine == 153 && scanlineCounter == 8);
+        const bool matches = compared_line == (lyc_irq_delay ? lyc_irq_old : lyc);
+        const bool blocked = !startup_edge && (compared_line > 0 && compared_line <= 144 ? stat.enable_m2_interrupt : stat.enable_m1_interrupt);
+        if (compare_edge && matches && (startup_edge ? !statTriggered : !lycInterruptLine_) && stat.enable_ly_interrupt && !blocked)
+            interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 4);
+        lycInterruptLine_ = matches;
+        stat.coincidence_flag = lyCompare == lyc;
+    } else {
+        if (lyCompare >= 0)
+            lycInterruptLine_ = lyCompare == lyc;
+        stat.coincidence_flag = lyCompare == lyc;
+        if (stat.coincidence_flag && stat.enable_ly_interrupt && !statTriggered) {
+            interrupts_.set_after(InterruptType::LCDStat, 1);
             statTriggered = true;
         }
-    } else {
-        stat.coincidence_flag = false;
     }
 
     if (is_cgb && currentLine < 144 && scanlineCounter == 451 && currentLine == windowY && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
         windowTriggeredThisFrame = true;
     }
+    if (is_cgb && currentLine == 0 && !lcdEnableLine0_ && scanlineCounter == 3)
+        windowTriggeredThisFrame = windowY == 0 && Bit<LCDC_WINDOW_ENABLE>(lcdc);
 
     if (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.enable_m0_interrupt && !statTriggered) {
         interrupts_.set_after(InterruptType::LCDStat, 3, true);
         statTriggered = true;
     }
 
+    if (is_cgb && doubleSpeed && currentLine == 143 && scanlineCounter == 454 && stat.enable_m2_interrupt && !statTriggered) {
+        interrupts_.set_after(InterruptType::LCDStat, 1, true);
+        statTriggered = true;
+        m2IrqRaisedEarly = true;
+    }
+
     switch (stat.mode) {
         case GPUMode::MODE_0:
-            if (stat.enable_m0_interrupt && (is_cgb || scanlineCounter < 452) && (!lcdEnableLine0_ || scanlineCounter >= 80) && !statTriggered) {
+            if (!is_cgb && stat.enable_m0_interrupt && scanlineCounter < 452 && (!lcdEnableLine0_ || scanlineCounter >= 80) && !statTriggered) {
                 interrupts_.set(InterruptType::LCDStat, true);
                 statTriggered = true;
             }
@@ -303,17 +338,12 @@ void GPU::Update() {
         case GPUMode::MODE_1:
             // The mode 1 STAT condition asserts at the line boundary. HALT's
             // sampling phase determines which CPU cycle accepts this edge.
-            if (stat.enable_m1_interrupt && !statTriggered) {
-                interrupts_.set_after(InterruptType::LCDStat, is_cgb ? (doubleSpeed ? 2 : 8) : 0);
+            if (!is_cgb && stat.enable_m1_interrupt && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
             break;
         case GPUMode::MODE_2:
-            if (is_cgb && stat.enable_m2_interrupt && scanlineCounter == 0 && !statTriggered) {
-                // CGB's first line has a later OAM request than steady lines
-                interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 2 : 4) : 0);
-                statTriggered = true;
-            }
             TickOAMScan();
             break;
         case GPUMode::MODE_3: {
@@ -329,7 +359,7 @@ void GPU::Update() {
                     // DMG: the IF bit trails the visible transition by one more
                     // dot (mooneye intr_2_0_timing round E vs hblank_ly_scx)
                     if (is_cgb) {
-                        interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 5, true, 1);
+                        interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 2 : 5, true, doubleSpeed ? 0 : 1);
                     } else {
                         interrupts_.set_after(InterruptType::LCDStat, lcdEnableLine0_ ? 4 : 1, lcdEnableLine0_);
                     }
@@ -386,8 +416,8 @@ void GPU::Update() {
         currentLine++;
         m2IrqRaisedEarly = false;
         if (!is_cgb) {
-            const auto comparedLine = currentLine == 154 ? 0 : currentLine;
-            stat.coincidence_flag = lycInterruptLine_ = lyc == comparedLine;
+            const auto compared_line = currentLine == 154 ? 0 : currentLine;
+            stat.coincidence_flag = lycInterruptLine_ = lyc == compared_line;
             if (stat.enable_ly_interrupt && lycInterruptLine_ && !statTriggered) {
                 interrupts_.set(InterruptType::LCDStat, false);
                 statTriggered = true;
@@ -406,9 +436,8 @@ void GPU::Update() {
             windowLineCounter_ = 0;
             ResetScanlineState(true);
             windowTriggeredThisFrame = false;
-            if (currentLine == windowY && (!is_cgb || Bit<LCDC_WINDOW_ENABLE>(lcdc))) {
+            if (!is_cgb && currentLine == windowY)
                 windowTriggeredThisFrame = true;
-            }
             initialSCXSet = false;
             if (!is_cgb && stat.enable_m2_interrupt && !statTriggered) {
                 interrupts_.set(InterruptType::LCDStat, false);
@@ -422,18 +451,18 @@ void GPU::Update() {
             hblank = false;
             // On DMG the request reaches IF before the first half-cycle HALT
             // sample of the new line. CGB retains its later VBlank request.
-            interrupts_.set_after(InterruptType::VBlank, is_cgb ? 8 : 0, is_cgb, 4);
+            interrupts_.set_after(InterruptType::VBlank, is_cgb ? (doubleSpeed ? 4 : 8) : 0, is_cgb, doubleSpeed ? 2 : 4);
             // Model quirk: entering vblank also asserts the mode 2 (OAM) STAT
             // condition — on DMG together with the vblank IF, on CGB one M-cycle
             // ahead of it (mooneye vblank_stat_intr-GS / -C)
-            if (stat.enable_m2_interrupt && !statTriggered) {
+            if ((!is_cgb || !doubleSpeed) && stat.enable_m2_interrupt && !statTriggered) {
                 interrupts_.set(InterruptType::LCDStat, !is_cgb);
                 statTriggered = true;
             }
-            // The mode 1 STAT condition asserts on the line boundary itself,
-            // before the VBlank request propagates to IF.
-            if (stat.enable_m1_interrupt && !statTriggered) {
-                interrupts_.set_after(InterruptType::LCDStat, is_cgb ? (doubleSpeed ? 2 : 8) : 0);
+            if (is_cgb) {
+                m1_irq_delay = 1;
+            } else if (stat.enable_m1_interrupt && !statTriggered) {
+                interrupts_.set(InterruptType::LCDStat, false);
                 statTriggered = true;
             }
         } else if (currentLine < 144) {
@@ -447,6 +476,15 @@ void GPU::Update() {
             }
             ResetScanlineState(true);
             initialSCXSet = false;
+        }
+        const auto previous_stat = stat_irq_delay ? stat_irq_old : stat.value();
+        const auto previous_lyc = lyc_irq_delay ? lyc_irq_old : lyc;
+        const bool m2_blocked = (currentLine != 0 && (previous_stat & 8)) || (currentLine == 0 && (previous_stat & 0x10)) ||
+                               ((previous_stat & 0x40) && previous_lyc == (currentLine == 0 ? 0 : currentLine - 1));
+        if (is_cgb && currentLine < 144 && stat.enable_m2_interrupt && !m2_blocked) {
+            interrupts_.set_after(InterruptType::LCDStat, currentLine == 0 ? (doubleSpeed ? 3 : 5) : 1, true,
+                                 currentLine == 0 ? (doubleSpeed ? 1 : 4) : 0);
+            statTriggered = true;
         }
     }
 
@@ -462,8 +500,8 @@ void GPU::MaybeArmIdle() {
         return;
     if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scx_just_applied || scyJustApplied_)
         return;
-    if ((bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
-         obp1WriteStage) != 0)
+    if ((stat_irq_delay | lyc_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage |
+             windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
         return;
 
     if (stat.mode == GPUMode::MODE_3) {
@@ -475,7 +513,7 @@ void GPU::MaybeArmIdle() {
     }
 
     if (stat.mode == GPUMode::MODE_2) {
-        if (scanlineCounter >= 2 && scanlineCounter < 79) {
+        if (scanlineCounter >= (is_cgb && currentLine == 0 ? 4u : 2u) && scanlineCounter < 79) {
             scanFastDots_ = 79 - scanlineCounter;
         }
         return;
@@ -485,7 +523,7 @@ void GPU::MaybeArmIdle() {
     if (currentLine == 153 && scanlineCounter < 9)
         return;
 
-    const uint32_t limit = is_cgb && scanlineCounter > 451 ? 455 : 451;
+    const uint32_t limit = is_cgb && scanlineCounter > 451 ? (scanlineCounter > 454 ? 455 : 454) : 451;
     if (scanlineCounter >= limit)
         return;
     idleDots_ = limit - scanlineCounter;
@@ -699,7 +737,7 @@ void GPU::TickMode3() {
             if (provenance)
                 provenance->backgroundFetch = provenance->savedBackgroundFetch;
             fetcherState_ = savedBgFetcherState_;
-            fetcherDelay_ = savedBgFetcherDelay_;
+            fetcherDelay_ = savedBgFetcherState_ == FetcherState::PushToFIFO ? 0 : savedBgFetcherDelay_;
             fetcherTileNum_ = savedBgTileNum_;
             fetcherTileRow_ = savedBgTileRow_;
             fetcherTileDataLow_ = savedBgTileDataLow_;
@@ -778,6 +816,12 @@ void GPU::CheckForSpriteTrigger() {
         // A fully clipped sprite (OAM X=0) always pays the full alignment wait.
         const int phase = spriteFetchQueue.front().x == -8 ? 0 : (spriteFetchQueue.front().x + scrollX) & 7;
         spriteFetchWait_ = static_cast<uint8_t>(phase < 5 ? 5 - phase : 0);
+        if (spriteFetchQueue.front().x >= 0) {
+            if (pixelsDrawn < sprite_alignment_end_x)
+                spriteFetchWait_ = 0;
+            else
+                sprite_alignment_end_x = pixelsDrawn + 8 - phase;
+        }
         // Left-edge-clipped sprites take over immediately — their VRAM reads run
         // ahead of the alignment wait — but the merge into the FIFO still waits
         // out the alignment dots, so the total stall and the abort window are
@@ -1338,7 +1382,7 @@ bool GPU::cpu_palette_blocked() const {
     if (LCDDisabled() || currentLine >= SCREEN_HEIGHT)
         return false;
     if (stat.mode == GPUMode::MODE_3)
-        return scanlineCounter >= (lcdEnableLine0_ ? (doubleSpeed ? 83u : 82u) : 84u);
+        return scanlineCounter >= (lcdEnableLine0_ ? (doubleSpeed ? 83u : 82u) : doubleSpeed ? 82u : 84u);
     return stat.mode == GPUMode::MODE_0 && mode3EndDot_ && scanlineCounter < mode3EndDot_ + (doubleSpeed ? 2u : 4u);
 }
 
@@ -1386,17 +1430,15 @@ uint8_t GPU::ReadRegisters(const uint16_t address) const {
             // CGB: the reported mode bits lag the line start by 4 dots — a
             // fresh line reads mode 0 first, and OAM scan / mode 3 assert late
             // (daid speed_switch_timing_stat)
-            if (is_cgb && !LCDDisabled() && !lcdEnableLine0_) {
-                if (stat.mode == GPUMode::MODE_2 && scanlineCounter < (doubleSpeed ? 1u : 4u)) {
+            if (is_cgb && !doubleSpeed && !LCDDisabled() && !lcdEnableLine0_) {
+                if (stat.mode == GPUMode::MODE_2 && scanlineCounter < 4) {
                     value &= ~0x03;
-                } else if (stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && scanlineCounter < (doubleSpeed ? 81u : 84u)) {
+                } else if (stat.mode == GPUMode::MODE_3 && scanlineCounter >= 80 && scanlineCounter < 84) {
                     value = (value & ~0x03) | 0x02;
                 }
-            }
-            if (is_cgb && !LCDDisabled() && !lcdEnableLine0_) {
-                if (currentLine == 144 && scanlineCounter < (doubleSpeed ? 1u : 4u))
+                if (currentLine == 144 && scanlineCounter < 4)
                     value &= ~3;
-                if (currentLine == 0 && scanlineCounter < (doubleSpeed ? 1u : 4u) && (model == Model::CGBE || doubleSpeed))
+                if (currentLine == 0 && scanlineCounter < 4 && model == Model::CGBE)
                     value = (value & ~3) | 1;
             }
             // DMG: LY has already flipped during the last dots of a line while
@@ -1486,6 +1528,9 @@ void GPU::ApplyLCDC(const uint8_t value) {
     Observe(diagnostics::EventKind::RegisterApply, 0xFF40, lcdc);
     const bool newEnable = Bit<LCDC_ENABLE_BIT>(lcdc);
     if (!newEnable && oldEnable) {
+        m1_irq_delay = 0;
+        if (is_cgb && interrupts_.interrupt_set_delays[1] > 1)
+            interrupts_.cancel_pending(InterruptType::LCDStat);
         // Entering mode 0 via disabling the LCD requests one HDMA block
         if (hdma.hdmaActive && hdma.hdmaMode == HDMAMode::HDMA && stat.mode != GPUMode::MODE_0)
             hdma.singleBlockTransfer = true;
@@ -1583,6 +1628,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             break;
         }
         case 0xFF41: {
+            const bool previous_line = StatLineHigh(true, true);
+            if (is_cgb) {
+                stat_irq_old = stat.value();
+                stat_irq_delay = doubleSpeed ? 2 : 3;
+            }
             // On monochrome hardware, a STAT write briefly enables every
             // source. OAM's source is a pulse at the line boundary, rather
             // than a level held throughout mode 2.
@@ -1591,16 +1641,22 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                  stat.coincidence_flag || m2IrqRaisedEarly)) {
                 interrupts_.set(InterruptType::LCDStat, false);
             }
+            if (is_cgb && currentLine == 0 && !lcdEnableLine0_ && scanlineCounter < (doubleSpeed ? 2u : 4u) &&
+                stat.enable_m2_interrupt && !(value & 0x20) && !(interrupts_.interrupt_visible_pending & 2))
+                interrupts_.cancel_pending(InterruptType::LCDStat);
             stat.enable_ly_interrupt = value & 0x40;
             stat.enable_m2_interrupt = value & 0x20;
             stat.enable_m1_interrupt = value & 0x10;
             stat.enable_m0_interrupt = value & 0x08;
-            // A write that leaves every enabled condition false drops the line
-            // and re-arms the edge detector, so the next condition fires an IRQ
-            // even if one was already taken this scanline. A write that raises
-            // the line fires through the per-dot condition sites instead
-            if (!LCDDisabled() && !StatLineHigh())
-                statTriggered = false;
+            if (!LCDDisabled()) {
+                const bool line = StatLineHigh(true);
+                if (is_cgb && line && !previous_line) {
+                    interrupts_.set(InterruptType::LCDStat, false);
+                    statTriggered = true;
+                } else if (!line) {
+                    statTriggered = false;
+                }
+            }
             break;
         }
         case 0xFF42:
@@ -1638,6 +1694,20 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             // LY is read only, so writes should be ignored — fixes LY=LYC comparison in Gambatte tests
             break;
         case 0xFF45:
+            if (is_cgb && value != lyc && !LCDDisabled() && stat.enable_ly_interrupt) {
+                const auto compared_line = cgb_lyc_compare_line(doubleSpeed ? 3 : 2);
+                const bool continuous = compared_line != cgb_lyc_compare_line(0) && lyc == cgb_lyc_compare_line(0);
+                const bool mode_blocked = (stat.mode == GPUMode::MODE_0 && stat.enable_m0_interrupt && value == currentLine) ||
+                                         (stat.mode == GPUMode::MODE_1 && stat.enable_m1_interrupt);
+                if (value == compared_line && !continuous && !mode_blocked) {
+                    interrupts_.set_after(InterruptType::LCDStat, doubleSpeed ? 0 : 5);
+                    statTriggered = true;
+                }
+            }
+            if (is_cgb && value != lyc) {
+                lyc_irq_old = lyc;
+                lyc_irq_delay = doubleSpeed ? 4 : 5;
+            }
             lyc = value;
             break;
         case 0xFF47:

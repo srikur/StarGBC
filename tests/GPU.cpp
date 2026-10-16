@@ -13,12 +13,13 @@ namespace {
         uint32_t pixel;
     };
 
-    LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions, uint8_t windowX = 0) {
+    LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions, uint8_t windowX = 0, uint8_t scroll_x = 0) {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
         gpu.lcdc = objects ? 0x93 : 0x91;
         gpu.currentLine = 10;
+        gpu.scrollX = scroll_x;
         if (windowX) {
             gpu.lcdc |= 0x20;
             gpu.windowX = windowX;
@@ -474,5 +475,77 @@ TEST_CASE("ppu: blocked CGB palette writes preserve RAM and advance the address"
         CHECK(gpu.ReadRegisters(address + 1) == 0x34);
         gpu.WriteRegisters(address + 1, 0x56);
         CHECK(gpu.ReadRegisters(address + 1) == 0x56);
+    }
+}
+
+
+TEST_CASE("ppu: sprite groups share background alignment without starving a completed tile") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    for (const auto model : models) {
+        CAPTURE(ModelName(model));
+        const auto background = renderLine(model, false, {}, 0, 5);
+        const auto sprites = renderLine(model, true, {8, 9, 10, 40, 41, 42, 72, 73, 74}, 0, 5);
+        CHECK(sprites.rendered - background.rendered == 9 * 6);
+    }
+}
+
+TEST_CASE("ppu: first-line CGB WY retention samples after the frame boundary") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array<unsigned, 2> write_dot_values = {2, 4};
+    for (const auto [model, optimized, double_speed, write_dot] : std::views::cartesian_product(models, optimizations, speeds, write_dot_values)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(optimized);
+        CAPTURE(double_speed);
+        CAPTURE(write_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.doubleSpeed = double_speed;
+        gpu.lcdc = 0xB1;
+        gpu.currentLine = 153;
+        gpu.scanlineCounter = 455;
+        gpu.stat.mode = GPUMode::MODE_1;
+        gpu.windowY = 0;
+        gpu.windowX = 7;
+        gpu.Update();
+        REQUIRE(gpu.currentLine == 0);
+        REQUIRE_FALSE(gpu.windowTriggeredThisFrame);
+        while (gpu.scanlineCounter < write_dot)
+            gpu.Update();
+        gpu.WriteRegisters(WINDOW_Y, 255);
+        while (gpu.scanlineCounter < 280)
+            gpu.Update();
+        CHECK(gpu.windowWasActiveThisLine_ == (write_dot == 4));
+    }
+}
+
+TEST_CASE("ppu: a late mode-2 enable can request STAT while blocking the following mode-1 request") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array coincidence_values = {false, true};
+    for (const auto [model, coincidence] : std::views::cartesian_product(models, coincidence_values)) {
+        CAPTURE(model);
+        CAPTURE(coincidence);
+        Interrupts interrupts;
+        interrupts.interrupt_flag = 0;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.doubleSpeed = true;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 143;
+        gpu.scanlineCounter = 455;
+        gpu.lyc = 143;
+        gpu.stat.mode = GPUMode::MODE_0;
+        gpu.stat.enable_m1_interrupt = true;
+        gpu.stat.enable_ly_interrupt = coincidence;
+        gpu.WriteRegisters(LCD_STATUS, coincidence ? 0x70 : 0x30);
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == !coincidence);
+        interrupts.interrupt_flag = 0;
+        for (auto dot{0u}; dot < 6; ++dot)
+            gpu.Update();
+        CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
+        CHECK(interrupts.is_set(InterruptType::VBlank));
     }
 }

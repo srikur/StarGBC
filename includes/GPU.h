@@ -81,6 +81,8 @@ public:
 
     void set_mode(GPUMode mode);
 
+    [[nodiscard]] uint8_t cgb_lyc_compare_line(unsigned lead) const;
+
     void initialize_palette_ram();
 
     void initialize_post_boot();
@@ -139,6 +141,7 @@ public:
     // first sprite fetch overlaps its tile step with the background fetch tail,
     // so later fetches do their VRAM reads one dot later
     uint8_t spriteFetchWait_{0};
+    uint16_t sprite_alignment_end_x{};
     uint8_t spriteMergeDelay_{0};
     bool spriteFetchAbort_{false};
     bool spriteFetchedThisLine_{false};
@@ -194,6 +197,11 @@ public:
     uint64_t displayFrames_{};
     bool statTriggered{false};
     bool lycInterruptLine_{false};
+    uint8_t stat_irq_old{};
+    uint8_t stat_irq_delay{};
+    uint8_t m1_irq_delay{};
+    uint8_t lyc_irq_old{};
+    uint8_t lyc_irq_delay{};
     bool m2IrqRaisedEarly{false};
     // First line after LCD enable: starts in mode 0, skips OAM scan, and
     // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
@@ -350,7 +358,7 @@ public:
 private:
     Interrupts &interrupts_;
 
-    [[nodiscard]] bool StatLineHigh() const;
+    [[nodiscard]] bool StatLineHigh(bool register_write = false, bool previous = false) const;
 
     [[nodiscard]] bool StatMode0Visible(unsigned lead = 3) const;
 

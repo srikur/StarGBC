@@ -19,11 +19,13 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
             hdmaDestination = (hdmaDestination & 0xFF00) | static_cast<uint16_t>(value & 0xF0);
             break;
         case 0xFF55: {
-            if (hdmaActive && !Bit<7>(value)) {
-                hdmaActive = false;
-                hdma5 = 0x80 | value;
-                hblankBlockFinished = false;
-                transferringBlock = false;
+            hdmaRemain = (value & 0x7F) + 1;
+            hdma5 = value & 0x7F;
+            if (hdmaActive) {
+                if (!Bit<7>(value)) {
+                    hdmaActive = false;
+                    hdma5 |= 0x80;
+                }
                 return;
             }
             hdmaActive = true;
@@ -33,8 +35,6 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
             hblankBlockFinished = false;
             transferringBlock = false; // Will be set true by RunHDMA when transfer starts
             step = HDMAStep::Read;
-            hdmaRemain = (value & 0x7F) + 1;
-            hdma5 = value & 0x7F; // HDMA5 reads show remaining - 1
             hdmaMode = Bit<7>(value) ? HDMAMode::HDMA : HDMAMode::GDMA;
             singleBlockTransfer = screenOff;
             break;
@@ -59,5 +59,5 @@ uint8_t HDMA::ReadHDMA(const uint16_t address, const bool gbc) const {
 
 bool HDMA::ShouldHaltCPU() const {
     /* Seems that GDMA lets the requesting instr + next instr prefetch finish before halting the CPU */
-    return hdmaActive && transferringBlock;
+    return transferringBlock;
 }

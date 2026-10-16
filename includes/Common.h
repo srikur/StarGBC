@@ -61,6 +61,14 @@ static constexpr u16 PULSE2_REGISTERS_BEGIN = 0xFF15;
 
 static constexpr u16 INTERRUPT_FLAG = 0xFF0F;
 
+static constexpr u16 LCD_STATUS = 0xFF41;
+static constexpr u16 WINDOW_Y = 0xFF4A;
+static constexpr u16 HDMA_SOURCE_HIGH = 0xFF51;
+static constexpr u16 HDMA_SOURCE_LOW = 0xFF52;
+static constexpr u16 HDMA_DESTINATION_HIGH = 0xFF53;
+static constexpr u16 HDMA_DESTINATION_LOW = 0xFF54;
+static constexpr u16 HDMA_CONTROL = 0xFF55;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;

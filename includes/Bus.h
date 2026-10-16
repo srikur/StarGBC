@@ -57,7 +57,7 @@ public:
 
     // Inline idle fast path; HDMA is inactive almost always
     void RunHDMA(const bool cpuAtInstructionBoundary) const {
-        if (!gpu_.hdma.hdmaActive || !gpu_.is_cgb)
+        if ((!gpu_.hdma.hdmaActive && !gpu_.hdma.block_requested && !gpu_.hdma.transferringBlock) || !gpu_.is_cgb)
             return;
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork(cpuAtInstructionBoundary);

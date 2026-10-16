@@ -221,7 +221,7 @@ private:
             if (interrupts_.interrupt_master_enable)
                 --cpu.pc();
         } else {
-            cpu.haltBug(false);
+            cpu.haltBug(cpu.bus_.gpu_.hdma.block_requested);
             cpu.halted(true);
         }
         cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);

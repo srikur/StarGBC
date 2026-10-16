@@ -123,16 +123,15 @@ TEST_CASE("An HDMA block started at the end of HBlank completes in the next scan
 
         // Start on a steady scanline, after the special LCD-enable line.
         static_cast<void>(gameboy.AdvanceTicks(456 * 2, policy));
-        for (auto dot{0u}; dot < 456 && !(bus.gpu_.currentLine == 1 && bus.gpu_.scanlineCounter == 454); ++dot)
+        for (auto dot{0u}; dot < 456 && !(bus.gpu_.currentLine == 1 && bus.gpu_.scanlineCounter == 452); ++dot)
             static_cast<void>(gameboy.AdvanceTicks(2, policy));
         REQUIRE(bus.gpu_.currentLine == 1);
-        REQUIRE(bus.gpu_.scanlineCounter == 454);
+        REQUIRE(bus.gpu_.scanlineCounter == 452);
         REQUIRE(bus.gpu_.hblank);
         for (const auto [address, value] :
              std::array<std::pair<uint16_t, uint8_t>, 5>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0x81}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
 
-        // Only the first read fits in HBlank; every write belongs to the next line.
         static_cast<void>(gameboy.AdvanceTicks(128, policy));
         REQUIRE(bus.gpu_.currentLine == 2);
         REQUIRE(bus.gpu_.stat.mode == GPUMode::MODE_2);
@@ -146,5 +145,46 @@ TEST_CASE("An HDMA block started at the end of HBlank completes in the next scan
         for (auto i{0_u16}; i < 32; ++i)
             CHECK(gameboy.DebugPeek(0x8000 + i) == i + 1);
         CHECK(bus.ReadByte(0xFF55, ComponentSource::CPU) == 0xFF);
+    }
+}
+
+TEST_CASE("An accepted HDMA request survives cancellation and waits for the instruction boundary") {
+    constexpr std::array speeds = {false, true};
+    for (const auto double_speed : speeds) {
+        CAPTURE(double_speed);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        for (auto offset{0_u16}; offset < 32; ++offset) {
+            gameboy.DebugPoke(WRAM_BEGIN + offset, offset + 1);
+            gameboy.DebugPoke(VRAM_BEGIN + offset, 0);
+        }
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x81}}})
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        for (auto dot{0u}; dot < 8; ++dot)
+            bus.RunHDMA(false);
+        REQUIRE(bus.gpu_.hdma.block_requested);
+        CHECK_FALSE(bus.gpu_.hdma.ShouldHaltCPU());
+        CHECK(gameboy.DebugPeek(VRAM_BEGIN) == 0);
+        bus.WriteByte(HDMA_CONTROL, 0, ComponentSource::CPU);
+        REQUIRE_FALSE(bus.gpu_.hdma.hdmaActive);
+        CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0x80);
+        for (auto dot{0u}; dot < 32; ++dot)
+            bus.RunHDMA(true);
+        for (auto offset{0_u16}; offset < 32; ++offset)
+            CHECK(gameboy.DebugPeek(VRAM_BEGIN + offset) == (offset < 16 ? offset + 1 : 0));
+        CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0xFF);
+        REQUIRE(bus.gpu_.hdma.ShouldHaltCPU());
+        for (auto dot{0u}; dot < (double_speed ? 2u : 4u); ++dot) {
+            bus.RunHDMA(true);
+            CHECK(bus.gpu_.hdma.ShouldHaltCPU());
+        }
+        bus.RunHDMA(true);
+        CHECK_FALSE(bus.gpu_.hdma.ShouldHaltCPU());
     }
 }

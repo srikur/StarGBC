@@ -61,7 +61,7 @@ void Interrupts::set_after(const InterruptType interrupt, const uint8_t dots, co
 void Interrupts::tick_pending() {
     uint8_t remaining = 0;
     for (unsigned i = 0; i < interrupt_set_delays.size(); ++i) {
-        const auto previousFlags = interrupt_flag | interrupt_visible_pending;
+        const auto previous_flags = interrupt_flag | interrupt_visible_pending;
         const uint8_t mask = 1u << i;
         if (interrupt_visible_delays[i] && --interrupt_visible_delays[i] == 0) {
             if (acknowledge_mask & mask) {
@@ -77,11 +77,24 @@ void Interrupts::tick_pending() {
             interrupt_visible_pending &= ~mask;
         }
         remaining |= interrupt_set_delays[i] | interrupt_visible_delays[i];
-        if (observations && previousFlags != (interrupt_flag | interrupt_visible_pending))
+        if (observations && previous_flags != (interrupt_flag | interrupt_visible_pending))
             observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
                                interrupt_flag | interrupt_visible_pending | 0xE0);
     }
     delays_pending = remaining != 0;
+}
+
+void Interrupts::cancel_pending(const InterruptType interrupt) {
+    const auto index = static_cast<uint8_t>(interrupt);
+    const uint8_t mask = 1u << index;
+    const auto previous_flags = interrupt_flag | interrupt_visible_pending;
+    interrupt_flag_delayed &= ~mask;
+    interrupt_visible_pending &= ~mask;
+    interrupt_set_delays[index] = interrupt_visible_delays[index] = 0;
+    recompute_pending();
+    if (observations && previous_flags != (interrupt_flag | interrupt_visible_pending))
+        observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, INTERRUPT_FLAG,
+                           interrupt_flag | interrupt_visible_pending | 0xE0);
 }
 
 bool Interrupts::is_set(InterruptType interrupt) const {
