@@ -107,7 +107,12 @@ public:
             observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, haltPending_, 1);
     }
 
-    void SampleRunningInterrupts() {
+    void sample_running_inputs() {
+        if (speed_switch_dma_sample_pending) {
+            speed_switch_dma_sample_pending = false;
+            speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
+            speed_switch_hblank_active = bus_.hdma_hblank_active();
+        }
         // The DMG instruction boundary samples before this T4's peripheral edges
         runningPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)
@@ -142,13 +147,24 @@ public:
             speedSwitchWakePending_ = false;
     }
 
+    void sample_speed_switch_dma() {
+        speed_switch_dma_sample_pending = bus_.gpu_.doubleSpeed;
+        if (!speed_switch_dma_sample_pending) {
+            speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
+            speed_switch_hblank_active = bus_.hdma_hblank_active();
+        }
+    }
+
     void SpeedSwitchHalt(const bool pending) {
         halted_ = !pending;
         speedSwitchWakePending_ = !pending;
         speed_switch_resume_pending = !pending;
-        speed_switch_prefetch_retained = bus_.gpu_.hdma.block_requested;
         halt_prefetch_retained = false;
+        if (!pending)
+            bus_.gpu_.hdma.block_requested = speed_switch_prefetch_retained;
         bus_.set_cpu_halted(!pending, bus_.gpu_.doubleSpeed);
+        if (!pending)
+            bus_.gpu_.hdma.halt_hblank_active = speed_switch_hblank_active;
         shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
     }
 
@@ -202,6 +218,8 @@ private:
     bool speedSwitchWakePending_{false};
     bool speed_switch_resume_pending{};
     bool speed_switch_prefetch_retained{};
+    bool speed_switch_hblank_active{};
+    bool speed_switch_dma_sample_pending{};
     bool shortInterruptEntry_{false};
     bool locked_{false};
     uint8_t haltPending_{0};

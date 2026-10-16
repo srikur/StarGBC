@@ -597,6 +597,7 @@ private:
         const bool speedSwitchRequested = cpu.bus_.prepareSpeedShift && (key1 & 0x01);
         if (speedSwitchRequested) {
             if (cpu.mCycleCounter() == 2) {
+                cpu.sample_speed_switch_dma();
                 cpu.nextInstruction() = cpu.bus_.ReadByte(cpu.pc()++, ComponentSource::CPU);
                 return false;
             }

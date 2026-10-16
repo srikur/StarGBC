@@ -103,7 +103,7 @@ bool Gameboy::LoadedStateValid() const {
 uint32_t Gameboy::AdvanceMCycle() {
     const auto dot = [&](const unsigned phase) {
         if (phase == 3)
-            cpu_.SampleRunningInterrupts();
+            cpu_.sample_running_inputs();
         if (phase == 1)
             cpu_.SampleHaltInterrupts();
         timer_.Tick(Speed::Regular);
@@ -157,7 +157,7 @@ uint32_t Gameboy::AdvanceMCycle() {
 uint32_t Gameboy::AdvanceMCycleDouble() {
     const auto cycle = [&](const unsigned phase) {
         if (phase == 3)
-            cpu_.SampleRunningInterrupts();
+            cpu_.sample_running_inputs();
         if (phase == 1)
             cpu_.SampleHaltInterrupts();
         timer_.Tick(Speed::Double);
@@ -230,7 +230,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
             return 1;
         }
         if ((cpuTickPhase_ & 3) == 3)
-            cpu_.SampleRunningInterrupts();
+            cpu_.sample_running_inputs();
         if ((cpuTickPhase_ & 3) == 1)
             cpu_.SampleHaltInterrupts();
         timer_.Tick(bus_.speed);
@@ -267,7 +267,7 @@ uint32_t Gameboy::AdvanceCycles(const uint32_t maxCycles) {
     }
     const bool evenCycle = masterCycles % 2 == 0;
     if ((cpuTickPhase_ & 3) == 3)
-        cpu_.SampleRunningInterrupts();
+        cpu_.sample_running_inputs();
     if ((cpuTickPhase_ & 3) == 1)
         cpu_.SampleHaltInterrupts();
     timer_.Tick(bus_.speed);

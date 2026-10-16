@@ -300,3 +300,65 @@ TEST_CASE("dma: VRAM address wrapping retains the selected bank and full destina
         gameboy.ObserveWith(nullptr);
     }
 }
+
+TEST_CASE("STOP retains the HDMA inputs sampled before speed-switch completion") {
+    enum class Arrival { BeforeStop, DuringInternalCycle, OnFinalCycle };
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array arrival_values = {Arrival::BeforeStop, Arrival::DuringInternalCycle, Arrival::OnFinalCycle};
+    for (const auto [model, double_speed, arrival] : std::views::cartesian_product(models, speeds, arrival_values)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(double_speed);
+        CAPTURE(arrival);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
+        auto &gpu = bus.gpu_;
+        auto &hdma = gpu.hdma;
+        bus.speed = double_speed ? Speed::Double : Speed::Regular;
+        gpu.doubleSpeed = double_speed;
+        gpu.hblank = gpu.vblank = false;
+        gpu.currentLine = 1;
+        gpu.scanlineCounter = 252;
+        gpu.mode3EndDot_ = 252;
+        hdma.hdmaActive = true;
+        hdma.hdmaMode = HDMAMode::HDMA;
+        hdma.hdmaSource = WRAM_BEGIN;
+        hdma.hdmaDestination = 0;
+        hdma.hdmaRemain = 1;
+        hdma.hdma5 = 0;
+        for (auto offset{0_u16}; offset < 16; ++offset) {
+            gameboy.DebugPoke(WRAM_BEGIN + offset, 0x5A);
+            gameboy.DebugPoke(VRAM_BEGIN + offset, 0xAA);
+        }
+        const auto request = [&] {
+            gpu.scanlineCounter = 256;
+            gpu.hblank = true;
+            hdma.block_requested = true;
+        };
+        if (arrival == Arrival::BeforeStop)
+            request();
+        cpu.sample_speed_switch_dma();
+        if (arrival == Arrival::DuringInternalCycle)
+            request();
+        cpu.sample_running_inputs();
+        if (arrival == Arrival::OnFinalCycle)
+            request();
+        bus.prepareSpeedShift = true;
+        bus.ChangeSpeed();
+        cpu.SpeedSwitchHalt(false);
+        const bool retained = arrival == Arrival::BeforeStop || (double_speed && arrival == Arrival::DuringInternalCycle);
+        CHECK(hdma.block_requested == (retained && !double_speed));
+        CHECK(hdma.halt_request_pending == (retained && double_speed));
+        CHECK(hdma.halt_hblank_active == retained);
+        for (auto dot{0u}; dot < 40; ++dot)
+            bus.RunHDMA(true);
+        CHECK(gameboy.DebugPeek(VRAM_BEGIN) == (retained && !double_speed ? 0x5A : 0xAA));
+        gpu.hblank = false;
+        cpu.halted(false, true);
+        for (auto dot{0u}; dot < 40; ++dot)
+            bus.RunHDMA(true);
+        CHECK(gameboy.DebugPeek(VRAM_BEGIN) == (retained ? 0x5A : 0xAA));
+        CHECK(gameboy.DebugPeek(0x800F) == (retained ? 0x5A : 0xAA));
+    }
+}
