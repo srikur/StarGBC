@@ -311,7 +311,7 @@ void GPU::Update() {
         }
     }
 
-    if (is_cgb && currentLine < 144 && scanlineCounter == 451 && currentLine == windowY && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
+    if (currentLine < 144 && scanlineCounter == 451 && currentLine == windowY && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
         windowTriggeredThisFrame = true;
     }
     if (is_cgb && currentLine == 0 && !lcdEnableLine0_ && scanlineCounter == 3)
@@ -435,9 +435,7 @@ void GPU::Update() {
             set_mode(GPUMode::MODE_2);
             windowLineCounter_ = 0;
             ResetScanlineState(true);
-            windowTriggeredThisFrame = false;
-            if (!is_cgb && currentLine == windowY)
-                windowTriggeredThisFrame = true;
+            windowTriggeredThisFrame = !is_cgb && windowY == 0 && Bit<LCDC_WINDOW_ENABLE>(lcdc);
             initialSCXSet = false;
             if (!is_cgb && stat.enable_m2_interrupt && !statTriggered) {
                 interrupts_.set(InterruptType::LCDStat, false);
@@ -471,7 +469,7 @@ void GPU::Update() {
             // The DMG comparison is visible on the boundary dot itself
             if (!is_cgb)
                 stat.coincidence_flag = currentLine == lyc;
-            if (currentLine == windowY && (!is_cgb || Bit<LCDC_WINDOW_ENABLE>(lcdc))) {
+            if (currentLine == windowY && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
                 windowTriggeredThisFrame = true;
             }
             ResetScanlineState(true);
@@ -1761,11 +1759,11 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         case 0xFF4A:
-            if (is_cgb && !LCDDisabled()) {
+            if (!LCDDisabled()) {
                 if (wy_write_stage == 0) {
                     wy_trigger_old = windowY;
                 }
-                wy_write_stage = doubleSpeed ? 3 : 5;
+                wy_write_stage = doubleSpeed && is_cgb ? 3 : 5;
             }
             windowY = value;
             break;

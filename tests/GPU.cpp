@@ -401,12 +401,14 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
     }
 }
 
-TEST_CASE("ppu: CGB window enable qualifies the retained WY match") {
-    constexpr std::array models = {Model::CGBC, Model::CGBE};
+TEST_CASE("ppu: window enable qualifies the retained WY match") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
     constexpr std::array optimizeds = {false, true};
     constexpr std::array speeds = {false, true};
     constexpr std::array<u32, 2> enable_dots = {450, 452};
     for (const auto [model, optimized, speed, enable_dot] : std::views::cartesian_product(models, optimizeds, speeds, enable_dots)) {
+        if (IsDmg(model) && speed)
+            continue;
         CAPTURE(ModelName(model));
         CAPTURE(optimized);
         CAPTURE(speed);
@@ -547,5 +549,29 @@ TEST_CASE("ppu: a late mode-2 enable can request STAT while blocking the followi
             gpu.Update();
         CHECK_FALSE(interrupts.is_set(InterruptType::LCDStat));
         CHECK(interrupts.is_set(InterruptType::VBlank));
+    }
+}
+
+TEST_CASE("ppu: DMG live WY comparison applies before the horizontal window match") {
+    constexpr std::array<unsigned, 3> write_dot_values = {84u, 88u, 92u};
+    for (const auto write_dot : write_dot_values) {
+        CAPTURE(write_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::DMGB);
+        gpu.lcdc = 0xB1;
+        gpu.currentLine = 10;
+        gpu.windowY = 255;
+        gpu.windowX = 7;
+        while (gpu.scanlineCounter < write_dot)
+            gpu.Update();
+        gpu.WriteRegisters(WINDOW_Y, 10);
+        while (gpu.scanlineCounter < 300)
+            gpu.Update();
+        CHECK(gpu.windowWasActiveThisLine_ == (write_dot < 92));
+        CHECK_FALSE(gpu.windowTriggeredThisFrame);
+        while (gpu.scanlineCounter < 452)
+            gpu.Update();
+        CHECK(gpu.windowTriggeredThisFrame);
     }
 }

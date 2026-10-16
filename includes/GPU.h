@@ -114,7 +114,7 @@ public:
     uint8_t spriteArrayHead_{0};
 
     [[nodiscard]] bool window_y_matched() const {
-        return windowTriggeredThisFrame || (is_cgb && currentLine == (wy_write_stage ? wy_trigger_old : windowY));
+        return windowTriggeredThisFrame || currentLine == (wy_write_stage ? wy_trigger_old : windowY);
     }
 
     bool windowTriggeredThisFrame{false};
