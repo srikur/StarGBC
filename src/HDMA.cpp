@@ -1,7 +1,7 @@
 #include "HDMA.h"
 #include "Common.h"
 
-void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool screenOff, const bool modeZero) {
+void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool screenOff, const bool immediate_start) {
     switch (address) {
         case 0xFF51: {
             hdmaSource = (static_cast<uint16_t>(value) << 8) | (hdmaSource & 0xF0);
@@ -29,7 +29,7 @@ void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool scr
                 return;
             }
             hdmaActive = true;
-            if (!modeZero)
+            if (!immediate_start)
                 hdmaStartDelay = 4;
             bytesThisBlock = 0x00;
             hblankBlockFinished = false;

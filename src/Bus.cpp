@@ -413,7 +413,9 @@ void Bus::WriteByteValue(const uint16_t address, const uint8_t value, const Comp
         }
         case 0xFF51 ... 0xFF55:
             if (cgbMode) {
-                gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), gpu_.stat.mode == GPUMode::MODE_0);
+                const bool immediate_start = gpu_.stat.mode == GPUMode::MODE_0 &&
+                                            (gpu_.LCDDisabled() || gpu_.scanlineCounter < (gpu_.doubleSpeed ? 454u : 453u));
+                gpu_.hdma.WriteHDMA(address, value, gpu_.LCDDisabled(), immediate_start);
             }
             break;
         case 0xFF56:

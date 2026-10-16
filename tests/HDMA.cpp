@@ -424,3 +424,49 @@ TEST_CASE("dma: overlapping transfers share addresses and data while retaining i
         gameboy.ObserveWith(nullptr);
     }
 }
+
+
+TEST_CASE("A late HDMA enable waits for the next HBlank without losing its block") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array late_values = {false, true};
+    for (const auto [model, policy, double_speed, late] : std::views::cartesian_product(models, policies, speeds, late_values)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(policy);
+        CAPTURE(double_speed);
+        CAPTURE(late);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
+        for (auto i{0_u16}; i < 16; ++i) {
+            gameboy.DebugPoke(WRAM_BEGIN + i, i + 1);
+            gameboy.DebugPoke(VRAM_BEGIN + i, 0);
+        }
+        const unsigned write_dot = 452 + double_speed + late;
+        for (auto elapsed{0u}; elapsed < 912 && !(bus.gpu_.currentLine == 1 && bus.gpu_.scanlineCounter == write_dot); ++elapsed)
+            static_cast<void>(gameboy.AdvanceTicks(2, policy));
+        REQUIRE(bus.gpu_.currentLine == 1);
+        REQUIRE(bus.gpu_.scanlineCounter == write_dot);
+        REQUIRE(bus.gpu_.hblank);
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        static_cast<void>(gameboy.AdvanceTicks(128, policy));
+        REQUIRE(bus.gpu_.currentLine == 2);
+        REQUIRE(bus.gpu_.stat.mode == GPUMode::MODE_2);
+        for (auto i{0_u16}; i < 16; ++i)
+            CHECK(gameboy.DebugPeek(VRAM_BEGIN + i) == (late ? 0 : i + 1));
+        CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == (late ? 0 : 0xFF));
+        static_cast<void>(gameboy.AdvanceTicks(912, policy));
+        for (auto i{0_u16}; i < 16; ++i)
+            CHECK(gameboy.DebugPeek(VRAM_BEGIN + i) == i + 1);
+        CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0xFF);
+    }
+}
