@@ -1484,7 +1484,7 @@ bool GPU::cpu_palette_blocked() const {
     if (LCDDisabled() || currentLine >= SCREEN_HEIGHT)
         return false;
     if (stat.mode == GPUMode::MODE_3)
-        return scanlineCounter >= (lcdEnableLine0_ ? (doubleSpeed ? 83u : 82u) : doubleSpeed ? 82u : 84u);
+        return scanlineCounter >= (lcdEnableLine0_ || doubleSpeed ? 82u : 84u);
     return stat.mode == GPUMode::MODE_0 && mode3EndDot_ && scanlineCounter < mode3EndDot_ + (doubleSpeed ? 2u : 4u);
 }
 
