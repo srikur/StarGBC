@@ -722,7 +722,9 @@ void GPU::TickMode3() {
     CheckForSpriteTrigger();
     const bool spritePending = !spriteFetchActive_ && !spriteFetchQueue.empty();
     if (spritePending) {
-        if (spriteFetchWait_ > 0) {
+        if (!is_cgb && !Bit<LCDC_OBJ_ENABLE>(lcdcWriteStage == 1 ? lcdcPending : lcdc)) {
+            spriteFetchQueue.clear();
+        } else if (spriteFetchWait_ > 0) {
             // Pixel output pauses until the sprite fetch may take over. Sprites
             // clipped by the left edge halt the background fetch for the whole wait
             // (only a pending push completes); on-screen sprites let it keep stepping
@@ -732,13 +734,6 @@ void GPU::TickMode3() {
                 Fetcher_StepBackgroundFetch();
             }
             return;
-        }
-        // Clearing OBJ enable cancels a sprite fetch that has not yet taken over
-        // the fetcher: the sprite is dropped outright and background output
-        // resumes this very dot. The check sees the raw written LCDC value one
-        // dot before it reaches the fetcher and mixer
-        if (!is_cgb && !Bit<LCDC_OBJ_ENABLE>(lcdcWriteStage > 0 ? lcdcPending : lcdc)) {
-            spriteFetchQueue.pop_front();
         } else {
             // A background push that is ready on the takeover tick runs first, so the
             // FIFO has pixels for the dot where the sprite fetch completes — unless a
@@ -812,6 +807,8 @@ void GPU::TickMode3() {
                 return;
             }
             OutputPixel(true);
+        } else if (!is_cgb && spriteFetchQueue.front().x >= 0 && !Bit<LCDC_OBJ_ENABLE>(lcdcWriteStage == 1 ? lcdcPending : lcdc)) {
+            OutputPixel();
         } else {
             ObserveStall(diagnostics::StallReason::SpriteFetch);
         }

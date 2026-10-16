@@ -906,3 +906,29 @@ TEST_CASE("ppu: DMG scans objects while disabled so a later enable can fetch the
         CHECK(gpu.mode3EndDot_ == (visible ? 263 : 252));
     }
 }
+
+TEST_CASE("ppu: DMG object disable releases alignment and active fetch stalls") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<unsigned, 3> disable_dot_values = {108, 112, 116};
+    for (const auto [model, optimized, disable_dot] : std::views::cartesian_product(models, optimizations, disable_dot_values)) {
+        CAPTURE(model);
+        CAPTURE(optimized);
+        CAPTURE(disable_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.lcdc = 0x93;
+        gpu.currentLine = 10;
+        gpu.oam[0] = 26;
+        gpu.oam[1] = 25;
+        while (gpu.scanlineCounter < 400) {
+            if (gpu.scanlineCounter == disable_dot)
+                gpu.WriteRegisters(LCD_CONTROL_BIT, 0x91);
+            gpu.Update();
+        }
+        CHECK(gpu.pixelsDrawn == SCREEN_WIDTH);
+        CHECK(gpu.mode3EndDot_ == (model == Model::DMGB ? 252 + disable_dot - 108 : 263));
+    }
+}
