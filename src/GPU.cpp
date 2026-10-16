@@ -323,7 +323,7 @@ void GPU::Update() {
             lycInterruptLine_ = lyCompare == lyc;
         stat.coincidence_flag = lyCompare == lyc;
         if (stat.coincidence_flag && stat.enable_ly_interrupt && !statTriggered) {
-            interrupts_.set_after(InterruptType::LCDStat, 1);
+            interrupts_.set_after(InterruptType::LCDStat, 1, true);
             statTriggered = true;
         }
     }
