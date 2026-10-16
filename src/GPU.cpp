@@ -178,6 +178,8 @@ void GPU::Update() {
         --stat_irq_delay;
     if (lyc_irq_delay)
         --lyc_irq_delay;
+    if (lyc_m0_delay)
+        --lyc_m0_delay;
     if (m1_irq_delay && --m1_irq_delay == 0) {
         const auto previous_stat = stat_irq_delay ? stat_irq_old : stat.value();
         if (stat.enable_m1_interrupt && !(previous_stat & 0x28)) {
@@ -274,7 +276,7 @@ void GPU::Update() {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
         if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scx_just_applied && !scyJustApplied_ &&
-            (stat_irq_delay | lyc_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage |
+            (stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage |
              windowEndStage_ | obp0WriteStage | obp1WriteStage) ==
                     0) {
             lcdOffIdle_ = true;
@@ -358,7 +360,11 @@ void GPU::Update() {
                 hblank = true;
                 hdma.bytesThisBlock = 0;
                 hdma.hblankBlockFinished = false;
-                if (stat.enable_m0_interrupt && !statTriggered) {
+                const auto previous_stat = stat_irq_delay > (doubleSpeed ? 0u : 1u) ? stat_irq_old : stat.value();
+                const auto previous_lyc = lyc_m0_delay ? lyc_irq_old : lyc;
+                const bool request_m0 = is_cgb ? ((previous_stat | stat.value()) & 8) && (!(previous_stat & 0x40) || previous_lyc != currentLine)
+                                             : stat.enable_m0_interrupt && !statTriggered;
+                if (request_m0) {
                     // DMG: the IF bit trails the visible transition by one more
                     // dot (mooneye intr_2_0_timing round E vs hblank_ly_scx)
                     if (is_cgb) {
@@ -497,7 +503,7 @@ void GPU::MaybeArmIdle() {
         return;
     if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scx_just_applied || scyJustApplied_)
         return;
-    if ((stat_irq_delay | lyc_irq_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage |
+    if ((stat_irq_delay | lyc_irq_delay | lyc_m0_delay | m1_irq_delay | bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage |
              windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
         return;
 
@@ -1776,6 +1782,7 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                 const bool continuous = lyc == cgb_lyc_compare_line(0) && value == cgb_lyc_compare_line(4);
                 lyc_irq_old = lyc;
                 lyc_irq_delay = continuous ? 6 : doubleSpeed ? 4 : 5;
+                lyc_m0_delay = doubleSpeed ? 3 : 6;
             }
             lyc = value;
             break;

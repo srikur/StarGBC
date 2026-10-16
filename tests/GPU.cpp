@@ -765,3 +765,35 @@ TEST_CASE("ppu: CGB LYC writes preserve a continuous match across the next compa
         CHECK(interrupts.is_set(InterruptType::LCDStat) == (write_dot == 450));
     }
 }
+
+TEST_CASE("ppu: HBlank interrupts retain STAT and LYC values captured before late writes") {
+    constexpr std::array speeds = {false, true};
+    constexpr std::array fine_values = {0u, 4u};
+    constexpr std::array disable_lyc_values = {false, true};
+    constexpr std::array early_values = {false, true};
+    for (const auto [double_speed, fine, disable_lyc, early] : std::views::cartesian_product(speeds, fine_values, disable_lyc_values, early_values)) {
+        CAPTURE(double_speed);
+        CAPTURE(fine);
+        CAPTURE(disable_lyc);
+        CAPTURE(early);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(Model::CGBC);
+        gpu.doubleSpeed = double_speed;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.scrollX = fine;
+        gpu.lyc = disable_lyc ? 10 : 255;
+        gpu.stat.enable_m0_interrupt = true;
+        gpu.stat.enable_ly_interrupt = disable_lyc;
+        const unsigned lead = disable_lyc ? (early ? (double_speed ? 2 : 5) : (double_speed ? 1 : 4)) : (early ? 1 : 0);
+        const unsigned write_dot = 252 + fine - lead;
+        while (gpu.scanlineCounter < write_dot)
+            gpu.Update();
+        interrupts.interrupt_flag = 0;
+        gpu.WriteRegisters(disable_lyc ? SCANLINE_COMPARE : LCD_STATUS, disable_lyc ? 255 : 0);
+        while (gpu.scanlineCounter < 300)
+            gpu.Update();
+        CHECK(interrupts.is_set(InterruptType::LCDStat) == (disable_lyc ? early : !early));
+    }
+}

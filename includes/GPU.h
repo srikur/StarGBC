@@ -206,6 +206,7 @@ public:
     uint8_t m1_irq_delay{};
     uint8_t lyc_irq_old{};
     uint8_t lyc_irq_delay{};
+    uint8_t lyc_m0_delay{};
     bool m2IrqRaisedEarly{false};
     // First line after LCD enable: starts in mode 0, skips OAM scan, and
     // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
