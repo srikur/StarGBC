@@ -159,6 +159,8 @@ struct Channel1 final : Channel {
     // trigger delay depends on the 1MHz phase (lfDiv) at the write
     uint16_t sampleCountdown{0xFFFF};
     uint8_t trigDelay{0};
+    uint8_t frequency_reload_delay{0};
+    uint16_t frequency_reload_value{0};
     // Blocks sweep shadow/addend updates right after a trigger (2MHz ticks)
     uint8_t restartHold{0};
     bool sampleSurpressed{false};
@@ -169,7 +171,7 @@ struct Channel1 final : Channel {
     uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
     void TickLength();
 
@@ -189,9 +191,10 @@ struct Channel1 final : Channel {
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                   bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -203,6 +206,8 @@ struct Channel2 final : Channel {
 
     uint16_t sampleCountdown{0xFFFF};
     uint8_t trigDelay{0};
+    uint8_t frequency_reload_delay{0};
+    uint16_t frequency_reload_value{0};
     bool sampleSurpressed{false};
     bool didTick{false};
     bool justReloaded{false};
@@ -211,7 +216,7 @@ struct Channel2 final : Channel {
     uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
     void TickLength();
 
@@ -221,11 +226,12 @@ struct Channel2 final : Channel {
 
     void UpdateOutput();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                   bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -347,6 +353,7 @@ class Audio {
     // &7==7 the envelope countdowns
     uint8_t frameSeqStep{0};
     bool speedSwitchFrameSeqDelay{false};
+    uint8_t speed_switch_pause{0};
     uint8_t pcm12Mask_{0xFF};
     SkipState skipState{SkipState::Inactive};
     uint32_t tickCounter{0};
@@ -404,8 +411,11 @@ public:
     [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
 
     void OnSpeedSwitch(bool doubleSpeed) {
-        if (doubleSpeed && audioEnabled)
+        CatchUp();
+        if (doubleSpeed && audioEnabled) {
             speedSwitchFrameSeqDelay = !speedSwitchFrameSeqDelay;
+            speed_switch_pause = 1;
+        }
     }
 
     explicit Audio(const bool noAudio = false) : emulatorAudioDisabled(noAudio) {
@@ -462,6 +472,10 @@ public:
     }
 
     void Tick() {
+        if (speed_switch_pause) {
+            --speed_switch_pause;
+            return;
+        }
         if (observations_ && pendingTicks_ == 0)
             pendingFirstTick_ = observations_->position.tick;
         ++pendingTicks_;

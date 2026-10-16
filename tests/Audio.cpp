@@ -97,3 +97,42 @@ TEST_CASE("apu: duty writes affect the next pulse step while volume changes use 
         CHECK(sample() == 0xE);
     }
 }
+
+TEST_CASE("apu: length expiration clears NR52 independently of the waveform phase") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
+    constexpr std::array optimizations = {false, true};
+    constexpr std::array<unsigned, 4> phases = {0, 1, 2, 3};
+    constexpr std::array<uint8_t, 16> length_mask_values = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    for (const auto [model, optimized, phase, length_mask] : std::views::cartesian_product(models, optimizations, phases, length_mask_values)) {
+        CAPTURE(ModelName(model));
+        CAPTURE(optimized);
+        CAPTURE(phase);
+        CAPTURE(length_mask);
+        Audio audio(true);
+        audio.SetModel(model);
+        audio.SetOptimizedExecution(optimized);
+        audio.WriteByte(SOUND_CONTROL, 0x80, false);
+        for (auto tick{0u}; tick < phase; ++tick)
+            audio.Tick();
+        audio.WriteByte(PULSE1_DUTY_LENGTH, 63, false);
+        audio.WriteByte(PULSE2_DUTY_LENGTH, 63, false);
+        audio.WriteByte(WAVE_LENGTH, 255, false);
+        audio.WriteByte(NOISE_LENGTH, 63, false);
+        audio.WriteByte(PULSE1_ENVELOPE, 0xF0, false);
+        audio.WriteByte(PULSE2_ENVELOPE, 0xF0, false);
+        audio.WriteByte(WAVE_DAC_ENABLE, 0x80, false);
+        audio.WriteByte(NOISE_ENVELOPE, 0xF0, false);
+        constexpr std::array triggers = {PULSE1_FREQUENCY_HIGH, PULSE2_FREQUENCY_HIGH, WAVE_FREQUENCY_HIGH, NOISE_CONTROL};
+        for (auto channel{0u}; channel < triggers.size(); ++channel) {
+            audio.WriteByte(triggers[channel], 0x80 | ((length_mask >> channel & 1) << 6), false);
+        }
+        for (auto tick{0u}; tick < 16; ++tick)
+            audio.Tick();
+        CHECK(audio.ReadByte(SOUND_CONTROL) == 0xFF);
+        audio.TickFrameSequencer();
+        CHECK(audio.ReadByte(SOUND_CONTROL) == (0xFF & ~length_mask));
+        for (auto tick{0u}; tick < 4; ++tick)
+            audio.Tick();
+        CHECK(audio.ReadByte(SOUND_CONTROL) == (0xFF & ~length_mask));
+    }
+}

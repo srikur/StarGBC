@@ -77,6 +77,17 @@ static constexpr u16 VRAM_BANK = 0xFF4F;
 
 static constexpr u16 CURRENT_SCANLINE = 0xFF44;
 
+static constexpr u16 PULSE1_DUTY_LENGTH = 0xFF11;
+static constexpr u16 PULSE2_DUTY_LENGTH = 0xFF16;
+static constexpr u16 PULSE2_ENVELOPE = 0xFF17;
+static constexpr u16 PULSE2_FREQUENCY_HIGH = 0xFF19;
+static constexpr u16 WAVE_DAC_ENABLE = 0xFF1A;
+static constexpr u16 WAVE_LENGTH = 0xFF1B;
+static constexpr u16 WAVE_FREQUENCY_HIGH = 0xFF1E;
+static constexpr u16 NOISE_LENGTH = 0xFF20;
+static constexpr u16 NOISE_ENVELOPE = 0xFF21;
+static constexpr u16 NOISE_CONTROL = 0xFF23;
+
 static constexpr u8 OAM_PRIORITY_BIT = 7;
 static constexpr u8 OAM_Y_FLIP_BIT = 6;
 static constexpr u8 OAM_X_FLIP_BIT = 5;
