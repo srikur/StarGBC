@@ -156,6 +156,7 @@ public:
     bool window_fetch_startup{};
     bool window_pixel_stalled{};
     uint8_t window_startup_discard{};
+    int16_t window_start_x{};
     bool windowPixel0Triggered_{false};
     bool window_line_start_pending{};
     bool window_line_start_counted{};

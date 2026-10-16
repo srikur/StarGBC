@@ -129,6 +129,7 @@ void GPU::ResetScanlineState(const bool clearBuffer) {
     window_fetch_startup = false;
     window_pixel_stalled = false;
     window_startup_discard = 0;
+    window_start_x = 0;
     windowPixel0Triggered_ = false;
 }
 
@@ -692,6 +693,8 @@ void GPU::TickMode3() {
             initialSCXSet = true;
             initialScrollXFine_ = scrollX & 7;
             initialScrollXDiscard_ = initialScrollXFine_;
+            window_start_x = -initialScrollXFine_;
+            sprite_alignment_end_x = 0;
             Observe(diagnostics::EventKind::WindowActivate, WINDOW_X, windowX, 0);
         }
     }
@@ -850,10 +853,9 @@ void GPU::CheckForSpriteTrigger() {
         spriteFetchQueue.push_back(sprite);
     }
     if (!spriteFetchQueue.empty()) {
-        // The fetch begins once the background fetcher reaches its high-byte read:
-        // max(0, 5 - phase) dots, where its phase within the tile is (x + SCX) mod 8
-        // A fully clipped sprite (OAM X=0) always pays the full alignment wait.
-        const int phase = spriteFetchQueue.front().x == -8 ? 0 : (spriteFetchQueue.front().x + scrollX) & 7;
+        const int phase = spriteFetchQueue.front().x == -8
+                                  ? 0
+                                  : (spriteFetchQueue.front().x + (isFetchingWindow_ ? -window_start_x : scrollX)) & 7;
         spriteFetchWait_ = static_cast<uint8_t>(phase < 5 ? 5 - phase : 0);
         if (spriteFetchQueue.front().x >= 0) {
             if (pixelsDrawn < sprite_alignment_end_x)
@@ -911,6 +913,8 @@ void GPU::CheckForWindowTrigger() {
             Fetcher_StepBackgroundFetch();
         window_fetch_startup = is_cgb;
         window_startup_discard = initialScrollXDiscard_;
+        window_start_x = pixelsDrawn ? pixelsDrawn : static_cast<int>(windowX) - 7;
+        sprite_alignment_end_x = 0;
         isFetchingWindow_ = true;
         Observe(diagnostics::EventKind::WindowActivate, 0xFF4B, windowX, pixelsDrawn);
         if (!is_cgb)

@@ -852,3 +852,28 @@ TEST_CASE("ppu: right-edge fetches can delay STAT mode 0 after the HBlank interr
         CHECK(earlier_object[0] > baseline[0]);
     }
 }
+
+TEST_CASE("ppu: sprite fetch alignment follows the window tile origin independently of SCX") {
+    constexpr std::array models = {Model::DMGB, Model::CGBC};
+    constexpr std::array<uint8_t, 6> window_x_values = {1, 4, 7, 8, 15, 166};
+    constexpr std::array<uint8_t, 3> scroll_x_values = {0, 3, 7};
+    constexpr std::array<uint8_t, 8> offset_values = {0, 1, 2, 3, 4, 5, 6, 7};
+    for (const auto [model, window_x, scroll_x, offset] : std::views::cartesian_product(models, window_x_values, scroll_x_values, offset_values)) {
+        if (model == Model::DMGB && window_x == 166)
+            continue;
+
+        const auto baseline = renderLine(model, true, {}, window_x, scroll_x);
+        const uint8_t object_x = window_x == 166 ? 167 : 24 + offset;
+        CAPTURE(model);
+        CAPTURE(window_x);
+        CAPTURE(scroll_x);
+        CAPTURE(object_x);
+        const auto object = renderLine(model, true, {object_x}, window_x, scroll_x);
+        const unsigned phase = (object_x - window_x - 1) & 7;
+        const unsigned stall = 6 + (phase < 5 ? 5 - phase : 0);
+        CHECK(object.rendered - baseline.rendered == stall);
+        if (window_x == 166)
+            break;
+
+    }
+}
