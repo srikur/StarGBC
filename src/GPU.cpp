@@ -4,6 +4,8 @@
 #include "Common.h"
 #include "GPU.h"
 
+#include "../tests/TestRoms.h"
+
 static constexpr uint8_t expand5(const uint8_t c) noexcept { return static_cast<uint8_t>(c << 3 | c >> 2); }
 
 // DMG line-grid calibration, pinned jointly by mooneye lcdon_timing-GS /
@@ -173,8 +175,10 @@ void GPU::Update() {
             ApplyLCDC(lcdcPending);
     }
 
-    // DMG: a mode-3 WX write reaches the window comparator with the same
-    // latency, so a trigger racing the write still sees the old value
+    if (wy_write_stage > 0 && --wy_write_stage == 0) {
+        Observe(diagnostics::EventKind::RegisterApply, 0xFF4A, windowY);
+    }
+
     if (wxWriteStage > 0) {
         wxWriteStage--;
         if (wxWriteStage == 0) {
@@ -229,8 +233,8 @@ void GPU::Update() {
         // Nothing can change until a register write re-enables the LCD or
         // arms a delayed-write stage (writes clear lcdOffIdle_)
         if (clockPause_ == 0 && mode3EndDelay_ == 0 && !scyJustApplied_ &&
-            (bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) ==
-            0) {
+            (bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
+             obp1WriteStage) == 0) {
             lcdOffIdle_ = true;
         }
         return;
@@ -263,6 +267,10 @@ void GPU::Update() {
         }
     } else {
         stat.coincidence_flag = false;
+    }
+
+    if (is_cgb && currentLine < 144 && scanlineCounter == 451 && currentLine == windowY && Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
+        windowTriggeredThisFrame = true;
     }
 
     if (!is_cgb && !lcdEnableLine0_ && stat.mode == GPUMode::MODE_3 && StatMode0Visible(2) && stat.enable_m0_interrupt && !statTriggered) {
@@ -384,7 +392,7 @@ void GPU::Update() {
             windowLineCounter_ = 0;
             ResetScanlineState(true);
             windowTriggeredThisFrame = false;
-            if (currentLine == windowY) {
+            if (currentLine == windowY && (!is_cgb || Bit<LCDC_WINDOW_ENABLE>(lcdc))) {
                 windowTriggeredThisFrame = true;
             }
             initialSCXSet = false;
@@ -420,7 +428,7 @@ void GPU::Update() {
             // The DMG comparison is visible on the boundary dot itself
             if (!is_cgb)
                 stat.coincidence_flag = currentLine == lyc;
-            if (currentLine == windowY) {
+            if (currentLine == windowY && (!is_cgb || Bit<LCDC_WINDOW_ENABLE>(lcdc))) {
                 windowTriggeredThisFrame = true;
             }
             ResetScanlineState(true);
@@ -440,7 +448,8 @@ void GPU::MaybeArmIdle() {
         return;
     if (scanlineCounter == 0 || lcdEnableLine0_ || clockPause_ > 0 || mode3EndDelay_ > 0 || scyJustApplied_)
         return;
-    if ((bgpWriteStage | lcdcWriteStage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage | obp1WriteStage) != 0)
+    if ((bgpWriteStage | lcdcWriteStage | wy_write_stage | wxWriteStage | scxWriteStage | scyWriteStage | windowEndStage_ | obp0WriteStage |
+         obp1WriteStage) != 0)
         return;
 
     if (stat.mode == GPUMode::MODE_3) {
@@ -462,10 +471,7 @@ void GPU::MaybeArmIdle() {
     if (currentLine == 153 && scanlineCounter < 9)
         return;
 
-    // DMG events resume at dot 451 (post-increment 452: the early mode-2 STAT
-    // pulse and the end-of-line LYC lull); CGB runs quiet to the dot before
-    // the line boundary (post-increment 456)
-    const uint32_t limit = is_cgb ? 455 : 451;
+    const uint32_t limit = is_cgb && scanlineCounter > 451 ? 455 : 451;
     if (scanlineCounter >= limit)
         return;
     idleDots_ = limit - scanlineCounter;
@@ -602,7 +608,7 @@ uint32_t GPU::MixPixel(const Pixel &bgPixel, const Pixel &spritePixel, const boo
 
 void GPU::TickMode3() {
     // scx discard pixels get delayed activation on window, rather than being discarded
-    if (pixelsDrawn == 0 && windowX <= 7 &&
+    if (pixelsDrawn == 0 && windowX <= 7 && window_y_matched() &&
         scanlineCounter == 85u + windowX + (windowX == 0 ? ((scrollX & 7) != 0 ? 1u : 0u) : initialScrollXFine_)) {
         windowPixel0Triggered_ = true;
     }
@@ -648,7 +654,7 @@ void GPU::TickMode3() {
             // window trigger is pending at pixel 0, whose restart discards that push
             // so no background pixel ships before the window claims the line
             const bool windowPendingAtStart =
-                    pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7;
+                    pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7;
             if (fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty() && !windowPendingAtStart) {
                 Fetcher_StepBackgroundFetch();
             }
@@ -690,9 +696,9 @@ void GPU::TickMode3() {
             // execute on the merge dot itself when the fetcher's 2-dot
             // cadence allows it
             if ((scanlineCounter & 1) == 0) {
-                if (pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && windowTriggeredThisFrame && windowX <= 7 &&
+                if (pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7 &&
                     backgroundQueue.empty()) {
-                    if (windowActivatePending_ || (windowTriggeredThisFrame && (!is_cgb || !isFetchingWindow_))) {
+                    if (windowActivatePending_ || (window_y_matched() && (!is_cgb || !isFetchingWindow_))) {
                         CheckForWindowTrigger();
                     } else {
                         // The full check reduces to the match latch when the window cannot
@@ -782,7 +788,7 @@ void GPU::CheckForWindowTrigger() {
     // The falling edge follows the full LCDC delay. A late activation starts
     // fetching on the next dot and moves the LCD output back one pixel
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdc | (lcdcWriteStage == 1 ? lcdcPending : 0));
-    if (windowActivatePending_ || (winEnabled && !isFetchingWindow_ && windowTriggeredThisFrame && windowMatch)) {
+    if (windowActivatePending_ || (winEnabled && !isFetchingWindow_ && window_y_matched() && windowMatch)) {
         if (!windowActivatePending_ && lcdcWriteStage == 1 && !Bit<LCDC_WINDOW_ENABLE>(lcdc)) {
             windowActivatePending_ = true;
             return;
@@ -813,7 +819,7 @@ void GPU::CheckForWindowTrigger() {
                 initialScrollXDiscard_ = 0;
             initialScrollXDiscard_ += 7 - windowX;
         }
-    } else if (!is_cgb && windowTriggeredThisFrame && pixelsDrawn != 0 && windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
+    } else if (!is_cgb && window_y_matched() && pixelsDrawn != 0 && windowMatchLatch_ && !matched && initialScrollXDiscard_ == 0 &&
                fetcherState_ == FetcherState::PushToFIFO && fetcherDelay_ == 0 && backgroundQueue.empty()) {
         // On DMG a WX re-match that does not activate the window — because it is
         // already active, or WIN_EN is currently off — emits a single color-0
@@ -1336,7 +1342,7 @@ bool GPU::StatMode0Visible(const unsigned lead) const {
     }
     const bool winEnabled = Bit<LCDC_WINDOW_ENABLE>(lcdcWriteStage == 1 ? lcdcPending : lcdc);
     if (windowActivatePending_ ||
-        (winEnabled && windowTriggeredThisFrame && !isFetchingWindow_ && windowX >= pixelsDrawn + 7 && windowX < (is_cgb ? SCREEN_WIDTH + 7 : 166)))
+        (winEnabled && window_y_matched() && !isFetchingWindow_ && windowX >= pixelsDrawn + 7 && windowX < (is_cgb ? SCREEN_WIDTH + 7 : 166)))
         return false;
     for (const auto &sprite : spriteBuffer) {
         if (!sprite.processed && sprite.x >= pixelsDrawn && sprite.x < SCREEN_WIDTH && Bit<LCDC_OBJ_ENABLE>(lcdc))
@@ -1667,6 +1673,12 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
             }
             break;
         case 0xFF4A:
+            if (is_cgb && !LCDDisabled()) {
+                if (wy_write_stage == 0) {
+                    wy_trigger_old = windowY;
+                }
+                wy_write_stage = doubleSpeed ? 3 : 5;
+            }
             windowY = value;
             break;
         case 0xFF4B:
@@ -1737,6 +1749,8 @@ void GPU::WriteRegisters(const uint16_t address, const uint8_t value) {
                     return obp0WriteStage;
                 case 0xFF49:
                     return obp1WriteStage;
+                case 0xFF4A:
+                    return wy_write_stage;
                 case 0xFF4B:
                     return wxWriteStage;
                 default:

@@ -315,7 +315,7 @@ TEST_CASE("diagnostics: Crystal sprite overlap provenance identifies transparent
     REQUIRE(pixel->sprites.count == 2);
     CHECK(std::ranges::any_of(std::span(pixel->sprites.candidates).first(pixel->sprites.count), [](const auto &candidate) {
         return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 && candidate.decision == diagnostics::SpriteDecision::Transparent;
-    }));
+        }));
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick <= pixel->emission.tick);
     CHECK(pixel->selected.lowRead == 0);
@@ -395,5 +395,37 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
                 }
             }
         }
+    }
+}
+
+TEST_CASE("ppu: CGB window enable qualifies the retained WY match") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array optimizeds = {false, true};
+    constexpr std::array speeds = {false, true};
+    constexpr std::array<u32, 2> enable_dots = {450, 452};
+    for (const auto [model, optimized, speed, enable_dot] : std::views::cartesian_product(models, optimizeds, speeds, enable_dots) {
+        CAPTURE(ModelName(model));
+        CAPTURE(optimized);
+        CAPTURE(speed);
+        CAPTURE(enable_dot);
+        Interrupts interrupts;
+        GPU gpu(interrupts);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.doubleSpeed = speed;
+        gpu.lcdc = 0x91;
+        gpu.currentLine = 10;
+        gpu.windowY = 10;
+        gpu.windowX = 7;
+        for (auto _ : std::views::indices(enable_dot)) {
+            gpu.Update();
+        }
+        REQUIRE(gpu.scanlineCounter == enable_dot);
+        gpu.WriteRegisters(LCD_CONTROL_BIT, 0xB1);
+        for (u32 dot{enable_dot}; dot < 456 + 280; ++dot)
+            gpu.Update();
+        REQUIRE(gpu.currentLine == 11);
+        REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
+        CHECK(gpu.windowWasActiveThisLine_ == (enable_dot == 450));
     }
 }

@@ -66,14 +66,16 @@ struct Stat {
     GPUMode mode{GPUMode::MODE_2};
 
     [[nodiscard]] uint8_t value() const {
-        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 | coincidence_flag << 2 |
+        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 | coincidence_flag <<
+               2 |
                static_cast<uint8_t>(mode);
     }
 };
 
 class GPU {
 public:
-    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {}
+    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) :
+        color_correction(colorCorrection), interrupts_(interrupts) {}
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
     [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
@@ -108,6 +110,10 @@ public:
     // structs on every output pixel. Indexed with & 7 throughout.
     std::array<Pixel, 8> spriteArray;
     uint8_t spriteArrayHead_{0};
+
+    [[nodiscard]] bool window_y_matched() const {
+        return windowTriggeredThisFrame || (is_cgb && currentLine == (wy_write_stage ? wy_trigger_old : windowY));
+    }
 
     bool windowTriggeredThisFrame{false};
     Sprite spriteToFetch_{};
@@ -204,6 +210,8 @@ public:
     bool pixelOutputThisDot_{false};
     Pixel outputBackground_{};
     Pixel outputSprite_{};
+    uint8_t wy_trigger_old{0};
+    uint8_t wy_write_stage{0};
     uint8_t wxPending{0};
     uint8_t wxWriteStage{0};
     uint8_t scxFetcherOld{0};
