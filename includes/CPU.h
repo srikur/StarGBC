@@ -220,6 +220,7 @@ private:
     bool halted_{false};
     uint8_t halt_entry_cycles{};
     bool halt_prefetch_retained{};
+    bool halt_resume_prefetch_pending{};
     bool speedSwitchWakePending_{false};
     bool speed_switch_resume_pending{};
     bool speed_switch_prefetch_retained{};

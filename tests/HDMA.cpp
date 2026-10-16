@@ -473,3 +473,104 @@ TEST_CASE("A late HDMA enable waits for the next HBlank without losing its block
         CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0xFF);
     }
 }
+
+TEST_CASE("dma: a block crossing HBlank retains its sixteen-byte length") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array speeds = {false, true};
+    for (const auto [model, policy, double_speed] : std::views::cartesian_product(models, policies, speeds)) {
+        CAPTURE(model);
+        CAPTURE(policy);
+        CAPTURE(double_speed);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto &gpu = bus.gpu_;
+        gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        for (auto offset{0_u16}; offset < 32; ++offset) {
+            gameboy.DebugPoke(WRAM_BEGIN + offset, offset + 1);
+            gameboy.DebugPoke(VRAM_BEGIN + offset, 0);
+        }
+        bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
+        for (auto tick{0u}; tick < 2000 && !(gpu.currentLine == 1 && gpu.scanlineCounter == 240); ++tick)
+            static_cast<void>(gameboy.AdvanceTicks(1, policy));
+        REQUIRE(gpu.currentLine == 1);
+        REQUIRE(gpu.scanlineCounter == 240);
+        REQUIRE(gpu.stat.mode == GPUMode::MODE_3);
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        gpu.hdma.block_requested = true;
+        static_cast<void>(gameboy.AdvanceTicks(160, policy));
+        REQUIRE(gpu.stat.mode == GPUMode::MODE_0);
+        CHECK_FALSE(gpu.hdma.ShouldHaltCPU());
+        CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0xFF);
+        CHECK(gpu.hdma.hdmaSource == 0xC010);
+        CHECK((gpu.hdma.hdmaDestination & 0x1FFF) == 0x10);
+        CHECK(gameboy.DebugPeek(0x800F) == 16);
+        for (auto offset{16_u16}; offset < 32; ++offset)
+            CHECK(gameboy.DebugPeek(VRAM_BEGIN + offset) == 0);
+    }
+}
+
+TEST_CASE("dma: a HALT-retained instruction completes before interrupt entry") {
+    constexpr std::array models = {Model::CGBC, Model::CGBE};
+    constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
+    constexpr std::array speeds = {false, true};
+    for (const auto [model, policy, double_speed] : std::views::cartesian_product(models, policies, speeds)) {
+        CAPTURE(model);
+        CAPTURE(policy);
+        CAPTURE(double_speed);
+        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
+        auto &instructions = gameboy.[:dmaTestMember<Gameboy>("instructions_"):];
+        auto &interrupts = gameboy.[:dmaTestMember<Gameboy>("interrupts_"):];
+        auto &registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
+        bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
+        if (double_speed) {
+            bus.prepareSpeedShift = true;
+            bus.ChangeSpeed();
+        }
+        registers.a = 0x5A;
+        cpu.currentInstruction = 0x76;
+        cpu.pc(0xC101);
+        cpu.sp(0xD002);
+        gameboy.DebugPoke(0xC101, 0xEA);
+        gameboy.DebugPoke(0xC102, 0xC0);
+        gameboy.DebugPoke(0xC103, 0x76);
+        gameboy.DebugPoke(0xC0EA, 0);
+        for (auto offset{0_u16}; offset < 16; ++offset) {
+            gameboy.DebugPoke(WRAM_BEGIN + offset, offset + 1);
+            gameboy.DebugPoke(VRAM_BEGIN + offset, 0);
+        }
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        bus.gpu_.hdma.block_requested = true;
+        interrupts.interrupt_enable = 1;
+        interrupts.interrupt_flag = 0;
+        interrupts.interrupt_master_enable = true;
+        cpu.ExecuteMicroOp(instructions, false);
+        REQUIRE(cpu.IsHalted());
+        REQUIRE(bus.gpu_.hdma.halt_request_pending);
+        interrupts.set(InterruptType::VBlank, false);
+        for (auto tick{0u}; tick < 400 && cpu.[:dmaTestMember<CPU<Bus>>("interruptState"):] == InterruptState::M1; ++tick)
+            static_cast<void>(gameboy.AdvanceTicks(1, policy));
+        REQUIRE(cpu.[:dmaTestMember<CPU<Bus>>("interruptState"):] == InterruptState::M2);
+        CHECK(gameboy.DebugPeek(0xC0EA) == 0x5A);
+        CHECK(cpu.pc() == 0xC103);
+        CHECK(cpu.InstructionsCompleted() == 2);
+        CHECK(bus.ReadByte(HDMA_CONTROL, ComponentSource::CPU) == 0xFF);
+        for (auto offset{0_u16}; offset < 16; ++offset)
+            CHECK(gameboy.DebugPeek(VRAM_BEGIN + offset) == offset + 1);
+        static_cast<void>(gameboy.AdvanceTicks(double_speed ? 16 : 32, policy));
+        CHECK(cpu.sp() == 0xD000);
+        CHECK(gameboy.DebugPeek(0xD000) == 0x03);
+        CHECK(gameboy.DebugPeek(0xD001) == 0xC1);
+    }
+}

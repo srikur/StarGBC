@@ -392,7 +392,6 @@ void GPU::Update() {
                 mode3EndDot_ = scanlineCounter + 1;
                 set_mode(GPUMode::MODE_0);
                 hblank = true;
-                hdma.bytesThisBlock = 0;
                 hdma.hblankBlockFinished = false;
                 if (!is_cgb && stat.enable_m0_interrupt && !statTriggered) {
                     interrupts_.set_after(InterruptType::LCDStat, lcdEnableLine0_ ? 4 : 1, lcdEnableLine0_, lcdEnableLine0_ ? 1 : 0);

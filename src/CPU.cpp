@@ -292,6 +292,10 @@ uint8_t CPU<BusT>::InterruptAddress(const uint8_t bit) const {
 
 template<BusLike BusT>
 bool CPU<BusT>::ProcessInterrupts() {
+    if (halt_resume_prefetch_pending) {
+        halt_resume_prefetch_pending = false;
+        return false;
+    }
     if (prefixed)
         return false;
     using enum InterruptState;
@@ -340,8 +344,7 @@ bool CPU<BusT>::ProcessInterrupts() {
                     ++pc_;
                     return true;
                 }
-                if (halt_prefetch_retained)
-                    ++pc_;
+                halt_resume_prefetch_pending = halt_prefetch_retained;
                 halted(false);
                 return true;
             }
