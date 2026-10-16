@@ -141,6 +141,10 @@ public:
 
     [[nodiscard]] std::span<const uint8_t> BootromBytes() const { return bus_.bootrom; }
 
+    [[nodiscard]] std::span<const uint8_t> rom_bytes() const { return cartridge_.rom_bytes(); }
+
+    void reset_to_startup(std::span<const std::byte> state);
+
     [[nodiscard]] bool UsesRealRTC() const { return rtc_.realRTC_; }
 
     [[nodiscard]] uint16_t CartChecksum() const { return cartridge_.GlobalChecksum(); }

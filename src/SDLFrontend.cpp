@@ -269,6 +269,24 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
                 debugger_->controller().resume();
 #endif
             break;
+        case SDLK_F8:
+            if (!key.repeat) {
+                try {
+#ifdef STARGBC_ENABLE_DEBUGGER
+                    if (debugger_) {
+                        const auto was_paused{session_->Paused()};
+                        debugger_->reset();
+                        if (!was_paused)
+                            debugger_->controller().resume();
+                    } else
+#endif
+                        session_->reset();
+                    nextFrameTime_ = std::chrono::steady_clock::now();
+                } catch (const std::exception &error) {
+                    SDL_Log("ROM reset: %s", error.what());
+                }
+            }
+            break;
         case SDLK_F5:
 #ifdef STARGBC_ENABLE_LUA
             if (!key.repeat && lua_) {

@@ -44,6 +44,12 @@ void Debugger::pause() {
     status_ = "Paused";
 }
 
+void Debugger::reset() {
+    session_.reset();
+    synchronize();
+    status_ = "ROM reset; paused at startup";
+}
+
 void Debugger::skip_current_breakpoint() {
     skip_instruction_ = machine_.InstructionsCompleted();
     skip_address_ = machine_.debug_instruction_address();

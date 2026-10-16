@@ -58,6 +58,19 @@ bool EmulationSession::LoadState(const std::span<const std::byte> state) {
     return true;
 }
 
+void EmulationSession::reset() {
+    if (running_ || dispatching_)
+        throw std::logic_error("Reset the ROM outside session callbacks");
+    gameboy_.reset_to_startup(startup_state_);
+    pendingState_.clear();
+    frame_active_ = false;
+    frame_ticks_remaining_ = Gameboy::FRAME_CYCLES_DMG * 2;
+    frameCount_ = 0;
+    FocusLost();
+    ++stateGeneration_;
+    Emit(SessionEvent::StateLoaded);
+}
+
 void EmulationSession::QueueState(const std::span<const std::byte> state) {
     if (state.size() != kGameboyStateSize)
         throw std::invalid_argument("invalid state size");

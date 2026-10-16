@@ -9,7 +9,10 @@ enum class SessionEvent { BeforeFrame, AfterFrame, StateLoaded };
 
 class EmulationSession {
 public:
-    explicit EmulationSession(Gameboy &gameboy) : gameboy_(gameboy) {}
+    explicit EmulationSession(Gameboy &gameboy) : gameboy_(gameboy) {
+        const auto state{gameboy.SaveState()};
+        startup_state_.assign(state.begin(), state.end());
+    }
 
     [[nodiscard]] Gameboy &Machine() const { return gameboy_; }
 
@@ -41,6 +44,8 @@ public:
 
     bool LoadState(std::span<const std::byte> state);
 
+    void reset();
+
     void QueueState(std::span<const std::byte> state);
 
     void CancelQueuedState() { pendingState_.clear(); }
@@ -55,6 +60,7 @@ private:
     Gameboy &gameboy_;
     std::function<void(SessionEvent, uint64_t)> handler_;
     std::vector<std::byte> pendingState_;
+    std::vector<std::byte> startup_state_;
     uint64_t frameCount_{0};
     uint64_t stateGeneration_{0};
     uint8_t physical_{0};

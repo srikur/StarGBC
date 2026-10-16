@@ -1,4 +1,5 @@
 #include "Debugger.h"
+#include "CodeListing.h"
 #include <doctest/doctest.h>
 #include "DebugGraphics.h"
 
@@ -363,5 +364,191 @@ TEST_CASE("debugger: STOP LOCK and an unreachable run target remain interruptibl
         debugger.pause();
         debugger.pump(1000);
         CHECK(machine.TimelineTicks() == 101);
+    }
+}
+
+TEST_CASE("debugger: reset restores startup hardware and BIOS while retaining cartridge RAM RTC and breakpoints") {
+    constexpr std::array boot_modes{false, true};
+    constexpr std::array rtc_modes{false, true};
+    for (const auto [model, skip_boot, real_clock] : std::views::cartesian_product(debug_models, boot_modes, rtc_modes)) {
+        const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = skip_boot, .realRTC = real_clock};
+        Gameboy machine(settings);
+        Gameboy fresh(settings);
+        auto &cartridge{machine.[:debug_member<Gameboy>("cartridge_"):]};
+        auto &fresh_cartridge{fresh.[:debug_member<Gameboy>("cartridge_"):]};
+        cartridge.[:debug_member<Cartridge>("gameRamSize"):] = Cartridge::MAX_RAM_SIZE;
+        fresh_cartridge.[:debug_member<Cartridge>("gameRamSize"):] = Cartridge::MAX_RAM_SIZE;
+        EmulationSession session(machine);
+        Debugger debugger(session);
+        const auto startup_address{machine.debug_instruction_address()};
+        const auto startup_bank{machine.debug_instruction_bank()};
+        debugger.breakpoints.push_back({DebugStopKind::Execute, startup_address, startup_address, startup_bank});
+        debugger.step_frame();
+        debugger.step_ticks(23);
+        REQUIRE(machine.TimelineTicks() > 0);
+        REQUIRE(debugger.trace_size() > 0);
+        machine.DebugPoke(WRAM_BEGIN, 0x42);
+        cartridge.[:debug_member<Cartridge>("gameRam_"):].front() = 0xAB;
+        cartridge.[:debug_member<Cartridge>("gameRam_"):].back() = 0xCD;
+        auto &rtc{machine.[:debug_member<Gameboy>("rtc_"):]};
+        rtc.WriteRTC(0x08, 37);
+        rtc.WriteRTC(0x09, 12);
+        rtc.counter_ = 12345;
+        const auto clock{rtc};
+        fresh.[:debug_member<Gameboy>("rtc_"):] = clock;
+        fresh_cartridge.restore_ram(cartridge.ram_bytes());
+        const auto expected{fresh.SaveState()};
+        session.SetPhysicalButton(Keys::A, true);
+        session.SetOverrides(0xFF, 0x80);
+        session.QueueState(machine.SaveState());
+        unsigned loads{};
+        unsigned before_frames{};
+        session.SetEventHandler([&](const SessionEvent event, const uint64_t frame) {
+            if (event == SessionEvent::StateLoaded) {
+                ++loads;
+                CHECK(frame == 0);
+            }
+            if (event == SessionEvent::BeforeFrame)
+                ++before_frames;
+        });
+        debugger.run_to(0x1234);
+        debugger.reset();
+        CHECK(machine.SaveState() == expected);
+        CHECK(machine.TimelineTicks() == 0);
+        CHECK(machine.InstructionsCompleted() == 0);
+        CHECK(machine.debug_instruction_address() == startup_address);
+        CHECK(machine.debug_instruction_bank() == startup_bank);
+        CHECK(machine.GetModel() == model);
+        CHECK(machine.UsesRealRTC() == real_clock);
+        CHECK(rtc.[:debug_member<RealTimeClock>("zeroTime_"):] == clock.[:debug_member<RealTimeClock>("zeroTime_"):]);
+        CHECK(machine.PressedButtons() == 0);
+        CHECK(session.PhysicalButtons() == 0);
+        CHECK(session.FrameCount() == 0);
+        CHECK(session.StateGeneration() == 1);
+        CHECK(session.frame_ticks_remaining() == Gameboy::FRAME_CYCLES_DMG * 2);
+        CHECK(debugger.paused());
+        CHECK(debugger.trace_size() == 0);
+        REQUIRE(debugger.breakpoints.size() == 1);
+        CHECK(debugger.breakpoints[0].bank == startup_bank);
+        CHECK(loads == 1);
+        CHECK(machine.ConsumeFrame());
+        std::array<float, 16> audio{};
+        CHECK(machine.ReadAudioSamples(audio.data(), audio.size()) == 0);
+        debugger.resume();
+        debugger.pump(100);
+        REQUIRE(debugger.paused());
+        CHECK(machine.TimelineTicks() == 0);
+        CHECK(before_frames == 1);
+        debugger.step_instruction();
+        CHECK(machine.InstructionsCompleted() == 1);
+        CHECK(machine.TimelineTicks() > 0);
+        CHECK(before_frames == 1);
+        CHECK(machine.PressedButtons() == 0);
+    }
+}
+
+TEST_CASE("debugger: session reset preserves playback state and rejects resets during frame callbacks") {
+    constexpr std::array paused_states{false, true};
+    for (const auto paused : paused_states) {
+        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        EmulationSession session(machine);
+        session.SetEventHandler([&](const SessionEvent event, uint64_t) {
+            if (event == SessionEvent::BeforeFrame)
+                CHECK_THROWS_AS(session.reset(), std::logic_error);
+        });
+        REQUIRE(session.RunFrame());
+        session.SetPaused(paused);
+        session.reset();
+        CHECK(session.Paused() == paused);
+        CHECK(machine.TimelineTicks() == 0);
+        CHECK(session.FrameCount() == 0);
+    }
+}
+
+TEST_CASE("debugger: code listing covers all physical ROM banks and handles truncated boundary instructions") {
+    constexpr std::array bank_counts{4u, 512u};
+    for (const auto bank_count : bank_counts) {
+        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto &cartridge{machine.[:debug_member<Gameboy>("cartridge_"):]};
+        auto &rom{cartridge.[:debug_member<Cartridge>("gameRom_"):]};
+        rom.assign(bank_count * ROM_BANK_SIZE, 0);
+        rom[0x100] = 0x01;
+        rom[0x101] = 0x01;
+        rom[0x103] = 0x3E;
+        rom[ROM_BANK_SIZE - 1] = 0xCD;
+        rom[2 * ROM_BANK_SIZE] = 0x3E;
+        rom[2 * ROM_BANK_SIZE + 1] = 0x42;
+        rom.back() = 0xCB;
+        EmulationSession session(machine);
+        Debugger debugger(session);
+        CodeListing listing(machine, debugger);
+        const auto snapshot{machine.SaveDebugState()};
+        listing.update(CodeSource::Cartridge);
+        CHECK(listing.size() > 64);
+        CHECK(listing.entry(0).offset == 0);
+        const auto end_of_bank{listing.entry(listing.find_row(ROM_BANK_SIZE - 1))};
+        CHECK(end_of_bank.instruction.text == "DB $CD");
+        CHECK(end_of_bank.instruction.size == 1);
+        const auto inactive_bank{listing.entry(listing.find_row(2 * ROM_BANK_SIZE))};
+        CHECK(inactive_bank.bank == 2);
+        CHECK(inactive_bank.source == CodeSource::Cartridge);
+        CHECK(inactive_bank.instruction.address == ROM_BANK_SIZE);
+        CHECK(inactive_bank.instruction.text == "LD A, $42");
+        CHECK_FALSE(listing.is_current(inactive_bank));
+        const auto last{listing.entry(listing.size() - 1)};
+        CHECK(last.offset == rom.size() - 1);
+        CHECK(last.bank == bank_count - 1);
+        CHECK(last.instruction.address == VRAM_BEGIN - 1);
+        CHECK(last.instruction.text == "DB $CB");
+        CHECK(listing.find_row(0xFFFFFFFF) == listing.size() - 1);
+        CHECK_THROWS_AS(static_cast<void>(listing.entry(listing.size())), std::out_of_range);
+        listing.update(CodeSource::Cartridge, 2 * ROM_BANK_SIZE + 1);
+        CHECK(listing.entry(listing.find_row(2 * ROM_BANK_SIZE + 1)).instruction.text == "LD B, D");
+        listing.update(CodeSource::Cartridge, 0x101);
+        const auto anchored_row{listing.find_row(0x101)};
+        CHECK(listing.entry(anchored_row).instruction.text == "LD BC, $3E00");
+        CHECK(listing.entry(anchored_row + 1).offset == 0x104);
+        CHECK(listing.entry(anchored_row + 2).offset == 0x105);
+        CHECK(machine.SaveDebugState() == snapshot);
+    }
+}
+
+TEST_CASE("debugger: BIOS listing remains inspectable after unmapping and distinguishes cartridge overlay gaps") {
+    for (const auto model : debug_models) {
+        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = model});
+        EmulationSession session(machine);
+        Debugger debugger(session);
+        CodeListing listing(machine, debugger);
+        const auto snapshot{machine.SaveDebugState()};
+        REQUIRE_FALSE(machine.BootromBytes().empty());
+        REQUIRE(listing.execution_source() == CodeSource::Bios);
+        listing.update(CodeSource::Bios, listing.execution_offset());
+        const auto current{listing.entry(listing.find_row(listing.execution_offset()))};
+        CHECK(listing.is_current(current));
+        CHECK(current.bank == BOOT_ROM_BANK);
+        CHECK(current.instruction.bytes[0] == machine.BootromBytes()[current.offset]);
+        for (auto row{0u}; row < listing.size(); ++row) {
+            const auto entry{listing.entry(row)};
+            CHECK((entry.offset < BOOT_ROM_LOW_END || entry.offset >= BOOT_ROM_HIGH_BEGIN));
+            CHECK(entry.source == CodeSource::Bios);
+        }
+        listing.update(CodeSource::Mapped, BOOT_ROM_LOW_END);
+        CHECK(listing.entry(0).source == CodeSource::Bios);
+        CHECK(listing.entry(listing.find_row(BOOT_ROM_LOW_END)).source == CodeSource::Cartridge);
+        if (IsCgb(model))
+            CHECK(listing.entry(listing.find_row(BOOT_ROM_HIGH_BEGIN)).source == CodeSource::Bios);
+        listing.update(CodeSource::Cartridge, 0);
+        CHECK(listing.entry(0).source == CodeSource::Cartridge);
+        CHECK(listing.entry(0).instruction.bytes[0] == machine.rom_bytes()[0]);
+        CHECK_FALSE(listing.is_current(listing.entry(0)));
+        CHECK(machine.SaveDebugState() == snapshot);
+        auto &bus{machine.[:debug_member<Gameboy>("bus_"):]};
+        bus.bootromRunning = false;
+        listing.update(CodeSource::Bios, 0);
+        CHECK(listing.entry(0).instruction.bytes[0] == machine.BootromBytes()[0]);
+        listing.update(CodeSource::Mapped, 0);
+        CHECK(listing.entry(0).source == CodeSource::Cartridge);
+        debugger.reset();
+        CHECK(listing.execution_source() == CodeSource::Bios);
     }
 }

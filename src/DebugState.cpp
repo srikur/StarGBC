@@ -1,5 +1,26 @@
 #include "Gameboy.h"
 
+void Cartridge::restore_ram(const std::span<const uint8_t> bytes) {
+    if (bytes.size() != gameRamSize)
+        throw std::invalid_argument("cartridge RAM size mismatch");
+    std::ranges::copy(bytes, gameRam_.begin());
+    MarkRamDirty();
+}
+
+void Gameboy::reset_to_startup(const std::span<const std::byte> state) {
+    if (inputSink_)
+        throw std::logic_error("Stop input recording before resetting the ROM");
+    const std::vector<uint8_t> ram(cartridge_.ram_bytes().begin(), cartridge_.ram_bytes().end());
+    const auto clock{rtc_};
+    if (!LoadState(state))
+        throw std::invalid_argument("invalid startup state");
+    cartridge_.restore_ram(ram);
+    rtc_ = clock;
+    cpu_.RestoreInstructionCount(0);
+    gpu_.screenData.fill(0);
+    gpu_.frameReady = true;
+}
+
 namespace {
     struct DebugSupplement {
         std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screen;

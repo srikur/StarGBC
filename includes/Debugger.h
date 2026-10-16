@@ -26,6 +26,7 @@ public:
     Debugger &operator=(const Debugger &) = delete;
 
     void pause();
+    void reset();
     void resume();
     void step_instruction();
     void step_over();

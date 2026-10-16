@@ -4,6 +4,16 @@
 #include <filesystem>
 #include <imgui.h>
 
+namespace {
+    template<class T>
+    consteval std::meta::info debug_member(const std::string_view name) {
+        for (const auto member : std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::unchecked()))
+            if (std::meta::identifier_of(member) == name)
+                return member;
+        throw "Unknown debugger test member";
+    }
+}
+
 TEST_CASE("frontend: every inspector renders without advancing the machine and input stays isolated") {
     REQUIRE(SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy"));
     REQUIRE(SDL_Init(SDL_INIT_VIDEO));
@@ -16,6 +26,7 @@ TEST_CASE("frontend: every inspector renders without advancing the machine and i
     const std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(raw_window, SDL_DestroyWindow);
     const std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer(raw_renderer, SDL_DestroyRenderer);
     Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    machine.[:debug_member<Gameboy>("cartridge_"):].[:debug_member<Cartridge>("gameRom_"):].resize(512 * ROM_BANK_SIZE);
     EmulationSession session(machine);
     DebuggerWindow debugger(session, window.get(), renderer.get(), [](uint8_t) {}, [](uint8_t) {});
     const auto snapshot{machine.SaveDebugState()};
@@ -27,6 +38,17 @@ TEST_CASE("frontend: every inspector renders without advancing the machine and i
         debugger.render();
         REQUIRE(ImGui::GetDrawData());
         CHECK(ImGui::GetDrawData()->TotalVtxCount > 0);
+        CHECK(machine.SaveDebugState() == snapshot);
+    }
+    constexpr std::array code_sources{CodeSource::Cartridge, CodeSource::Bios, CodeSource::Mapped};
+    constexpr std::array offsets{0u, 0x4000u, 0x7FFFu, 0x7FFFFFu, 0xFFFFFFFFu};
+    for (const auto [source, offset] : std::views::cartesian_product(code_sources, offsets)) {
+        debugger.show_code(source, offset);
+        debugger.render();
+        debugger.render();
+        REQUIRE(ImGui::GetDrawData());
+        CHECK(ImGui::GetDrawData()->TotalVtxCount > 0);
+        CHECK(ImGui::GetDrawData()->TotalVtxCount < 200000);
         CHECK(machine.SaveDebugState() == snapshot);
     }
     SDL_Event key{};
@@ -53,6 +75,15 @@ TEST_CASE("frontend: every inspector renders without advancing the machine and i
     debugger.controller().pump(32);
     CHECK(debugger.handle_event(key));
     CHECK(session.Paused());
+    key.key.key = SDLK_F8;
+    CHECK(debugger.handle_event(key));
+    CHECK(session.Paused());
+    CHECK(session.StateGeneration() == 1);
+    CHECK(machine.InstructionsCompleted() == 0);
+    CHECK(machine.TimelineTicks() == 0);
+    CHECK(debugger.controller().trace_size() == 0);
+    debugger.render();
+    debugger.render();
     debugger.toggle();
     CHECK_FALSE(debugger.visible());
     int width{}, height{};

@@ -16,12 +16,24 @@ namespace {
     }
 
     void text(const std::string &value) { ImGui::TextUnformatted(value.c_str()); }
+
+    ImVec4 source_color(const CodeSource source) {
+        switch (source) {
+            case CodeSource::Bios:
+                return {1, 0.75f, 0.3f, 1};
+            case CodeSource::Cartridge:
+                return {0.4f, 0.85f, 1, 1};
+            case CodeSource::Mapped:
+                return {0.7f, 0.7f, 0.7f, 1};
+        }
+        return {1, 1, 1, 1};
+    }
 }
 
 DebuggerWindow::DebuggerWindow(EmulationSession &session, SDL_Window *window, SDL_Renderer *renderer, std::function<void(uint8_t)> save_state,
                                std::function<void(uint8_t)> load_state) :
-    session_(session), machine_(session.Machine()), debugger_(session), save_state_(std::move(save_state)), load_state_(std::move(load_state)),
-    window_(window), renderer_(renderer) {
+    session_(session), machine_(session.Machine()), debugger_(session), code_listing_(machine_, debugger_), save_state_(std::move(save_state)),
+    load_state_(std::move(load_state)), window_(window), renderer_(renderer) {
     session_.FocusLost();
     SDL_GetWindowSize(window_, &game_width_, &game_height_);
     SDL_SetWindowSize(window_, std::max(1400, game_width_), std::max(900, game_height_));
@@ -113,9 +125,26 @@ bool DebuggerWindow::handle_shortcut(const SDL_KeyboardEvent &key) {
         action([&] { debugger_.step_frame(); });
     else if (key.key == SDLK_F7)
         action([&] { debugger_.step_scanline(); });
+    else if (key.key == SDLK_F8)
+        action([&] { reset(); });
     else
         return false;
     return true;
+}
+
+void DebuggerWindow::reset() {
+    debugger_.reset();
+    follow_instruction_ = true;
+    followed_instruction_.reset();
+    code_scroll_ = true;
+    game_input_ = false;
+}
+
+void DebuggerWindow::show_code(const CodeSource source, const uint32_t offset) {
+    code_source_ = source;
+    code_offset_ = offset;
+    follow_instruction_ = false;
+    code_scroll_ = true;
 }
 
 bool DebuggerWindow::handle_event(const SDL_Event &event) {
@@ -187,6 +216,9 @@ void DebuggerWindow::render() {
     ImGui::SameLine();
     if (ImGui::Button("Frame (F6)"))
         action([&] { debugger_.step_frame(); });
+    ImGui::SameLine();
+    if (ImGui::Button("Reset ROM (F8)"))
+        action([&] { reset(); });
     text(debugger_.status());
     if (!error_.empty())
         ImGui::TextColored({1, 0.5f, 0.4f, 1}, "%s", error_.c_str());
@@ -206,7 +238,7 @@ void DebuggerWindow::render() {
     ImGui::Separator();
     const auto state{machine_.Inspect()};
     if (ImGui::BeginTable("workspace", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV)) {
-        ImGui::TableSetupColumn("CPU", ImGuiTableColumnFlags_WidthFixed, 430);
+        ImGui::TableSetupColumn("CPU", ImGuiTableColumnFlags_WidthFixed, 490);
         ImGui::TableSetupColumn("Inspectors", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableNextColumn();
         ImGui::BeginChild("cpu", {0, 0});
@@ -291,70 +323,127 @@ void DebuggerWindow::draw_cpu(const MachineInspection &state) {
                      state.interrupts.cpuVisibleFlags));
     text(std::format("Z {}  N {}  H {}  C {} | {}{}{}", bool(cpu.af & 0x80), bool(cpu.af & 0x40), bool(cpu.af & 0x20), bool(cpu.af & 0x10),
                      cpu.halted ? "HALT " : "", cpu.stopped ? "STOP " : "", cpu.locked ? "LOCK " : ""));
-    text(std::format("Instruction {:04X}:{:04X} | opcode {:04X}", machine_.debug_instruction_bank(), machine_.debug_instruction_address(),
-                     cpu.instruction));
+    ImGui::TextColored(source_color(code_listing_.execution_source()), "%s", CodeListing::source_label(code_listing_.execution_source()).data());
+    ImGui::SameLine();
+    text(std::format("{:04X}:{:04X} | opcode {:04X}", machine_.debug_instruction_bank(), machine_.debug_instruction_address(), cpu.instruction));
     text(std::format("{} | M-cycle {} | instruction cycle {}", machine_.debug_instruction_boundary() ? "Boundary" : "In progress", cpu.machineCycle,
                      cpu.instructionCycle));
     text(std::format("PPU mode {} | LY {} | dot {} | pixels {}", static_cast<int>(state.ppu.mode), state.ppu.ly, state.ppu.dot,
                      state.ppu.pixelsDrawn));
-    ImGui::SeparatorText("Disassembly");
-    ImGui::Checkbox("Follow instruction", &follow_instruction_);
-    ImGui::SameLine();
-    if (hex_input("Go##code", code_address_))
-        follow_instruction_ = false;
-    if (follow_instruction_)
-        code_address_ = machine_.debug_instruction_address();
-    ImGui::TextDisabled("Click an instruction for breakpoint / run-to / memory");
-    if (ImGui::BeginTable("code", 3, ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg, {0, ImGui::GetContentRegionAvail().y - 140})) {
-        ImGui::TableSetupColumn("Bank:Address", ImGuiTableColumnFlags_WidthFixed, 115);
-        ImGui::TableSetupColumn("Bytes", ImGuiTableColumnFlags_WidthFixed, 80);
-        ImGui::TableSetupColumn("Instruction");
-        auto address{code_address_};
-        for (auto row{0u}; row < 64; ++row) {
-            const auto decoded{debugger_.instruction(address)};
-            const auto bank{machine_.debug_bank(address)};
-            const auto current{address == machine_.debug_instruction_address()};
-            const auto has_breakpoint{std::ranges::any_of(debugger_.breakpoints, [&](const DebugBreakpoint &point) {
-                return point.enabled && point.kind == DebugStopKind::Execute && point.first <= address && point.last >= address &&
-                       (!point.bank || *point.bank == bank);
-            })};
-            ImGui::PushID(row);
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            const auto label{std::format("{}{:04X}:{:04X}", has_breakpoint ? "*" : " ", bank, address)};
-            if (ImGui::Selectable(label.c_str(), current, ImGuiSelectableFlags_SpanAllColumns))
-                ImGui::OpenPopup("instruction");
-            if (ImGui::BeginPopup("instruction")) {
-                text(decoded.text);
-                if (ImGui::MenuItem("Add execution breakpoint"))
-                    debugger_.breakpoints.push_back({DebugStopKind::Execute, address, address, bank});
-                if (ImGui::MenuItem("Run to here"))
-                    action([&] { debugger_.run_to(address, bank); });
-                if (ImGui::MenuItem("Select in memory")) {
-                    memory_address_ = address & 0xFFF0;
-                    memory_source_ = 0;
-                    memory_follow_pc_ = false;
-                    show_panel(DebugPanel::Memory);
-                }
-                ImGui::EndPopup();
-            }
-            ImGui::TableNextColumn();
-            std::string bytes;
-            for (const auto value : std::span(decoded.bytes).first(decoded.size))
-                bytes += std::format("{:02X} ", value);
-            text(bytes);
-            ImGui::TableNextColumn();
-            text(decoded.text);
-            ImGui::PopID();
-            address += decoded.size;
-        }
-        ImGui::EndTable();
-    }
+    draw_code();
     ImGui::SeparatorText("Stack (raw words)");
     for (auto row{0u}; row < 4; ++row) {
         const auto address{static_cast<uint16_t>(cpu.sp + row * 2)};
         text(std::format("${:04X}: {:04X}", address,
                          debugger_.read_memory(address) | debugger_.read_memory(static_cast<uint16_t>(address + 1)) << 8));
+    }
+}
+
+void DebuggerWindow::draw_code() {
+    ImGui::SeparatorText("Disassembly");
+    if (ImGui::Checkbox("Follow instruction", &follow_instruction_)) {
+        followed_instruction_.reset();
+        code_scroll_ = true;
+    }
+    ImGui::SameLine();
+    auto selected_source{static_cast<int>(code_source_)};
+    ImGui::SetNextItemWidth(180);
+    if (ImGui::Combo("##code-source", &selected_source, "Mapped memory\0Cartridge ROM\0BIOS\0"))
+        show_code(static_cast<CodeSource>(selected_source), 0);
+    if (follow_instruction_) {
+        const auto identity{uint64_t{machine_.debug_instruction_bank()} << 16 | machine_.debug_instruction_address()};
+        const auto source{code_listing_.execution_source()};
+        code_scroll_ |= followed_instruction_ != identity || code_source_ != source;
+        followed_instruction_ = identity;
+        code_source_ = source;
+        code_offset_ = code_listing_.execution_offset();
+    }
+    ImGui::SetNextItemWidth(100);
+    if (ImGui::InputScalar(code_source_ == CodeSource::Cartridge ? "File offset" : "Address", ImGuiDataType_U32, &code_offset_, nullptr, nullptr,
+                           "%06X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue))
+        show_code(code_source_, code_offset_);
+    if (code_source_ == CodeSource::Cartridge) {
+        ImGui::SameLine();
+        auto bank{static_cast<uint16_t>(code_offset_ / ROM_BANK_SIZE)};
+        if (hex_input("Bank##code", bank))
+            show_code(CodeSource::Cartridge, uint32_t{bank} * ROM_BANK_SIZE);
+        ImGui::TextDisabled("%zu bytes | %zu banks | all cartridge banks", machine_.rom_bytes().size(),
+                            (machine_.rom_bytes().size() + ROM_BANK_SIZE - 1) / ROM_BANK_SIZE);
+    } else
+        ImGui::TextDisabled(code_source_ == CodeSource::Bios ? "BIOS instructions (amber) | cartridge instructions (blue)"
+                                                             : "Current CPU mapping | BIOS amber, cartridge blue, RAM gray");
+    code_listing_.update(code_source_, code_offset_);
+    if (!code_listing_.size()) {
+        ImGui::TextDisabled("No BIOS loaded. Restart with the BIOS enabled to inspect it.");
+        return;
+    }
+    const auto scroll_row{static_cast<int>(code_listing_.find_row(code_offset_))};
+    ImGui::TextDisabled("Click a row for breakpoint / run-to / memory");
+    const auto height{std::max(100.0f, ImGui::GetContentRegionAvail().y - 120)};
+    if (ImGui::BeginTable("code", 4, ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg, {0, height})) {
+        ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_WidthFixed, 40);
+        ImGui::TableSetupColumn("Bank:Address", ImGuiTableColumnFlags_WidthFixed, 105);
+        ImGui::TableSetupColumn("Bytes", ImGuiTableColumnFlags_WidthFixed, 75);
+        ImGui::TableSetupColumn("Instruction");
+        ImGui::TableSetupScrollFreeze(0, 1);
+        ImGui::TableHeadersRow();
+        if (ImGui::IsWindowHovered() && (ImGui::GetIO().MouseWheel != 0 || ImGui::IsMouseDragging(ImGuiMouseButton_Left))) {
+            follow_instruction_ = false;
+            code_scroll_ = false;
+        }
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(code_listing_.size()));
+        if (code_scroll_)
+            clipper.IncludeItemByIndex(scroll_row);
+        while (clipper.Step()) {
+            for (auto row{clipper.DisplayStart}; row < clipper.DisplayEnd; ++row) {
+                const auto entry{code_listing_.entry(row)};
+                const auto &decoded{entry.instruction};
+                const auto address{decoded.address};
+                const auto bank{entry.bank};
+                const auto current{code_listing_.is_current(entry)};
+                const auto has_breakpoint{std::ranges::any_of(debugger_.breakpoints, [&](const DebugBreakpoint &point) {
+                    return point.enabled && point.kind == DebugStopKind::Execute && point.first <= address && point.last >= address &&
+                           (!point.bank || *point.bank == bank);
+                })};
+                ImGui::PushID(row);
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextColored(source_color(entry.source), "%s", CodeListing::source_label(entry.source).data());
+                ImGui::TableNextColumn();
+                const auto label{std::format("{}{:04X}:{:04X}", has_breakpoint ? "*" : " ", bank, address)};
+                if (ImGui::Selectable(label.c_str(), current, ImGuiSelectableFlags_SpanAllColumns))
+                    ImGui::OpenPopup("instruction");
+                if (ImGui::IsItemHovered() && code_source_ == CodeSource::Cartridge)
+                    ImGui::SetTooltip("ROM file offset: %06X", entry.offset);
+                if (code_scroll_ && row == scroll_row)
+                    ImGui::SetScrollHereY(0.3f);
+                if (ImGui::BeginPopup("instruction")) {
+                    text(decoded.text);
+                    if (ImGui::MenuItem("Add execution breakpoint"))
+                        debugger_.breakpoints.push_back({DebugStopKind::Execute, address, address, bank});
+                    if (ImGui::MenuItem("Run to here"))
+                        action([&] { debugger_.run_to(address, bank); });
+                    if (ImGui::MenuItem("Select in memory", nullptr, false, bank == machine_.debug_bank(address))) {
+                        memory_address_ = address & 0xFFF0;
+                        memory_source_ = 0;
+                        memory_follow_pc_ = false;
+                        show_panel(DebugPanel::Memory);
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::TableNextColumn();
+                std::string bytes;
+                for (const auto value : std::span(decoded.bytes).first(decoded.size))
+                    bytes += std::format("{:02X} ", value);
+                text(bytes);
+                ImGui::TableNextColumn();
+                text(decoded.text);
+                ImGui::PopID();
+            }
+        }
+        code_scroll_ = false;
+        ImGui::EndTable();
     }
 }
 
@@ -711,12 +800,21 @@ void DebuggerWindow::draw_trace() {
 
 void DebuggerWindow::draw_help() {
     ImGui::TextWrapped("F5: run/pause. F11: step into. F10: step over CALL/RST. Shift+F11: step out using the return address at SP. F7: next "
-                       "scanline. F6: finish the current emulation frame. F12: switch between game and debugger layouts.");
+                       "scanline. F6: finish the current emulation frame. F8: reset the ROM and pause at startup. F12: switch between game and "
+                       "debugger layouts.");
     ImGui::Separator();
-    ImGui::TextWrapped("Lua scripts: Shift+F5 starts/stops the selected script. Ctrl+F5 reloads an active script while debugging. In the normal game layout, F5 retains its script-reload shortcut.");
+    ImGui::TextWrapped("Lua scripts: Shift+F5 starts/stops the selected script. Ctrl+F5 reloads an active script while debugging. In the normal game "
+                       "layout, F5 retains its script-reload shortcut.");
     ImGui::TextWrapped("Click the live game view for joypad input. Clicking debugger controls returns keyboard focus to the debugger. Debugger "
                        "typing never reaches the game. Execution breakpoints match the prefetched instruction address and bank; the PC register can "
-                       "already point to an operand. Disassembly shows current mapped memory, which can differ from a previously prefetched opcode.");
+                       "already point to an operand. Disassembly bytes can differ from a previously prefetched opcode.");
+    ImGui::TextWrapped("Cartridge ROM shows every bank, including banks that are not currently mapped. Jump by bank or ROM file offset, or scroll "
+                       "through the entire file. BIOS instructions are amber and labeled BIOS; cartridge instructions are blue and labeled ROM. "
+                       "Follow instruction selects the executing source automatically. Scrolling or choosing a source disables following. "
+                       "Data is also decoded as instructions; jump to an exact offset to decode from that byte.");
+    ImGui::TextWrapped(
+            "Reset restarts with the original model and BIOS settings, preserves cartridge RAM, RTC and breakpoints, and clears the "
+            "trace and held buttons. Lua receives its state-load callback. F8 also resets in the game layout, preserving run/pause state.");
     ImGui::Separator();
     ImGui::TextWrapped("Into completes the current instruction, including CB prefixes. HALT/STOP/LOCK are reported instead of spinning. Use clock, "
                        "line, frame or Run to advance peripherals. Read/write watchpoints may stop midway through an instruction; Into finishes it. "

@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <functional>
+#include "CodeListing.h"
 #include "DebugGraphics.h"
 #include "Debugger.h"
 
@@ -21,6 +22,8 @@ public:
     void render();
     void toggle();
     void show_panel(DebugPanel panel) { requested_panel_ = panel; }
+    void show_code(CodeSource source, uint32_t offset);
+    void reset();
     bool handle_shortcut(const SDL_KeyboardEvent &key);
     [[nodiscard]] bool visible() const { return visible_; }
     [[nodiscard]] Debugger &controller() { return debugger_; }
@@ -30,6 +33,7 @@ private:
     bool begin_panel(DebugPanel panel, const char *label);
     void action(const std::function<void()> &run);
     void draw_cpu(const MachineInspection &state);
+    void draw_code();
     void draw_memory();
     void draw_breakpoints();
     void draw_graphics(const GraphicsInspection &graphics);
@@ -44,6 +48,7 @@ private:
     EmulationSession &session_;
     Gameboy &machine_;
     Debugger debugger_;
+    CodeListing code_listing_;
     std::function<void(uint8_t)> save_state_;
     std::function<void(uint8_t)> load_state_;
     SDL_Window *window_{};
@@ -65,7 +70,10 @@ private:
     int memory_source_{};
     int memory_bank_{};
     uint16_t memory_address_{WRAM_BEGIN};
-    uint16_t code_address_{};
+    CodeSource code_source_{CodeSource::Cartridge};
+    uint32_t code_offset_{};
+    bool code_scroll_{true};
+    std::optional<uint64_t> followed_instruction_;
     uint16_t edit_address_{WRAM_BEGIN};
     uint8_t edit_value_{};
     uint16_t breakpoint_address_{};
