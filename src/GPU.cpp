@@ -831,21 +831,13 @@ void GPU::TickMode3() {
             fetcherTileDataLow_ = savedBgTileDataLow_;
             fetcherTileDataHigh_ = savedBgTileDataHigh_;
             lastAddress_ = savedBgLastAddress_;
+            if (pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7)
+                CheckForWindowTrigger();
             // A tile-number read pending on the resumed fetch — including one
             // belonging to a window activation deferred by this sprite — can
             // execute on the merge dot itself when the fetcher's 2-dot
             // cadence allows it
             if ((scanlineCounter & 1) == 0) {
-                if (pixelsDrawn == 0 && !isFetchingWindow_ && Bit<LCDC_WINDOW_ENABLE>(lcdc) && window_y_matched() && windowX <= 7 &&
-                    backgroundQueue.empty()) {
-                    if (windowActivatePending_ || (window_y_matched() && (!is_cgb || !isFetchingWindow_))) {
-                        CheckForWindowTrigger();
-                    } else {
-                        // The full check reduces to the match latch when the window cannot
-                        // trigger or glitch this frame
-                        windowMatchLatch_ = pixelsDrawn + 7 == windowX;
-                    }
-                }
                 if (fetcherState_ == FetcherState::GetTile && fetcherDelay_ == 0) {
                     Fetcher_StepBackgroundFetch();
                 }
