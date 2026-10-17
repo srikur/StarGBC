@@ -4136,7 +4136,7 @@ Current Performance: (4367/4372)
 | hacktix/bully.gb (DMG)                                                                             | :white_check_mark: |
 | hacktix/bully.gb (GBC)                                                                             | :white_check_mark: |
 | hacktix/strikethrough.gb                                                                           | :white_check_mark: |
-| little-things-gb/firstwhite.gb                                                                     | :x:                |
+| little-things-gb/firstwhite.gb                                                                     | :white_check_mark: |
 | little-things-gb/tellinglys.gb                                                                     | :white_check_mark: |
 | magentests/bg_oam_priority.gbc                                                                     | :white_check_mark: |
 | magentests/hblank_vram_dma.gbc                                                                     | :white_check_mark: |

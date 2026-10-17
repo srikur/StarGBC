@@ -656,12 +656,6 @@
       "applicability": null
     },
     {
-      "rom": "roms/little-things-gb/firstwhite.gb",
-      "romHash": "ac0e653d61802cdb2560275caef71872e0a442a27aee9bec492f46aa92785d09",
-      "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
-      "applicability": null
-    },
-    {
       "rom": "roms/little-things-gb/tellinglys.gb",
       "romHash": "f1552ca9cdad950bf9544c5c64ec3e630e6bde4040d98b19622d96a4cc4e5e80",
       "reason": "Bundled but not registered by the pre-migration runners; assertion contract and applicability remain unverified",
