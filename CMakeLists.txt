@@ -8,6 +8,23 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 
 project(StarGBC VERSION 0.0.1 LANGUAGES CXX)
 
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-std=c++26 STARGBC_CXX26_SUPPORTED)
+if (NOT STARGBC_CXX26_SUPPORTED)
+    message(FATAL_ERROR "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER}) "
+            "does not accept -std=c++26. StarGBC requires a C++26-capable compiler; "
+            "select one with CXX=<compiler> or -DCMAKE_CXX_COMPILER=<compiler>.")
+endif ()
+
+# Ninja preferred but not required
+if (NOT CMAKE_GENERATOR MATCHES "Ninja")
+    find_program(STARGBC_NINJA_EXECUTABLE ninja)
+    if (STARGBC_NINJA_EXECUTABLE)
+        message(STATUS "Ninja is installed but the ${CMAKE_GENERATOR} generator is in use; "
+                "configure with CMAKE_GENERATOR=Ninja (or -G Ninja) in a fresh build directory for faster builds")
+    endif ()
+endif ()
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT STARGBC_IPO_SUPPORTED OUTPUT STARGBC_IPO_ERROR LANGUAGES CXX)
 if (NOT STARGBC_IPO_SUPPORTED)
@@ -65,10 +82,11 @@ if (STARGBC_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON CACHE BOOL
             "Enable link-time optimization in Release builds")
 endif ()
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # C++26 reflection (experimental in GCC 16); static runtimes so the binary
-    # doesn't depend on Homebrew's libstdc++/libgcc dylibs
+check_cxx_compiler_flag(-freflection STARGBC_FREFLECTION_SUPPORTED)
+if (STARGBC_FREFLECTION_SUPPORTED)
     add_compile_options(-freflection)
+endif ()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_link_options(-static-libstdc++ -static-libgcc)
     if (APPLE)
         # The macOS SDK's Annex K declarations (rsize_t/errno_t) are
