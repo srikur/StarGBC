@@ -1,5 +1,30 @@
 #include "Gameboy.h"
 
+GraphicsInspection Gameboy::inspect_graphics() const { return gpu_.inspect_graphics(bus_.cgbMode); }
+
+GraphicsInspection GPU::inspect_graphics(const bool cgb_mode) const {
+    GraphicsInspection result{.vram = vram,
+                              .oam = oam,
+                              .cgb_mode = cgb_mode,
+                              .lcd_control = lcdc,
+                              .scroll_x = scrollX,
+                              .scroll_y = scrollY,
+                              .window_x = windowX,
+                              .window_y = windowY};
+    constexpr std::array palettes{0_u8, 1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8};
+    constexpr std::array colors{0_u8, 1_u8, 2_u8, 3_u8};
+    for (const auto [palette, color] : std::views::cartesian_product(palettes, colors)) {
+        const auto index{palette * 4 + color};
+        const auto &background{bgpd[palette][color]};
+        const auto &object{obpd[palette][color]};
+        result.background_rgb15[index] = (background[0] & 31) | ((background[1] & 31) << 5) | ((background[2] & 31) << 10);
+        result.object_rgb15[index] = (object[0] & 31) | ((object[1] & 31) << 5) | ((object[2] & 31) << 10);
+        result.background_colors[index] = GetBackgroundColor(color, palette);
+        result.object_colors[index] = GetSpriteColor(color, cgb_mode ? palette : palette & 1);
+    }
+    return result;
+}
+
 AudioInspection Audio::Inspect() const {
     const auto channels = [](const Audio &audio) {
         const auto channel = [](const auto &value) -> AudioChannelInspection {

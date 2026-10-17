@@ -9,11 +9,18 @@ enum class SessionEvent { BeforeFrame, AfterFrame, StateLoaded };
 
 class EmulationSession {
 public:
-    explicit EmulationSession(Gameboy &gameboy) : gameboy_(gameboy) {}
+    explicit EmulationSession(Gameboy &gameboy) : gameboy_(gameboy) {
+        const auto state{gameboy.SaveState()};
+        startup_state_.assign(state.begin(), state.end());
+    }
 
     [[nodiscard]] Gameboy &Machine() const { return gameboy_; }
 
     bool RunFrame();
+
+    ExecutionResult run_slice(uint64_t max_ticks, const std::function<ExecutionResult(uint64_t)> &execute);
+
+    [[nodiscard]] uint64_t frame_ticks_remaining() const { return frame_ticks_remaining_; }
 
     [[nodiscard]] uint64_t FrameCount() const { return frameCount_; }
 
@@ -37,6 +44,8 @@ public:
 
     bool LoadState(std::span<const std::byte> state);
 
+    void reset();
+
     void QueueState(std::span<const std::byte> state);
 
     void CancelQueuedState() { pendingState_.clear(); }
@@ -51,6 +60,7 @@ private:
     Gameboy &gameboy_;
     std::function<void(SessionEvent, uint64_t)> handler_;
     std::vector<std::byte> pendingState_;
+    std::vector<std::byte> startup_state_;
     uint64_t frameCount_{0};
     uint64_t stateGeneration_{0};
     uint8_t physical_{0};
@@ -59,4 +69,6 @@ private:
     bool paused_{false};
     bool running_{false};
     bool dispatching_{false};
+    uint64_t frame_ticks_remaining_{Gameboy::FRAME_CYCLES_DMG * 2};
+    bool frame_active_{false};
 };

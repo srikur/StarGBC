@@ -99,6 +99,22 @@ public:
 
     [[nodiscard]] MachineInspection Inspect() const;
 
+    [[nodiscard]] GraphicsInspection inspect_graphics() const;
+
+    [[nodiscard]] uint16_t debug_instruction_address() const {
+        const auto cpu{cpu_.Inspect()};
+        return cpu.interruptState == InterruptState::M6 ? cpu.pc : cpu_.InstructionAddress();
+    }
+
+    [[nodiscard]] uint16_t debug_instruction_bank() const {
+        const auto cpu{cpu_.Inspect()};
+        return cpu.interruptState == InterruptState::M6 ? bus_.DebugBank(cpu.pc) : cpu_.InstructionBank();
+    }
+
+    [[nodiscard]] bool debug_instruction_boundary() const { return cpu_.AtInstructionBoundary(); }
+
+    [[nodiscard]] uint16_t debug_bank(const uint16_t address) const { return bus_.DebugBank(address); }
+
     [[nodiscard]] CpuInspection InspectCpu() const { return cpu_.Inspect(); }
 
     [[nodiscard]] RegisterInspection InspectRegister(uint16_t address) const;
@@ -124,6 +140,10 @@ public:
     [[nodiscard]] bool LoadDebugState(std::span<const std::byte> state);
 
     [[nodiscard]] std::span<const uint8_t> BootromBytes() const { return bus_.bootrom; }
+
+    [[nodiscard]] std::span<const uint8_t> rom_bytes() const { return cartridge_.rom_bytes(); }
+
+    void reset_to_startup(std::span<const std::byte> state);
 
     [[nodiscard]] bool UsesRealRTC() const { return rtc_.realRTC_; }
 
@@ -232,11 +252,10 @@ static constexpr void DeserializeFrom(T &obj, const std::byte *in) {
 
 inline constexpr std::size_t kGameboyStateSize = StateSizeOf(^^Gameboy);
 
-// GCC 16.2's -Wsfinae-incomplete flags the deduced return type resolving here after the
-// reflection queries probed the then-incomplete Gameboy; benign for this single-TU-style header
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsfinae-incomplete"
 inline auto Gameboy::SaveState() const {
+    // TODO: Cant remember if the SaveState()s in each component are actually doing I/O. Should change to only returning bytes if so
     std::array<std::byte, kGameboyStateSize> out{};
     SerializeInto(*this, out.data());
     return out;

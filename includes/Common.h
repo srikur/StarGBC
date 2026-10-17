@@ -26,6 +26,10 @@ using u64 = std::uint64_t;
 
 static constexpr u8 SCREEN_WIDTH = 160;
 static constexpr u8 SCREEN_HEIGHT = 144;
+static constexpr u16 ROM_BANK_SIZE = 0x4000;
+static constexpr u16 BOOT_ROM_BANK = 0xFFFF;
+static constexpr u16 BOOT_ROM_LOW_END = 0x0100;
+static constexpr u16 BOOT_ROM_HIGH_BEGIN = 0x0200;
 static constexpr u16 VRAM_BEGIN = 0x8000;
 static constexpr u16 VRAM_END = 0x9FFF;
 static constexpr u16 VRAM_SIZE = 0x4000;
@@ -37,6 +41,10 @@ static constexpr u16 WRAM_BEGIN = 0xC000;
 static constexpr u16 WRAM_END = 0xDFFF;
 static constexpr u16 ERAM_BEGIN = 0xE000;
 static constexpr u16 ERAM_END = 0xFDFF;
+static constexpr u16 HIGH_RAM_BEGIN = 0xFF80;
+static constexpr u16 INTERRUPT_ENABLE = 0xFFFF;
+static constexpr u16 BACKGROUND_MAP_LOW = 0x9800;
+static constexpr u16 BACKGROUND_MAP_HIGH = 0x9C00;
 
 static constexpr u16 SERIAL_TRANSFER_DATA = 0xFF01;
 static constexpr u16 SERIAL_TRANSFER_CONTROL = 0xFF02;

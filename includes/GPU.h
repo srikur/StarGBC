@@ -71,9 +71,15 @@ struct Stat {
     }
 };
 
+struct GraphicsInspection;
+
 class GPU {
 public:
-    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {}
+    [[nodiscard]] GraphicsInspection inspect_graphics(bool cgb_mode) const;
+
+    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {
+        screenData.fill(LCD_OFF_COLOR);
+    }
 
     [[=NotStateAware]] diagnostics::ObservationContext *observations{};
     [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
@@ -98,6 +104,9 @@ public:
     void RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel &selected, bool bgEnable, uint32_t color);
 
     void RecordRecolor(uint16_t offset, uint16_t address, const Pixel &selected, diagnostics::PixelDecision decision);
+
+    // little-things/firstwhite.gb — first frame is blank/white on all except SGB/SGB2
+    static constexpr uint32_t LCD_OFF_COLOR = 0xFFFFFFFFu;
 
     static constexpr uint32_t DMG_SHADE[4] = {
             0xFFFFFFFFu, // FF FF FF FF
@@ -213,6 +222,7 @@ public:
     // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
     bool lcdEnableLine0_{false};
     bool lcdStartDoubleSpeed_{false};
+    bool lcdFirstFrame_{false};
     uint8_t bgpPending{0};
     uint8_t bgpWriteStage{0};
     uint8_t lcdcPending{0};
@@ -383,6 +393,8 @@ private:
     void Fetcher_StepBackgroundFetch();
 
     void ApplyLCDC(uint8_t value);
+
+    void ClearFramebuffer();
 
     [[nodiscard]] Pixel SelectPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
 

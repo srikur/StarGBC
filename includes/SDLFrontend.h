@@ -9,6 +9,9 @@
 #include "Audio.h"
 #include "EmulationSession.h"
 #include "Gameboy.h"
+#ifdef STARGBC_ENABLE_DEBUGGER
+#include "DebuggerWindow.h"
+#endif
 #ifdef STARGBC_ENABLE_LUA
 #include "LuaRuntime.h"
 #endif
@@ -57,12 +60,17 @@ private:
 
     void LoadState(uint8_t);
 
+    void toggle_debugger();
+
     SDL_Window *window_{nullptr};
     SDL_Renderer *renderer_{nullptr};
     SDL_Texture *texture_{nullptr};
     SDL_AudioStream *audioStream_{nullptr};
     std::unique_ptr<Gameboy> gameboy_;
     std::unique_ptr<EmulationSession> session_;
+#ifdef STARGBC_ENABLE_DEBUGGER
+    std::unique_ptr<DebuggerWindow> debugger_;
+#endif
 #ifdef STARGBC_ENABLE_LUA
     std::unique_ptr<LuaRuntime> lua_;
 #endif
@@ -73,6 +81,8 @@ private:
     bool useNearest_{true};
     bool audioEnabled_{true};
     bool paused_{false};
+    bool audio_paused_{};
+    std::chrono::steady_clock::time_point last_debug_present_{};
     bool throttled_{true};
     int windowScale_{1};
     int speedMultiplier_{1};

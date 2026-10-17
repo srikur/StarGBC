@@ -6814,6 +6814,90 @@
       "establishes": "pixels"
     },
     {
+      "id": "rom|roms/little-things-gb/firstwhite.gb|DMGB|external-bootrom|RomScreen",
+      "suite": "rom",
+      "name": "rom: roms/little-things-gb/firstwhite.gb [dmgb]",
+      "rom": "roms/little-things-gb/firstwhite.gb",
+      "model": "DMGB",
+      "bios": "roms/dmg_boot.bin",
+      "expected": "tests/expected/little-things-gb/firstwhite.gb.dmg.screen",
+      "runner": "RomScreen",
+      "variant": "RomScreen",
+      "startup": "external-bootrom",
+      "grouped": false,
+      "romHash": "ac0e653d61802cdb2560275caef71872e0a442a27aee9bec492f46aa92785d09",
+      "bootromHash": "cf053eccb4ccafff9e67339d4e78e98dce7d1ed59be819d2a1ba2232c6fce1c7",
+      "referenceHash": "fc7bc70fa8de6eb76d3a6c47669324e70f084c326e0ea1166224c516b5c4e642",
+      "tags": [
+        "little-things-gb",
+        "ppu"
+      ],
+      "budget": {
+        "value": 6000,
+        "unit": "RunFrameIntervals",
+        "masterTicks": 842688000
+      },
+      "sourceFile": null,
+      "sourceHash": null,
+      "sourceRevision": null,
+      "sourceRelation": "Unknown",
+      "referenceProvenance": "Solid LCD-off white frame; the readme specifies the panel shows nothing because the first frame after LCD enable is never displayed",
+      "applicability": {
+        "models": [
+          "DMGB"
+        ],
+        "operatingMode": "ROM-selected",
+        "speed": "ROM-controlled"
+      },
+      "relatedCases": [],
+      "completion": "Two exact RGBA matches after boot; the final sample decides at the deadline",
+      "sampling": "After each 140448-master-tick RunFrame interval",
+      "expectationStatus": "Unspecified",
+      "establishes": "pixels"
+    },
+    {
+      "id": "rom|roms/little-things-gb/firstwhite.gb|CGBE|external-bootrom|RomScreen",
+      "suite": "rom",
+      "name": "rom: roms/little-things-gb/firstwhite.gb [cgbe]",
+      "rom": "roms/little-things-gb/firstwhite.gb",
+      "model": "CGBE",
+      "bios": "roms/cgb_boot.bin",
+      "expected": "tests/expected/little-things-gb/firstwhite.gb.cgb.screen",
+      "runner": "RomScreen",
+      "variant": "RomScreen",
+      "startup": "external-bootrom",
+      "grouped": false,
+      "romHash": "ac0e653d61802cdb2560275caef71872e0a442a27aee9bec492f46aa92785d09",
+      "bootromHash": "b4f2e416a35eef52cba161b159c7c8523a92594facb924b3ede0d722867c50c7",
+      "referenceHash": "fc7bc70fa8de6eb76d3a6c47669324e70f084c326e0ea1166224c516b5c4e642",
+      "tags": [
+        "little-things-gb",
+        "ppu"
+      ],
+      "budget": {
+        "value": 6000,
+        "unit": "RunFrameIntervals",
+        "masterTicks": 842688000
+      },
+      "sourceFile": null,
+      "sourceHash": null,
+      "sourceRevision": null,
+      "sourceRelation": "Unknown",
+      "referenceProvenance": "Solid LCD-off white frame; the readme specifies the panel shows nothing because the first frame after LCD enable is never displayed",
+      "applicability": {
+        "models": [
+          "CGBE"
+        ],
+        "operatingMode": "ROM-selected",
+        "speed": "ROM-controlled"
+      },
+      "relatedCases": [],
+      "completion": "Two exact RGBA matches after boot; the final sample decides at the deadline",
+      "sampling": "After each 140448-master-tick RunFrame interval",
+      "expectationStatus": "Unspecified",
+      "establishes": "pixels"
+    },
+    {
       "id": "rom|roms/mooneye/acceptance/boot_div-dmg0.gb|DMG0|external-bootrom|RomScreen",
       "suite": "rom",
       "name": "rom: roms/mooneye/acceptance/boot_div-dmg0.gb",

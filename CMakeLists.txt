@@ -38,6 +38,24 @@ FetchContent_Declare(starparse
         EXCLUDE_FROM_ALL SYSTEM)
 FetchContent_MakeAvailable(SDL3 spdlog doctest starparse)
 
+option(STARGBC_ENABLE_DEBUGGER "Build the native inspection and stepping frontend" ON)
+if (STARGBC_ENABLE_DEBUGGER)
+    FetchContent_Declare(imgui
+            URL https://github.com/ocornut/imgui/archive/refs/tags/v1.91.9b.tar.gz
+            URL_HASH SHA256=8e1bbc76c71d74fef2fb85db7e7ca8eba13d6a86623c54992b60162db554ffdb
+            EXCLUDE_FROM_ALL SYSTEM)
+    FetchContent_MakeAvailable(imgui)
+    add_library(stargbc_imgui STATIC
+            ${imgui_SOURCE_DIR}/imgui.cpp
+            ${imgui_SOURCE_DIR}/imgui_draw.cpp
+            ${imgui_SOURCE_DIR}/imgui_tables.cpp
+            ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp)
+    target_include_directories(stargbc_imgui SYSTEM PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+    target_link_libraries(stargbc_imgui PUBLIC SDL3::SDL3-static)
+endif ()
+
 option(STARGBC_ENABLE_LUA "Build Lua scripting support" ON)
 if (STARGBC_ENABLE_LUA)
     include(scripting/cmake/Lua.cmake)
@@ -66,6 +84,11 @@ endif ()
 
 add_subdirectory(bootrom)
 add_subdirectory(src)
+if (STARGBC_ENABLE_DEBUGGER)
+    add_subdirectory(frontend)
+    target_link_libraries(StarGBC PRIVATE StarGBC_DebuggerFrontend)
+    target_compile_definitions(StarGBC PRIVATE STARGBC_ENABLE_DEBUGGER=1)
+endif ()
 if (STARGBC_ENABLE_LUA)
     add_subdirectory(scripting)
     target_link_libraries(StarGBC PRIVATE StarGBC_Scripting)

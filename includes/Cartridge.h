@@ -2,6 +2,7 @@
 #include <array>
 #include <functional>
 #include <optional>
+#include <span>
 #include "RealTimeClock.h"
 
 class Cartridge {
@@ -33,6 +34,12 @@ public:
     [[nodiscard]] uint16_t DebugBank(uint16_t address) const;
 
     void DebugPoke(uint16_t address, uint8_t value);
+
+    [[nodiscard]] std::span<const uint8_t> rom_bytes() const { return gameRom_; }
+
+    [[nodiscard]] std::span<const uint8_t> ram_bytes() const { return std::span(gameRam_).first(gameRamSize); }
+
+    void restore_ram(std::span<const uint8_t> bytes);
 
     bool SaveState(std::ofstream &stateFile) const;
 
