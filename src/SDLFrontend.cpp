@@ -101,8 +101,8 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer(kAppName.data(), GB_SCREEN_W * windowScale_, GB_SCREEN_H * windowScale_, SDL_WINDOW_RESIZABLE, &window_,
-                                     &renderer_)) {
+    if (!SDL_CreateWindowAndRenderer(kAppName.data(), GB_SCREEN_W * windowScale_, GB_SCREEN_H * windowScale_,
+                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window_, &renderer_)) {
         SDL_Log("CreateWindowAndRenderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }

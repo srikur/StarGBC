@@ -30,6 +30,7 @@ public:
 
 private:
     void release_resources();
+    void set_game_input(bool active);
     bool begin_panel(DebugPanel panel, const char *label);
     void action(const std::function<void()> &run);
     void draw_cpu(const MachineInspection &state);
@@ -62,6 +63,7 @@ private:
     bool renderer_ready_{};
     bool visible_{true};
     bool game_input_{};
+    float font_density_{};
     int game_width_{};
     int game_height_{};
     bool follow_instruction_{true};

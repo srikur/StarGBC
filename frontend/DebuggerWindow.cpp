@@ -99,7 +99,7 @@ void DebuggerWindow::toggle() {
     ImGui::GetIO().ClearInputKeys();
     ImGui::GetIO().ClearInputMouse();
     session_.FocusLost();
-    game_input_ = false;
+    set_game_input(false);
     visible_ = !visible_;
     if (visible_) {
         SDL_GetWindowSize(window_, &game_width_, &game_height_);
@@ -119,7 +119,7 @@ bool DebuggerWindow::handle_shortcut(const SDL_KeyboardEvent &key) {
         action([&] { debugger_.paused() ? debugger_.resume() : debugger_.pause(); });
     else if (key.key == SDLK_F10)
         action([&] { debugger_.step_over(); });
-    else if (key.key == SDLK_F11)
+    else if (key.key == SDLK_F9)
         action([&] { key.mod &SDL_KMOD_SHIFT ? debugger_.step_out() : debugger_.step_instruction(); });
     else if (key.key == SDLK_F6)
         action([&] { debugger_.step_frame(); });
@@ -137,7 +137,22 @@ void DebuggerWindow::reset() {
     follow_instruction_ = true;
     followed_instruction_.reset();
     code_scroll_ = true;
-    game_input_ = false;
+    set_game_input(false);
+}
+
+void DebuggerWindow::set_game_input(const bool active) {
+    if (game_input_ == active)
+        return;
+    game_input_ = active;
+    session_.FocusLost();
+    auto &io{ImGui::GetIO()};
+    io.ClearInputKeys();
+    if (active) {
+        io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+        ImGui::SetWindowFocus(nullptr);
+    } else {
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    }
 }
 
 void DebuggerWindow::show_code(const CodeSource source, const uint32_t offset) {
@@ -151,23 +166,23 @@ bool DebuggerWindow::handle_event(const SDL_Event &event) {
     if (!visible_ || SDL_GetWindowFromEvent(&event) != window_)
         return false;
     ImGui::SetCurrentContext(context_);
-    if (platform_ready_)
-        ImGui_ImplSDL3_ProcessEvent(&event);
-    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        if (game_input_)
-            session_.FocusLost();
-        game_input_ = false;
-    }
+    auto &io{ImGui::GetIO()};
+    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_WINDOW_FOCUS_LOST)
+        set_game_input(false);
     if (event.type == SDL_EVENT_KEY_DOWN) {
         if (event.key.key == SDLK_F12 && !event.key.repeat)
             return toggle(), true;
-        if (!ImGui::GetIO().WantTextInput && handle_shortcut(event.key))
+        if ((game_input_ || !io.WantTextInput) && handle_shortcut(event.key))
             return true;
-        if (!ImGui::GetIO().WantTextInput && event.key.key == SDLK_F5 && (event.key.mod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)))
+        if ((game_input_ || !io.WantTextInput) && event.key.key == SDLK_F5 && (event.key.mod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)))
             return false;
-        return ImGui::GetIO().WantTextInput || !game_input_;
     }
-    return event.type == SDL_EVENT_TEXT_INPUT;
+    const auto keyboard_event{event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP};
+    if (game_input_ && (keyboard_event || event.type == SDL_EVENT_TEXT_INPUT))
+        return event.type == SDL_EVENT_TEXT_INPUT;
+    if (platform_ready_)
+        ImGui_ImplSDL3_ProcessEvent(&event);
+    return event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_TEXT_INPUT;
 }
 
 void DebuggerWindow::draw_image(SDL_Texture *texture, const uint32_t *pixels, const int width, const int height, const float scale) {
@@ -189,8 +204,20 @@ void DebuggerWindow::render() {
         return;
     ImGui::SetCurrentContext(context_);
     debugger_.synchronize();
-    ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
+    auto &io{ImGui::GetIO()};
+    const auto font_density{std::max(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y)};
+    if (font_density_ != font_density) {
+        ImGui_ImplSDLRenderer3_DestroyFontsTexture();
+        io.Fonts->Clear();
+        ImFontConfig font_config;
+        font_config.OversampleH = font_config.OversampleV = 1;
+        font_config.PixelSnapH = true;
+        font_config.RasterizerDensity = font_density;
+        io.Fonts->AddFontDefault(&font_config);
+        font_density_ = font_density;
+    }
+    ImGui_ImplSDLRenderer3_NewFrame();
     ImGui::NewFrame();
     const auto *viewport{ImGui::GetMainViewport()};
     ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -199,13 +226,13 @@ void DebuggerWindow::render() {
     if (ImGui::Button(debugger_.paused() ? "Run (F5)" : "Pause (F5)"))
         action([&] { debugger_.paused() ? debugger_.resume() : debugger_.pause(); });
     ImGui::SameLine();
-    if (ImGui::Button("Into (F11)"))
+    if (ImGui::Button("Into (F9)"))
         action([&] { debugger_.step_instruction(); });
     ImGui::SameLine();
     if (ImGui::Button("Over (F10)"))
         action([&] { debugger_.step_over(); });
     ImGui::SameLine();
-    if (ImGui::Button("Out (Shift+F11)"))
+    if (ImGui::Button("Out (Shift+F9)"))
         action([&] { debugger_.step_out(); });
     ImGui::SameLine();
     if (ImGui::Button("T-cycle"))
@@ -245,11 +272,9 @@ void DebuggerWindow::render() {
         draw_cpu(state);
         ImGui::EndChild();
         ImGui::TableNextColumn();
-        draw_image(screen_, machine_.GetScreenData(), SCREEN_WIDTH, SCREEN_HEIGHT, 1.5f);
-        if (ImGui::IsItemClicked()) {
-            game_input_ = true;
-            ImGui::SetWindowFocus(nullptr);
-        }
+        draw_image(screen_, machine_.GetScreenData(), SCREEN_WIDTH, SCREEN_HEIGHT, 2);
+        if (ImGui::IsItemClicked())
+            set_game_input(true);
         ImGui::SameLine();
         ImGui::BeginGroup();
         ImGui::TextUnformatted("Live game view");
@@ -270,6 +295,8 @@ void DebuggerWindow::render() {
             if (begin_panel(DebugPanel::Screen, "Screen")) {
                 ImGui::TextWrapped("Live framebuffer. While stepping, completed pixels and rows update as the PPU runs.");
                 draw_image(screen_, machine_.GetScreenData(), SCREEN_WIDTH, SCREEN_HEIGHT, 3);
+                if (ImGui::IsItemClicked())
+                    set_game_input(true);
                 ImGui::EndTabItem();
             }
             if (begin_panel(DebugPanel::Tiles, "Tiles")) {
@@ -799,7 +826,7 @@ void DebuggerWindow::draw_trace() {
 }
 
 void DebuggerWindow::draw_help() {
-    ImGui::TextWrapped("F5: run/pause. F11: step into. F10: step over CALL/RST. Shift+F11: step out using the return address at SP. F7: next "
+    ImGui::TextWrapped("F5: run/pause. F9: step into. F10: step over CALL/RST. Shift+F9: step out using the return address at SP. F7: next "
                        "scanline. F6: finish the current emulation frame. F8: reset the ROM and pause at startup. F12: switch between game and "
                        "debugger layouts.");
     ImGui::Separator();
