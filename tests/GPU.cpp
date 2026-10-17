@@ -360,6 +360,67 @@ TEST_CASE("diagnostics: Crystal window provenance explains clipped window pixels
     CHECK(pixel->selected.highTick < pixel->emission.tick);
 }
 
+TEST_CASE("ppu: left-edge sprite fetches preserve pending window activation and row progression") {
+    constexpr std::array models{Model::DMGB, Model::CGBC, Model::CGBE, Model::AGBB};
+    constexpr std::array speeds{false, true};
+    constexpr std::array optimizations{false, true};
+    constexpr std::array<uint8_t, 8> scroll_values{0, 1, 2, 3, 4, 5, 6, 7};
+    constexpr std::array<uint8_t, 3> window_values{1, 4, 7};
+    constexpr std::array<std::array<uint8_t, 2>, 5> object_positions{{{0, 8}, {1, 8}, {2, 8}, {0, 0}, {8, 8}}};
+    constexpr std::array<uint32_t, 4> colors{0xFFFFFFFF, 0xFFBDBDBD, 0xFF5A5A5A, 0xFF000000};
+    constexpr std::array<uint8_t, 4> shades{31, 23, 11, 0};
+    for (const auto [model, double_speed, optimized, scroll_x, window_x, positions] :
+         std::views::cartesian_product(models, speeds, optimizations, scroll_values, window_values, object_positions)) {
+        if (IsDmg(model) && double_speed)
+            continue;
+        CAPTURE(model);
+        CAPTURE(double_speed);
+        CAPTURE(optimized);
+        CAPTURE(scroll_x);
+        CAPTURE(window_x);
+        CAPTURE(positions[0]);
+        CAPTURE(positions[1]);
+        Interrupts interrupts;
+        GPU gpu(interrupts, false);
+        gpu.SetModel(model);
+        gpu.optimized_execution = optimized;
+        gpu.doubleSpeed = double_speed;
+        gpu.lcdc = 0xF3;
+        gpu.currentLine = 10;
+        gpu.windowY = 10;
+        gpu.windowX = window_x;
+        gpu.scrollX = scroll_x;
+        gpu.backgroundPalette = 0xE4;
+        for (auto color{0u}; color < shades.size(); ++color)
+            gpu.bgpd[0][color].fill(shades[color]);
+        gpu.RebuildColorLuts();
+        for (auto row{0u}; row < 8; ++row) {
+            const auto color{row % 3 + 1};
+            gpu.vram[16 + row * 2] = color & 1 ? 0xFF : 0;
+            gpu.vram[17 + row * 2] = color & 2 ? 0xFF : 0;
+        }
+        std::fill(gpu.vram.begin() + 0x1C00, gpu.vram.begin() + 0x2000, 1);
+        for (auto index{0u}; index < positions.size(); ++index) {
+            gpu.oam[index * 4] = 26;
+            gpu.oam[index * 4 + 1] = positions[index];
+        }
+        prime_dmg_oam_scan(gpu);
+        for (auto line{10u}; line <= 18; ++line) {
+            while (gpu.currentLine == line && gpu.scanlineCounter < 400)
+                gpu.Update();
+            CAPTURE(line);
+            CHECK(gpu.pixelsDrawn == SCREEN_WIDTH);
+            CHECK(gpu.windowLineCounter_ == line - 10);
+            const auto color{(line - 10) % 8 % 3 + 1};
+            const auto expected{IsCgb(model) ? colors[color] : GPU::DMG_SHADE[color]};
+            const auto pixels{std::span(gpu.GetScreenData() + line * SCREEN_WIDTH, SCREEN_WIDTH)};
+            CHECK(std::ranges::all_of(pixels, [&](const auto pixel) { return pixel == expected; }));
+            while (gpu.currentLine == line)
+                gpu.Update();
+        }
+    }
+}
+
 TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping dots") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         Interrupts optimizedInterrupts, ordinaryInterrupts;
