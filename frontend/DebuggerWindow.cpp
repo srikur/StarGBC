@@ -336,7 +336,11 @@ void DebuggerWindow::render() {
     ImGui::Render();
     SDL_SetRenderDrawColor(renderer_, 20, 22, 28, 255);
     SDL_RenderClear(renderer_);
+    float render_scale_x{}, render_scale_y{};
+    SDL_GetRenderScale(renderer_, &render_scale_x, &render_scale_y);
+    SDL_SetRenderScale(renderer_, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer_);
+    SDL_SetRenderScale(renderer_, render_scale_x, render_scale_y);
     SDL_RenderPresent(renderer_);
 }
 
