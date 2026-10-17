@@ -226,8 +226,6 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
         return SDL_APP_CONTINUE;
 #endif
     switch (key.key) {
-        case SDLK_ESCAPE:
-            return SDL_APP_SUCCESS;
         case SDLK_Z:
             session_->SetPhysicalButton(Keys::A, true);
             break;
