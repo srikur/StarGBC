@@ -17,7 +17,7 @@ class RealTimeClock {
     [[nodiscard]] u64 compose_seconds() const;
 
     // Wall-clock anchor derived from the host time; recomputed on load
-    [[= NotStateAware]] u64 zero_time{0x00};
+    [[=NotStateAware]] u64 zero_time{0x00};
     bool halted{false};
 
     struct Clock {
@@ -65,9 +65,9 @@ public:
 
     Clock realClock{};
     Clock latchedClock{};
-    [[= NotStateAware]] bool real_rtc{false};
+    [[=NotStateAware]] bool real_rtc{false};
     u64 counter{0};
 
 private:
-    [[= NotStateAware]] TimeSource time_source_;
+    [[=NotStateAware]] TimeSource time_source_;
 };

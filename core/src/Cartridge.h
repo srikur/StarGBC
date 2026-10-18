@@ -86,28 +86,28 @@ private:
 
     RealTimeClock &rtc;
 
-    [[= NotStateAware]] std::vector<u8> game_rom;
+    [[=NotStateAware]] std::vector<u8> game_rom;
     std::array<u8, MAX_RAM_SIZE> game_ram{};
 
     // Derived from the ROM header/contents in the constructor, never mutated
     [[=NotStateAware]] MBC mbc{MBC::None};
-    [[= NotStateAware]] u32 game_ram_size{0x00};
-    [[= NotStateAware]] u32 rom_bank_count{0x00};
-    [[= NotStateAware]] u32 ram_bank_count{0x00};
+    [[=NotStateAware]] u32 game_ram_size{0x00};
+    [[=NotStateAware]] u32 rom_bank_count{0x00};
+    [[=NotStateAware]] u32 ram_bank_count{0x00};
     u8 rom_bank{0x01};
     u8 ram_bank{0x00};
     u8 bank1{0x01};
     u8 bank2{0x00};
-    [[= NotStateAware]] u8 low_rom_mask{0x00}; // derived from ROM size
+    [[=NotStateAware]] u8 low_rom_mask{0x00}; // derived from ROM size
     u8 mode{0x00};
 
     bool ram_enabled{false};
     [[=NotStateAware]] bool multicart{false}; // derived from ROM contents
-    [[= NotStateAware]] bool has_battery{false};
-    [[= NotStateAware]] bool battery_save_pending{false};
-    [[= NotStateAware]] bool ram_dirty{false}; // host .sav flush bookkeeping
+    [[=NotStateAware]] bool has_battery{false};
+    [[=NotStateAware]] bool battery_save_pending{false};
+    [[=NotStateAware]] bool ram_dirty{false}; // host .sav flush bookkeeping
     bool prev_ram_enable{false};
-    [[= NotStateAware]] bool has_rumble{false}; // derived from ROM header
+    [[=NotStateAware]] bool has_rumble{false}; // derived from ROM header
     bool rumble_on{false};
-    [[= NotStateAware]] std::function<void(bool)> rumble_callback; // host callback
+    [[=NotStateAware]] std::function<void(bool)> rumble_callback; // host callback
 };
