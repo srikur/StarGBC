@@ -89,7 +89,8 @@ bool EmulationSession::ApplyQueuedState() {
 
 bool EmulationSession::RunFrame() {
     const auto previous_frame{frameCount_};
-    run_slice(frame_ticks_remaining_, [&](const uint64_t budget) { return gameboy_.AdvanceTicks(budget, gameboy_.InitialSettings().executionPolicy); });
+    run_slice(frame_ticks_remaining_,
+              [&](const uint64_t budget) { return gameboy_.AdvanceTicks(budget, gameboy_.InitialSettings().execution_policy); });
     return frameCount_ != previous_frame;
 }
 

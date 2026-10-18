@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
 #include "diagnostics/Trace.h"
@@ -106,7 +107,7 @@ TEST_CASE(
 TEST_CASE(
 
         "diagnostics: OAM DMA transfer records identify source destination and ownership") {
-    Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     auto &bus = gameboy.[:peripheralMember<Gameboy>("bus_"):];
     auto &cpu = gameboy.[:peripheralMember<Gameboy>("cpu_"):];
     cpu.Lock();
@@ -171,7 +172,7 @@ TEST_CASE(
 TEST_CASE(
 
         "diagnostics: general DMA records both bus ownership edges and all sixteen destination writes") {
-    Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     auto &bus = gameboy.[:peripheralMember<Gameboy>("bus_"):];
     gameboy.[:peripheralMember<Gameboy>("cpu_"):].Lock();
     bus.gpu_.hdma = {};

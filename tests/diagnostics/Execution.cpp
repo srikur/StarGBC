@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include <doctest/doctest.h>
 #include <limits>
 #include "Gameboy.h"
@@ -24,9 +25,9 @@ TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted executi
         for (const bool doubleSpeed : {false, true}) {
             if (doubleSpeed && IsDmg(model))
                 continue;
-            const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
-            Gameboy uninterrupted(settings);
-            Gameboy stepped(settings);
+            const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+            auto uninterrupted = host::load_gameboy(settings);
+            auto stepped = host::load_gameboy(settings);
             if (doubleSpeed) {
                 for (auto *machine : {&uninterrupted, &stepped}) {
                     auto &bus = machine->[:executionTestMember<Gameboy>("bus_"):];
@@ -53,7 +54,7 @@ TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted executi
 }
 
 TEST_CASE("diagnostics: instruction stepping treats CB opcodes as one instruction and bounds idle CPUs") {
-    Gameboy gameboy({.romName = "roms/acid/dmg-acid2.gb", .model = Model::DMGB, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/dmg-acid2.gb", .emulation = {.model = Model::DMGB, .no_bootrom = true}});
     auto &cpu = gameboy.[:executionTestMember<Gameboy>("cpu_"):];
     cpu.pc(0xC001);
     cpu.currentInstruction = 0;
@@ -82,7 +83,7 @@ TEST_CASE("diagnostics: instruction stepping treats CB opcodes as one instructio
 }
 
 TEST_CASE("diagnostics: timeline survives scheduler wrap and rejects overflowing deadlines") {
-    Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     gameboy.[:executionTestMember<Gameboy>("masterCycles"):] = Gameboy::CGB_CYCLES_PER_SECOND - 2;
     gameboy.[:executionTestMember<Gameboy>("timelineTicks_"):] = uint64_t{1} << 32;
     CHECK(gameboy.AdvanceTicks(19).stopTick == (uint64_t{1} << 32) + 19);

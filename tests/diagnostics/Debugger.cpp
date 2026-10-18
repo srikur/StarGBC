@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "Debugger.h"
 #include "CodeListing.h"
 #include <doctest/doctest.h>
@@ -82,7 +83,7 @@ TEST_CASE("debugger: disassembly decodes immediates signed branches prefixes cal
 
 TEST_CASE("debugger: execution breakpoints stop before prefetched instructions and resume once") {
     for (const auto model : debug_models) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         constexpr std::array program{0x00_u8, 0x18_u8, 0xFD_u8};
         install_program(machine, program);
         EmulationSession session(machine);
@@ -114,9 +115,9 @@ TEST_CASE("debugger: watchpoint stops and resumes are equivalent to continuous e
     for (const auto [model, double_speed] : std::views::cartesian_product(debug_models, speeds)) {
         if (IsDmg(model) && double_speed)
             continue;
-        const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
-        Gameboy machine(settings);
-        Gameboy continuous(settings);
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        auto machine = host::load_gameboy(settings);
+        auto continuous = host::load_gameboy(settings);
         for (auto *target : std::array{&machine, &continuous}) {
             constexpr std::array program{0x3E_u8, 0x42_u8, 0xEA_u8, 0x00_u8, 0xC1_u8, 0x18_u8, 0xF9_u8};
             install_program(*target, program);
@@ -150,7 +151,7 @@ TEST_CASE("debugger: watchpoint stops and resumes are equivalent to continuous e
 TEST_CASE("debugger: step over and out respect nested calls and stack depth") {
     constexpr std::array step_out{false, true};
     for (const auto [model, out] : std::views::cartesian_product(debug_models, step_out)) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         install_calls(machine);
         EmulationSession session(machine);
         Debugger debugger(session);
@@ -170,7 +171,7 @@ TEST_CASE("debugger: step over and out respect nested calls and stack depth") {
 }
 
 TEST_CASE("debugger: step over can be interrupted by a user breakpoint") {
-    Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     install_calls(machine);
     EmulationSession session(machine);
     Debugger debugger(session);
@@ -184,7 +185,7 @@ TEST_CASE("debugger: step over can be interrupted by a user breakpoint") {
 
 TEST_CASE("debugger: an interrupt vector breakpoint stops before the handler executes") {
     for (const auto model : debug_models) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &cpu{machine.[:debug_member<Gameboy>("cpu_"):]};
         cpu.pc(0x40);
         cpu.[:debug_member<CPU<Bus>>("interruptState"):] = InterruptState::M6;
@@ -204,7 +205,7 @@ TEST_CASE("debugger: an interrupt vector breakpoint stops before the handler exe
 }
 
 TEST_CASE("debugger: CB stepping and idle CPU controls have bounded progress") {
-    Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     constexpr std::array program{0xCB_u8, 0x00_u8, 0x76_u8, 0x00_u8};
     install_program(machine, program);
     EmulationSession session(machine);
@@ -226,9 +227,9 @@ TEST_CASE("debugger: CB stepping and idle CPU controls have bounded progress") {
 }
 
 TEST_CASE("debugger: partial frame stepping preserves frame callbacks inputs and machine state") {
-    const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true};
-    Gameboy machine(settings);
-    Gameboy continuous(settings);
+    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+    auto machine = host::load_gameboy(settings);
+    auto continuous = host::load_gameboy(settings);
     EmulationSession session(machine);
     EmulationSession other_session(continuous);
     unsigned before_frames{};
@@ -272,7 +273,7 @@ TEST_CASE("debugger: partial frame stepping preserves frame callbacks inputs and
 
 TEST_CASE("debugger: memory graphics and trace inspection never change machine state") {
     for (const auto model : debug_models) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         EmulationSession session(machine);
         Debugger debugger(session);
         debugger.step_frame();
@@ -321,7 +322,7 @@ TEST_CASE("debugger: graphics decoding handles signed tile addressing banks flip
 }
 
 TEST_CASE("debugger: read watchpoints honor ranges and banks and inspection never triggers them") {
-    Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     constexpr std::array program{0xFA_u8, 0x00_u8, 0xD1_u8, 0x18_u8, 0xFB_u8};
     install_program(machine, program);
     machine.DebugPoke(0xD100, 0x42);
@@ -345,7 +346,7 @@ TEST_CASE("debugger: read watchpoints honor ranges and banks and inspection neve
 TEST_CASE("debugger: STOP LOCK and an unreachable run target remain interruptible") {
     constexpr std::array states{ExecutionStopReason::Stopped, ExecutionStopReason::Locked};
     for (const auto state : states) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &cpu{machine.[:debug_member<Gameboy>("cpu_"):]};
         if (state == ExecutionStopReason::Stopped)
             cpu.stopped(true);
@@ -371,13 +372,14 @@ TEST_CASE("debugger: reset restores startup hardware and BIOS while retaining ca
     constexpr std::array boot_modes{false, true};
     constexpr std::array rtc_modes{false, true};
     for (const auto [model, skip_boot, real_clock] : std::views::cartesian_product(debug_models, boot_modes, rtc_modes)) {
-        const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = skip_boot, .realRTC = real_clock};
-        Gameboy machine(settings);
-        Gameboy fresh(settings);
-        auto &cartridge{machine.[:debug_member<Gameboy>("cartridge_"):]};
-        auto &fresh_cartridge{fresh.[:debug_member<Gameboy>("cartridge_"):]};
-        cartridge.[:debug_member<Cartridge>("gameRamSize"):] = Cartridge::MAX_RAM_SIZE;
-        fresh_cartridge.[:debug_member<Cartridge>("gameRamSize"):] = Cartridge::MAX_RAM_SIZE;
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                            .emulation = {.model = model, .no_bootrom = skip_boot, .real_rtc = real_clock}};
+        auto machine = host::load_gameboy(settings);
+        auto fresh = host::load_gameboy(settings);
+        auto &cartridge{machine.[:debug_member<Gameboy>("cartridge"):]};
+        auto &fresh_cartridge{fresh.[:debug_member<Gameboy>("cartridge"):]};
+        cartridge.[:debug_member<Cartridge>("game_ram_size"):] = Cartridge::MAX_RAM_SIZE;
+        fresh_cartridge.[:debug_member<Cartridge>("game_ram_size"):] = Cartridge::MAX_RAM_SIZE;
         EmulationSession session(machine);
         Debugger debugger(session);
         const auto startup_address{machine.debug_instruction_address()};
@@ -388,12 +390,12 @@ TEST_CASE("debugger: reset restores startup hardware and BIOS while retaining ca
         REQUIRE(machine.TimelineTicks() > 0);
         REQUIRE(debugger.trace_size() > 0);
         machine.DebugPoke(WRAM_BEGIN, 0x42);
-        cartridge.[:debug_member<Cartridge>("gameRam_"):].front() = 0xAB;
-        cartridge.[:debug_member<Cartridge>("gameRam_"):].back() = 0xCD;
+        cartridge.[:debug_member<Cartridge>("game_ram"):].front() = 0xAB;
+        cartridge.[:debug_member<Cartridge>("game_ram"):].back() = 0xCD;
         auto &rtc{machine.[:debug_member<Gameboy>("rtc_"):]};
-        rtc.WriteRTC(0x08, 37);
-        rtc.WriteRTC(0x09, 12);
-        rtc.counter_ = 12345;
+        rtc.write_rtc(0x08, 37);
+        rtc.write_rtc(0x09, 12);
+        rtc.counter = 12345;
         const auto clock{rtc};
         fresh.[:debug_member<Gameboy>("rtc_"):] = clock;
         fresh_cartridge.restore_ram(cartridge.ram_bytes());
@@ -420,7 +422,7 @@ TEST_CASE("debugger: reset restores startup hardware and BIOS while retaining ca
         CHECK(machine.debug_instruction_bank() == startup_bank);
         CHECK(machine.GetModel() == model);
         CHECK(machine.UsesRealRTC() == real_clock);
-        CHECK(rtc.[:debug_member<RealTimeClock>("zeroTime_"):] == clock.[:debug_member<RealTimeClock>("zeroTime_"):]);
+        CHECK(rtc.[:debug_member<RealTimeClock>("zero_time"):] == clock.[:debug_member<RealTimeClock>("zero_time"):]);
         CHECK(machine.PressedButtons() == 0);
         CHECK(session.PhysicalButtons() == 0);
         CHECK(session.FrameCount() == 0);
@@ -450,7 +452,7 @@ TEST_CASE("debugger: reset restores startup hardware and BIOS while retaining ca
 TEST_CASE("debugger: session reset preserves playback state and rejects resets during frame callbacks") {
     constexpr std::array paused_states{false, true};
     for (const auto paused : paused_states) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         EmulationSession session(machine);
         session.SetEventHandler([&](const SessionEvent event, uint64_t) {
             if (event == SessionEvent::BeforeFrame)
@@ -468,9 +470,9 @@ TEST_CASE("debugger: session reset preserves playback state and rejects resets d
 TEST_CASE("debugger: code listing covers all physical ROM banks and handles truncated boundary instructions") {
     constexpr std::array bank_counts{4u, 512u};
     for (const auto bank_count : bank_counts) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
-        auto &cartridge{machine.[:debug_member<Gameboy>("cartridge_"):]};
-        auto &rom{cartridge.[:debug_member<Cartridge>("gameRom_"):]};
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto &cartridge{machine.[:debug_member<Gameboy>("cartridge"):]};
+        auto &rom{cartridge.[:debug_member<Cartridge>("game_rom"):]};
         rom.assign(bank_count * ROM_BANK_SIZE, 0);
         rom[0x100] = 0x01;
         rom[0x101] = 0x01;
@@ -515,7 +517,7 @@ TEST_CASE("debugger: code listing covers all physical ROM banks and handles trun
 
 TEST_CASE("debugger: BIOS listing remains inspectable after unmapping and distinguishes cartridge overlay gaps") {
     for (const auto model : debug_models) {
-        Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = model});
+        auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model}});
         EmulationSession session(machine);
         Debugger debugger(session);
         CodeListing listing(machine, debugger);

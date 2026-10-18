@@ -5,7 +5,6 @@
 #include <numeric>
 #include <span>
 #include <type_traits>
-#include <utility>
 
 #include "CPU.h"
 #include "Common.h"
@@ -14,16 +13,20 @@
 #include "diagnostics/ReplayInput.h"
 
 struct GameboySettings {
-    std::string romName;
-    std::string biosPath;
     Model model{Model::Auto};
-    bool noBootrom{false};
-    bool realRTC{false};
-    bool noAudio{false};
-    bool colorCorrection{true};
-    ExecutionPolicy executionPolicy{ExecutionPolicy::Optimized};
+    bool no_bootrom{false};
+    bool real_rtc{false};
+    bool no_audio{false};
+    bool color_correction{true};
+    ExecutionPolicy execution_policy{ExecutionPolicy::Optimized};
     DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
     bool force_cgb_mode{false};
+};
+
+struct GameboyMedia {
+    std::vector<u8> rom;
+    std::vector<u8> bootrom;
+    std::vector<u8> battery;
 };
 
 class Gameboy {
@@ -33,12 +36,13 @@ public:
     static constexpr uint32_t FRAME_CYCLES_DMG = 70224;
     static constexpr std::chrono::nanoseconds FRAME_PERIOD{FRAME_CYCLES_DMG * 1'000'000'000LL / DMG_CYCLES_PER_SECOND};
 
-    explicit Gameboy(const GameboySettings &settings) :
-        initialSettings_(settings), romPath_(settings.romName), biosPath_(settings.biosPath), rtc_(settings.realRTC), cartridge_(romPath_, rtc_),
-        joypad_(interrupts_), audio_(settings.noAudio), timer_(audio_, interrupts_), serial_(interrupts_),
-        gpu_(interrupts_, settings.colorCorrection), bus_(joypad_, memory_, timer_, cartridge_, serial_, dma_, audio_, interrupts_, gpu_),
-        cpu_(settings.model, biosPath_, settings.noBootrom, bus_, interrupts_, registers_, settings.force_cgb_mode), instructions_(registers_, interrupts_),
-        executionPolicy_(settings.executionPolicy) {
+    explicit Gameboy(const GameboySettings &settings, GameboyMedia media, RealTimeClock::TimeSource time_source = {}) :
+        initialSettings_(settings), rtc_(settings.real_rtc, std::move(time_source)), cartridge(rtc_, std::move(media.rom)), joypad_(interrupts_),
+        audio_(settings.no_audio), timer_(audio_, interrupts_), serial_(interrupts_), gpu_(interrupts_, settings.color_correction),
+        bus_(joypad_, memory_, timer_, cartridge, serial_, dma_, audio_, interrupts_, gpu_),
+        cpu_(settings.model, media.bootrom, settings.no_bootrom, bus_, interrupts_, registers_, settings.force_cgb_mode),
+        instructions_(registers_, interrupts_), executionPolicy_(settings.execution_policy) {
+        cartridge.LoadBattery(media.battery);
         timer_.serial = &serial_;
         gpu_.dmg_palette_sampling = settings.dmg_palette_sampling;
     }
@@ -57,7 +61,9 @@ public:
 
     [[nodiscard]] const GameboySettings &InitialSettings() const { return initialSettings_; }
 
-    static std::unique_ptr<Gameboy> init(const GameboySettings &settings) { return std::make_unique<Gameboy>(settings); }
+    static std::unique_ptr<Gameboy> init(const GameboySettings &settings, GameboyMedia media, RealTimeClock::TimeSource time_source = {}) {
+        return std::make_unique<Gameboy>(settings, std::move(media), std::move(time_source));
+    }
 
     void RunFrame();
 
@@ -79,7 +85,13 @@ public:
 
     [[nodiscard]] bool ConsumeFrame();
 
-    void Save() const;
+    [[nodiscard]] std::vector<u8> SaveBattery() const { return cartridge.SaveBattery(); }
+
+    void LoadBattery(std::span<const u8> bytes) { cartridge.LoadBattery(bytes); }
+
+    [[nodiscard]] bool BatterySavePending() const { return cartridge.BatterySavePending(); }
+
+    void AcknowledgeBatterySave() { cartridge.AcknowledgeBatterySave(); }
 
     void KeyUp(Keys);
 
@@ -121,7 +133,7 @@ public:
 
     [[nodiscard]] uint8_t InspectCpuRead(const uint16_t address) const { return bus_.InspectRead(address, ComponentSource::CPU); }
 
-    void DebugPoke(const uint16_t address, const uint8_t value) { bus_.DebugPoke(address, value); }
+    void DebugPoke(const uint16_t address, const uint8_t value) const { bus_.DebugPoke(address, value); }
 
     [[nodiscard]] uint8_t DebugPeekWram(const uint8_t bank, const uint16_t offset) const {
         if (bank > 7 || offset >= 0x1000 || (bank > 1 && !IsInCgbMode()))
@@ -141,13 +153,13 @@ public:
 
     [[nodiscard]] std::span<const uint8_t> BootromBytes() const { return bus_.bootrom; }
 
-    [[nodiscard]] std::span<const uint8_t> rom_bytes() const { return cartridge_.rom_bytes(); }
+    [[nodiscard]] std::span<const uint8_t> rom_bytes() const { return cartridge.rom_bytes(); }
 
     void reset_to_startup(std::span<const std::byte> state);
 
-    [[nodiscard]] bool UsesRealRTC() const { return rtc_.realRTC_; }
+    [[nodiscard]] bool UsesRealRTC() const { return rtc_.real_rtc; }
 
-    [[nodiscard]] uint16_t CartChecksum() const { return cartridge_.GlobalChecksum(); }
+    [[nodiscard]] uint16_t CartChecksum() const { return cartridge.GlobalChecksum(); }
 
     [[nodiscard]] Model GetModel() const { return gpu_.model; }
 
@@ -161,11 +173,9 @@ public:
 
 private:
     [[=NotStateAware]] GameboySettings initialSettings_;
-    [[=NotStateAware]] std::string romPath_;
-    [[=NotStateAware]] std::string biosPath_;
 
     RealTimeClock rtc_; // init in constructor
-    Cartridge cartridge_; // init in constructor
+    Cartridge cartridge; // init in constructor
     Interrupts interrupts_{};
     Registers registers_{};
     DMA dma_{};
@@ -188,7 +198,7 @@ private:
 
     void ObserveInput(uint8_t previous);
 
-    void SynchronizeObservationPosition();
+    void SynchronizeObservationPosition() const;
 
     uint32_t AdvanceCycles(uint32_t maxCycles);
 
@@ -234,8 +244,8 @@ static constexpr std::size_t ForEachStateLeaf(T &obj, Visitor &&visit, std::size
 
 template<class T>
 static constexpr void SerializeInto(const T &obj, std::byte *out) {
-    ForEachStateLeaf(obj, [out](const auto &leaf, const std::size_t offset) {
-        using Leaf = std::remove_cvref_t<decltype(leaf)>;
+    ForEachStateLeaf(obj, [out]<typename L>(const L &leaf, const std::size_t offset) {
+        using Leaf = std::remove_cvref_t<L>;
         std::ranges::copy(std::bit_cast<std::array<std::byte, sizeof(Leaf)>>(leaf), out + offset);
     });
 }
@@ -255,7 +265,6 @@ inline constexpr std::size_t kGameboyStateSize = StateSizeOf(^^Gameboy);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsfinae-incomplete"
 inline auto Gameboy::SaveState() const {
-    // TODO: Cant remember if the SaveState()s in each component are actually doing I/O. Should change to only returning bytes if so
     std::array<std::byte, kGameboyStateSize> out{};
     SerializeInto(*this, out.data());
     return out;
@@ -273,8 +282,8 @@ inline bool Gameboy::LoadState(const std::span<const std::byte> state) {
         return false;
     }
     // Fix up some [[=NotStateAware]] members
-    rtc_.RecalculateZeroTime();
-    cartridge_.MarkRamDirty();
+    rtc_.recalculate_zero_time();
+    cartridge.MarkRamDirty();
     audio_.ClearBuffer();
     interrupts_.recompute_pending();
     gpu_.SetModel(gpu_.model);

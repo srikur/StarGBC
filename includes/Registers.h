@@ -3,7 +3,6 @@
 #include "Model.h"
 
 #include <cstdint>
-#include <fstream>
 
 struct Registers {
     uint8_t a{}, f{}, b{}, c{}, d{}, e{}, h{}, l{};
@@ -53,28 +52,6 @@ struct Registers {
     }
 
     void SetStartupValues(Model model, bool cgbMode);
-
-    bool SaveState(std::ofstream &stateFile) const {
-        try {
-            if (!stateFile.is_open())
-                return false;
-            stateFile.write(reinterpret_cast<const char *>(this), sizeof(Registers));
-            return true;
-        } catch ([[maybe_unused]] const std::exception &e) {
-            return false;
-        }
-    }
-
-    bool LoadState(std::ifstream &stateFile) {
-        try {
-            if (!stateFile.is_open())
-                return false;
-            stateFile.read(reinterpret_cast<char *>(this), sizeof(Registers));
-            return true;
-        } catch ([[maybe_unused]] const std::exception &e) {
-            return false;
-        }
-    }
 };
 
 inline void Registers::SetStartupValues(const Model model, const bool cgbMode) {

@@ -137,24 +137,6 @@ bool Joypad::KeyPressed() const { return keyPressed_; }
 
 void Joypad::ClearKeyPressed() { keyPressed_ = false; }
 
-bool Joypad::SaveState(std::ofstream &f) const {
-    if (!f.is_open())
-        return false;
-    f.write(reinterpret_cast<const char *>(&matrix_), sizeof matrix_);
-    f.write(reinterpret_cast<const char *>(&select_), sizeof select_);
-    f.write(reinterpret_cast<const char *>(&keyPressed_), sizeof keyPressed_);
-    return true;
-}
-
-bool Joypad::LoadState(std::ifstream &f) {
-    if (!f.is_open())
-        return false;
-    f.read(reinterpret_cast<char *>(&matrix_), sizeof matrix_);
-    f.read(reinterpret_cast<char *>(&select_), sizeof select_);
-    f.read(reinterpret_cast<char *>(&keyPressed_), sizeof keyPressed_);
-    return true;
-}
-
 void Joypad::UpdateKeyFlag() {
     const bool dirRowSelected = (select_ & 0x10) == 0;
     const bool btnRowSelected = (select_ & 0x20) == 0;

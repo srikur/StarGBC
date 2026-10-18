@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -99,7 +100,7 @@ namespace {
 
 int main(const int argc, char **argv) {
     constexpr Settings parse_settings{.allow_case_insensitivity = true};
-    const auto arguments = StarParse::parse_or_exit<Arguments, parse_settings>(argc, argv);
+    const auto arguments = StarParse::parse_or_exit<Arguments>(argc, argv, parse_settings);
     if (arguments.help_requested()) {
         std::print("{}", arguments.help());
         return 0;
@@ -109,14 +110,14 @@ int main(const int argc, char **argv) {
         return 0;
     }
     try {
-        GameboySettings settings{.romName = arguments->rom,
-                                 .biosPath = arguments->bios,
-                                 .model = arguments->model,
-                                 .noBootrom = arguments->no_bootrom,
-                                 .colorCorrection = !arguments->raw_color,
-                                 .executionPolicy = arguments->policy,
-                                 .dmg_palette_sampling = arguments->dmg_palette_sampling,
-                                 .force_cgb_mode = arguments->force_cgb_mode};
+        host::LaunchSettings settings{.rom_path = arguments->rom,
+                                      .bios_path = arguments->bios,
+                                      .emulation = {.model = arguments->model,
+                                                    .no_bootrom = arguments->no_bootrom,
+                                                    .color_correction = !arguments->raw_color,
+                                                    .execution_policy = arguments->policy,
+                                                    .dmg_palette_sampling = arguments->dmg_palette_sampling,
+                                                    .force_cgb_mode = arguments->force_cgb_mode}};
         std::optional<diagnostics::InputLog> inputLog;
         if (!arguments->replay_inputs.empty()) {
             if (!arguments->input_at.empty())
@@ -125,15 +126,15 @@ int main(const int argc, char **argv) {
             if (!inputLog->settings)
                 throw std::invalid_argument("Command-line replay requires recorded initial settings");
             settings = *inputLog->settings;
-            settings.romName = arguments->rom;
+            settings.rom_path = arguments->rom;
             if (!arguments->bios.empty())
-                settings.biosPath = arguments->bios;
-            if (arguments->model != Model::Auto && arguments->model != settings.model)
+                settings.bios_path = arguments->bios;
+            if (arguments->model != Model::Auto && arguments->model != settings.emulation.model)
                 throw std::invalid_argument("Requested model differs from the recorded model");
-            settings.executionPolicy = arguments->policy;
+            settings.emulation.execution_policy = arguments->policy;
         }
-        Gameboy machine(settings);
-        settings.model = machine.GetModel();
+        auto machine = host::load_gameboy(settings);
+        settings.emulation.model = machine.GetModel();
         const auto initialInputs = diagnostics::IdentifyInitialInputs(machine, settings);
         const diagnostics::CheckpointIdentity checkpointIdentity{.build = std::string(Gameboy::CoreBuildIdentity()), .inputs = initialInputs};
         std::unique_ptr<diagnostics::InputRecorder> inputRecorder;

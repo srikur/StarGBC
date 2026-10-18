@@ -3,7 +3,6 @@
 
 #include <array>
 #include <cstdint>
-#include <fstream>
 #include "Model.h"
 
 struct Memory {
@@ -17,10 +16,6 @@ struct Memory {
     uint8_t wramBank_{0x01};
 
     void initialize_power_on(Model model);
-
-    bool SaveState(std::ofstream &stateFile) const;
-
-    bool LoadState(std::ifstream &stateFile);
 };
 
 #endif // STARGBC_MEMORY_H

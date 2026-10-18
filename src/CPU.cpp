@@ -1,27 +1,17 @@
 #include "CPU.h"
-#include "EmbeddedBootroms.h"
 
 #include <bit>
 #include <iterator>
 #include <map>
 
+#include "EmbeddedBootroms.h"
+
 template<BusLike BusT>
-void CPU<BusT>::InitializeBootrom(const std::string &bios_path) const {
-    std::ifstream file(bios_path, std::ios::binary);
-    if (!file)
-        throw std::runtime_error("Could not open boot ROM: " + bios_path);
-    file.unsetf(std::ios::skipws);
-
-    file.seekg(0, std::ios::end);
-    const std::streampos fileSize = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    const auto expectedSize = IsCgb(bus_.gpu_.model) ? 0x900 : 0x100;
-    if (fileSize != expectedSize)
-        throw std::runtime_error("Boot ROM size does not match selected model");
-    bus_.bootrom.reserve(fileSize);
-    bus_.bootrom.insert(bus_.bootrom.begin(), std::istream_iterator<uint8_t>(file), std::istream_iterator<uint8_t>());
-    file.close();
+void CPU<BusT>::InitializeBootrom(const std::span<const u8> bytes) const {
+    const size_t expectedSize = IsCgb(bus_.gpu_.model) ? 0x900 : 0x100;
+    if (bytes.size() != expectedSize)
+        throw std::invalid_argument("Boot ROM size does not match selected model");
+    bus_.bootrom.assign(bytes.begin(), bytes.end());
 }
 
 template<BusLike BusT>

@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #ifndef STARGBC_TESTROMS_H
 #define STARGBC_TESTROMS_H
 
@@ -60,10 +61,10 @@ class TestObservationSession {
     std::optional<diagnostics::ProvenanceRecorder> provenance_;
 
 public:
-    void Attach(Gameboy &gameboy) {
+    void Attach(Gameboy &gameboy, const host::LaunchSettings &settings) {
         machine_ = &gameboy;
         if (testCheckpointFailures)
-            checkpointInputs_ = diagnostics::IdentifyInitialInputs(gameboy, gameboy.InitialSettings());
+            checkpointInputs_ = diagnostics::IdentifyInitialInputs(gameboy, settings);
         if (testProvenanceLine) {
             provenance_.emplace(diagnostics::PixelRegion{.y = {*testProvenanceLine, *testProvenanceLine}});
             gameboy.RecordPixelsWith(&provenance_->Context());
@@ -223,13 +224,14 @@ static std::optional<Model> ModelFromName(const std::string_view name) {
 static int runBenchmark(const std::string &rom, const Model model, const unsigned frames) {
     try {
         TestObservationSession observations;
-        const auto gameboy = Gameboy::init({
-                .romName = rom,
-                .biosPath = "",
-                .model = model,
-                .executionPolicy = testExecutionPolicy,
-        });
-        observations.Attach(*gameboy);
+        const host::LaunchSettings launch_settings{.rom_path = rom,
+                                                   .bios_path = "",
+                                                   .emulation = {
+                                                           .model = model,
+                                                           .execution_policy = testExecutionPolicy,
+                                                   }};
+        const auto gameboy = host::init_gameboy(launch_settings);
+        observations.Attach(*gameboy, launch_settings);
         constexpr double kGbFrameHz = 4194304.0 / 70224.0;
         const auto start = std::chrono::steady_clock::now();
         for (unsigned f = 0; f < frames; ++f) {

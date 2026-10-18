@@ -1,0 +1,10 @@
+add_library(StarGBC_Host STATIC GameboyFiles.cpp)
+target_include_directories(StarGBC_Host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(StarGBC_Host PUBLIC StarGBC_Core)
+target_link_libraries(StarGBC PRIVATE StarGBC_Host)
+
+if (STARGBC_ENABLE_DEBUGGER)
+    add_library(StarGBC_DebuggerFrontend STATIC DebuggerWindow.cpp)
+    target_include_directories(StarGBC_DebuggerFrontend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(StarGBC_DebuggerFrontend PUBLIC StarGBC_Core SDL3::SDL3-static PRIVATE stargbc_imgui)
+endif ()

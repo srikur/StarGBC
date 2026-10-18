@@ -20,7 +20,6 @@ if (TARGET stargbc_bootroms)
 endif ()
 target_include_directories(${PROJECT_NAME}_Core PUBLIC "${CMAKE_SOURCE_DIR}/includes")
 target_include_directories(${PROJECT_NAME}_Core PUBLIC "${CMAKE_SOURCE_DIR}/diagnostics/include")
-target_link_libraries(${PROJECT_NAME}_Core PRIVATE spdlog::spdlog)
 target_link_libraries(${PROJECT_NAME}_Core PUBLIC starparse::starparse)
 
 add_executable(${PROJECT_NAME} main.cpp SDLFrontend.cpp)

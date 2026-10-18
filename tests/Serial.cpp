@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "Serial.h"
 #include <doctest/doctest.h>
 #include "Audio.h"
@@ -65,7 +66,7 @@ TEST_CASE("Clearing serial start or selecting an external clock cancels internal
 TEST_CASE("Serial clock phase survives restoring a state during a transfer") {
     for (const bool fast : {false, true}) {
         CAPTURE(fast);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         gameboy.[:get_member<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(0xFF04, 0, ComponentSource::CPU);

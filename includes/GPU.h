@@ -375,10 +375,6 @@ public:
 
     const uint32_t *GetScreenData() const;
 
-    bool SaveState(std::ofstream &stateFile) const;
-
-    bool LoadState(std::ifstream &stateFile);
-
     [[nodiscard]] bool LCDDisabled() const;
 
 private:

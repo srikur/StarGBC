@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "diagnostics/Provenance.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
@@ -23,9 +24,9 @@ namespace {
 
 TEST_CASE("diagnostics: provenance does not change pixels hardware state or timeline") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
-        const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
-        Gameboy continuous(settings);
-        Gameboy observed(settings);
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        auto continuous = host::load_gameboy(settings);
+        auto observed = host::load_gameboy(settings);
         diagnostics::ProvenanceRecorder recorder({.y = {.first = 10, .last = 10}});
         observed.RecordPixelsWith(&recorder.Context());
         for (auto interval{0uz}; interval < 60 && (interval < 3 || !recorder.Query(20, 10)); ++interval) {
@@ -103,7 +104,7 @@ TEST_CASE("diagnostics: post-output palette changes retain both emitted and fina
 }
 
 TEST_CASE("diagnostics: restoring without provenance history marks a new branch with unknown in-flight origins") {
-    Gameboy machine({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     diagnostics::ProvenanceRecorder recorder({.y = {.first = 10, .last = 10}});
     machine.RecordPixelsWith(&recorder.Context());
     for (auto interval{0uz}; interval < 60 && !recorder.Query(20, 10); ++interval) {

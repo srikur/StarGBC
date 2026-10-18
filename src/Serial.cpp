@@ -42,35 +42,3 @@ void Serial::clock_edge() {
         interrupts.set(InterruptType::Serial, false);
     }
 }
-
-bool Serial::save_state(std::ofstream &stateFile) const {
-    try {
-        if (!stateFile.is_open())
-            return false;
-        stateFile.write(reinterpret_cast<const char *>(&data), sizeof(data));
-        stateFile.write(reinterpret_cast<const char *>(&control), sizeof(control));
-        stateFile.write(reinterpret_cast<const char *>(&active), sizeof(active));
-        stateFile.write(reinterpret_cast<const char *>(&bits_shifted), sizeof(bits_shifted));
-        stateFile.write(reinterpret_cast<const char *>(&ticks_per_bit), sizeof(ticks_per_bit));
-        stateFile.write(reinterpret_cast<const char *>(&clock_high), sizeof(clock_high));
-        return true;
-    } catch ([[maybe_unused]] const std::exception &e) {
-        return false;
-    }
-}
-
-bool Serial::load_state(std::ifstream &stateFile) {
-    try {
-        if (!stateFile.is_open())
-            return false;
-        stateFile.read(reinterpret_cast<char *>(&data), sizeof(data));
-        stateFile.read(reinterpret_cast<char *>(&control), sizeof(control));
-        stateFile.read(reinterpret_cast<char *>(&active), sizeof(active));
-        stateFile.read(reinterpret_cast<char *>(&bits_shifted), sizeof(bits_shifted));
-        stateFile.read(reinterpret_cast<char *>(&ticks_per_bit), sizeof(ticks_per_bit));
-        stateFile.read(reinterpret_cast<char *>(&clock_high), sizeof(clock_high));
-        return true;
-    } catch ([[maybe_unused]] const std::exception &e) {
-        return false;
-    }
-}

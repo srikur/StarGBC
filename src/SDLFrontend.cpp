@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "SDLFrontend.h"
 
 #include <algorithm>
@@ -16,6 +17,7 @@ constexpr std::string_view kAppDescription = "GBC Emulator";
 constexpr std::string_view kAppIdentifier = "com.srikur.stargbc";
 
 SDLFrontend::~SDLFrontend() {
+    FlushBattery();
 #ifdef STARGBC_ENABLE_DEBUGGER
     debugger_.reset();
 #endif
@@ -138,14 +140,23 @@ SDL_AppResult SDLFrontend::Init(const int argc, char *argv[]) {
         }
     }
 
-    gameboy_ = Gameboy::init({.romName = args->rom_path,
-                              .biosPath = args->bios_path,
-                              .model = args->model,
-                              .noBootrom = args->no_bootrom,
-                              .realRTC = args->real_rtc,
-                              .noAudio = !audioEnabled_,
-                              .dmg_palette_sampling = args->dmg_palette_sampling,
-                              .force_cgb_mode = args->force_cgb_mode});
+    try {
+        gameboy_ = host::init_gameboy({
+                .rom_path = args->rom_path,
+                .bios_path = args->bios_path,
+                .emulation = {
+                        .model = args->model,
+                        .no_bootrom = args->no_bootrom,
+                        .real_rtc = args->real_rtc,
+                        .no_audio = !audioEnabled_,
+                        .dmg_palette_sampling = args->dmg_palette_sampling,
+                        .force_cgb_mode = args->force_cgb_mode
+                }
+        });
+    } catch (const std::exception &error) {
+        SDL_Log("Could not load game: %s", error.what());
+        return SDL_APP_FAILURE;
+    }
 
     lastTitleTime_ = std::chrono::steady_clock::now();
     session_ = std::make_unique<EmulationSession>(*gameboy_);
@@ -171,7 +182,7 @@ void SDLFrontend::toggle_debugger() {
             debugger_->toggle();
         else
             debugger_ = std::make_unique<DebuggerWindow>(*session_, window_, renderer_, [this](const uint8_t slot) { SaveState(slot); },
-                                                        [this](const uint8_t slot) { LoadState(slot); });
+                                                         [this](const uint8_t slot) { LoadState(slot); });
         paused_ = false;
     } catch (const std::exception &error) {
         SDL_Log("Debugger: %s", error.what());
@@ -383,8 +394,8 @@ SDL_AppResult SDLFrontend::Iterate() {
         }
     } else
 #endif
-    if (!paused_)
-        session_->RunFrame();
+        if (!paused_)
+            session_->RunFrame();
     if (session_->FrameCount() != previous_frame) {
         ++framesSinceTitle_;
         ThrottleFrame();
@@ -421,6 +432,8 @@ SDL_AppResult SDLFrontend::Iterate() {
         }
     }
 
+    if (gameboy_->BatterySavePending())
+        FlushBattery();
     PumpAudio();
     UpdateWindowTitle();
 
@@ -530,6 +543,7 @@ void SDLFrontend::SaveState(const uint8_t slot) const {
         std::ofstream file(filename, std::ios::binary | std::ios::trunc);
         if (!file.is_open())
             throw std::runtime_error("Failed to save: " + filename);
+        file.exceptions(std::ios::badbit | std::ios::failbit);
         const SaveStateHeader header{
                 .magic = kStateMagic,
                 .stateSize = kGameboyStateSize,
@@ -541,6 +555,7 @@ void SDLFrontend::SaveState(const uint8_t slot) const {
         const auto saveBytes = gameboy_->SaveState();
         file.write(reinterpret_cast<const char *>(&header), sizeof(header));
         file.write(reinterpret_cast<const char *>(saveBytes.data()), saveBytes.size());
+        file.close();
         std::fprintf(stderr, "Saved state %u to %s\n", slot, filename.c_str());
     } catch (const std::exception &e) {
         std::fprintf(stderr, "Failed to save state: %s\n", e.what());
@@ -583,5 +598,15 @@ void SDLFrontend::LoadState(const uint8_t slot) {
         std::fprintf(stderr, "Loaded state %u from %s\n", slot, filename.c_str());
     } catch (const std::exception &e) {
         std::fprintf(stderr, "Failed to load state %u: %s\n", slot, e.what());
+    }
+}
+
+void SDLFrontend::FlushBattery() const {
+    if (!gameboy_)
+        return;
+    try {
+        host::save_battery(*gameboy_, romPath_);
+    } catch (const std::exception &error) {
+        SDL_Log("Could not save cartridge: %s", error.what());
     }
 }

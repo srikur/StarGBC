@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "diagnostics/Trace.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
@@ -5,10 +6,10 @@
 
 TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardware and pixels") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
-        const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
-        Gameboy disabled(settings);
-        Gameboy observed(settings);
-        Gameboy captured(settings);
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        auto disabled = host::load_gameboy(settings);
+        auto observed = host::load_gameboy(settings);
+        auto captured = host::load_gameboy(settings);
         diagnostics::TraceRecorder observer(32);
         diagnostics::TraceRecorder recorder(1024);
         observer.SetCaptureEnabled(false);
@@ -38,7 +39,7 @@ TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardwar
 }
 
 TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and retain banks") {
-    Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     diagnostics::TraceRecorder recorder(64);
     gameboy.ObserveWith(&recorder.Context());
     auto &gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
@@ -64,7 +65,7 @@ TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and
 
 TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and restore branches retain time") {
     for (const bool doubleSpeed : {false, true}) {
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         if (doubleSpeed) {
             auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
             bus.prepareSpeedShift = true;
@@ -121,7 +122,7 @@ TEST_CASE("diagnostics: trace filters combine component kind address PC bank lin
 }
 
 TEST_CASE("diagnostics: palette bus restrictions are observable without applying blocked writes") {
-    Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     auto &gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
     auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
     gpu.lcdc = 0;

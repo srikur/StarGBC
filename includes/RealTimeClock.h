@@ -1,70 +1,73 @@
 #pragma once
 #include "Common.h"
+#include <functional>
+#include <span>
 
 class RealTimeClock {
-    static constexpr uint64_t kSecPerMin = 60;
-    static constexpr uint64_t kSecPerHour = 60 * kSecPerMin;
-    static constexpr uint64_t kSecPerDay = 24 * kSecPerHour;
-    static constexpr uint64_t kMinPerHour = 60;
-    static constexpr uint64_t kHourPerDay = 24;
-    static constexpr uint64_t kMaxDays = 511;
-    static constexpr uint64_t kHoursPerDay = 24;
+    static constexpr u64 kSecPerMin = 60;
+    static constexpr u64 kSecPerHour = 60 * kSecPerMin;
+    static constexpr u64 kSecPerDay = 24 * kSecPerHour;
+    static constexpr u64 kMinPerHour = 60;
+    static constexpr u64 kHourPerDay = 24;
+    static constexpr u64 kMaxDays = 511;
+    static constexpr u64 kHoursPerDay = 24;
 
-    [[nodiscard]] static uint64_t NowSeconds();
+    [[nodiscard]] u64 now_seconds() const;
 
-    [[nodiscard]] uint64_t ComposeSeconds() const;
+    [[nodiscard]] u64 compose_seconds() const;
 
     // Wall-clock anchor derived from the host time; recomputed on load
-    [[=NotStateAware]] uint64_t zeroTime_{0x00};
-    bool halted_{false};
+    [[= NotStateAware]] u64 zero_time{0x00};
+    bool halted{false};
 
     struct Clock {
-        uint8_t seconds_{0x00};
-        uint8_t minutes_{0x00};
-        uint8_t hours_{0x00};
-        uint8_t dayLower_{0x00};
-        uint8_t dayUpper_{0x00};
+        u8 seconds{0x00};
+        u8 minutes{0x00};
+        u8 hours{0x00};
+        u8 day_lower{0x00};
+        u8 day_upper{0x00};
     };
 
 public:
     static constexpr size_t kSaveFooterSize = 48;
     static constexpr size_t kSaveFooterMinSize = 44;
+    static constexpr u64 RTC_TICKS_PER_SECOND = 4194304;
 
-    // t-cycle ticker per second
-    static constexpr uint64_t RTC_TICKS_PER_SECOND = 4194304;
+    using TimeSource = std::function<u64()>;
 
-    explicit RealTimeClock(const bool realRTC) : realRTC_{realRTC} {}
+    explicit RealTimeClock(const bool real, TimeSource time_source = {}) : real_rtc(real), time_source_(std::move(time_source)) {
+        if (real && !time_source_)
+            throw std::invalid_argument("Real RTC requires a host clock");
+    }
 
-    void Tick();
+    void tick();
 
-    [[nodiscard]] uint8_t ReadRTC(uint16_t address) const;
+    [[nodiscard]] u8 read_rtc(u16 address) const;
 
-    void WriteRTC(uint16_t address, uint8_t value);
+    void write_rtc(u16 address, u8 value);
 
-    uint64_t RecalculateZeroTime();
+    u64 recalculate_zero_time();
 
     // Called every T-cycle; inline so the idle path is a counter bump.
     // Rolls the rtc over every emulated second
     void Update() {
-        if (!halted_)
-            counter_++;
-        if (counter_ == RTC_TICKS_PER_SECOND) {
-            counter_ = 0;
-            Tick();
+        if (!halted)
+            counter++;
+        if (counter == RTC_TICKS_PER_SECOND) {
+            counter = 0;
+            tick();
         }
     }
 
-    void Load(std::ifstream &stateFile);
+    void LoadSaveFooter(std::span<const u8> bytes);
 
-    void Save(std::ofstream &stateFile) const;
+    [[nodiscard]] std::array<u8, kSaveFooterSize> SaveFooter() const;
 
-    void LoadSaveFooter(std::ifstream &saveFile);
+    Clock realClock{};
+    Clock latchedClock{};
+    [[= NotStateAware]] bool real_rtc{false};
+    u64 counter{0};
 
-    void WriteSaveFooter(std::ofstream &saveFile) const;
-
-    Clock realClock_{};
-    Clock latchedClock_{};
-    // CLI configuration, not hardware state — a load must not clobber it
-    [[=NotStateAware]] bool realRTC_{false};
-    uint64_t counter_{0};
+private:
+    [[= NotStateAware]] TimeSource time_source_;
 };
