@@ -13,9 +13,9 @@ roms/*
 compile_commands.json
 CLAUDE.md
 .claude/*
-bootrom/build/
-bootrom/*.o
-bootrom/*.sym
+core/bootrom/build/
+core/bootrom/*.o
+core/bootrom/*.sym
 docs/
 /diagnostics/README.md
 /diagnostics/validation.json

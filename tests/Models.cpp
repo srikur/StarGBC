@@ -1,6 +1,6 @@
 #include "GameboyFiles.h"
 #include <doctest/doctest.h>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 namespace {
     template<class T>

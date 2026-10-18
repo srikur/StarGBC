@@ -3,7 +3,7 @@
 
 #include <filesystem>
 #include "Checkpoint.h"
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "ReplayInput.h"
 
 namespace diagnostics {

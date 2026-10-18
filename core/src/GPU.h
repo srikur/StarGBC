@@ -1,0 +1,428 @@
+#pragma once
+#include "stargbc/Common.h"
+#include "FixedContainers.h"
+#include "HDMA.h"
+#include "Interrupts.h"
+#include "diagnostics/PixelProvenance.h"
+
+struct Pixel {
+    uint8_t color{0x00};
+    uint8_t dmg_palette{0x00};
+    uint8_t cgb_palette{0x00};
+    bool priority{false};
+    bool is_sprite{false};
+    bool is_placeholder{true};
+    uint8_t sprite_num{0x00};
+};
+
+struct Attributes {
+    bool priority{false};
+    bool yflip{false};
+    bool xflip{false};
+    bool palette_number_dmg{false};
+    bool vram_bank{false};
+    uint8_t palette_number_cgb{0x00};
+};
+
+struct Sprite {
+    uint8_t sprite_num{0x00};
+    int16_t x{0x00};
+    int16_t y{0x00};
+    uint8_t tile_index{0x00};
+    Attributes attributes{};
+    bool processed{false};
+
+    bool operator<(const Sprite &s) const { return x < s.x || (x == s.x && sprite_num < s.sprite_num); }
+};
+
+// State for the pixel fetcher
+enum class FetcherState {
+    GetTile,
+    GetTileDataLow,
+    GetTileDataHigh,
+    Sleep,
+    PushToFIFO,
+};
+
+struct Gpi {
+    uint8_t index{};
+    bool auto_increment{};
+};
+
+enum class GPUMode { MODE_0, MODE_1, MODE_2, MODE_3 };
+
+enum class CorruptionType {
+    Write,
+    Read,
+    ReadWrite,
+};
+
+struct Stat {
+    bool enable_ly_interrupt{false};
+    bool enable_m2_interrupt{false};
+    bool enable_m1_interrupt{false};
+    bool enable_m0_interrupt{false};
+    bool coincidence_flag{false};
+    GPUMode mode{GPUMode::MODE_2};
+
+    [[nodiscard]] uint8_t value() const {
+        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 |
+               coincidence_flag << 2 | static_cast<uint8_t>(mode);
+    }
+};
+
+struct GraphicsInspection;
+
+class GPU {
+public:
+    [[nodiscard]] GraphicsInspection inspect_graphics(bool cgb_mode) const;
+
+    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {
+        screenData.fill(LCD_OFF_COLOR);
+    }
+
+    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+    [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
+    [[=NotStateAware]] bool optimized_execution{true};
+
+    void set_mode(GPUMode mode);
+
+    [[nodiscard]] uint8_t cgb_lyc_compare_line(unsigned lead) const;
+
+    void initialize_palette_ram();
+
+    void initialize_post_boot();
+
+    void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
+
+    void ObserveStall(diagnostics::StallReason reason) const;
+
+    void RecordSpriteCandidate(unsigned slot, uint8_t bit, uint8_t color, diagnostics::SpriteDecision decision);
+
+    [[nodiscard]] diagnostics::PixelDecision ExplainSelection(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+
+    void RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel &selected, bool bgEnable, uint32_t color);
+
+    void RecordRecolor(uint16_t offset, uint16_t address, const Pixel &selected, diagnostics::PixelDecision decision);
+
+    // little-things/firstwhite.gb — first frame is blank/white on all except SGB/SGB2
+    static constexpr uint32_t LCD_OFF_COLOR = 0xFFFFFFFFu;
+
+    static constexpr uint32_t DMG_SHADE[4] = {
+            0xFFFFFFFFu, // FF FF FF FF
+            0xFFC0C0C0u, // C0 C0 C0 FF
+            0xFF606060u, // 60 60 60 FF
+            0xFF000000u // 00 00 00 FF
+    };
+
+    FixedDeque<Pixel, 16> backgroundQueue;
+    FixedDeque<Sprite, 10> spriteFetchQueue;
+    // Ring buffer: spriteArrayHead_ is slot 0; avoids shifting 7 Pixel
+    // structs on every output pixel. Indexed with & 7 throughout.
+    std::array<Pixel, 8> spriteArray;
+    uint8_t spriteArrayHead_{0};
+
+    [[nodiscard]] bool window_y_matched() const {
+        return windowTriggeredThisFrame || currentLine == (wy_write_stage ? wy_trigger_old : windowY);
+    }
+
+    bool windowTriggeredThisFrame{false};
+    Sprite spriteToFetch_{};
+    Attributes backgroundTileAttributes_{};
+
+    FetcherState fetcherState_{FetcherState::GetTile};
+
+    bool firstScanlineDataHigh{false};
+    uint16_t lastAddress_{0x0000};
+    bool spriteFetchActive_{false};
+    bool isFetchingWindow_{false};
+    uint8_t fetcherDelay_{0};
+    uint8_t fetcherTileX_ = 0; // Current tile X-coordinate in the BG/Win map (0-31).
+    uint8_t fetcherTileRow_{0}; // CGB-D and later latch Y during the tile-map fetch
+    uint8_t fetcherTileNum_ = 0; // The tile ID read from VRAM.
+    uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
+    uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
+
+    // Dots until a pending sprite fetch may take over the fetcher, and the
+    // interrupted background fetch context to resume from afterwards. Sprites
+    // clipped by the left edge fetch immediately; the alignment wait is served
+    // between their high-byte read and the merge into the FIFO. Only the line's
+    // first sprite fetch overlaps its tile step with the background fetch tail,
+    // so later fetches do their VRAM reads one dot later
+    uint8_t spriteFetchWait_{0};
+    uint16_t sprite_alignment_end_x{};
+    uint8_t spriteMergeDelay_{0};
+    bool spriteFetchAbort_{false};
+    bool spriteFetchedThisLine_{false};
+    bool spriteFetchIsFirst_{true};
+    // Edge detector for the WX comparator: the reactivation glitch fires only
+    // on a fresh transition into the match state, not on the match that keeps
+    // holding while pixel output is stalled after a window activation
+    bool windowMatchLatch_{false};
+    bool windowEndPending_{false};
+    uint8_t windowEndStage_{0};
+    bool windowActivatePending_{false};
+    bool window_fetch_startup{};
+    bool window_pixel_stalled{};
+    uint8_t window_startup_discard{};
+    int16_t window_start_x{};
+    bool windowPixel0Triggered_{false};
+    bool window_line_start_pending{};
+    bool window_line_start_counted{};
+    FetcherState savedBgFetcherState_{FetcherState::GetTile};
+    uint8_t savedBgFetcherDelay_{0};
+    uint8_t savedBgTileNum_{0};
+    uint8_t savedBgTileRow_{0};
+    uint8_t savedBgTileDataLow_{0};
+    uint8_t savedBgTileDataHigh_{0};
+    uint16_t savedBgLastAddress_{0};
+
+    uint8_t windowLineCounter_{0xFF};
+
+    FixedVector<Sprite, 10> spriteBuffer;
+    uint8_t initialScrollXDiscard_{0x00};
+    uint8_t initialScrollXFine_{0};
+    uint8_t pixelsDrawn{0x00};
+    bool objectPriority{false};
+    bool initialSCXSet{false};
+
+    std::array<uint8_t, VRAM_SIZE> vram{};
+    [[=NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
+    std::array<uint8_t, 0xA0> oam{};
+    std::array<uint8_t, 0x60> extraOam{}; // CGB 0-D RAM behind FEA0-FEFF
+    uint8_t lyc = 0; // 0xFF45
+
+    std::pair<bool, uint8_t> priority_[160];
+    uint8_t lcdc = 0;
+    Stat stat{}; // 0xFF41
+    uint8_t currentLine = 0; // 0xFF44
+    uint8_t windowX = 0; // 0xFF4B
+    uint8_t windowY = 0; // 0xFF4A
+    uint8_t backgroundPalette = 0; // 0xFF47
+    uint8_t obp0Palette = 0xFF; // 0xFF48
+    uint8_t obp1Palette = 0xFF; // 0xFF49
+
+    uint8_t scrollX{}; // 0xFF43
+    uint8_t scrollY{}; // 0xFF42
+    uint32_t scanlineCounter = 0; // current dot in scanline
+
+    bool vblank = false;
+    [[=NotStateAware]] bool frameReady = true;
+    uint64_t displayFrames_{};
+    bool statTriggered{false};
+    bool lycInterruptLine_{false};
+    uint8_t stat_irq_old{};
+    uint8_t stat_irq_delay{};
+    uint8_t m1_irq_delay{};
+    uint8_t lyc_irq_old{};
+    uint8_t lyc_irq_delay{};
+    uint8_t lyc_mode_delay{};
+    bool m2IrqRaisedEarly{false};
+    // First line after LCD enable: starts in mode 0, skips OAM scan, and
+    // enters mode 3 late (mooneye lcdon_timing, stat_lyc_onoff)
+    bool lcdEnableLine0_{false};
+    bool lcdStartDoubleSpeed_{false};
+    bool lcdFirstFrame_{false};
+    uint8_t bgpPending{0};
+    uint8_t bgpWriteStage{0};
+    uint8_t lcdcPending{0};
+    uint8_t lcdcWriteStage{0};
+    uint8_t cgbTileDataBus_{0};
+    uint8_t cgbPreviousTileDataBus_{0};
+    bool backgroundDataReadThisDot_{false};
+    bool backgroundDataReadHigh_{false};
+    bool pixelOutputThisDot_{false};
+    Pixel outputBackground_{};
+    Pixel outputSprite_{};
+    uint8_t wy_trigger_old{0};
+    uint8_t wy_write_stage{0};
+    uint8_t wxPending{0};
+    uint8_t wxWriteStage{0};
+    uint8_t scxFetcherOld{0};
+    uint8_t scxWriteStage{0};
+    bool scx_just_applied{false};
+    uint8_t scyFetcherOld{0};
+    uint8_t scyWriteStage{0};
+    bool scyJustApplied_{false};
+    uint8_t obp0Pending{0};
+    uint8_t obp0WriteStage{0};
+    uint8_t obp1Pending{0};
+    uint8_t obp1WriteStage{0};
+
+    // GBC
+    bool hblank = false;
+    Gpi bgpi{}; // 0xFF68
+    Gpi obpi{}; // 0xFF6A
+    uint8_t vramBank = 0;
+    std::array<std::array<std::array<uint8_t, 3>, 4>, 8> bgpd = {}; // 0xFF69
+    std::array<std::array<std::array<uint8_t, 3>, 4>, 8> obpd = {}; // 0xFF6B
+
+    HDMA hdma{};
+    // Batched-idle fast path: idleDots_ > 0 means the next N dots are provably
+    // quiet HBlank/VBlank dots (advance scanlineCounter, nothing else);
+    // lcdOffIdle_ means the LCD is off with no delayed writes in flight. Any
+    // register write, speed switch, or state load clears both.
+    [[=NotStateAware]] uint32_t idleDots_{0};
+    [[=NotStateAware]] bool lcdOffIdle_{false};
+    // Mode-2 variant: the rest of an OAM-scan line where only TickOAMScan and
+    // the dot counter matter (STAT/LYC state is provably constant)
+    [[=NotStateAware]] uint32_t scanFastDots_{0};
+    // CGB non-compat mode-3 condensed dots (pixel pipeline only)
+    [[=NotStateAware]] bool mode3Quiet_{false};
+    // Count of unprocessed spriteBuffer entries; skips the per-dot trigger scan
+    [[=NotStateAware]] uint8_t spritesPending_{0};
+    // Superset of this line's sprite trigger X positions (never cleared per
+    // sprite, so a stale bit only costs a scan)
+    [[=NotStateAware]] std::array<uint32_t, 5> spriteXBits_{};
+    [[=NotStateAware]] bool spriteNegX_{false};
+    uint8_t clockPause_{0};
+    bool doubleSpeed{false};
+    uint8_t mode3EndDelay_{0};
+    uint8_t m0_irq_delay{};
+    bool m0_irq_active{};
+    uint16_t mode3EndDot_{0};
+    std::array<Pixel, 3> recentPixels_{};
+    std::array<uint16_t, 3> recentPixelOffsets_{0xFFFF, 0xFFFF, 0xFFFF};
+    Model model = Model::DMGB;
+    DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
+    // Cached IsCgb(model): read dozens of times per dot, and the compiler
+    // cannot hoist the range compares across non-inlined calls
+    [[=NotStateAware]] bool is_cgb{false};
+    [[=NotStateAware]] bool color_correction{true};
+    // Color-corrected ARGB for every CGB palette entry (8 palettes x 4
+    // colors), maintained on palette-RAM writes instead of per pixel
+    [[=NotStateAware]] std::array<uint32_t, 32> bgColorLut_{};
+    [[=NotStateAware]] std::array<uint32_t, 32> objColorLut_{};
+    // CGB hardware running a DMG cart: render through the DMG palette
+    // registers into the bootrom's compatibility palettes
+    bool dmg_compat{false};
+    bool cpu_halted{};
+    // Mirrored from the DMA unit each tick: an active OAM DMA blocks the
+    // PPU's OAM scan (stale bus) and redirects tile/attr reads
+    bool oam_dma_active{false};
+    uint8_t oamDmaDest_{0};
+    uint8_t oam_dma_write_offset{0xFF};
+    uint8_t oam_dma_old_value{};
+    uint8_t mode2YBus_{0xFF};
+    uint8_t mode2XBus_{0xFF};
+    bool mode2_large_sprite{};
+    bool mode2_size_old{};
+    uint8_t mode2_size_delay{};
+    bool mode2_entry_valid{};
+
+    void SetModel(const Model m) {
+        model = m;
+        is_cgb = IsCgb(m);
+        RebuildColorLuts();
+    }
+
+    void InvalidateIdle() {
+        idleDots_ = 0;
+        lcdOffIdle_ = false;
+        scanFastDots_ = 0;
+        mode3Quiet_ = false;
+    }
+
+    void RecomputeSpritePending() {
+        uint8_t n = 0;
+        spriteXBits_ = {};
+        spriteNegX_ = false;
+        for (const auto &s : spriteBuffer) {
+            n += !s.processed;
+            if (s.x < 0)
+                spriteNegX_ = true;
+            else if (s.x < SCREEN_WIDTH)
+                spriteXBits_[s.x >> 5] |= 1u << (s.x & 31);
+        }
+        spritesPending_ = n;
+    }
+
+    void MaybeArmIdle();
+
+    void RebuildColorLuts();
+
+    void Update();
+
+    void TickOAMScan();
+
+    void TickMode3();
+
+    void OutputPixel(bool lcdcAhead = false);
+
+    void ResetScanlineState(bool clearBuffer);
+
+    uint8_t GetOAMScanRow() const;
+
+    [[nodiscard]] uint8_t ReadVRAM(uint16_t address) const;
+
+    void WriteVRAM(uint16_t address, uint8_t value);
+
+    // CPU-side accessibility gates. DMG asserts/releases them offset from the
+    // internal mode transitions; other bus masters keep the plain mode-3 rule
+    [[nodiscard]] bool CpuOamReadBlocked() const;
+
+    [[nodiscard]] bool CpuOamWriteBlocked() const;
+
+    [[nodiscard]] bool CpuVramReadBlocked() const;
+
+    [[nodiscard]] bool CpuVramWriteBlocked() const;
+
+    [[nodiscard]] bool cpu_palette_blocked() const;
+
+    [[nodiscard]] uint8_t ReadRegisters(uint16_t address) const;
+
+    void WriteRegisters(uint16_t address, uint8_t value);
+
+    const uint32_t *GetScreenData() const;
+
+    [[nodiscard]] bool LCDDisabled() const;
+
+private:
+    Interrupts &interrupts_;
+
+    [[nodiscard]] bool StatLineHigh(bool register_write = false, bool previous = false) const;
+
+    [[nodiscard]] bool StatMode0Visible(unsigned lead = 3, bool interrupt = false) const;
+
+    void Fetcher_StepSpriteFetch();
+
+    void Fetcher_StepBackgroundFetch();
+
+    void ApplyLCDC(uint8_t value);
+
+    void ClearFramebuffer();
+
+    [[nodiscard]] Pixel SelectPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+
+    [[nodiscard]] uint32_t ResolveColor(const Pixel &finalPixel) const;
+
+    [[nodiscard]] uint32_t MixPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+
+    [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
+
+    uint16_t CalculateTileDataAddress();
+
+    uint8_t ReadBackgroundTileData(bool high);
+
+    uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
+
+    [[nodiscard]] uint8_t sample_dmg_palette(const uint8_t previous, const uint8_t next) const {
+        return dmg_palette_sampling == DmgPaletteSampling::BitwiseOr ? previous | next : next;
+    }
+
+    [[nodiscard]] uint32_t GetBackgroundColor(uint8_t color, uint8_t palette = 0) const;
+
+    [[nodiscard]] uint32_t GetSpriteColor(uint8_t color, uint8_t palette) const;
+
+    void CheckForSpriteTrigger();
+
+    void CheckForWindowTrigger();
+
+    void discard_background_for_window();
+
+    static Attributes GetAttrsFrom(uint8_t byte);
+
+    static uint8_t ReadGpi(const Gpi &gpi);
+
+    static void WriteGpi(Gpi &gpi, uint8_t value);
+};

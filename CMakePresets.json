@@ -42,6 +42,17 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-O3 -g1 -DNDEBUG -fno-omit-frame-pointer",
         "CMAKE_C_FLAGS_RELEASE": "-O3 -g1 -DNDEBUG -fno-omit-frame-pointer"
       }
+    },
+    {
+      "name": "core",
+      "displayName": "Core Library Only",
+      "description": "Release build of StarGBC_Core",
+      "inherits": "release",
+      "cacheVariables": {
+        "STARGBC_BUILD_SDL_FRONTEND": "OFF",
+        "STARGBC_BUILD_DIAGNOSTICS": "OFF",
+        "STARGBC_BUILD_TESTS": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -59,6 +70,11 @@
       "name": "profile",
       "displayName": "Build for Profiling",
       "configurePreset": "profile"
+    },
+    {
+      "name": "core",
+      "displayName": "Build Core Only",
+      "configurePreset": "core"
     }
   ],
   "workflowPresets": [
@@ -101,6 +117,20 @@
         {
           "type": "build",
           "name": "profile"
+        }
+      ]
+    },
+    {
+      "name": "core",
+      "displayName": "Configure + Build Core Only",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "core"
+        },
+        {
+          "type": "build",
+          "name": "core"
         }
       ]
     }

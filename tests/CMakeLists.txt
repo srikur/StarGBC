@@ -12,7 +12,7 @@ add_custom_command(
         OUTPUT ${GAMBATTE_GENERATED_HEADER}
         COMMAND ${Python3_EXECUTABLE} ${GAMBATTE_SCRIPT}
         ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${GAMBATTE_GENERATED_HEADER}
-        DEPENDS ${GAMBATTE_SCRIPT} ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${PARENT_DIR}/includes/Model.h
+        DEPENDS ${GAMBATTE_SCRIPT} ${GAMBATTE_TEXT} ${GAMBATTE_HEADER} ${PARENT_DIR}/core/src/Model.h
         COMMENT "Generating GambatteTests.gen.h"
         VERBATIM)
 
@@ -21,12 +21,11 @@ set(ROM_CATALOGS ${CMAKE_CURRENT_SOURCE_DIR}/catalog/age.json ${CMAKE_CURRENT_SO
 add_custom_command(
         OUTPUT ${CATALOG_GENERATED_HEADERS}
         COMMAND ${Python3_EXECUTABLE} ${PARENT_DIR}/scripts/generate-rom-catalog.py ${GBMICROTEST_GENERATED_DIR} ${ROM_CATALOGS}
-        DEPENDS ${PARENT_DIR}/scripts/generate-rom-catalog.py ${ROM_CATALOGS} ${PARENT_DIR}/includes/Model.h
+        DEPENDS ${PARENT_DIR}/scripts/generate-rom-catalog.py ${ROM_CATALOGS} ${PARENT_DIR}/core/src/Model.h
         VERBATIM)
 
-add_subdirectory(mocks)
 add_executable(${PROJECT_NAME}_Tests ${TEST_SOURCES} ${CATALOG_GENERATED_HEADERS} ${GAMBATTE_GENERATED_HEADER})
 target_include_directories(${PROJECT_NAME}_Tests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR} ${GBMICROTEST_GENERATED_DIR})
+        ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/mocks ${GBMICROTEST_GENERATED_DIR})
 target_link_libraries(${PROJECT_NAME}_Tests PRIVATE ${PROJECT_NAME}_Core StarGBC_Diagnostics doctest::doctest)
 

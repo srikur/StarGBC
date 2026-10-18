@@ -1,7 +1,7 @@
 #include "GameboyFiles.h"
 #include "diagnostics/Trace.h"
 #include <doctest/doctest.h>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "TestUtilities.h"
 
 TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardware and pixels") {

@@ -1,0 +1,17 @@
+add_executable(${PROJECT_NAME} main.cpp SDLFrontend.cpp)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${PROJECT_NAME} PRIVATE StarGBC_Host starparse::starparse SDL3::SDL3-static)
+
+if (STARGBC_ENABLE_DEBUGGER)
+    add_library(StarGBC_DebuggerFrontend STATIC DebuggerWindow.cpp)
+    target_include_directories(StarGBC_DebuggerFrontend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(StarGBC_DebuggerFrontend PUBLIC StarGBC_Core SDL3::SDL3-static PRIVATE stargbc_imgui)
+    target_link_libraries(${PROJECT_NAME} PRIVATE StarGBC_DebuggerFrontend)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE STARGBC_ENABLE_DEBUGGER=1)
+endif ()
+
+if (STARGBC_ENABLE_LUA)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/scripting ${CMAKE_BINARY_DIR}/scripting)
+    target_link_libraries(${PROJECT_NAME} PRIVATE StarGBC_Scripting)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE STARGBC_ENABLE_LUA=1)
+endif ()

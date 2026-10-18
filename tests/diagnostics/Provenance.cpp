@@ -1,7 +1,7 @@
 #include "GameboyFiles.h"
 #include "diagnostics/Provenance.h"
 #include <doctest/doctest.h>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 namespace {
     void tickPixel(GPU &gpu, diagnostics::ProvenanceRecorder &recorder, const uint64_t tick) {

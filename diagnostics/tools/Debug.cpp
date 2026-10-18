@@ -5,7 +5,7 @@
 #include <print>
 #include <sstream>
 #include <starparse/starparse.hpp>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "diagnostics/Artifacts.h"
 #include "diagnostics/Comparison.h"
 #include "diagnostics/Contracts.h"

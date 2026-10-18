@@ -1,7 +1,7 @@
 #ifndef STARGBC_MOCKCPU_H
 #define STARGBC_MOCKCPU_H
 
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "MockBus.h"
 
 template<typename BusT>

@@ -2,7 +2,7 @@
 #include "Interrupts.h"
 #include <doctest/doctest.h>
 #include <ranges>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "TestUtilities.h"
 
 TEST_CASE("interrupts: simultaneous sources retain independent propagation times") {

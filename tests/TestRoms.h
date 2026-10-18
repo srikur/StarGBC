@@ -2,7 +2,7 @@
 #ifndef STARGBC_TESTROMS_H
 #define STARGBC_TESTROMS_H
 
-#include <Gameboy.h>
+#include "stargbc/Gameboy.h"
 #include <algorithm>
 #include <array>
 #include <cctype>

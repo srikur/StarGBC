@@ -5,7 +5,7 @@
 #include <format>
 #include <fstream>
 #include <sstream>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "diagnostics/Artifacts.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
