@@ -1,9 +1,9 @@
 #pragma once
-#include "../../../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 
 #include <filesystem>
 #include "Checkpoint.h"
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "ReplayInput.h"
 
 namespace diagnostics {

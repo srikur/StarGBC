@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "diagnostics/Observation.h"
 
 struct Interrupts {

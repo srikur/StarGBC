@@ -2,10 +2,10 @@
 
 #include <stdexcept>
 
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "GPU.h"
-#include "../include/Interrupts.h"
-#include "../include/Registers.h"
+#include "Interrupts.h"
+#include "Registers.h"
 
 template<BusLike BusT>
 class CPU;

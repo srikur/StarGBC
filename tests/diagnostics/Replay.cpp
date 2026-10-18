@@ -1,8 +1,8 @@
-#include "../../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 #include "diagnostics/Replay.h"
 #include <doctest/doctest.h>
 #include <fstream>
-#include "EmulationSession.h"
+#include "stargbc/EmulationSession.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Trace.h"
 #include "diagnostics/Watchpoints.h"

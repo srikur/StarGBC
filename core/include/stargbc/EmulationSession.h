@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 enum class SessionEvent { BeforeFrame, AfterFrame, StateLoaded };
 

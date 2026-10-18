@@ -1,8 +1,8 @@
-#include "../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 #include <array>
 #include <doctest/doctest.h>
 #include <ranges>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "TestUtilities.h"
 
 static constexpr std::string_view kRomName = "roms/acid/cgb-acid2.gbc";

@@ -45,8 +45,18 @@ def main() -> int:
     header.append("")
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    _ = out.write_text("\n".join(header))
+    text = "\n".join(header)
+    if out.exists() and _embedded_bytes(out.read_text()) == _embedded_bytes(text):
+        # Same bootrom bytes already checked in (possibly reformatted)
+        out.touch()
+        return 0
+    _ = out.write_text(text)
     return 0
+
+
+def _embedded_bytes(text: str) -> list[str]:
+    import re
+    return re.findall(r"0x[0-9A-Fa-f]{2}", text)
 
 
 if __name__ == "__main__":

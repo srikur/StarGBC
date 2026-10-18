@@ -1,5 +1,5 @@
 #pragma once
-#include "../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 
 #include <format>
 #include "GbMicrotestDiagnostics.h"

@@ -1,4 +1,4 @@
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 void Cartridge::restore_ram(const std::span<const uint8_t> bytes) {
     if (bytes.size() != game_ram_size)

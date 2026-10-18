@@ -1,4 +1,4 @@
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 GraphicsInspection Gameboy::inspect_graphics() const { return gpu_.inspect_graphics(bus_.cgbMode); }
 

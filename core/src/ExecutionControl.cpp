@@ -1,4 +1,4 @@
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 ConditionalExecutionResult Gameboy::RunUntil(const std::span<const RunCondition> conditions, const uint64_t maxTicks) {
     if (conditions.size() > 16)

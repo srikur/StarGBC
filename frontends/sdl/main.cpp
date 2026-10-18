@@ -4,7 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <exception>
 
-#include <SDLFrontend.h>
+#include "SDLFrontend.h"
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     try {

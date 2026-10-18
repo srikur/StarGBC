@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "Instructions.h"
 
 struct MockBus {

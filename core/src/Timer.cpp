@@ -1,6 +1,6 @@
 #include "Timer.h"
 
-#include "Common.h"
+#include "stargbc/Common.h"
 
 void Timer::RecomputeTickCache(const Speed speed) {
     cachedTac_ = tac;

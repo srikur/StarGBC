@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "Interrupts.h"
 
 struct Serial {

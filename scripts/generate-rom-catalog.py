@@ -11,7 +11,7 @@ RUNNERS = {'AgeScreen', 'AgeMarker', 'MicroProtocol', 'MicroDiagnostic', 'RomScr
 def load_cases(paths):
     cases = []
     seen = set()
-    models = set(re.findall(r'^    (\w+)\s*(?:,|\[\[)', (ROOT / 'includes/Model.h').read_text(), re.M)) - {'Auto'}
+    models = set(re.findall(r'^    (\w+)\s*(?:,|\[\[)', (ROOT / 'core/src/Model.h').read_text(), re.M)) - {'Auto'}
     for path in paths:
         catalog = json.loads(path.read_text())
         if catalog['schemaVersion'] != 1 or not catalog['defaults']['colorCorrection'] or catalog['defaults'][

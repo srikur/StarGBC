@@ -1,4 +1,4 @@
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 #include <limits>
 

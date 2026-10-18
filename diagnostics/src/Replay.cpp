@@ -1,4 +1,4 @@
-#include "../../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 #include "diagnostics/Replay.h"
 
 #include <fstream>

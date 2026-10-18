@@ -1,8 +1,8 @@
-#include "../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 #include "Serial.h"
 #include <doctest/doctest.h>
 #include "Audio.h"
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "TestUtilities.h"
 #include "Timer.h"
 

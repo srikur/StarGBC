@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "../../core/src/Audio.h"
-#include "EmulationSession.h"
-#include "Gameboy.h"
+#include "Audio.h"
+#include "stargbc/EmulationSession.h"
+#include "stargbc/Gameboy.h"
 #ifdef STARGBC_ENABLE_DEBUGGER
 #include "DebuggerWindow.h"
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include "EmulationSession.h"
+#include "stargbc/EmulationSession.h"
 #include "LuaRuntime.h"
 #include "lauxlib.h"
 #include "lua.h"

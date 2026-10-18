@@ -3,7 +3,7 @@
 
 #include <array>
 #include <cstdint>
-#include "../include/Model.h"
+#include "Model.h"
 
 struct Memory {
     static constexpr uint16_t WRAM_BEGIN = 0xA000;

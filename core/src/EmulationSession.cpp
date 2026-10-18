@@ -1,4 +1,4 @@
-#include "EmulationSession.h"
+#include "stargbc/EmulationSession.h"
 
 namespace {
     struct FlagGuard {

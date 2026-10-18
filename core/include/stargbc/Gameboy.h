@@ -6,10 +6,10 @@
 #include <span>
 #include <type_traits>
 
-#include "../CPU.h"
-#include "Common.h"
-#include "../Execution.h"
-#include "../Memory.h"
+#include "CPU.h"
+#include "stargbc/Common.h"
+#include "Execution.h"
+#include "Memory.h"
 #include "diagnostics/ReplayInput.h"
 
 struct GameboySettings {

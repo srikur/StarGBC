@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "HDMA.h"
 
 struct CpuInspection {

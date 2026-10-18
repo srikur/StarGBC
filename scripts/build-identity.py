@@ -13,7 +13,7 @@ for path in sorted(pathlib.Path(name).resolve() for name in sys.argv[4:]):
     hash_value.update(b"\0")
     hash_value.update(path.read_bytes())
     hash_value.update(b"\0")
-source = '#include "Gameboy.h"\n\nstd::string_view Gameboy::CoreBuildIdentity() { return ' + json.dumps(
+source = '#include "stargbc/Gameboy.h"\n\nstd::string_view Gameboy::CoreBuildIdentity() { return ' + json.dumps(
     hash_value.hexdigest()) + '; }\n'
 output.parent.mkdir(parents=True, exist_ok=True)
 if not output.exists() or output.read_text() != source:

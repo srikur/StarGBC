@@ -1,14 +1,14 @@
 #pragma once
 
 #include "Audio.h"
-#include "../include/Cartridge.h"
-#include "../include/DMA.h"
-#include "../include/GPU.h"
-#include "../include/Interrupts.h"
-#include "../include/Joypad.h"
-#include "../include/Memory.h"
-#include "../include/Serial.h"
-#include "../include/Timer.h"
+#include "Cartridge.h"
+#include "DMA.h"
+#include "GPU.h"
+#include "Interrupts.h"
+#include "Joypad.h"
+#include "Memory.h"
+#include "Serial.h"
+#include "Timer.h"
 #include "diagnostics/Observation.h"
 
 class Bus {

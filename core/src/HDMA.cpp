@@ -1,5 +1,5 @@
 #include "HDMA.h"
-#include "Common.h"
+#include "stargbc/Common.h"
 
 void HDMA::WriteHDMA(const uint16_t address, const uint8_t value, const bool screenOff, const bool immediate_start) {
     switch (address) {

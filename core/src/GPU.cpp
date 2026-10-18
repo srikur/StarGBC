@@ -2,7 +2,7 @@
 #include <list>
 #include <ranges>
 
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "GPU.h"
 
 static constexpr uint8_t expand5(const uint8_t c) noexcept { return static_cast<uint8_t>(c << 3 | c >> 2); }

@@ -1,8 +1,8 @@
 #pragma once
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "FixedContainers.h"
-#include "../include/HDMA.h"
-#include "../include/Interrupts.h"
+#include "HDMA.h"
+#include "Interrupts.h"
 #include "diagnostics/PixelProvenance.h"
 
 struct Pixel {

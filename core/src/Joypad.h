@@ -2,7 +2,7 @@
 #define STARGBC_JOYPAD_H
 
 
-#include "Common.h"
+#include "stargbc/Common.h"
 #include "Interrupts.h"
 
 struct Joypad {

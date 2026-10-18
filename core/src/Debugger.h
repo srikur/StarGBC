@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/Disassembly.h"
-#include "EmulationSession.h"
+#include "Disassembly.h"
+#include "stargbc/EmulationSession.h"
 
 enum class DebugStopKind { Execute, Read, Write, ReadWrite };
 

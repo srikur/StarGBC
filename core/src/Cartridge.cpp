@@ -1,5 +1,5 @@
 #include "Cartridge.h"
-#include "Common.h"
+#include "stargbc/Common.h"
 
 #include <algorithm>
 #include <cstring>

@@ -1,4 +1,4 @@
-#include "../../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 #include "diagnostics/Comparison.h"
 #include <doctest/doctest.h>
 #include <fstream>

@@ -1,6 +1,6 @@
-#include "../../frontends/sdl/GameboyFiles.h"
+#include "GameboyFiles.h"
 #include <doctest/doctest.h>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "diagnostics/Watchpoints.h"
 
 TEST_CASE("diagnostics: watchpoint stops retain trigger and safe positions and resume without changing hardware") {

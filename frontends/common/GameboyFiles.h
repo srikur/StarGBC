@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 
 namespace host {
     struct LaunchSettings {

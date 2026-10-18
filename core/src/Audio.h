@@ -4,8 +4,8 @@
 #include <cmath>
 #include <vector>
 
-#include "Common.h"
-#include "../include/Inspection.h"
+#include "stargbc/Common.h"
+#include "Inspection.h"
 #include "diagnostics/Observation.h"
 
 class Audio;

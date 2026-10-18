@@ -2,7 +2,7 @@
 
 #include <fstream>
 #include <sstream>
-#include "Gameboy.h"
+#include "stargbc/Gameboy.h"
 #include "diagnostics/Binary.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
