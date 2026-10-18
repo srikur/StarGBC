@@ -2,9 +2,9 @@
 #define STARGBC_CPU_H
 
 #include "Bus.h"
-#include "Inspection.h"
-#include "Instructions.h"
-#include "Registers.h"
+#include "../include/Inspection.h"
+#include "../include/Instructions.h"
+#include "../include/Registers.h"
 
 template<BusLike BusT>
 class CPU {

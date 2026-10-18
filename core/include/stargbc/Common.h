@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Model.h"
-#include "Reflection.h"
+#include "../Model.h"
+#include "../Reflection.h"
 
 #include <array>
 #include <chrono>

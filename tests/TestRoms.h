@@ -1,4 +1,4 @@
-#include "GameboyFiles.h"
+#include "../frontends/sdl/GameboyFiles.h"
 #ifndef STARGBC_TESTROMS_H
 #define STARGBC_TESTROMS_H
 

@@ -1,5 +1,5 @@
 #include "GameboyFiles.h"
-#include "SDLFrontend.h"
+#include "../../core/src/SDLFrontend.h"
 
 #include <algorithm>
 #include <cstdio>

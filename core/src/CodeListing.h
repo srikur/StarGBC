@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Debugger.h"
+#include "../include/Debugger.h"
 
 enum class CodeSource { Mapped, Cartridge, Bios };
 

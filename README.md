@@ -14,9 +14,8 @@
 
 1. [SDL3](https://github.com/libsdl-org/SDL)
 2. [doctest](https://github.com/doctest/doctest)
-3. [spdlog](https://github.com/gabime/spdlog)
-4. [starparse](https://github.com/srikur/starparse)
-5. [Lua](https://www.lua.org/) 5.5.1 (optional, enabled by default)
+3. [starparse](https://github.com/srikur/starparse)
+4. [Lua](https://www.lua.org/) 5.5.1 (optional, enabled by default)
 
 All library dependencies are downloaded and built automatically at configure
 time via CMake's FetchContent. Only CMake 4+ and C++26-compatible compiler are required. 

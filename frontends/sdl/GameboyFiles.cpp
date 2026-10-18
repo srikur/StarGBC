@@ -1,4 +1,4 @@
-#include "GameboyFiles.h"
+#include "../GameboyFiles.h"
 
 #include <fstream>
 #include <limits>

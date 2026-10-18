@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "Common.h"
-#include "Inspection.h"
+#include "../include/Inspection.h"
 #include "diagnostics/Observation.h"
 
 class Audio;

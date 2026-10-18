@@ -4,8 +4,8 @@
 
 #include "Common.h"
 #include "GPU.h"
-#include "Interrupts.h"
-#include "Registers.h"
+#include "../include/Interrupts.h"
+#include "../include/Registers.h"
 
 template<BusLike BusT>
 class CPU;

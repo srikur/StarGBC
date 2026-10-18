@@ -6,7 +6,7 @@
 
 namespace {
     using namespace StarParse;
-    struct[[=Program{"StarGBC_Experiment", "Reproducible component and CPU-executed timing experiments", "1"}]] Arguments {
+    struct[[=Program{"StarGBCz_Experiment", "Reproducible component and CPU-executed timing experiments", "1"}]] Arguments {
         [[=Opt{"Component isolation or CPU-executed ROM"}]] diagnostics::ExperimentMode mode{diagnostics::ExperimentMode::Component};
         [[=Opt{"Timing family"}]] diagnostics::ExperimentFamily family{diagnostics::ExperimentFamily::TimerReload};
         [[=Opt{"Hardware revision"}]] Model model{Model::DMGB};

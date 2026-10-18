@@ -1,8 +1,6 @@
-# Bootrom: assembles dmg.asm (and later cgb.asm) and embeds the binaries
-# into includes/EmbeddedBootroms.h. If RGBDS or python3 isn't available the
-# step is skipped and the checked-in header is used as-is.
+# assembles dmg.asm and cgb.asm and embeds the binaries into EmbeddedBootroms.h, if RGBDS and python3 are available
 
-set(BOOTROM_HEADER ${CMAKE_SOURCE_DIR}/includes/EmbeddedBootroms.h)
+set(BOOTROM_HEADER ${CMAKE_SOURCE_DIR}/core/src/EmbeddedBootroms.h)
 
 find_program(RGBASM_EXECUTABLE rgbasm)
 find_program(RGBLINK_EXECUTABLE rgblink)

@@ -1,4 +1,4 @@
-#include "DebuggerWindow.h"
+#include "../DebuggerWindow.h"
 
 #include <format>
 #include <imgui.h>

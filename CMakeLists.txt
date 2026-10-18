@@ -40,10 +40,6 @@ FetchContent_Declare(SDL3
         URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.16.tar.gz
         URL_HASH SHA256=c2ee715e42ec520c4d11fd8d249ef1d2b2baf4ad31148b72b3b000276c0b3633
         EXCLUDE_FROM_ALL SYSTEM)
-FetchContent_Declare(spdlog
-        URL https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz
-        URL_HASH SHA256=d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744
-        EXCLUDE_FROM_ALL SYSTEM)
 FetchContent_Declare(doctest
         URL https://github.com/doctest/doctest/archive/refs/tags/v2.5.3.tar.gz
         URL_HASH SHA256=174ebc4e769928959614789c5b4e9c3d0a0f81a62bb608756b127bfebfb21331
@@ -53,7 +49,7 @@ FetchContent_Declare(starparse
         GIT_TAG main
         GIT_SHALLOW ON
         EXCLUDE_FROM_ALL SYSTEM)
-FetchContent_MakeAvailable(SDL3 spdlog doctest starparse)
+FetchContent_MakeAvailable(SDL3 doctest starparse)
 
 option(STARGBC_ENABLE_DEBUGGER "Build the native inspection and stepping frontend" ON)
 if (STARGBC_ENABLE_DEBUGGER)

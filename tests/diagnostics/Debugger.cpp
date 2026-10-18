@@ -1,4 +1,4 @@
-#include "GameboyFiles.h"
+#include "../../frontends/sdl/GameboyFiles.h"
 #include "Debugger.h"
 #include "CodeListing.h"
 #include <doctest/doctest.h>
