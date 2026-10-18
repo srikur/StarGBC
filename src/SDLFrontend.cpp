@@ -46,6 +46,20 @@ SDLFrontend::~SDLFrontend() {
 namespace {
     using namespace StarParse;
 
+    std::expected<Model, std::string> parse_model(const std::string_view input) {
+        if (input == "DMG" || input == "dmg")
+            return Model::DMGB;
+        if (input == "CGB" || input == "cgb")
+            return Model::CGBE;
+        if (input == "AGB" || input == "AGB")
+            return Model::AGBA;
+        if (input == "AGS" || input == "ags")
+            return Model::AGBB;
+        if (auto parsed = model_from_name<Model>(input))
+            return *parsed;
+        return std::unexpected{"Invalid model name"};
+    }
+
     struct[[=Program{kAppName, kAppDescription, kAppVersion}]] Args {
         [[=Positional{0}, =Required]] std::string rom_path;
         [[=Opt{'a', "Enable anti-aliasing"}]] bool anti_aliasing{true};
@@ -57,7 +71,7 @@ namespace {
         [[=Opt{"Disable audio"}]] bool no_audio{false};
         [[=Opt{"Window size scale"}, =Alias{"scale"}, =Range{1, 5}]] int window_scale{3};
         [[=Opt{'b', "Bios path"}, =Alias{"bios"}]] std::string bios_path;
-        [[=Opt{'m', "Hardware model and revision to emulate"}]] Model model{Model::Auto};
+        [[=Opt{'m', "Hardware model and revision to emulate"}, =Parser{parse_model}]] Model model{Model::Auto};
         [[=Opt{"DMG LCD sampling during palette writes"}]] DmgPaletteSampling dmg_palette_sampling{DmgPaletteSampling::BitwiseOr};
         [[=Opt{"Force native CGB mode when skipping the boot ROM"}]] bool force_cgb_mode{};
         [[=Opt{"Lua script to start/stop with Shift+F5"}]] std::string script;

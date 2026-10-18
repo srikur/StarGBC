@@ -1,17 +1,13 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
-#include <optional>
+#include <meta>
 #include <string_view>
-
-#include <starparse/starparse.hpp>
 
 enum class Model : uint8_t {
     Auto,
     DMG0,
     DMGA,
-    DMGB[[= StarParse::Alias{"DMG"}]],
+    DMGB,
     DMGC,
     MGB,
     SGB,
@@ -21,11 +17,11 @@ enum class Model : uint8_t {
     CGBB,
     CGBC,
     CGBD,
-    CGBE[[= StarParse::Alias{"CGB"}]],
+    CGBE,
     AGB0,
-    AGBA[[= StarParse::Alias{"AGB"}]],
+    AGBA,
     AGBAE,
-    AGBB[[= StarParse::Alias{"AGS"}]],
+    AGBB,
     AGBBE,
 };
 
@@ -40,6 +36,17 @@ constexpr std::string_view model_name(E value) {
         }
     }
     return "invalid";
+}
+
+template<typename E>
+    requires std::is_enum_v<E>
+constexpr std::optional<E> model_from_name(const std::string_view value) {
+    template for (constexpr auto e : std::define_static_array(std::meta::enumerators_of(^^E))) {
+        if (value == std::meta::identifier_of(e)) {
+            return [:e:];
+        }
+    }
+    return std::nullopt;
 }
 
 constexpr std::string_view ModelName(const Model model) { return model_name(model); }
