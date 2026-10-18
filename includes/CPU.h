@@ -11,10 +11,10 @@ class CPU {
 public:
     using Self = CPU<BusT>;
 
-    explicit CPU(const Model requestedModel, const std::string &biosPath, const bool noBootrom, BusT &bus, Interrupts &interrupts,
+    explicit CPU(const Model requestedModel, const std::span<const u8> bootrom, const bool noBootrom, BusT &bus, Interrupts &interrupts,
                  Registers &registers, const bool force_cgb_mode = false) : bus_(bus), interrupts_(interrupts), regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
-        if (force_cgb_mode && (!noBootrom || !biosPath.empty() || !IsCgb(hw)))
+        if (force_cgb_mode && (!noBootrom || !bootrom.empty() || !IsCgb(hw)))
             throw std::invalid_argument("Forcing CGB mode requires skipped boot on CGB hardware");
         bus.memory_.initialize_power_on(hw);
         bus.gpu_.SetModel(hw);
@@ -23,14 +23,14 @@ public:
         const bool sgbFamily = IsSgb(hw);
         // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts
         bus.joypad_.ConfigureSgb(sgbFamily && bus.cartridge_.ReadByte(0x146) == 0x03 && bus.cartridge_.ReadByte(0x14B) == 0x33);
-        if (!biosPath.empty()) {
+        if (!bootrom.empty()) {
             // CGB bootroms run in CGB mode; KEY0 writes can drop to DMG-compat
             bus.cgbMode = IsCgb(hw);
             bus.bootromRunning = true;
             // Power-on DIV phase, calibrated so the official bootroms hand off
             // with the DIV value and phase mooneye's boot_div tests verify
             bus.timer_.divCounter = 0x0008;
-            InitializeBootrom(biosPath);
+            InitializeBootrom(bootrom);
             pc_ = 0x0000;
         } else if (!noBootrom && !sgbFamily) {
             bus.cgbMode = IsCgb(hw);
@@ -49,7 +49,7 @@ public:
         currentInstruction = bus.ReadByte(pc_++, ComponentSource::CPU);
     }
 
-    void InitializeBootrom(const std::string &) const;
+    void InitializeBootrom(std::span<const u8>) const;
 
     void InitializeEmbeddedBootrom(bool cgb) const;
 

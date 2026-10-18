@@ -1,4 +1,5 @@
 #pragma once
+#include "GameboyFiles.h"
 
 #include <filesystem>
 #include "Checkpoint.h"
@@ -9,7 +10,7 @@ namespace diagnostics {
     struct InputLog {
         uint32_t schemaVersion{SchemaVersion};
         InputFingerprint initial;
-        std::optional<GameboySettings> settings;
+        std::optional<host::LaunchSettings> settings;
         uint8_t initialButtons{};
         std::vector<AppliedInput> events;
     };
@@ -22,7 +23,7 @@ namespace diagnostics {
         bool overflow_{};
 
     public:
-        InputRecorder(Gameboy &machine, InputFingerprint initial, size_t capacity = 65536, std::optional<GameboySettings> settings = {});
+        InputRecorder(Gameboy &machine, InputFingerprint initial, size_t capacity = 65536, std::optional<host::LaunchSettings> settings = {});
 
         ~InputRecorder();
 
@@ -33,7 +34,7 @@ namespace diagnostics {
         [[nodiscard]] const InputLog &Log() const;
     };
 
-    [[nodiscard]] InputFingerprint IdentifyInitialInputs(const Gameboy &machine, const GameboySettings &settings);
+    [[nodiscard]] InputFingerprint IdentifyInitialInputs(const Gameboy &machine, const host::LaunchSettings &settings);
 
     void WriteInputLog(const std::filesystem::path &path, const InputLog &log);
 

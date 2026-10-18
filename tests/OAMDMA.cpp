@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include <array>
 #include <doctest/doctest.h>
 #include <ranges>
@@ -12,7 +13,7 @@ TEST_CASE("OAM DMA: Bus conflicts alter the transferred byte without writing the
     for (const auto [model, source] : std::views::cartesian_product(models, sources)) {
         CAPTURE(model);
         CAPTURE(source);
-        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy(host::LaunchSettings{.rom_path = std::string{kRomName}, .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.gpu_.vram[0] = 0x65;
         bus.memory_.wram_[0] = 0x65;
@@ -45,7 +46,8 @@ TEST_CASE("CGB OAM DMA selects the work RAM half while the CPU selects its byte"
     for (const auto [source, address] : std::views::cartesian_product(sources, addresses)) {
         CAPTURE(source);
         CAPTURE(address);
-        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = Model::CGBC, .noBootrom = true});
+        auto gameboy =
+                host::load_gameboy(host::LaunchSettings{.rom_path = std::string{kRomName}, .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.memory_.wramBank_ = 3;
         bus.memory_.wram_[0x0123] = 0x11;
@@ -75,7 +77,7 @@ TEST_CASE("OAM DMA sources above work RAM are disconnected on CGB and mirrored o
     for (const auto [model, page] : std::views::cartesian_product(models, pages)) {
         CAPTURE(model);
         CAPTURE(page);
-        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy(host::LaunchSettings{.rom_path = std::string{kRomName}, .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.memory_.wram_.fill(0x65);
         bus.WriteByte(OAM_DMA_TRANSFER_REG, page, ComponentSource::CPU);
@@ -90,7 +92,7 @@ TEST_CASE("OAM DMA sources above work RAM are disconnected on CGB and mirrored o
 TEST_CASE("Reading the VRAM DMA bus clears the CGB OAM byte") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
         CAPTURE(model);
-        Gameboy gameboy(GameboySettings{.romName = std::string{kRomName}, .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy(host::LaunchSettings{.rom_path = std::string{kRomName}, .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.gpu_.vram[0] = 0x65;
         bus.gpu_.vram[1] = 0x76;
@@ -118,7 +120,7 @@ TEST_CASE("Reading the VRAM DMA bus clears the CGB OAM byte") {
 TEST_CASE("OAM DMA retains source bus ownership through the last byte machine cycle") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
         CAPTURE(model);
-        Gameboy gameboy({.romName = std::string{kRomName}, .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = std::string{kRomName}, .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         const auto romByte = gameboy.DebugPeek(0);
@@ -154,7 +156,7 @@ TEST_CASE("OAM DMA pauses with HALT while retaining its byte and source bus owne
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(double_speed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
         auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
@@ -203,7 +205,7 @@ TEST_CASE("OAM DMA restarts change the source bus before resetting the transfer 
     for (const auto [model, first_source] : std::views::cartesian_product(models, first_source_values)) {
         CAPTURE(model);
         CAPTURE(first_source);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         for (auto offset{0u}; offset < 160; ++offset)

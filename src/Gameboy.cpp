@@ -1,10 +1,10 @@
 #include "Gameboy.h"
 
-#include <fstream>
 #include <limits>
 
 static constexpr uint32_t kFrameCyclesCGB = Gameboy::FRAME_CYCLES_DMG * 2;
 
+// TODO: Add preprocessor directives around all diagnostics and observations stuff
 diagnostics::ExecutionPosition Gameboy::ExecutionPosition() const {
     return {.tick = timelineTicks_,
             .frame = gpu_.displayFrames_,
@@ -13,7 +13,7 @@ diagnostics::ExecutionPosition Gameboy::ExecutionPosition() const {
             .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3)};
 }
 
-void Gameboy::SynchronizeObservationPosition() {
+void Gameboy::SynchronizeObservationPosition() const {
     if (!observations_ && !gpu_.provenance)
         return;
     const auto position = ExecutionPosition();
@@ -47,8 +47,6 @@ void Gameboy::RecordPixelsWith(diagnostics::PixelProvenanceContext *context) {
 }
 
 bool Gameboy::ConsumeFrame() { return std::exchange(gpu_.frameReady, false); }
-
-void Gameboy::Save() const { cartridge_.Save(); }
 
 void Gameboy::ObserveInput(const uint8_t previous) {
     const auto buttons = PressedButtons();
@@ -89,11 +87,11 @@ void Gameboy::ApplyButtons(const uint8_t buttons) {
 const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
 
 bool Gameboy::LoadedStateValid() const {
-    return gpu_.dmg_palette_sampling <= DmgPaletteSampling::NewValue && gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
-           gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) && gpu_.doubleSpeed == (bus_.speed == Speed::Double) &&
-           gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() && gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 &&
-           gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 && cartridge_.BankingStateValid() &&
-           (!bus_.bootromRunning || !bus_.bootrom.empty());
+    return gpu_.dmg_palette_sampling <= DmgPaletteSampling::NewValue && gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() &&
+           (!bus_.cgbMode || IsCgb(gpu_.model)) && gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) &&
+           gpu_.doubleSpeed == (bus_.speed == Speed::Double) && gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() &&
+           gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 && gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 &&
+           cartridge.BankingStateValid() && (!bus_.bootromRunning || !bus_.bootrom.empty());
 }
 
 // One whole M-cycle (4 dots, up to 8 master cycles) at regular speed with the

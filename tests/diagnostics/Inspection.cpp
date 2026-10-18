@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
 
@@ -13,9 +14,9 @@ namespace {
 
 TEST_CASE("diagnostics: repeated inspection preserves deferred audio and subsequent execution") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
-        const GameboySettings settings{.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true};
-        Gameboy observed(settings);
-        Gameboy control(settings);
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        auto observed = host::load_gameboy(settings);
+        auto control = host::load_gameboy(settings);
         for (auto *machine : {&observed, &control}) {
             auto &audio = machine->[:inspectionTestMember<Gameboy>("audio_"):];
             for (unsigned tick = 0; tick < 7; ++tick)
@@ -45,7 +46,7 @@ TEST_CASE("diagnostics: repeated inspection preserves deferred audio and subsequ
 }
 
 TEST_CASE("diagnostics: register inspection distinguishes stored pending and CPU-visible values") {
-    Gameboy gameboy({.romName = "roms/acid/dmg-acid2.gb", .model = Model::DMGB, .noBootrom = true});
+    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/dmg-acid2.gb", .emulation = {.model = Model::DMGB, .no_bootrom = true}});
     auto &gpu = gameboy.[:inspectionTestMember<Gameboy>("gpu_"):];
     gpu.windowX = 3;
     gpu.wxPending = 9;

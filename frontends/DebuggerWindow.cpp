@@ -99,7 +99,7 @@ void DebuggerWindow::toggle() {
     ImGui::GetIO().ClearInputKeys();
     ImGui::GetIO().ClearInputMouse();
     session_.FocusLost();
-    game_input_ = false;
+    set_game_input(false);
     visible_ = !visible_;
     if (visible_) {
         SDL_GetWindowSize(window_, &game_width_, &game_height_);
@@ -119,8 +119,8 @@ bool DebuggerWindow::handle_shortcut(const SDL_KeyboardEvent &key) {
         action([&] { debugger_.paused() ? debugger_.resume() : debugger_.pause(); });
     else if (key.key == SDLK_F10)
         action([&] { debugger_.step_over(); });
-    else if (key.key == SDLK_F11)
-        action([&] { key.mod &SDL_KMOD_SHIFT ? debugger_.step_out() : debugger_.step_instruction(); });
+    else if (key.key == SDLK_F9)
+        action([&] { key.mod & SDL_KMOD_SHIFT ? debugger_.step_out() : debugger_.step_instruction(); });
     else if (key.key == SDLK_F6)
         action([&] { debugger_.step_frame(); });
     else if (key.key == SDLK_F7)
@@ -137,7 +137,22 @@ void DebuggerWindow::reset() {
     follow_instruction_ = true;
     followed_instruction_.reset();
     code_scroll_ = true;
-    game_input_ = false;
+    set_game_input(false);
+}
+
+void DebuggerWindow::set_game_input(const bool active) {
+    if (game_input_ == active)
+        return;
+    game_input_ = active;
+    session_.FocusLost();
+    auto &io{ImGui::GetIO()};
+    io.ClearInputKeys();
+    if (active) {
+        io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+        ImGui::SetWindowFocus(nullptr);
+    } else {
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    }
 }
 
 void DebuggerWindow::show_code(const CodeSource source, const uint32_t offset) {
@@ -151,23 +166,23 @@ bool DebuggerWindow::handle_event(const SDL_Event &event) {
     if (!visible_ || SDL_GetWindowFromEvent(&event) != window_)
         return false;
     ImGui::SetCurrentContext(context_);
-    if (platform_ready_)
-        ImGui_ImplSDL3_ProcessEvent(&event);
-    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        if (game_input_)
-            session_.FocusLost();
-        game_input_ = false;
-    }
+    auto &io{ImGui::GetIO()};
+    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_WINDOW_FOCUS_LOST)
+        set_game_input(false);
     if (event.type == SDL_EVENT_KEY_DOWN) {
         if (event.key.key == SDLK_F12 && !event.key.repeat)
             return toggle(), true;
-        if (!ImGui::GetIO().WantTextInput && handle_shortcut(event.key))
+        if ((game_input_ || !io.WantTextInput) && handle_shortcut(event.key))
             return true;
-        if (!ImGui::GetIO().WantTextInput && event.key.key == SDLK_F5 && (event.key.mod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)))
+        if ((game_input_ || !io.WantTextInput) && event.key.key == SDLK_F5 && (event.key.mod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)))
             return false;
-        return ImGui::GetIO().WantTextInput || !game_input_;
     }
-    return event.type == SDL_EVENT_TEXT_INPUT;
+    const auto keyboard_event{event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP};
+    if (game_input_ && (keyboard_event || event.type == SDL_EVENT_TEXT_INPUT))
+        return event.type == SDL_EVENT_TEXT_INPUT;
+    if (platform_ready_)
+        ImGui_ImplSDL3_ProcessEvent(&event);
+    return event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_TEXT_INPUT;
 }
 
 void DebuggerWindow::draw_image(SDL_Texture *texture, const uint32_t *pixels, const int width, const int height, const float scale) {
@@ -189,8 +204,20 @@ void DebuggerWindow::render() {
         return;
     ImGui::SetCurrentContext(context_);
     debugger_.synchronize();
-    ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
+    auto &io{ImGui::GetIO()};
+    const auto font_density{std::max(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y)};
+    if (font_density_ != font_density) {
+        ImGui_ImplSDLRenderer3_DestroyFontsTexture();
+        io.Fonts->Clear();
+        ImFontConfig font_config;
+        font_config.OversampleH = font_config.OversampleV = 1;
+        font_config.PixelSnapH = true;
+        font_config.RasterizerDensity = font_density;
+        io.Fonts->AddFontDefault(&font_config);
+        font_density_ = font_density;
+    }
+    ImGui_ImplSDLRenderer3_NewFrame();
     ImGui::NewFrame();
     const auto *viewport{ImGui::GetMainViewport()};
     ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -199,13 +226,13 @@ void DebuggerWindow::render() {
     if (ImGui::Button(debugger_.paused() ? "Run (F5)" : "Pause (F5)"))
         action([&] { debugger_.paused() ? debugger_.resume() : debugger_.pause(); });
     ImGui::SameLine();
-    if (ImGui::Button("Into (F11)"))
+    if (ImGui::Button("Into (F9)"))
         action([&] { debugger_.step_instruction(); });
     ImGui::SameLine();
     if (ImGui::Button("Over (F10)"))
         action([&] { debugger_.step_over(); });
     ImGui::SameLine();
-    if (ImGui::Button("Out (Shift+F11)"))
+    if (ImGui::Button("Out (Shift+F9)"))
         action([&] { debugger_.step_out(); });
     ImGui::SameLine();
     if (ImGui::Button("T-cycle"))
@@ -245,11 +272,9 @@ void DebuggerWindow::render() {
         draw_cpu(state);
         ImGui::EndChild();
         ImGui::TableNextColumn();
-        draw_image(screen_, machine_.GetScreenData(), SCREEN_WIDTH, SCREEN_HEIGHT, 1.5f);
-        if (ImGui::IsItemClicked()) {
-            game_input_ = true;
-            ImGui::SetWindowFocus(nullptr);
-        }
+        draw_image(screen_, machine_.GetScreenData(), SCREEN_WIDTH, SCREEN_HEIGHT, 2);
+        if (ImGui::IsItemClicked())
+            set_game_input(true);
         ImGui::SameLine();
         ImGui::BeginGroup();
         ImGui::TextUnformatted("Live game view");
@@ -270,6 +295,8 @@ void DebuggerWindow::render() {
             if (begin_panel(DebugPanel::Screen, "Screen")) {
                 ImGui::TextWrapped("Live framebuffer. While stepping, completed pixels and rows update as the PPU runs.");
                 draw_image(screen_, machine_.GetScreenData(), SCREEN_WIDTH, SCREEN_HEIGHT, 3);
+                if (ImGui::IsItemClicked())
+                    set_game_input(true);
                 ImGui::EndTabItem();
             }
             if (begin_panel(DebugPanel::Tiles, "Tiles")) {
@@ -309,7 +336,11 @@ void DebuggerWindow::render() {
     ImGui::Render();
     SDL_SetRenderDrawColor(renderer_, 20, 22, 28, 255);
     SDL_RenderClear(renderer_);
+    float render_scale_x{}, render_scale_y{};
+    SDL_GetRenderScale(renderer_, &render_scale_x, &render_scale_y);
+    SDL_SetRenderScale(renderer_, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer_);
+    SDL_SetRenderScale(renderer_, render_scale_x, render_scale_y);
     SDL_RenderPresent(renderer_);
 }
 
@@ -370,8 +401,9 @@ void DebuggerWindow::draw_code() {
         ImGui::TextDisabled("%zu bytes | %zu banks | all cartridge banks", machine_.rom_bytes().size(),
                             (machine_.rom_bytes().size() + ROM_BANK_SIZE - 1) / ROM_BANK_SIZE);
     } else
-        ImGui::TextDisabled(code_source_ == CodeSource::Bios ? "BIOS instructions (amber) | cartridge instructions (blue)"
-                                                             : "Current CPU mapping | BIOS amber, cartridge blue, RAM gray");
+        ImGui::TextDisabled(code_source_ == CodeSource::Bios
+                                ? "BIOS instructions (amber) | cartridge instructions (blue)"
+                                : "Current CPU mapping | BIOS amber, cartridge blue, RAM gray");
     code_listing_.update(code_source_, code_offset_);
     if (!code_listing_.size()) {
         ImGui::TextDisabled("No BIOS loaded. Restart with the BIOS enabled to inspect it.");
@@ -476,8 +508,9 @@ void DebuggerWindow::draw_memory() {
         memory_address_ += 256;
         memory_follow_pc_ = false;
     }
-    ImGui::TextWrapped(memory_source_ ? "Physical bank bytes, independent of the active bank and PPU locks. Click a byte to inspect its address."
-                                      : "Mapped RAM bypasses bus locks; CPU-visible shows what a CPU read would return. Reads have no side effects.");
+    ImGui::TextWrapped(memory_source_
+                           ? "Physical bank bytes, independent of the active bank and PPU locks. Click a byte to inspect its address."
+                           : "Mapped RAM bypasses bus locks; CPU-visible shows what a CPU read would return. Reads have no side effects.");
     const auto graphics{machine_.inspect_graphics()};
     const auto limit{memory_source_ == 1 ? 0x2000u : memory_source_ == 2 ? 0x1000u : 0x10000u};
     memory_address_ = (memory_address_ & 0xFFF0) % limit;
@@ -496,9 +529,11 @@ void DebuggerWindow::draw_memory() {
             std::string ascii;
             for (auto column{0u}; column < 16; ++column) {
                 const auto address{static_cast<uint16_t>(start + column)};
-                const auto value{memory_source_ == 1   ? graphics.vram[memory_bank_ * 0x2000 + address]
-                                 : memory_source_ == 2 ? machine_.DebugPeekWram(memory_bank_, address)
-                                                       : debugger_.read_memory(address, cpu_memory_)};
+                const auto value{memory_source_ == 1
+                                     ? graphics.vram[memory_bank_ * 0x2000 + address]
+                                     : memory_source_ == 2
+                                     ? machine_.DebugPeekWram(memory_bank_, address)
+                                     : debugger_.read_memory(address, cpu_memory_)};
                 ascii += value >= 32 && value < 127 ? static_cast<char>(value) : '.';
                 ImGui::TableNextColumn();
                 ImGui::PushID(address);
@@ -528,7 +563,7 @@ void DebuggerWindow::draw_memory() {
         action([&] { debugger_.write_memory(edit_address_, edit_value_); });
     ImGui::EndDisabled();
     ImGui::TextWrapped("Writes require a paused CPU and mapped RAM. ROM and I/O writes are rejected. A prefetched opcode is not changed by editing "
-                       "its RAM byte.");
+            "its RAM byte.");
     if (!memory_source_) {
         text(std::format("Selected ${:04X}, bank {:04X}", edit_address_, machine_.debug_bank(edit_address_)));
         if (ImGui::Button("Watch reads"))
@@ -563,7 +598,7 @@ void DebuggerWindow::draw_breakpoints() {
                                              breakpoint_banked_ ? std::optional(breakpoint_bank_) : std::nullopt});
         });
     ImGui::TextWrapped("Execution stops before the selected instruction. Watchpoints stop after the triggering master tick, including blocked CPU "
-                       "accesses. Resume skips the current execution breakpoint once.");
+            "accesses. Resume skips the current execution breakpoint once.");
     ImGui::BeginChild("points");
     constexpr std::array names{"Execute", "Read", "Write", "Read/write"};
     for (auto index{0u}; index < debugger_.breakpoints.size();) {
@@ -642,7 +677,7 @@ void DebuggerWindow::draw_maps(const GraphicsInspection &graphics) {
                      Bit<LCDC_WINDOW_TILE_MAP_AREA>(graphics.lcd_control) ? BACKGROUND_MAP_HIGH : BACKGROUND_MAP_LOW, graphics.scroll_x,
                      graphics.scroll_y, graphics.window_x, graphics.window_y));
     ImGui::TextWrapped("Decoded from current VRAM and LCDC, including signed tile indices and CGB attributes. Red rectangle shows the scrolled BG "
-                       "viewport. Mid-scanline writes are visible in the live screen, not reconstructed here.");
+            "viewport. Mid-scanline writes are visible in the live screen, not reconstructed here.");
 }
 
 void DebuggerWindow::draw_sprites(const GraphicsInspection &graphics) {
@@ -666,7 +701,7 @@ void DebuggerWindow::draw_sprites(const GraphicsInspection &graphics) {
             selected_sprite_ = index;
     }
     ImGui::TextWrapped("All 40 OAM entries in OAM order, including offscreen sprites. Checkerboard is transparent color 0. Size, tile bank, flips "
-                       "and palette are applied.");
+            "and palette are applied.");
     if (ImGui::BeginTable("oam", 7, ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders, {0, 280})) {
         constexpr std::array headers{"OAM", "X", "Y", "Tile", "Bank", "Palette", "Flags"};
         for (const auto *header : headers)
@@ -791,39 +826,40 @@ void DebuggerWindow::draw_trace() {
     for (auto index{debugger_.trace_size()}; index > 0; --index) {
         const auto &entry{debugger_.trace_entry(index - 1)};
         const auto &event{entry.event};
-        const auto description{event.kind == diagnostics::EventKind::InstructionBegin ? disassemble(event.pc, entry.bytes).text
-                                                                                      : std::format("Interrupt vector ${:04X}", event.address)};
+        const auto description{event.kind == diagnostics::EventKind::InstructionBegin
+                                   ? disassemble(event.pc, entry.bytes).text
+                                   : std::format("Interrupt vector ${:04X}", event.address)};
         text(std::format("{:12}  {:04X}:{:04X}  {}", event.position.tick, event.pcBank, event.pc, description));
     }
     ImGui::EndChild();
 }
 
 void DebuggerWindow::draw_help() {
-    ImGui::TextWrapped("F5: run/pause. F11: step into. F10: step over CALL/RST. Shift+F11: step out using the return address at SP. F7: next "
-                       "scanline. F6: finish the current emulation frame. F8: reset the ROM and pause at startup. F12: switch between game and "
-                       "debugger layouts.");
+    ImGui::TextWrapped("F5: run/pause. F9: step into. F10: step over CALL/RST. Shift+F9: step out using the return address at SP. F7: next "
+            "scanline. F6: finish the current emulation frame. F8: reset the ROM and pause at startup. F12: switch between game and "
+            "debugger layouts.");
     ImGui::Separator();
     ImGui::TextWrapped("Lua scripts: Shift+F5 starts/stops the selected script. Ctrl+F5 reloads an active script while debugging. In the normal game "
-                       "layout, F5 retains its script-reload shortcut.");
+            "layout, F5 retains its script-reload shortcut.");
     ImGui::TextWrapped("Click the live game view for joypad input. Clicking debugger controls returns keyboard focus to the debugger. Debugger "
-                       "typing never reaches the game. Execution breakpoints match the prefetched instruction address and bank; the PC register can "
-                       "already point to an operand. Disassembly bytes can differ from a previously prefetched opcode.");
+            "typing never reaches the game. Execution breakpoints match the prefetched instruction address and bank; the PC register can "
+            "already point to an operand. Disassembly bytes can differ from a previously prefetched opcode.");
     ImGui::TextWrapped("Cartridge ROM shows every bank, including banks that are not currently mapped. Jump by bank or ROM file offset, or scroll "
-                       "through the entire file. BIOS instructions are amber and labeled BIOS; cartridge instructions are blue and labeled ROM. "
-                       "Follow instruction selects the executing source automatically. Scrolling or choosing a source disables following. "
-                       "Data is also decoded as instructions; jump to an exact offset to decode from that byte.");
+            "through the entire file. BIOS instructions are amber and labeled BIOS; cartridge instructions are blue and labeled ROM. "
+            "Follow instruction selects the executing source automatically. Scrolling or choosing a source disables following. "
+            "Data is also decoded as instructions; jump to an exact offset to decode from that byte.");
     ImGui::TextWrapped(
             "Reset restarts with the original model and BIOS settings, preserves cartridge RAM, RTC and breakpoints, and clears the "
             "trace and held buttons. Lua receives its state-load callback. F8 also resets in the game layout, preserving run/pause state.");
     ImGui::Separator();
     ImGui::TextWrapped("Into completes the current instruction, including CB prefixes. HALT/STOP/LOCK are reported instead of spinning. Use clock, "
-                       "line, frame or Run to advance peripherals. Read/write watchpoints may stop midway through an instruction; Into finishes it. "
-                       "Over and Out run asynchronously and can be interrupted with Pause or any breakpoint.");
+            "line, frame or Run to advance peripherals. Read/write watchpoints may stop midway through an instruction; Into finishes it. "
+            "Over and Out run asynchronously and can be interrupted with Pause or any breakpoint.");
     ImGui::Separator();
     ImGui::TextWrapped("Step out assumes SP points to the return address; after a function pushes locals, run to its epilogue first. Bank FFFF "
-                       "denotes the boot ROM. Frame stepping follows the session's 70224-dot frame interval, including when the LCD is disabled.");
+            "denotes the boot ROM. Frame stepping follows the session's 70224-dot frame interval, including when the LCD is disabled.");
     ImGui::Separator();
     ImGui::TextWrapped("Inspectors read snapshots without advancing or modifying the machine. Raw tile/map/sprite views decode current graphics "
-                       "memory; the Screen tab shows actual composited pixels. Lua frame callbacks run once per session frame even when that frame "
-                       "is split into many debugger steps. Save states use the same slots as the game window.");
+            "memory; the Screen tab shows actual composited pixels. Lua frame callbacks run once per session frame even when that frame "
+            "is split into many debugger steps. Save states use the same slots as the game window.");
 }

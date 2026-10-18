@@ -6,11 +6,9 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <exception>
-#include <fstream>
+#include <stdexcept>
 #include <memory>
 #include <meta>
-#include <print>
 #include <ranges>
 #include <string>
 #include <utility>
@@ -166,39 +164,18 @@ concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source) {
     { bus.WriteByte(addr, val, source) } -> std::same_as<void>;
 };
 
-class GameboyException : public std::exception {
-    virtual void message() const noexcept {
-        std::printf("Gameboy Exception!\n");
-        std::printf("------------------\n");
-    }
+// Core exceptions carry diagnostics; applications decide how to report them.
+class GameboyException : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
 };
 
 class UnreachableCodeException final : public GameboyException {
-    void message() const noexcept override {
-        std::printf("Type: Unreachable Code\n");
-        std::printf("----------------------\n");
-        std::printf("Message: %s\n", message_.c_str());
-    }
-
-    std::string message_;
-
-    UnreachableCodeException() = default;
-
 public:
-    explicit UnreachableCodeException(std::string message) : message_(std::move(message)) { this->message(); }
+    using GameboyException::GameboyException;
 };
 
 class FatalErrorException final : public GameboyException {
-    void message() const noexcept override {
-        std::printf("Type: Fatal Error");
-        std::printf("-----------------");
-        std::printf("Message: %s\n", message_.c_str());
-    }
-
-    std::string message_;
-
-    FatalErrorException() = default;
-
 public:
-    explicit FatalErrorException(std::string message) : message_(std::move(message)) { this->message(); }
+    using GameboyException::GameboyException;
 };

@@ -1,6 +1,0 @@
-add_library(StarGBC_DebuggerFrontend STATIC DebuggerWindow.cpp)
-target_include_directories(StarGBC_DebuggerFrontend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(StarGBC_DebuggerFrontend PUBLIC StarGBC_Core SDL3::SDL3-static PRIVATE stargbc_imgui)
-
-add_executable(StarGBC_DebuggerTests tests/DebuggerWindow.cpp)
-target_link_libraries(StarGBC_DebuggerTests PRIVATE StarGBC_DebuggerFrontend stargbc_imgui doctest::doctest)

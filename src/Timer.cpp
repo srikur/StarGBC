@@ -117,31 +117,3 @@ void Timer::IncrementTIMA() {
         overflowDelay = 4;
     }
 }
-
-bool Timer::SaveState(std::ofstream &stateFile) const {
-    try {
-        if (!stateFile.is_open())
-            return false;
-        stateFile.write(reinterpret_cast<const char *>(&divCounter), sizeof(divCounter));
-        stateFile.write(reinterpret_cast<const char *>(&tima), sizeof(tima));
-        stateFile.write(reinterpret_cast<const char *>(&tma), sizeof(tma));
-        stateFile.write(reinterpret_cast<const char *>(&tac), sizeof(tac));
-        return true;
-    } catch ([[maybe_unused]] const std::exception &e) {
-        return false;
-    }
-}
-
-bool Timer::LoadState(std::ifstream &stateFile) {
-    try {
-        if (!stateFile.is_open())
-            return false;
-        stateFile.read(reinterpret_cast<char *>(&divCounter), sizeof(divCounter));
-        stateFile.read(reinterpret_cast<char *>(&tima), sizeof(tima));
-        stateFile.read(reinterpret_cast<char *>(&tma), sizeof(tma));
-        stateFile.read(reinterpret_cast<char *>(&tac), sizeof(tac));
-        return true;
-    } catch ([[maybe_unused]] const std::exception &e) {
-        return false;
-    }
-}

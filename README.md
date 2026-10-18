@@ -14,13 +14,13 @@
 
 1. [SDL3](https://github.com/libsdl-org/SDL)
 2. [doctest](https://github.com/doctest/doctest)
-3. [Ninja](https://github.com/ninja-build/ninja)
-4. [spdlog](https://github.com/gabime/spdlog)
-5. [starparse](https://github.com/srikur/starparse)
-6. [Lua](https://www.lua.org/) 5.5.1 (optional, enabled by default)
+3. [spdlog](https://github.com/gabime/spdlog)
+4. [starparse](https://github.com/srikur/starparse)
+5. [Lua](https://www.lua.org/) 5.5.1 (optional, enabled by default)
 
 All library dependencies are downloaded and built automatically at configure
-time via CMake's FetchContent. Only CMake 4+ and Ninja need to be installed.
+time via CMake's FetchContent. Only CMake 4+ and C++26-compatible compiler are required. 
+Ninja is optional but preferred (`-G Ninja` when building).
 
 ## Building
 

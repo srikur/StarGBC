@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fstream>
 
 #include "Audio.h"
 #include "Interrupts.h"
@@ -98,8 +97,4 @@ public:
     [[nodiscard]] int TimerBit(uint8_t) const;
 
     void IncrementTIMA();
-
-    bool SaveState(std::ofstream &) const;
-
-    bool LoadState(std::ifstream &);
 };

@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include <doctest/doctest.h>
 #include "Gameboy.h"
 #include "diagnostics/Trace.h"
@@ -20,7 +21,7 @@ TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
         CAPTURE(policy);
         CAPTURE(doubleSpeed);
         CAPTURE(masterPhase);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
         auto &registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
@@ -59,7 +60,7 @@ TEST_CASE("Disabling the LCD during VBlank transfers one pending HDMA block") {
     for (const auto [policy, doubleSpeed] : std::views::cartesian_product(policies, speeds)) {
         CAPTURE(policy);
         CAPTURE(doubleSpeed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
@@ -108,7 +109,7 @@ TEST_CASE("An HDMA block started at the end of HBlank completes in the next scan
     for (const auto [policy, doubleSpeed] : std::views::cartesian_product(policies, speeds)) {
         CAPTURE(policy);
         CAPTURE(doubleSpeed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
@@ -153,7 +154,7 @@ TEST_CASE("An accepted HDMA request survives cancellation and waits for the inst
     constexpr std::array speeds = {false, true};
     for (const auto double_speed : speeds) {
         CAPTURE(double_speed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
@@ -196,7 +197,7 @@ TEST_CASE("HALT suspends HBlank DMA until the CPU wakes") {
     for (const auto [policy, double_speed] : std::views::cartesian_product(policies, speeds)) {
         CAPTURE(policy);
         CAPTURE(double_speed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
         auto &registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
@@ -252,7 +253,7 @@ TEST_CASE("dma: VRAM address wrapping retains the selected bank and full destina
         CAPTURE(bank);
         CAPTURE(start);
         const unsigned length = start == 0xFFF0 ? 16 : 32;
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
@@ -310,7 +311,7 @@ TEST_CASE("STOP retains the HDMA inputs sampled before speed-switch completion")
         CAPTURE(ModelName(model));
         CAPTURE(double_speed);
         CAPTURE(arrival);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
         auto &gpu = bus.gpu_;
@@ -376,7 +377,7 @@ TEST_CASE("dma: overlapping transfers share addresses and data while retaining i
         CAPTURE(policy);
         CAPTURE(double_speed);
         CAPTURE(mode);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
@@ -439,7 +440,7 @@ TEST_CASE("A late HDMA enable waits for the next HBlank without losing its block
         CAPTURE(policy);
         CAPTURE(double_speed);
         CAPTURE(late);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
@@ -482,7 +483,7 @@ TEST_CASE("dma: a block crossing HBlank retains its sixteen-byte length") {
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(double_speed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         auto &gpu = bus.gpu_;
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
@@ -525,7 +526,7 @@ TEST_CASE("dma: a HALT-retained instruction completes before interrupt entry") {
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(double_speed);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
         auto &instructions = gameboy.[:dmaTestMember<Gameboy>("instructions_"):];

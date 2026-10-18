@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "diagnostics/Replay.h"
 
 #include <fstream>
@@ -11,11 +12,11 @@ namespace diagnostics {
         void Validate(const InputLog &log) {
             if (log.schemaVersion != SchemaVersion || log.initial.rom.empty() || log.initial.configuration.empty() || log.events.size() > 1'000'000)
                 throw std::invalid_argument("Invalid replay identity or input count");
-            if (log.settings && (log.settings->model == Model::Auto || log.settings->model > Model::AGBBE || log.settings->realRTC ||
-                                 log.settings->dmg_palette_sampling > DmgPaletteSampling::NewValue))
+            if (log.settings && (log.settings->emulation.model == Model::Auto || log.settings->emulation.model > Model::AGBBE ||
+                                 log.settings->emulation.real_rtc || log.settings->emulation.dmg_palette_sampling > DmgPaletteSampling::NewValue))
                 throw std::invalid_argument("Replay settings require a concrete model and virtual RTC");
-            if (log.settings && log.settings->force_cgb_mode &&
-                (!log.settings->noBootrom || !log.settings->biosPath.empty() || !IsCgb(log.settings->model)))
+            if (log.settings && log.settings->emulation.force_cgb_mode &&
+                (!log.settings->emulation.no_bootrom || !log.settings->bios_path.empty() || !IsCgb(log.settings->emulation.model)))
                 throw std::invalid_argument("Forced CGB replay startup requires skipped boot on CGB hardware");
             uint64_t tick{};
             for (size_t i = 0; i < log.events.size(); ++i) {
@@ -41,11 +42,14 @@ namespace diagnostics {
             WriteUnsigned(output, log.settings.has_value(), 1);
             if (log.settings) {
                 const auto &settings = *log.settings;
-                WriteString(output, settings.romName);
-                WriteString(output, settings.biosPath);
-                WriteUnsigned(output, static_cast<uint8_t>(settings.model), 1);
-                WriteUnsigned(output, settings.noBootrom | (settings.realRTC << 1) | (settings.noAudio << 2) | (settings.colorCorrection << 3) |
-                                              ((settings.dmg_palette_sampling == DmgPaletteSampling::NewValue) << 4) | (settings.force_cgb_mode << 5),
+                WriteString(output, settings.rom_path);
+                WriteString(output, settings.bios_path);
+                WriteUnsigned(output, static_cast<uint8_t>(settings.emulation.model), 1);
+                WriteUnsigned(output,
+                              settings.emulation.no_bootrom | (settings.emulation.real_rtc << 1) | (settings.emulation.no_audio << 2) |
+                                      (settings.emulation.color_correction << 3) |
+                                      ((settings.emulation.dmg_palette_sampling == DmgPaletteSampling::NewValue) << 4) |
+                                      (settings.emulation.force_cgb_mode << 5),
                               1);
             }
             WriteUnsigned(output, log.initialButtons, 1);
@@ -59,13 +63,13 @@ namespace diagnostics {
         }
     } // namespace
 
-    InputRecorder::InputRecorder(Gameboy &machine, InputFingerprint initial, const size_t capacity, std::optional<GameboySettings> settings) :
+    InputRecorder::InputRecorder(Gameboy &machine, InputFingerprint initial, const size_t capacity, std::optional<host::LaunchSettings> settings) :
         machine_(machine), log_{.initial = std::move(initial), .settings = std::move(settings), .initialButtons = machine.PressedButtons()},
         capacity_(capacity) {
         if (machine.TimelineTicks() || machine.UsesRealRTC() || machine.InputRecording() || !capacity || capacity > 1'000'000)
             throw std::invalid_argument("Input recording requires an unrecorded initial machine, virtual RTC and bounded capacity");
         if (log_.settings)
-            log_.settings->model = machine.GetModel();
+            log_.settings->emulation.model = machine.GetModel();
         Validate(log_);
         log_.events.reserve(capacity);
         sink_ = {.owner = this, .applied = [](void *owner, const uint64_t tick, const uint8_t buttons) noexcept {
@@ -117,19 +121,19 @@ namespace diagnostics {
         if (hasSettings > 1)
             throw std::invalid_argument("Invalid replay settings marker");
         if (hasSettings) {
-            GameboySettings settings;
-            settings.romName = ReadString(input);
-            settings.biosPath = ReadString(input);
-            settings.model = static_cast<Model>(ReadUnsigned(input, 1));
+            host::LaunchSettings settings;
+            settings.rom_path = ReadString(input);
+            settings.bios_path = ReadString(input);
+            settings.emulation.model = static_cast<Model>(ReadUnsigned(input, 1));
             const auto flags = ReadUnsigned(input, 1);
             if (flags > 63)
                 throw std::invalid_argument("Invalid replay settings flags");
-            settings.noBootrom = flags & 1;
-            settings.realRTC = flags & 2;
-            settings.noAudio = flags & 4;
-            settings.colorCorrection = flags & 8;
-            settings.dmg_palette_sampling = flags & 16 ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
-            settings.force_cgb_mode = flags & 32;
+            settings.emulation.no_bootrom = flags & 1;
+            settings.emulation.real_rtc = flags & 2;
+            settings.emulation.no_audio = flags & 4;
+            settings.emulation.color_correction = flags & 8;
+            settings.emulation.dmg_palette_sampling = flags & 16 ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
+            settings.emulation.force_cgb_mode = flags & 32;
             log.settings = std::move(settings);
         }
         log.initialButtons = ReadUnsigned(input, 1);
@@ -145,7 +149,7 @@ namespace diagnostics {
         return log;
     }
 
-    InputFingerprint IdentifyInitialInputs(const Gameboy &machine, const GameboySettings &settings) {
+    InputFingerprint IdentifyInitialInputs(const Gameboy &machine, const host::LaunchSettings &settings) {
         if (machine.TimelineTicks() || machine.UsesRealRTC())
             throw std::invalid_argument("Initial replay identity requires tick zero and virtual RTC");
         struct Configuration {
@@ -158,11 +162,12 @@ namespace diagnostics {
             bool force_cgb_mode;
         };
         std::ostringstream configuration;
-        WriteJson(configuration, Configuration{machine.GetModel(), settings.noBootrom, settings.realRTC, settings.noAudio,
-                                               settings.colorCorrection, settings.dmg_palette_sampling, settings.force_cgb_mode});
-        auto save = std::filesystem::path(settings.romName);
+        WriteJson(configuration,
+                  Configuration{machine.GetModel(), settings.emulation.no_bootrom, settings.emulation.real_rtc, settings.emulation.no_audio,
+                                settings.emulation.color_correction, settings.emulation.dmg_palette_sampling, settings.emulation.force_cgb_mode});
+        auto save = std::filesystem::path(settings.rom_path);
         save.replace_extension(".sav");
-        return {.rom = FileHash(settings.romName),
+        return {.rom = FileHash(settings.rom_path),
                 .bootrom = machine.BootromBytes().empty() ? "skipped" : Sha256(std::as_bytes(machine.BootromBytes())),
                 .configuration = TextHash(configuration.str()),
                 .cartridgeSave = std::filesystem::exists(save) ? FileHash(save) : "absent"};

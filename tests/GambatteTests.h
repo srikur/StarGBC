@@ -1,6 +1,8 @@
 #ifndef STARGBC_GAMBATTETESTS_H
 #define STARGBC_GAMBATTETESTS_H
 
+#include "GameboyFiles.h"
+
 #include <algorithm>
 #include <array>
 #include <span>
@@ -96,16 +98,17 @@ static GambatteResult runGambatteTest(const GambatteCase &gambatte_case,
                 diagnostics::TextHash(result.test.model + "|skip-bootrom|virtual-rtc|color-correction-off|15-intervals|" +
                                       (palette_sampling == DmgPaletteSampling::NewValue ? "dmg-lcd-new-value|gambatte-v2" : "gambatte-v1") +
                                       (force_cgb_mode ? "|force-cgb-mode" : ""));
-        gameboy = Gameboy::init({
-                .romName = gambatte_case.rom,
-                .model = gambatte_case.model,
-                .noBootrom = true,
-                .colorCorrection = false,
-                .executionPolicy = testExecutionPolicy,
-                .dmg_palette_sampling = palette_sampling,
-                .force_cgb_mode = force_cgb_mode,
-        });
-        observations.Attach(*gameboy);
+        const host::LaunchSettings launch_settings{.rom_path = gambatte_case.rom,
+                                                   .emulation = {
+                                                           .model = gambatte_case.model,
+                                                           .no_bootrom = true,
+                                                           .color_correction = false,
+                                                           .execution_policy = testExecutionPolicy,
+                                                           .dmg_palette_sampling = palette_sampling,
+                                                           .force_cgb_mode = force_cgb_mode,
+                                                   }};
+        gameboy = host::init_gameboy(launch_settings);
+        observations.Attach(*gameboy, launch_settings);
         for (unsigned frame = 0; frame + 1 < GAMBATTE_FRAME_LIMIT; ++frame)
             gameboy->RunFrame();
         auto &audio = gameboy->[:testGameboyMember("audio_"):];

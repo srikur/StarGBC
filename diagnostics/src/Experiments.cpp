@@ -250,11 +250,8 @@ namespace diagnostics {
             file.write(reinterpret_cast<const char *>(rom.data()), rom.size());
             file.close();
             result.romHash = FileHash(path);
-            Gameboy machine({.romName = path.string(),
-                             .model = scenario.model,
-                             .noBootrom = true,
-                             .colorCorrection = false,
-                             .executionPolicy = ExecutionPolicy::Ordinary});
+            Gameboy machine({.model = scenario.model, .no_bootrom = true, .color_correction = false, .execution_policy = ExecutionPolicy::Ordinary},
+                            {.rom = rom});
             writeJson(directory / "initial.json", machine.Inspect());
             machine.ObserveWith(&trace.Context());
             machine.RecordPixelsWith(&provenance.Context());
@@ -315,7 +312,7 @@ namespace diagnostics {
             file.write(reinterpret_cast<const char *>(rom.data()), rom.size());
             file.close();
             result.romHash = FileHash(path);
-            Gameboy machine({.romName = path.string(), .model = scenario.model, .noBootrom = true});
+            Gameboy machine({.model = scenario.model, .no_bootrom = true}, {.rom = rom});
             auto &bus = machine.[:member<Gameboy>("bus_"):];
             bus.speed = scenario.doubleSpeed ? Speed::Double : Speed::Regular;
             bus.gpu_.doubleSpeed = scenario.doubleSpeed;

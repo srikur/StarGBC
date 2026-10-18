@@ -1,20 +1,20 @@
 #include "Gameboy.h"
 
 void Cartridge::restore_ram(const std::span<const uint8_t> bytes) {
-    if (bytes.size() != gameRamSize)
+    if (bytes.size() != game_ram_size)
         throw std::invalid_argument("cartridge RAM size mismatch");
-    std::ranges::copy(bytes, gameRam_.begin());
+    std::ranges::copy(bytes, game_ram.begin());
     MarkRamDirty();
 }
 
 void Gameboy::reset_to_startup(const std::span<const std::byte> state) {
     if (inputSink_)
         throw std::logic_error("Stop input recording before resetting the ROM");
-    const std::vector<uint8_t> ram(cartridge_.ram_bytes().begin(), cartridge_.ram_bytes().end());
+    const std::vector ram(cartridge.ram_bytes().begin(), cartridge.ram_bytes().end());
     const auto clock{rtc_};
     if (!LoadState(state))
         throw std::invalid_argument("invalid startup state");
-    cartridge_.restore_ram(ram);
+    cartridge.restore_ram(ram);
     rtc_ = clock;
     cpu_.RestoreInstructionCount(0);
     gpu_.screenData.fill(0);
@@ -33,21 +33,23 @@ namespace {
 } // namespace
 
 AudioDebugOutput Audio::CaptureDebugOutput() const {
-    AudioDebugOutput state{.sampleCount = sampleBuffer.size(),
-                           .writePosition = bufferWritePos,
-                           .readPosition = bufferReadPos,
-                           .available = samplesAvailable,
-                           .sampleAccumulator = sampleAcc_,
-                           .resampler = bandLimited,
-                           .highpassLeft = highpassLeft,
-                           .highpassRight = highpassRight,
-                           .lastMixRegisters = lastMixRegs_,
-                           .lastMixOutputs = lastMixOutputs_,
-                           .mixLevel = mixLevel_,
-                           .mixChanges = mixLevelChanges_,
-                           .pendingTicks = pendingTicks_,
-                           .pendingFirstTick = pendingFirstTick_,
-                           .emissionTick = emissionTick_};
+    AudioDebugOutput state{
+            .sampleCount = sampleBuffer.size(),
+            .writePosition = bufferWritePos,
+            .readPosition = bufferReadPos,
+            .available = samplesAvailable,
+            .sampleAccumulator = sampleAcc_,
+            .resampler = bandLimited,
+            .highpassLeft = highpassLeft,
+            .highpassRight = highpassRight,
+            .lastMixRegisters = lastMixRegs_,
+            .lastMixOutputs = lastMixOutputs_,
+            .mixLevel = mixLevel_,
+            .mixChanges = mixLevelChanges_,
+            .pendingTicks = pendingTicks_,
+            .pendingFirstTick = pendingFirstTick_,
+            .emissionTick = emissionTick_
+    };
     std::ranges::copy(sampleBuffer, state.samples.begin());
     return state;
 }

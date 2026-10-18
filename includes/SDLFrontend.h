@@ -56,6 +56,8 @@ private:
 
     void SaveScreenshot() const;
 
+    void FlushBattery() const;
+
     void SaveState(uint8_t) const;
 
     void LoadState(uint8_t);

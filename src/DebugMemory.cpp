@@ -5,9 +5,9 @@
 std::optional<size_t> Cartridge::DebugRamOffset(const uint16_t address) const {
     if (address < 0xA000 || address > 0xBFFF)
         throw std::invalid_argument("address is not cartridge RAM");
-    if (mbc == MBC::MBC3 && ramBank >= 0x08 && ramBank <= 0x0C)
+    if (mbc == MBC::MBC3 && ram_bank >= 0x08 && ram_bank <= 0x0C)
         throw std::invalid_argument("RTC register windows are not supported by debug memory");
-    if (!gameRamSize || (mbc != MBC::None && !ramEnabled))
+    if (!game_ram_size || (mbc != MBC::None && !ram_enabled))
         return std::nullopt;
     size_t bank = 0;
     switch (mbc) {
@@ -15,20 +15,20 @@ std::optional<size_t> Cartridge::DebugRamOffset(const uint16_t address) const {
             bank = HandleRamBank();
             break;
         case MBC::MBC2:
-            return (address - 0xA000) % gameRamSize;
+            return (address - 0xA000) % game_ram_size;
         case MBC::MBC3:
-            if (ramBank > 3)
+            if (ram_bank > 3)
                 return std::nullopt;
-            bank = ramBank;
+            bank = ram_bank;
             break;
         case MBC::MBC5:
-            bank = ramBank;
+            bank = ram_bank;
             break;
         case MBC::None:
             break;
     }
     const size_t offset = bank * 0x2000 + address - 0xA000;
-    return offset < gameRamSize ? std::optional<size_t>(offset) : std::nullopt;
+    return offset < game_ram_size ? std::optional<size_t>(offset) : std::nullopt;
 }
 
 uint8_t Cartridge::DebugPeek(const uint16_t address) const {
@@ -36,18 +36,18 @@ uint8_t Cartridge::DebugPeek(const uint16_t address) const {
         const auto offset = DebugRamOffset(address);
         if (!offset)
             return 0xFF;
-        return mbc == MBC::MBC2 ? 0xF0 | (gameRam_[*offset] & 0x0F) : gameRam_[*offset];
+        return mbc == MBC::MBC2 ? 0xF0 | (game_ram[*offset] & 0x0F) : game_ram[*offset];
     }
     if (address >= 0x8000)
         throw std::invalid_argument("unsupported cartridge address");
     const auto bank = DebugBank(address);
     const size_t offset = bank * 0x4000 + (address & 0x3FFF);
-    return offset < gameRom_.size() ? gameRom_[offset] : 0xFF;
+    return offset < game_rom.size() ? game_rom[offset] : 0xFF;
 }
 
 uint16_t Cartridge::DebugBank(const uint16_t address) const {
     if (address >= 0xA000)
-        return mbc == MBC::MBC1 ? HandleRamBank() : ramBank;
+        return mbc == MBC::MBC1 ? HandleRamBank() : ram_bank;
     uint16_t bank = address < 0x4000 ? 0 : 1;
     switch (mbc) {
         case MBC::None:
@@ -63,7 +63,7 @@ uint16_t Cartridge::DebugBank(const uint16_t address) const {
         case MBC::MBC3:
         case MBC::MBC5:
             if (address >= 0x4000)
-                bank = romBank & BankBitmask();
+                bank = rom_bank & BankBitmask();
             break;
     }
     return bank;
@@ -73,7 +73,7 @@ void Cartridge::DebugPoke(const uint16_t address, const uint8_t value) {
     const auto offset = DebugRamOffset(address);
     if (!offset)
         throw std::invalid_argument("cartridge RAM is absent, disabled, or unmapped");
-    gameRam_[*offset] = mbc == MBC::MBC2 ? value & 0x0F : value;
+    game_ram[*offset] = mbc == MBC::MBC2 ? value & 0x0F : value;
     MarkRamDirty();
 }
 

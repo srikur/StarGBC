@@ -41,7 +41,7 @@ def read_catalog(path):
             or defaults["startup"] != "skip-bootrom" or defaults["colorCorrection"] or defaults["realRTC"]
             or defaults["dmg_palette_sampling"] != "NewValue" or not defaults["force_cgb_mode_for_color_models"]):
         raise ValueError("Unsupported Gambatte execution contract")
-    models = set(re.findall(r"^\s+(\w+)(?:,|\[\[)", (ROOT / "includes/Model.h").read_text(), re.M)) - {"Auto"}
+    models = set(re.findall(r"^\s+(\w+)\s*(?:,|\[\[)", (ROOT / "includes/Model.h").read_text(), re.M)) - {"Auto"}
     seen = set()
     for case in catalog["cases"]:
         if case["model"] not in models:

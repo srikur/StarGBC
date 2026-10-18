@@ -1,7 +1,6 @@
 #ifndef STARGBC_JOYPAD_H
 #define STARGBC_JOYPAD_H
 
-#include <fstream>
 
 #include "Common.h"
 #include "Interrupts.h"
@@ -31,10 +30,6 @@ struct Joypad {
 
     // Enables the SGB ICD2 command interface (SGB/SGB2 hardware with an SGB-flagged cart)
     void ConfigureSgb(bool enabled);
-
-    bool SaveState(std::ofstream &f) const;
-
-    bool LoadState(std::ifstream &f);
 
 private:
     void UpdateKeyFlag();

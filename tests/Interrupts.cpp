@@ -1,3 +1,4 @@
+#include "GameboyFiles.h"
 #include "Interrupts.h"
 #include <doctest/doctest.h>
 #include <ranges>
@@ -41,7 +42,7 @@ TEST_CASE("interrupts: entry writes the stack in the third and fourth machine cy
     for (const auto [model, policy] : std::views::cartesian_product(models, policies)) {
         CAPTURE(model);
         CAPTURE(policy);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
@@ -123,7 +124,7 @@ TEST_CASE("interrupts: vector selection sees higher-priority IF before dispatch 
     for (const auto [model, policy] : std::views::cartesian_product(models, policies)) {
         CAPTURE(model);
         CAPTURE(policy);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
@@ -194,7 +195,7 @@ TEST_CASE("interrupts: clearing an IF-visible CGB LYC request prevents delayed r
         CAPTURE(double_speed);
         CAPTURE(line);
         CAPTURE(clear);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &gpu = bus.gpu_;
         auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
@@ -238,7 +239,7 @@ TEST_CASE("interrupts: a CGB LYC request on the final CPU tick waits for the nex
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
     for (const auto policy : policies) {
         CAPTURE(policy);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &gpu = bus.gpu_;
@@ -314,7 +315,7 @@ TEST_CASE("interrupts: CGB VBlank dispatch distinguishes normal and double speed
         CAPTURE(double_speed);
         CAPTURE(clear);
         CAPTURE(policy);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = Model::CGBC, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
         auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
@@ -463,7 +464,7 @@ TEST_CASE("interrupts: software CGB LYC requests are readable before normal-spee
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(clear);
-        Gameboy gameboy({.romName = "roms/acid/cgb-acid2.gbc", .model = model, .noBootrom = true});
+        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         gameboy.[:get_member<Gameboy>("cpu_"):].Lock();
         static_cast<void>(gameboy.AdvanceTicks(8, policy));
         auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];

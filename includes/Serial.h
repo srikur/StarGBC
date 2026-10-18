@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fstream>
 #include "Common.h"
 #include "Interrupts.h"
 
@@ -25,10 +24,6 @@ struct Serial {
     }
 
     void clock_edge();
-
-    bool save_state(std::ofstream &) const;
-
-    bool load_state(std::ifstream &);
 
     u16 ticks_per_bit{512};
     bool clock_high{false};

@@ -1,4 +1,5 @@
 #pragma once
+#include "GameboyFiles.h"
 
 #include <format>
 #include "GbMicrotestDiagnostics.h"
@@ -73,10 +74,12 @@ static diagnostics::Result runCatalogTest(const CatalogCase &test) {
         const bool graphical = test.runner == AgeScreen || test.runner == RomScreen || test.runner == RomStopScreen || diagnosticScreen;
         if (graphical)
             expected = readBinaryFile(test.expected);
-        gameboy = Gameboy::init({.romName = test.rom, .biosPath = test.bios, .model = test.model, .executionPolicy = testExecutionPolicy});
+        const host::LaunchSettings launch_settings{
+                .rom_path = test.rom, .bios_path = test.bios, .emulation = {.model = test.model, .execution_policy = testExecutionPolicy}};
+        gameboy = host::init_gameboy(launch_settings);
         if (!*test.bios)
             result.inputs.bootrom = diagnostics::Sha256(std::as_bytes(gameboy->BootromBytes()));
-        observations.Attach(*gameboy);
+        observations.Attach(*gameboy, launch_settings);
         bool passed{}, completed{}, stable{};
         unsigned matching{}, intervals{};
         std::array<uint8_t, 3> previous{};
