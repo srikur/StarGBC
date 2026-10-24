@@ -276,8 +276,10 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
             session_->SetPhysicalButton(Keys::Down, true);
             break;
         case SDLK_SPACE:
-        case SDLK_M:
             throttled_ = false;
+            break;
+        case SDLK_M:
+            throttled_ = !throttled_;
             break;
         case SDLK_P:
             session_->SetPaused(true);
