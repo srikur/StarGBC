@@ -3,7 +3,7 @@
 #include <meta>
 #include <string_view>
 
-enum class Model : uint8_t {
+enum class Model {
     Auto,
     DMG0,
     DMGA,
@@ -25,7 +25,7 @@ enum class Model : uint8_t {
     AGBBE,
 };
 
-enum class DmgPaletteSampling : uint8_t { BitwiseOr, NewValue };
+enum class DmgPaletteSampling { BitwiseOr, NewValue };
 
 template<typename E>
     requires std::is_enum_v<E>

@@ -20,3 +20,4 @@ docs/
 /diagnostics/README.md
 /diagnostics/validation.json
 /tests/baselines/optimization-fixes.json
+.vs/
