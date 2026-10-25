@@ -279,7 +279,7 @@ SDL_AppResult SDLFrontend::HandleKeyDown(const SDL_KeyboardEvent &key) {
             throttled_ = false;
             break;
         case SDLK_M:
-            speedMultiplier_ = speedMultiplier_ == 1 ? 4 : 1;
+            throttled_ = !throttled_;
             break;
         case SDLK_P:
             session_->SetPaused(true);
