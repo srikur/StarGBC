@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "StarGBC (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "StarGBC (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
