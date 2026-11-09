@@ -12,6 +12,12 @@ class RealTimeClock {
     static constexpr u64 kMaxDays = 511;
     static constexpr u64 kHoursPerDay = 24;
 
+    static constexpr u8 RTC_REGISTER_SECONDS = 0x08;
+    static constexpr u8 RTC_REGISTER_MINUTES = 0x09;
+    static constexpr u8 RTC_REGISTER_HOURS = 0x0A;
+    static constexpr u8 RTC_REGISTER_DAY_LOWER = 0x0B;
+    static constexpr u8 RTC_REGISTER_DAY_UPPER = 0x0C;
+
     [[nodiscard]] u64 now_seconds() const;
 
     [[nodiscard]] u64 compose_seconds() const;

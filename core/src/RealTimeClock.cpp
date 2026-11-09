@@ -2,7 +2,7 @@
 
 u64 RealTimeClock::now_seconds() const { return time_source_ ? time_source_() : 0; }
 
-uint64_t RealTimeClock::compose_seconds() const {
+u64 RealTimeClock::compose_seconds() const {
     const auto days = static_cast<uint16_t>((realClock.day_upper & 0x01) << 8 | realClock.day_lower);
     return realClock.seconds + realClock.minutes * kSecPerMin + realClock.hours * kSecPerHour + days * kSecPerDay;
 }
@@ -97,18 +97,25 @@ void RealTimeClock::tick() {
     }
 }
 
-uint8_t RealTimeClock::read_rtc(const uint16_t address) const {
+u8 RealTimeClock::read_rtc(const u16 address) const {
     switch (address) {
-        case 0x08:
-            return latchedClock.seconds & 0x3F;
-        case 0x09:
-            return latchedClock.minutes & 0x3F;
-        case 0x0A:
-            return latchedClock.hours & 0x1F;
-        case 0x0B:
+        case RTC_REGISTER_SECONDS:
+            // ranges from $00 to $3B; bottom 6 bits
+            return latchedClock.seconds & 0b111111;
+        case RTC_REGISTER_MINUTES:
+            // ranges from $00 to $3B; bottom 6 bits
+            return latchedClock.minutes & 0b111111;
+        case RTC_REGISTER_HOURS:
+            // ranges from $00 to $17; bottom 5 bits
+            return latchedClock.hours & 0b11111;
+        case RTC_REGISTER_DAY_LOWER:
             return latchedClock.day_lower;
-        case 0x0C:
-            return latchedClock.day_upper & 0xC1;
+        case RTC_REGISTER_DAY_UPPER:
+            // only bits 0, 6, 7 used
+            // Bit 0: MSB of day counter
+            // Bit 6: Halt Flag
+            // Bit 7: Day counter overflow
+            return latchedClock.day_upper & 0b11000001;
         default:
             return 0xFF;
     }
@@ -116,24 +123,24 @@ uint8_t RealTimeClock::read_rtc(const uint16_t address) const {
 
 void RealTimeClock::write_rtc(const uint16_t address, const uint8_t value) {
     switch (address) {
-        case 0x08:
-            realClock.seconds = value & 0x3F;
+        case RTC_REGISTER_SECONDS:
+            realClock.seconds = value & 0b111111;
             counter = 0;
             break;
-        case 0x09:
-            realClock.minutes = value & 0x3F;
+        case RTC_REGISTER_MINUTES:
+            realClock.minutes = value & 0b111111;
             break;
-        case 0x0A:
-            realClock.hours = value & 0x1F;
+        case RTC_REGISTER_HOURS:
+            realClock.hours = value & 0b11111;
             break;
-        case 0x0B:
+        case RTC_REGISTER_DAY_LOWER:
             realClock.day_lower = value;
             break;
-        case 0x0C: {
-            const bool wasHalted = realClock.day_upper & 0x40;
-            realClock.day_upper = value & 0xC1;
-            halted = (realClock.day_upper & 0x40);
-            if (const bool nowRunning = !(realClock.day_upper & 0x40); wasHalted && nowRunning)
+        case RTC_REGISTER_DAY_UPPER: {
+            const bool wasHalted = Bit<6>(realClock.day_upper);
+            realClock.day_upper = value & 0b11000001;
+            halted = Bit<6>(realClock.day_upper);
+            if (const bool nowRunning = !Bit<6>(realClock.day_upper); wasHalted && nowRunning)
                 recalculate_zero_time();
             break;
         }
