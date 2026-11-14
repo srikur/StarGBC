@@ -18,7 +18,7 @@ namespace {
                                  std::span(right.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
         CHECK(left.GetAudioSamplesAvailable() == right.GetAudioSamplesAvailable());
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted execution at both speeds") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {

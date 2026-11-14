@@ -2,33 +2,34 @@
 
 #include <fstream>
 #include <sstream>
-#include "stargbc/Gameboy.h"
 #include "diagnostics/Binary.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
+#include "stargbc/Gameboy.h"
 
 namespace diagnostics {
-    void WriteFingerprints(std::ostream &output, const InputFingerprint &inputs) {
-        template for (constexpr auto member :
-                      std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
-                WriteString(output, inputs.[:member:]);
+    void WriteFingerprints(std::ostream& output, const InputFingerprint& inputs) {
+        template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(
+                          ^^InputFingerprint, std::meta::access_context::current())))
+            WriteString(output, inputs.[:member:]);
     }
 
-    InputFingerprint ReadFingerprints(std::istream &input) {
+    InputFingerprint ReadFingerprints(std::istream& input) {
         InputFingerprint result;
-        template for (constexpr auto member :
-                      std::define_static_array(std::meta::nonstatic_data_members_of(^^InputFingerprint, std::meta::access_context::current())))
-                result.[:member:] = ReadString(input);
+        template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(
+                          ^^InputFingerprint, std::meta::access_context::current())))
+            result.[:member:] = ReadString(input);
         return result;
     }
 
-    bool CompatibleInputs(const InputFingerprint &left, const InputFingerprint &right) {
+    bool CompatibleInputs(const InputFingerprint& left, const InputFingerprint& right) {
         template for (constexpr auto member : std::define_static_array(std::meta::nonstatic_data_members_of(
-                              ^^InputFingerprint, std::meta::access_context::current()))) if (left.[:member:] != right.[:member:]) return false;
+                          ^^InputFingerprint,
+                          std::meta::access_context::current()))) if (left.[:member:] != right.[:member:]) return false;
         return true;
     }
 
-    void WriteCheckpoint(const std::filesystem::path &path, const Gameboy &machine, CheckpointIdentity identity) {
+    void WriteCheckpoint(const std::filesystem::path& path, const Gameboy& machine, CheckpointIdentity identity) {
         const auto payload = machine.SaveDebugState();
         identity.stateFormat = "StarGBC-debug-1-" + std::to_string(payload.size());
         identity.position = machine.ExecutionPosition();
@@ -48,7 +49,7 @@ namespace diagnostics {
         WriteString(content, identity.replayHash);
         WriteUnsigned(content, identity.replayCursor);
         WriteUnsigned(content, payload.size());
-        content.write(reinterpret_cast<const char *>(payload.data()), static_cast<std::streamsize>(payload.size()));
+        content.write(reinterpret_cast<const char*>(payload.data()), static_cast<std::streamsize>(payload.size()));
         const auto bytes = content.str();
         std::ofstream output(path, std::ios::binary);
         output.exceptions(std::ios::badbit | std::ios::failbit);
@@ -59,8 +60,8 @@ namespace diagnostics {
         metadata << '\n';
     }
 
-    CheckpointIdentity RestoreCheckpoint(const std::filesystem::path &path, Gameboy &machine, const CheckpointIdentity &compatible,
-                                         const uint64_t maximumReplayCursor) {
+    CheckpointIdentity RestoreCheckpoint(const std::filesystem::path& path, Gameboy& machine,
+                                         const CheckpointIdentity& compatible, const uint64_t maximumReplayCursor) {
         const auto size = std::filesystem::file_size(path);
         if (size < 76 || size > 32 * 1024 * 1024)
             throw std::invalid_argument("Invalid checkpoint size");
@@ -88,12 +89,13 @@ namespace diagnostics {
         identity.replayCursor = ReadUnsigned(input);
         const auto payloadSize = ReadUnsigned(input);
         const auto expectedSize = machine.SaveDebugState().size();
-        if (identity.schemaVersion != SchemaVersion || identity.stateFormat != "StarGBC-debug-1-" + std::to_string(expectedSize) ||
-            payloadSize != expectedSize || identity.build != compatible.build || !CompatibleInputs(identity.inputs, compatible.inputs) ||
+        if (identity.schemaVersion != SchemaVersion ||
+            identity.stateFormat != "StarGBC-debug-1-" + std::to_string(expectedSize) || payloadSize != expectedSize ||
+            identity.build != compatible.build || !CompatibleInputs(identity.inputs, compatible.inputs) ||
             identity.replayHash != compatible.replayHash || identity.replayCursor > maximumReplayCursor)
             throw std::invalid_argument("Checkpoint build, state format or initial inputs are incompatible");
         std::vector<std::byte> payload(payloadSize);
-        if (!input.read(reinterpret_cast<char *>(payload.data()), static_cast<std::streamsize>(payloadSize)) ||
+        if (!input.read(reinterpret_cast<char*>(payload.data()), static_cast<std::streamsize>(payloadSize)) ||
             input.peek() != std::char_traits<char>::eof())
             throw std::invalid_argument("Invalid checkpoint payload length");
         if (!machine.LoadDebugState(payload))

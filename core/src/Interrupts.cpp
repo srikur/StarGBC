@@ -28,7 +28,8 @@ void Interrupts::set(const InterruptType interrupt, const bool delayed) {
     const uint8_t mask = 0x01 << static_cast<uint8_t>(interrupt);
     if (!delayed) {
         if (observations)
-            observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F, mask);
+            observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptRequest, 0xFF0F,
+                               mask);
         interrupt_flag |= mask & ~blocked_requests();
         if (observations)
             observations->Emit(diagnostics::Component::Interrupt, diagnostics::EventKind::InterruptVisible, 0xFF0F,
@@ -38,7 +39,8 @@ void Interrupts::set(const InterruptType interrupt, const bool delayed) {
     }
 }
 
-void Interrupts::set_after(const InterruptType interrupt, const uint8_t dots, const bool visibleEarly, const uint8_t visibleDelay) {
+void Interrupts::set_after(const InterruptType interrupt, const uint8_t dots, const bool visibleEarly,
+                           const uint8_t visibleDelay) {
     if (dots == 0) {
         set(interrupt, false);
         return;

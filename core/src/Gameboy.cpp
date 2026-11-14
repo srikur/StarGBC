@@ -26,7 +26,7 @@ void Gameboy::SynchronizeObservationPosition() const {
         gpu_.provenance->position = position;
 }
 
-void Gameboy::ObserveWith(diagnostics::ObservationContext *context) {
+void Gameboy::ObserveWith(diagnostics::ObservationContext* context) {
     observations_ = context;
     cpu_.ObserveWith(context);
     bus_.observations = context;
@@ -37,7 +37,7 @@ void Gameboy::ObserveWith(diagnostics::ObservationContext *context) {
     SynchronizeObservationPosition();
 }
 
-void Gameboy::RecordPixelsWith(diagnostics::PixelProvenanceContext *context) {
+void Gameboy::RecordPixelsWith(diagnostics::PixelProvenanceContext* context) {
     gpu_.provenance = context;
     if (context) {
         context->ResetPipeline();
@@ -46,7 +46,9 @@ void Gameboy::RecordPixelsWith(diagnostics::PixelProvenanceContext *context) {
     SynchronizeObservationPosition();
 }
 
-bool Gameboy::ConsumeFrame() { return std::exchange(gpu_.frameReady, false); }
+bool Gameboy::ConsumeFrame() {
+    return std::exchange(gpu_.frameReady, false);
+}
 
 void Gameboy::ObserveInput(const uint8_t previous) {
     const auto buttons = PressedButtons();
@@ -56,7 +58,8 @@ void Gameboy::ObserveInput(const uint8_t previous) {
         inputSink_->applied(inputSink_->owner, timelineTicks_, buttons);
     if (observations_) {
         SynchronizeObservationPosition();
-        observations_->Emit(diagnostics::Component::Input, diagnostics::EventKind::InputApplied, 0xFF00, buttons, previous);
+        observations_->Emit(diagnostics::Component::Input, diagnostics::EventKind::InputApplied, 0xFF00, buttons,
+                            previous);
     }
 }
 
@@ -84,13 +87,17 @@ void Gameboy::ApplyButtons(const uint8_t buttons) {
     }
 }
 
-const uint32_t *Gameboy::GetScreenData() const { return gpu_.GetScreenData(); }
+const uint32_t* Gameboy::GetScreenData() const {
+    return gpu_.GetScreenData();
+}
 
 bool Gameboy::LoadedStateValid() const {
-    return gpu_.dmg_palette_sampling <= DmgPaletteSampling::NewValue && gpu_.model != Model::Auto && gpu_.model == audio_.GetModel() &&
-           (!bus_.cgbMode || IsCgb(gpu_.model)) && gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) &&
-           gpu_.doubleSpeed == (bus_.speed == Speed::Double) && gpu_.backgroundQueue.valid() && gpu_.spriteFetchQueue.valid() &&
-           gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 && gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 &&
+    return gpu_.dmg_palette_sampling <= DmgPaletteSampling::NewValue && gpu_.model != Model::Auto &&
+           gpu_.model == audio_.GetModel() && (!bus_.cgbMode || IsCgb(gpu_.model)) &&
+           gpu_.dmg_compat == (IsCgb(gpu_.model) && !bus_.cgbMode) &&
+           gpu_.doubleSpeed == (bus_.speed == Speed::Double) && gpu_.backgroundQueue.valid() &&
+           gpu_.spriteFetchQueue.valid() && gpu_.spriteBuffer.valid() && gpu_.vramBank <= 1 &&
+           gpu_.currentLine <= 153 && gpu_.pixelsDrawn <= SCREEN_WIDTH && memory_.wramBank_ <= 7 &&
            cartridge.BankingStateValid() && (!bus_.bootromRunning || !bus_.bootrom.empty());
 }
 
@@ -321,8 +328,8 @@ ExecutionResult Gameboy::AdvanceTicks(const uint64_t ticks, const ExecutionPolic
     audio_.SetOptimizedExecution(optimized);
     uint64_t remaining = ticks;
     while (remaining > 0) {
-        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() && (cpuTickPhase_ & 3) == 0 &&
-            (masterCycles & 1) == 0) [[likely]] {
+        if (!observations_ && !gpu_.provenance && policy == ExecutionPolicy::Optimized && !cpu_.stopped() &&
+            (cpuTickPhase_ & 3) == 0 && (masterCycles & 1) == 0) [[likely]] {
             if (bus_.speed == Speed::Regular && remaining >= 8) {
                 if (masterCycles >= CGB_CYCLES_PER_SECOND)
                     masterCycles -= CGB_CYCLES_PER_SECOND;
@@ -371,11 +378,14 @@ ExecutionResult Gameboy::StepInstruction(const uint64_t maxTicks) {
     while (timelineTicks_ - begin < maxTicks) {
         static_cast<void>(AdvanceTicks(1));
         if (cpu_.InstructionsCompleted() != instructions)
-            return {ExecutionStopReason::InstructionBoundary, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions};
+            return {ExecutionStopReason::InstructionBoundary, begin, timelineTicks_,
+                    cpu_.InstructionsCompleted() - instructions};
         if (const auto reason = stoppedReason())
             return {*reason, begin, timelineTicks_, 0};
     }
     return {ExecutionStopReason::TickBudget, begin, timelineTicks_, 0};
 }
 
-void Gameboy::RunFrame() { static_cast<void>(AdvanceTicks(kFrameCyclesCGB, executionPolicy_)); }
+void Gameboy::RunFrame() {
+    static_cast<void>(AdvanceTicks(kFrameCyclesCGB, executionPolicy_));
+}

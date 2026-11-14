@@ -27,7 +27,8 @@ DisassembledInstruction disassemble(const uint16_t address, const std::array<uin
         const auto bit{(bytes[1] >> 3) & 7};
         const auto target{registers[bytes[1] & 7]};
         constexpr std::array<std::string_view, 4> operations{"", "BIT", "RES", "SET"};
-        result.text = group ? std::format("{} {}, {}", operations[group], bit, target) : std::format("{} {}", rotations[bit], target);
+        result.text = group ? std::format("{} {}, {}", operations[group], bit, target)
+                            : std::format("{} {}", rotations[bit], target);
     } else if (x == 1) {
         result.text = opcode == 0x76 ? "HALT" : std::format("LD {}, {}", registers[y], registers[z]);
     } else if (x == 2) {
@@ -42,7 +43,9 @@ DisassembledInstruction disassemble(const uint16_t address, const std::array<uin
                     result.text = std::format("LD ({}), SP", word);
                 } else {
                     result.size = 2;
-                    result.text = y == 2 ? "STOP" : y == 3 ? std::format("JR {}", relative) : std::format("JR {}, {}", conditions[y - 4], relative);
+                    result.text = y == 2   ? "STOP"
+                                  : y == 3 ? std::format("JR {}", relative)
+                                           : std::format("JR {}, {}", conditions[y - 4], relative);
                 }
                 break;
             case 1:

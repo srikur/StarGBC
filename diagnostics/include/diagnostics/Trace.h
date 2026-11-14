@@ -11,7 +11,10 @@ namespace diagnostics {
     struct Range {
         T first{};
         T last{std::numeric_limits<T>::max()};
-        [[nodiscard]] bool Contains(const T value) const noexcept { return value >= first && value <= last; }
+
+        [[nodiscard]] bool Contains(const T value) const noexcept {
+            return value >= first && value <= last;
+        }
     };
 
     struct EventFilter {
@@ -24,7 +27,7 @@ namespace diagnostics {
         std::optional<Range<uint8_t>> lines;
         std::optional<Range<uint16_t>> dots;
 
-        [[nodiscard]] bool Matches(const Event &event) const noexcept;
+        [[nodiscard]] bool Matches(const Event& event) const noexcept;
     };
 
     struct CaptureTrigger {
@@ -66,24 +69,28 @@ namespace diagnostics {
         size_t followingRemaining_{};
         bool captureComplete_{};
 
-        void Record(const Event &event) noexcept;
+        void Record(const Event& event) noexcept;
 
-        void Append(const Event &event, size_t limit) noexcept;
+        void Append(const Event& event, size_t limit) noexcept;
 
-    public:
+       public:
         explicit TraceRecorder(size_t capacity, EventFilter filter = {});
 
-        TraceRecorder(const TraceRecorder &) = delete;
+        TraceRecorder(const TraceRecorder&) = delete;
 
-        TraceRecorder &operator=(const TraceRecorder &) = delete;
+        TraceRecorder& operator=(const TraceRecorder&) = delete;
 
-        [[nodiscard]] ObservationContext &Context() { return context_; }
+        [[nodiscard]] ObservationContext& Context() {
+            return context_;
+        }
 
         [[nodiscard]] TraceMetadata Metadata() const;
 
         [[nodiscard]] std::vector<Event> Events() const;
 
-        void SetCaptureEnabled(const bool enabled) { enabled_ = enabled; }
+        void SetCaptureEnabled(const bool enabled) {
+            enabled_ = enabled;
+        }
 
         void Clear() {
             begin_ = size_ = observed_ = overwritten_ = 0;
@@ -97,10 +104,12 @@ namespace diagnostics {
 
         void Arm(CaptureTrigger trigger);
 
-        [[nodiscard]] bool CaptureComplete() const { return captureComplete_; }
+        [[nodiscard]] bool CaptureComplete() const {
+            return captureComplete_;
+        }
 
-        void WriteJsonLines(const std::filesystem::path &path) const;
+        void WriteJsonLines(const std::filesystem::path& path) const;
 
-        void WriteBinary(const std::filesystem::path &path) const;
+        void WriteBinary(const std::filesystem::path& path) const;
     };
 } // namespace diagnostics

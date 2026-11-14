@@ -12,7 +12,7 @@ namespace {
         diagnostics::WriteJson(output, value);
         return output.str();
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sampled outputs") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {

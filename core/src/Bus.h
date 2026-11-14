@@ -12,11 +12,18 @@
 #include "diagnostics/Observation.h"
 
 class Bus {
-public:
-    explicit Bus(Joypad &joypad, Memory &memory, Timer &timer, Cartridge &cartridge, Serial &serial, DMA &dma, Audio &audio, Interrupts &interrupts,
-                 GPU &gpu) :
-        joypad_(joypad), memory_(memory), timer_(timer), cartridge_(cartridge), serial_(serial), dma_(dma), audio_(audio), interrupts_(interrupts),
-        gpu_(gpu) {}
+   public:
+    explicit Bus(Joypad& joypad, Memory& memory, Timer& timer, Cartridge& cartridge, Serial& serial, DMA& dma,
+                 Audio& audio, Interrupts& interrupts, GPU& gpu)
+        : joypad_(joypad),
+          memory_(memory),
+          timer_(timer),
+          cartridge_(cartridge),
+          serial_(serial),
+          dma_(dma),
+          audio_(audio),
+          interrupts_(interrupts),
+          gpu_(gpu) {}
 
     [[nodiscard]] uint8_t ReadByte(uint16_t, ComponentSource) const;
 
@@ -68,8 +75,8 @@ public:
         const bool wasOwned = gpu_.hdma.ShouldHaltCPU();
         RunHDMAWork(cpuAtInstructionBoundary);
         if (observations && wasOwned != gpu_.hdma.ShouldHaltCPU())
-            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55, gpu_.hdma.ShouldHaltCPU(), 0,
-                               diagnostics::Initiator::HDMA);
+            observations->Emit(diagnostics::Component::DMA, diagnostics::EventKind::DmaOwnership, 0xFF55,
+                               gpu_.hdma.ShouldHaltCPU(), 0, diagnostics::Initiator::HDMA);
     }
 
     void RunHDMAWork(bool cpuAtInstructionBoundary) const;
@@ -78,20 +85,19 @@ public:
 
     [[nodiscard]] bool hdma_hblank_active() const;
 
-
     void ChangeSpeed();
 
     void HandleOAMCorruption(uint16_t, CorruptionType) const;
 
-    Joypad &joypad_;
-    Memory &memory_;
-    Timer &timer_;
-    Cartridge &cartridge_;
-    Serial &serial_;
-    DMA &dma_;
-    Audio &audio_;
-    Interrupts &interrupts_;
-    GPU &gpu_;
+    Joypad& joypad_;
+    Memory& memory_;
+    Timer& timer_;
+    Cartridge& cartridge_;
+    Serial& serial_;
+    DMA& dma_;
+    Audio& audio_;
+    Interrupts& interrupts_;
+    GPU& gpu_;
 
     bool bootromRunning{false};
     bool prepareSpeedShift{false};
@@ -107,15 +113,15 @@ public:
     bool cgbMode{false};
     bool key0Written{false};
     uint8_t svbkReg{0xF8}; // SVBK ($FF70) readback latch
-    uint8_t rp{0x00}; // RP ($FF56) infrared port latch
-    uint8_t psw72{0x00}; // undocumented $FF72
-    uint8_t psw73{0x00}; // undocumented $FF73
-    uint8_t psw74{0x00}; // undocumented $FF74, CGB mode only
-    uint8_t pgb75{0x00}; // undocumented $FF75, bits 4-6 writable
+    uint8_t rp{0x00};      // RP ($FF56) infrared port latch
+    uint8_t psw72{0x00};   // undocumented $FF72
+    uint8_t psw73{0x00};   // undocumented $FF73
+    uint8_t psw74{0x00};   // undocumented $FF74, CGB mode only
+    uint8_t pgb75{0x00};   // undocumented $FF75, bits 4-6 writable
     [[=NotStateAware]] std::vector<uint8_t> bootrom;
-    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+    [[=NotStateAware]] diagnostics::ObservationContext* observations{};
 
-private:
+   private:
     [[nodiscard]] bool cpu_dma_conflict(u16 address) const;
 
     u32 dma_wram_offset(u16 address) const;

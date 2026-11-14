@@ -1,12 +1,11 @@
 #ifndef STARGBC_JOYPAD_H
 #define STARGBC_JOYPAD_H
 
-
-#include "stargbc/Common.h"
 #include "Interrupts.h"
+#include "stargbc/Common.h"
 
 struct Joypad {
-    explicit Joypad(Interrupts &interrupts) : interrupts_(interrupts) {}
+    explicit Joypad(Interrupts& interrupts) : interrupts_(interrupts) {}
 
     [[nodiscard]] uint8_t GetJoypadState() const;
 
@@ -31,7 +30,7 @@ struct Joypad {
     // Enables the SGB ICD2 command interface (SGB/SGB2 hardware with an SGB-flagged cart)
     void ConfigureSgb(bool enabled);
 
-private:
+   private:
     void UpdateKeyFlag();
 
     void SgbWrite(uint8_t value);
@@ -42,7 +41,7 @@ private:
 
     uint8_t matrix_{0xFF};
     uint8_t select_{0x00};
-    Interrupts &interrupts_;
+    Interrupts& interrupts_;
     bool keyPressed_{false};
 
     // SGB packet receive state machine + MLT_REQ joypad-ID counter (ported from SameBoy's sgb.c,

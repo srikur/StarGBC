@@ -1,10 +1,10 @@
 #pragma once
 
-#include "stargbc/Common.h"
 #include "Interrupts.h"
+#include "stargbc/Common.h"
 
 struct Serial {
-    explicit Serial(Interrupts &interrupts) : interrupts(interrupts) {}
+    explicit Serial(Interrupts& interrupts) : interrupts(interrupts) {}
 
     [[nodiscard]] u8 read_serial(u16) const;
 
@@ -27,9 +27,9 @@ struct Serial {
 
     u16 ticks_per_bit{512};
     bool clock_high{false};
-    u8 data{0}; // SB
+    u8 data{0};    // SB
     u8 control{0}; // SC
     u8 bits_shifted{0};
     bool active{false};
-    Interrupts &interrupts;
+    Interrupts& interrupts;
 };

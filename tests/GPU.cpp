@@ -194,7 +194,7 @@ namespace {
         CHECK(std::equal(expected.begin(), expected.end(), gpu.GetScreenData() + 10 * SCREEN_WIDTH));
         return gpu.scanlineCounter;
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {

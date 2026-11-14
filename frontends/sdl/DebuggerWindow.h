@@ -11,54 +11,64 @@ struct ImGuiContext;
 enum class DebugPanel { Memory, Breakpoints, Screen, Tiles, Maps, Sprites, Palettes, Hardware, Trace, Help };
 
 class DebuggerWindow {
-public:
-    DebuggerWindow(EmulationSession &session, SDL_Window *window, SDL_Renderer *renderer, std::function<void(uint8_t)> save_state,
-                   std::function<void(uint8_t)> load_state);
+   public:
+    DebuggerWindow(EmulationSession& session, SDL_Window* window, SDL_Renderer* renderer,
+                   std::function<void(uint8_t)> save_state, std::function<void(uint8_t)> load_state);
     ~DebuggerWindow();
-    DebuggerWindow(const DebuggerWindow &) = delete;
-    DebuggerWindow &operator=(const DebuggerWindow &) = delete;
+    DebuggerWindow(const DebuggerWindow&) = delete;
+    DebuggerWindow& operator=(const DebuggerWindow&) = delete;
 
-    bool handle_event(const SDL_Event &event);
+    bool handle_event(const SDL_Event& event);
     void render();
     void toggle();
-    void show_panel(DebugPanel panel) { requested_panel_ = panel; }
+
+    void show_panel(DebugPanel panel) {
+        requested_panel_ = panel;
+    }
+
     void show_code(CodeSource source, uint32_t offset);
     void reset();
-    bool handle_shortcut(const SDL_KeyboardEvent &key);
-    [[nodiscard]] bool visible() const { return visible_; }
-    [[nodiscard]] Debugger &controller() { return debugger_; }
+    bool handle_shortcut(const SDL_KeyboardEvent& key);
 
-private:
+    [[nodiscard]] bool visible() const {
+        return visible_;
+    }
+
+    [[nodiscard]] Debugger& controller() {
+        return debugger_;
+    }
+
+   private:
     void release_resources();
     void set_game_input(bool active);
-    bool begin_panel(DebugPanel panel, const char *label);
-    void action(const std::function<void()> &run);
-    void draw_cpu(const MachineInspection &state);
+    bool begin_panel(DebugPanel panel, const char* label);
+    void action(const std::function<void()>& run);
+    void draw_cpu(const MachineInspection& state);
     void draw_code();
     void draw_memory();
     void draw_breakpoints();
-    void draw_graphics(const GraphicsInspection &graphics);
-    void draw_palettes(const GraphicsInspection &graphics);
-    void draw_sprites(const GraphicsInspection &graphics);
-    void draw_maps(const GraphicsInspection &graphics);
-    void draw_hardware(const MachineInspection &state);
+    void draw_graphics(const GraphicsInspection& graphics);
+    void draw_palettes(const GraphicsInspection& graphics);
+    void draw_sprites(const GraphicsInspection& graphics);
+    void draw_maps(const GraphicsInspection& graphics);
+    void draw_hardware(const MachineInspection& state);
     void draw_trace();
     void draw_help();
-    void draw_image(SDL_Texture *texture, const uint32_t *pixels, int width, int height, float scale);
+    void draw_image(SDL_Texture* texture, const uint32_t* pixels, int width, int height, float scale);
 
-    EmulationSession &session_;
-    Gameboy &machine_;
+    EmulationSession& session_;
+    Gameboy& machine_;
     Debugger debugger_;
     CodeListing code_listing_;
     std::function<void(uint8_t)> save_state_;
     std::function<void(uint8_t)> load_state_;
-    SDL_Window *window_{};
-    SDL_Renderer *renderer_{};
-    SDL_Texture *screen_{};
-    SDL_Texture *tiles_{};
-    SDL_Texture *map_{};
-    SDL_Texture *sprites_{};
-    ImGuiContext *context_{};
+    SDL_Window* window_{};
+    SDL_Renderer* renderer_{};
+    SDL_Texture* screen_{};
+    SDL_Texture* tiles_{};
+    SDL_Texture* map_{};
+    SDL_Texture* sprites_{};
+    ImGuiContext* context_{};
     bool platform_ready_{};
     bool renderer_ready_{};
     bool visible_{true};

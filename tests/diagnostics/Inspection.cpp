@@ -10,7 +10,7 @@ namespace {
                 return member;
         throw "Unknown inspection test member";
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("diagnostics: repeated inspection preserves deferred audio and subsequent execution") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {

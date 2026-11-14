@@ -5,7 +5,7 @@
 #include <cstring>
 #include <span>
 
-Cartridge::Cartridge(RealTimeClock &clock, std::vector<u8> rom) : rtc(clock), game_rom(std::move(rom)) {
+Cartridge::Cartridge(RealTimeClock& clock, std::vector<u8> rom) : rtc(clock), game_rom(std::move(rom)) {
     if (game_rom.size() < 0x8000 || game_rom.size() % ROM_BANK_SIZE != 0)
         throw std::invalid_argument("ROM must contain at least two complete 16 KiB banks");
     rtc.recalculate_zero_time();
@@ -16,13 +16,16 @@ Cartridge::Cartridge(RealTimeClock &clock, std::vector<u8> rom) : rtc(clock), ga
     multicart = IsLikelyMulticart();
 }
 
-bool Cartridge::HasRtc() const { return game_rom[0x147] == 0x0F || game_rom[0x147] == 0x10; }
+bool Cartridge::HasRtc() const {
+    return game_rom[0x147] == 0x0F || game_rom[0x147] == 0x10;
+}
 
 void Cartridge::LoadBattery(const std::span<const u8> bytes) {
     if (!has_battery || bytes.empty())
         return;
-    if (bytes.size() > game_ram_size && (!HasRtc() || bytes.size() < game_ram_size + RealTimeClock::kSaveFooterMinSize ||
-                                         bytes.size() > game_ram_size + RealTimeClock::kSaveFooterSize))
+    if (bytes.size() > game_ram_size &&
+        (!HasRtc() || bytes.size() < game_ram_size + RealTimeClock::kSaveFooterMinSize ||
+         bytes.size() > game_ram_size + RealTimeClock::kSaveFooterSize))
         throw std::invalid_argument("Invalid cartridge battery save size");
     std::ranges::fill(game_ram, 0);
     std::copy_n(bytes.begin(), std::min(bytes.size(), static_cast<size_t>(game_ram_size)), game_ram.begin());
@@ -114,7 +117,6 @@ void Cartridge::DetermineMBC() {
                 throw FatalErrorException("Unsupported MBC: " + std::to_string(game_rom[0x147]));
         }
     }();
-
 }
 
 bool Cartridge::IsLikelyMulticart() const {
@@ -122,19 +124,18 @@ bool Cartridge::IsLikelyMulticart() const {
         return false;
     }
 
-    static constexpr std::array<u8, 48> logo = {
-            0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
-            0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
-            0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
-    };
+    static constexpr std::array<u8, 48> logo = {0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83,
+                                                0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
+                                                0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63,
+                                                0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E};
 
     constexpr std::size_t bankSize = 0x4000;
     constexpr std::size_t bankLogoOfs = 0x0104;
     constexpr std::size_t bank10 = 0x10;
-    const u8 *bank10Ptr = game_rom.data() + bank10 * bankSize;
+    const u8* bank10Ptr = game_rom.data() + bank10 * bankSize;
 
-    const bool foundLogo =
-            std::equal(logo.begin(), logo.end(), bank10Ptr + bankLogoOfs) || !std::ranges::search(std::span(bank10Ptr, bankSize), logo).empty();
+    const bool foundLogo = std::equal(logo.begin(), logo.end(), bank10Ptr + bankLogoOfs) ||
+                           !std::ranges::search(std::span(bank10Ptr, bankSize), logo).empty();
 
     if (foundLogo) {
         return true;
@@ -146,8 +147,8 @@ bool Cartridge::IsLikelyMulticart() const {
                                  game_rom.begin() + 2 * blockSize,
                                  game_rom.begin()); // $00–$0F
 
-    const bool dup2 = std::equal(game_rom.begin() + 3 * blockSize, // $30–$3F
-                                 game_rom.end(), // end of ROM
+    const bool dup2 = std::equal(game_rom.begin() + 3 * blockSize,  // $30–$3F
+                                 game_rom.end(),                    // end of ROM
                                  game_rom.begin() + 2 * blockSize); // $20–$2F
 
     if (dup1 && dup2) {
@@ -157,7 +158,9 @@ bool Cartridge::IsLikelyMulticart() const {
     return false;
 }
 
-u8 Cartridge::BankBitmask() const { return low_rom_mask >= 8 ? 0xFF : static_cast<u8>((1 << low_rom_mask) - 1); }
+u8 Cartridge::BankBitmask() const {
+    return low_rom_mask >= 8 ? 0xFF : static_cast<u8>((1 << low_rom_mask) - 1);
+}
 
 u32 Cartridge::GetRamSize(const u8 byte) {
     switch (byte) {
@@ -180,7 +183,8 @@ u32 Cartridge::GetRamSize(const u8 byte) {
 
 u32 Cartridge::HandleRomBank(const u16 address) const {
     if (multicart) {
-        return (address < 0x4000) ? (mode == 0 ? 0 : ((bank2 << 4) & BankBitmask())) : (((bank2 << 4) | (bank1 & 0xF)) & BankBitmask());
+        return (address < 0x4000) ? (mode == 0 ? 0 : ((bank2 << 4) & BankBitmask()))
+                                  : (((bank2 << 4) | (bank1 & 0xF)) & BankBitmask());
     }
 
     if (address < 0x4000) {
@@ -219,7 +223,9 @@ u8 Cartridge::ReadByte(const u16 address) const {
     }
 }
 
-u8 Cartridge::ReadByteNone(const u16 address) const { return address < 0x8000 && address < game_rom.size() ? game_rom[address] : 0xFF; }
+u8 Cartridge::ReadByteNone(const u16 address) const {
+    return address < 0x8000 && address < game_rom.size() ? game_rom[address] : 0xFF;
+}
 
 u8 Cartridge::ReadByteMBC1(const u16 address) const {
     switch (address) {
@@ -323,14 +329,12 @@ void Cartridge::WriteByteMBC1(const u16 address, const u8 value) {
             const bool newEnable = (value & 0x0F) == 0x0A;
             HandleRamEnableEdge(newEnable);
             ram_enabled = newEnable;
-        }
-        break;
+        } break;
         case 0x2000 ... 0x3FFF: {
             bank1 = value & 0x1F;
             if (bank1 == 0)
                 bank1 = 1;
-        }
-        break;
+        } break;
         case 0x4000 ... 0x5FFF:
             bank2 = value & 0x03;
             break;
@@ -367,8 +371,7 @@ void Cartridge::WriteByteMBC2(const u16 address, const u8 value) {
                 game_ram[(address - 0xA000) % game_ram_size] = value & 0xF;
                 ram_dirty = true;
             }
-        }
-        break;
+        } break;
         default:
             break;
     }
@@ -380,8 +383,7 @@ void Cartridge::WriteByteMBC3(const u16 address, const u8 value) {
             const bool newEnable = (value & 0x0F) == 0x0A;
             HandleRamEnableEdge(newEnable);
             ram_enabled = newEnable;
-        }
-        break;
+        } break;
         case 0x2000 ... 0x3FFF:
             rom_bank = value ? value : 1;
             break;
@@ -413,8 +415,7 @@ void Cartridge::WriteByteMBC5(const u16 address, const u8 value) {
             const bool newEnable = (value & 0x0F) == 0x0A;
             HandleRamEnableEdge(newEnable);
             ram_enabled = newEnable;
-        }
-        break;
+        } break;
         case 0x2000 ... 0x2FFF:
             rom_bank = (rom_bank & 0x100) | value;
             break;
@@ -429,8 +430,7 @@ void Cartridge::WriteByteMBC5(const u16 address, const u8 value) {
                 if (rumble_callback)
                     rumble_callback(rumble_on);
             }
-        }
-        break;
+        } break;
         case 0xA000 ... 0xBFFF:
             if (ram_enabled && game_ram_size != 0) {
                 const u64 ramAddr = static_cast<u64>(ram_bank) * 0x2000ULL + (address - 0xA000);

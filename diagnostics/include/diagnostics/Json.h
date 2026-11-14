@@ -14,7 +14,7 @@
 #include <utility>
 
 namespace diagnostics {
-    inline void WriteJson(std::ostream &out, const std::string_view value) {
+    inline void WriteJson(std::ostream& out, const std::string_view value) {
         constexpr std::string_view hex = "0123456789abcdef";
         out.put('"');
         for (const unsigned char c : value) {
@@ -31,7 +31,7 @@ namespace diagnostics {
     }
 
     template<class T>
-    void WriteJson(std::ostream &out, const T &value) {
+    void WriteJson(std::ostream& out, const T& value) {
         if constexpr (std::convertible_to<T, std::string_view>) {
             WriteJson(out, std::string_view(value));
         } else if constexpr (std::same_as<T, bool>) {
@@ -65,7 +65,7 @@ namespace diagnostics {
         } else if constexpr (std::ranges::input_range<T>) {
             out.put('[');
             bool separator = false;
-            for (const auto &entry : value) {
+            for (const auto& entry : value) {
                 if (std::exchange(separator, true))
                     out.put(',');
                 WriteJson(out, entry);
@@ -75,8 +75,8 @@ namespace diagnostics {
             static_assert(std::is_aggregate_v<T>);
             out.put('{');
             bool separator = false;
-            template for (constexpr auto m :
-                          std::define_static_array(std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()))) {
+            template for (constexpr auto m : std::define_static_array(
+                              std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()))) {
                 if (std::exchange(separator, true))
                     out.put(',');
                 WriteJson(out, std::meta::identifier_of(m));

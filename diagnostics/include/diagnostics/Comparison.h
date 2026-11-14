@@ -24,8 +24,8 @@ namespace diagnostics {
         uint64_t audioSamples{};
     };
 
-    [[nodiscard]] CanonicalObservation CaptureObservation(Gameboy &machine);
+    [[nodiscard]] CanonicalObservation CaptureObservation(Gameboy& machine);
 
-    void WriteObservations(const std::filesystem::path &path, Gameboy &machine, ReplayPlayer *replay, const InputFingerprint &initial,
-                           std::string replayHash, const ObservationPlan &plan);
+    void WriteObservations(const std::filesystem::path& path, Gameboy& machine, ReplayPlayer* replay,
+                           const InputFingerprint& initial, std::string replayHash, const ObservationPlan& plan);
 } // namespace diagnostics

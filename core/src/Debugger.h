@@ -19,11 +19,11 @@ struct DebugTraceEntry {
 };
 
 class Debugger {
-public:
-    explicit Debugger(EmulationSession &session);
+   public:
+    explicit Debugger(EmulationSession& session);
     ~Debugger();
-    Debugger(const Debugger &) = delete;
-    Debugger &operator=(const Debugger &) = delete;
+    Debugger(const Debugger&) = delete;
+    Debugger& operator=(const Debugger&) = delete;
 
     void pause();
     void reset();
@@ -39,30 +39,40 @@ public:
     void synchronize();
     void write_memory(uint16_t address, uint8_t value);
 
-    [[nodiscard]] bool paused() const { return session_.Paused(); }
-    [[nodiscard]] const std::string &status() const { return status_; }
+    [[nodiscard]] bool paused() const {
+        return session_.Paused();
+    }
+
+    [[nodiscard]] const std::string& status() const {
+        return status_;
+    }
+
     [[nodiscard]] DisassembledInstruction instruction(uint16_t address) const;
     [[nodiscard]] uint8_t read_memory(uint16_t address, bool cpu_visible = false) const;
-    [[nodiscard]] size_t trace_size() const { return trace_size_; }
-    [[nodiscard]] const DebugTraceEntry &trace_entry(size_t index) const;
+
+    [[nodiscard]] size_t trace_size() const {
+        return trace_size_;
+    }
+
+    [[nodiscard]] const DebugTraceEntry& trace_entry(size_t index) const;
     void clear_trace();
     std::vector<DebugBreakpoint> breakpoints;
 
-private:
+   private:
     struct Target {
         uint16_t address{};
         std::optional<uint16_t> bank;
         std::optional<uint16_t> stack;
     };
 
-    static void observe(void *owner, const diagnostics::Event &event) noexcept;
+    static void observe(void* owner, const diagnostics::Event& event) noexcept;
     ExecutionResult execute(uint64_t ticks, bool single_instruction);
     void advance(uint64_t ticks, bool single_instruction, bool manual);
     bool check_execution_breakpoint();
     void skip_current_breakpoint();
 
-    EmulationSession &session_;
-    Gameboy &machine_;
+    EmulationSession& session_;
+    Gameboy& machine_;
     diagnostics::ObservationContext observations_;
     std::array<DebugTraceEntry, 512> trace_{};
     size_t trace_head_{};

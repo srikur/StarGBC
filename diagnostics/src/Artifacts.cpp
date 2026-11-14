@@ -8,9 +8,10 @@
 #include "diagnostics/Json.h"
 
 namespace diagnostics {
-    PixelDifference ComparePixels(const std::span<const uint32_t> actual, const std::span<const uint32_t> expected, const uint32_t width,
-                                  const uint32_t height, const uint32_t mask) {
-        if (!width || !height || actual.size() != static_cast<uint64_t>(width) * height || expected.size() != actual.size())
+    PixelDifference ComparePixels(const std::span<const uint32_t> actual, const std::span<const uint32_t> expected,
+                                  const uint32_t width, const uint32_t height, const uint32_t mask) {
+        if (!width || !height || actual.size() != static_cast<uint64_t>(width) * height ||
+            expected.size() != actual.size())
             throw std::invalid_argument("Pixel buffers must match image dimensions");
         PixelDifference result{.width = width, .height = height, .mask = mask};
         for (size_t i = 0; i < actual.size(); ++i) {
@@ -30,10 +31,12 @@ namespace diagnostics {
         return result;
     }
 
-    void WriteBitmap(const std::filesystem::path &path, const std::span<const uint32_t> pixels, const uint32_t width, const uint32_t height) {
+    void WriteBitmap(const std::filesystem::path& path, const std::span<const uint32_t> pixels, const uint32_t width,
+                     const uint32_t height) {
         const uint64_t stride = (static_cast<uint64_t>(width) * 3 + 3) & ~uint64_t{3};
         const uint64_t size = 54 + stride * height;
-        if (!width || !height || pixels.size() != static_cast<uint64_t>(width) * height || size > std::numeric_limits<uint32_t>::max())
+        if (!width || !height || pixels.size() != static_cast<uint64_t>(width) * height ||
+            size > std::numeric_limits<uint32_t>::max())
             throw std::invalid_argument("Invalid bitmap dimensions");
         std::ofstream file;
         file.exceptions(std::ios::failbit | std::ios::badbit);
@@ -59,18 +62,19 @@ namespace diagnostics {
         }
     }
 
-    void WriteFailureBundle(const std::filesystem::path &directory, Result &result, Reproduction reproduction, const TerminalState &state,
-                            const std::span<const uint32_t> actual, const std::span<const uint32_t> expected, const uint32_t mask) {
+    void WriteFailureBundle(const std::filesystem::path& directory, Result& result, Reproduction reproduction,
+                            const TerminalState& state, const std::span<const uint32_t> actual,
+                            const std::span<const uint32_t> expected, const uint32_t mask) {
         if (!std::filesystem::create_directories(directory))
             throw std::runtime_error("Failure bundle already exists: " + directory.string());
-        const auto json = [&](const std::string &name, const auto &value) {
+        const auto json = [&](const std::string& name, const auto& value) {
             std::ofstream file;
             file.exceptions(std::ios::failbit | std::ios::badbit);
             file.open(directory / name);
             WriteJson(file, value);
             file << '\n';
         };
-        const auto copyInput = [&](std::string &path, const std::string &name, const std::string &hash) {
+        const auto copyInput = [&](std::string& path, const std::string& name, const std::string& hash) {
             if (path.empty())
                 return;
             if (hash.empty()) {

@@ -16,7 +16,7 @@ namespace {
         return diagnostics::EventFilter{.components = uint64_t{1} << static_cast<unsigned>(component),
                                         .kinds = uint64_t{1} << static_cast<unsigned>(kind)};
     }
-}  // namespace
+} // namespace
 
 TEST_CASE(
 

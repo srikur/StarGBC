@@ -18,7 +18,7 @@ namespace {
             return directory_ / std::to_string(index_++);
         }
     };
-}  // namespace
+} // namespace
 
 TEST_CASE("diagnostics: timer phase experiments preserve the reload latch across both speeds") {
     ExperimentDirectory directory;

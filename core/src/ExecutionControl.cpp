@@ -5,7 +5,7 @@ ConditionalExecutionResult Gameboy::RunUntil(const std::span<const RunCondition>
         throw std::invalid_argument("At most sixteen execution conditions are supported");
     if (maxTicks > std::numeric_limits<uint64_t>::max() - timelineTicks_)
         throw std::out_of_range("Conditional execution deadline overflows master ticks");
-    const auto read = [this](const RunCondition &condition) -> uint32_t {
+    const auto read = [this](const RunCondition& condition) -> uint32_t {
         switch (condition.kind) {
             case ConditionKind::RegisterValue:
             case ConditionKind::RegisterChange:
@@ -31,25 +31,30 @@ ConditionalExecutionResult Gameboy::RunUntil(const std::span<const RunCondition>
         observations_->stopEvent.reset();
     while (true) {
         for (size_t i = 0; i < conditions.size(); ++i) {
-            const auto &condition = conditions[i];
+            const auto& condition = conditions[i];
             const auto value = read(condition) & condition.mask;
-            const bool matches = condition.kind == ConditionKind::RegisterChange ? value != initial[i] : value == (condition.value & condition.mask);
+            const bool matches = condition.kind == ConditionKind::RegisterChange
+                                     ? value != initial[i]
+                                     : value == (condition.value & condition.mask);
             if (matches)
-                return {{ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
+                return {{ExecutionStopReason::Condition, begin, timelineTicks_,
+                         cpu_.InstructionsCompleted() - instructions},
                         ExecutionPosition(),
                         observations_ ? observations_->stopEvent : std::nullopt,
                         i};
         }
         if (observations_ && observations_->stopEvent)
-            return {{ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
-                    ExecutionPosition(),
-                    observations_->stopEvent,
-                    {}};
+            return {
+                {ExecutionStopReason::Condition, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
+                ExecutionPosition(),
+                observations_->stopEvent,
+                {}};
         if (timelineTicks_ - begin == maxTicks)
-            return {{ExecutionStopReason::TickBudget, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
-                    ExecutionPosition(),
-                    {},
-                    {}};
+            return {
+                {ExecutionStopReason::TickBudget, begin, timelineTicks_, cpu_.InstructionsCompleted() - instructions},
+                ExecutionPosition(),
+                {},
+                {}};
         static_cast<void>(AdvanceTicks(1));
     }
 }

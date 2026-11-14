@@ -27,7 +27,9 @@ void Joypad::SetJoypadState(const uint8_t value) {
     UpdateKeyFlag();
 }
 
-void Joypad::ConfigureSgb(const bool enabled) { sgb_ = enabled; }
+void Joypad::ConfigureSgb(const bool enabled) {
+    sgb_ = enabled;
+}
 
 void Joypad::SgbWrite(const uint8_t value) {
     // Byte counts, not bits: header byte 0's low 3 bits give the packet count for this command
@@ -117,25 +119,35 @@ void Joypad::SetMatrix(const uint8_t value) {
     UpdateKeyFlag();
 }
 
-uint8_t Joypad::GetMatrix() const { return matrix_; }
+uint8_t Joypad::GetMatrix() const {
+    return matrix_;
+}
 
-uint8_t Joypad::GetSelect() const { return select_; }
+uint8_t Joypad::GetSelect() const {
+    return select_;
+}
 
 void Joypad::KeyDown(Keys key) {
     SetMatrix(GetMatrix() & ~static_cast<uint8_t>(key));
     interrupts_.set(InterruptType::Joypad, false);
 }
 
-void Joypad::KeyUp(Keys key) { SetMatrix(GetMatrix() | static_cast<uint8_t>(key)); }
+void Joypad::KeyUp(Keys key) {
+    SetMatrix(GetMatrix() | static_cast<uint8_t>(key));
+}
 
 void Joypad::SetSelect(const uint8_t value) {
     select_ = value;
     UpdateKeyFlag();
 }
 
-bool Joypad::KeyPressed() const { return keyPressed_; }
+bool Joypad::KeyPressed() const {
+    return keyPressed_;
+}
 
-void Joypad::ClearKeyPressed() { keyPressed_ = false; }
+void Joypad::ClearKeyPressed() {
+    keyPressed_ = false;
+}
 
 void Joypad::UpdateKeyFlag() {
     const bool dirRowSelected = (select_ & 0x10) == 0;

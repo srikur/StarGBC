@@ -36,7 +36,7 @@ namespace {
         machine.DebugPoke(0xC020, 0x04);
         machine.DebugPoke(0xC021, 0xC9);
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("debugger: disassembly decodes immediates signed branches prefixes calls and illegal opcodes") {
     struct Example {

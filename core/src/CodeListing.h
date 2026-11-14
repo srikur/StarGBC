@@ -12,8 +12,8 @@ struct CodeEntry {
 };
 
 class CodeListing {
-public:
-    CodeListing(Gameboy &machine, Debugger &debugger) : machine_(machine), debugger_(debugger) {}
+   public:
+    CodeListing(Gameboy& machine, Debugger& debugger) : machine_(machine), debugger_(debugger) {}
 
     void update(CodeSource source, std::optional<uint32_t> anchor = {});
     [[nodiscard]] size_t size() const;
@@ -21,17 +21,17 @@ public:
     [[nodiscard]] CodeEntry entry(size_t row) const;
     [[nodiscard]] CodeSource execution_source() const;
     [[nodiscard]] uint32_t execution_offset() const;
-    [[nodiscard]] bool is_current(const CodeEntry &entry) const;
+    [[nodiscard]] bool is_current(const CodeEntry& entry) const;
     [[nodiscard]] static std::string_view source_label(CodeSource source);
 
-private:
+   private:
     [[nodiscard]] std::span<const uint8_t> bytes() const;
     [[nodiscard]] uint32_t segment_end(uint32_t offset) const;
-    [[nodiscard]] const std::vector<uint32_t> &offsets() const;
-    void index(std::vector<uint32_t> &output);
+    [[nodiscard]] const std::vector<uint32_t>& offsets() const;
+    void index(std::vector<uint32_t>& output);
 
-    Gameboy &machine_;
-    Debugger &debugger_;
+    Gameboy& machine_;
+    Debugger& debugger_;
     CodeSource source_{CodeSource::Mapped};
     std::array<uint8_t, 0x10000> mapped_{};
     std::vector<uint32_t> mapped_offsets_;

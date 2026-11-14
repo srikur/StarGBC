@@ -104,4 +104,4 @@ struct MockCPU {
     bool stopped_{};
 };
 
-#endif  // STARGBC_MOCKCPU_H
+#endif // STARGBC_MOCKCPU_H

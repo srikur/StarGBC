@@ -29,4 +29,4 @@ struct MockBus {
     std::unordered_map<uint16_t, uint8_t> memory_{};
 };
 
-#endif  // STARGBC_MOCKBUS_H
+#endif // STARGBC_MOCKBUS_H

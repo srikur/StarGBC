@@ -4,9 +4,9 @@
 #include <cmath>
 #include <vector>
 
-#include "stargbc/Common.h"
 #include "Inspection.h"
 #include "diagnostics/Observation.h"
+#include "stargbc/Common.h"
 
 class Audio;
 
@@ -41,12 +41,29 @@ struct BandLimited {
 struct Frequency {
     uint16_t value{0}; // Only 11 bits used
 
-    void Write(const uint16_t v) { value = v & 0x7FF; }
-    void WriteLow(const uint8_t lower) { value = (value & 0x700) | lower; }
-    void WriteHigh(const uint8_t higher) { value = (value & 0x00FF) | higher << 8; }
-    [[nodiscard]] uint16_t Value() const { return value & 0x7FF; }
-    [[nodiscard]] uint8_t ReadLow() const { return static_cast<uint8_t>(value & 0xFF) | 0xFF; }
-    [[nodiscard]] uint8_t ReadHigh() const { return static_cast<uint8_t>(value >> 8) | 0xBF; }
+    void Write(const uint16_t v) {
+        value = v & 0x7FF;
+    }
+
+    void WriteLow(const uint8_t lower) {
+        value = (value & 0x700) | lower;
+    }
+
+    void WriteHigh(const uint8_t higher) {
+        value = (value & 0x00FF) | higher << 8;
+    }
+
+    [[nodiscard]] uint16_t Value() const {
+        return value & 0x7FF;
+    }
+
+    [[nodiscard]] uint8_t ReadLow() const {
+        return static_cast<uint8_t>(value & 0xFF) | 0xFF;
+    }
+
+    [[nodiscard]] uint8_t ReadHigh() const {
+        return static_cast<uint8_t>(value >> 8) | 0xBF;
+    }
 };
 
 struct Sweep {
@@ -59,7 +76,7 @@ struct Sweep {
     // (and overflow check) a few 1MHz ticks later
     uint8_t countdown{0}; // 128Hz counter, triggers at 7
     uint8_t counter_reload_delay{0};
-    uint8_t calcCountdown{0}; // 1MHz delay until the recalculation
+    uint8_t calcCountdown{0};   // 1MHz delay until the recalculation
     uint8_t calcReloadTimer{0}; // 1MHz delay before calcCountdown may run
     uint16_t lengthAddend{0};
     uint16_t shadowLength{0};
@@ -73,7 +90,9 @@ struct Sweep {
         step = v & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80); }
+    [[nodiscard]] uint8_t Value() const {
+        return static_cast<uint8_t>(pace << 4 | (direction ? 0x08 : 0x00) | step | 0x80);
+    }
 };
 
 struct Envelope {
@@ -99,7 +118,9 @@ struct Envelope {
         sweepPace = value & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace); }
+    [[nodiscard]] uint8_t Value() const {
+        return static_cast<uint8_t>(initialVolume << 4 | (direction ? 0x08 : 0x00) | sweepPace);
+    }
 
     void SetClock(bool value, bool dir, uint8_t volume);
 
@@ -119,7 +140,9 @@ struct Length {
         lengthTimer = value & 0x3F;
     }
 
-    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(dutyCycle << 6 | 0x3F); }
+    [[nodiscard]] uint8_t Value() const {
+        return static_cast<uint8_t>(dutyCycle << 6 | 0x3F);
+    }
 };
 
 struct Noise {
@@ -133,7 +156,9 @@ struct Noise {
         clockDivider = value & 0x07;
     }
 
-    [[nodiscard]] uint8_t Value() const { return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider); }
+    [[nodiscard]] uint8_t Value() const {
+        return static_cast<uint8_t>(clockShift << 4 | (lfsrWidth ? 0x08 : 0x00) | clockDivider);
+    }
 };
 
 // Deliberately non-virtual: channels are only ever used as their concrete
@@ -143,10 +168,10 @@ struct Channel {
     bool dacEnabled{false};
 
     static constexpr uint8_t DUTY_PATTERNS[4][8] = {
-            {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
-            {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
-            {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
-            {0, 1, 1, 1, 1, 1, 1, 0} // 75%
+        {0, 0, 0, 0, 0, 0, 0, 1}, // 12.5%
+        {1, 0, 0, 0, 0, 0, 0, 1}, // 25%
+        {1, 0, 0, 0, 0, 1, 1, 1}, // 50%
+        {0, 1, 1, 1, 1, 1, 1, 0}  // 75%
     };
 };
 
@@ -173,7 +198,8 @@ struct Channel1 final : Channel {
     uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                 bool between_wave_ticks = false);
 
     void TickLength();
 
@@ -193,10 +219,11 @@ struct Channel1 final : Channel {
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
+    void HandleNR14Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                         bool between_wave_ticks = false);
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
-                   bool between_wave_ticks = false);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model,
+                   bool doubleSpeed, bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -218,7 +245,8 @@ struct Channel2 final : Channel {
     uint8_t duty_sample{0};
     float currentOutput{0.0f};
 
-    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
+    void Trigger(uint8_t value, uint16_t oldFreq, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                 bool between_wave_ticks = false);
 
     void TickLength();
 
@@ -228,12 +256,13 @@ struct Channel2 final : Channel {
 
     void UpdateOutput();
 
-    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed, bool between_wave_ticks = false);
+    void HandleNR24Write(uint8_t value, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
+                         bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t ReadByte(uint16_t address) const;
 
-    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model, bool doubleSpeed,
-                   bool between_wave_ticks = false);
+    void WriteByte(uint16_t address, uint8_t value, bool audioEnabled, uint8_t freqStep, uint8_t lfDiv, Model model,
+                   bool doubleSpeed, bool between_wave_ticks = false);
 
     [[nodiscard]] uint8_t GetDigitalOutput() const;
 };
@@ -389,7 +418,7 @@ class Audio {
     // anything observes APU state (register/PCM access, frame-sequencer
     // events, sample reads, end of frame). Always zero between frames.
     [[=NotStateAware]] uint32_t pendingTicks_{0};
-    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    [[=NotStateAware]] diagnostics::ObservationContext* observations_{};
     [[=NotStateAware]] uint64_t pendingFirstTick_{};
     [[=NotStateAware]] uint64_t emissionTick_{};
     [[=NotStateAware]] bool optimizedExecution_{true};
@@ -402,15 +431,17 @@ class Audio {
 
     void BandLimitedUpdate(int channel, double left, double right, int phase);
 
-    void BandLimitedRead(int channel, double &outLeft, double &outRight);
+    void BandLimitedRead(int channel, double& outLeft, double& outRight);
 
-public:
+   public:
     void SetOptimizedExecution(const bool enabled) {
         CatchUp();
         optimizedExecution_ = enabled;
     }
 
-    [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const { return speedSwitchFrameSeqDelay; }
+    [[nodiscard]] bool HasSpeedSwitchFrameSeqDelay() const {
+        return speedSwitchFrameSeqDelay;
+    }
 
     void OnSpeedSwitch(bool doubleSpeed) {
         CatchUp();
@@ -443,15 +474,23 @@ public:
 
     void initialize_post_boot();
 
-    [[nodiscard]] Model GetModel() const { return model_; }
-    [[nodiscard]] bool IsDMG() const { return IsDmg(model_); }
-    [[nodiscard]] uint32_t GetTickCounter() const { return tickCounter; }
+    [[nodiscard]] Model GetModel() const {
+        return model_;
+    }
+
+    [[nodiscard]] bool IsDMG() const {
+        return IsDmg(model_);
+    }
+
+    [[nodiscard]] uint32_t GetTickCounter() const {
+        return tickCounter;
+    }
 
     [[nodiscard]] AudioDebugOutput CaptureDebugOutput() const;
 
-    [[nodiscard]] bool ValidDebugOutput(const AudioDebugOutput &state) const;
+    [[nodiscard]] bool ValidDebugOutput(const AudioDebugOutput& state) const;
 
-    void RestoreDebugOutput(const AudioDebugOutput &state);
+    void RestoreDebugOutput(const AudioDebugOutput& state);
 
     [[nodiscard]] AudioInspection Inspect() const;
 
@@ -468,7 +507,7 @@ public:
     // The master loop defers APU ticks; CatchUp() materializes them before
     // every register/PCM access, frame-sequencer event, sample read, and at
     // the end of each frame, so observable ordering is exact
-    void ObserveWith(diagnostics::ObservationContext *context) {
+    void ObserveWith(diagnostics::ObservationContext* context) {
         CatchUp();
         observations_ = context;
     }
@@ -506,14 +545,16 @@ public:
 
     void GenerateSample();
 
-    [[nodiscard]] size_t GetSamplesAvailable() const { return samplesAvailable; }
+    [[nodiscard]] size_t GetSamplesAvailable() const {
+        return samplesAvailable;
+    }
 
     [[nodiscard]] uint64_t GetMixLevelChanges() {
         CatchUp();
         return mixLevelChanges_;
     }
 
-    size_t ReadSamples(float *output, size_t numSamples);
+    size_t ReadSamples(float* output, size_t numSamples);
 
     void ClearBuffer();
 };

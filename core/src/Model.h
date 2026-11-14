@@ -49,31 +49,53 @@ constexpr std::optional<E> model_from_name(const std::string_view value) {
     return std::nullopt;
 }
 
-constexpr std::string_view ModelName(const Model model) { return model_name(model); }
+constexpr std::string_view ModelName(const Model model) {
+    return model_name(model);
+}
 
 constexpr Model ResolveModel(const Model requested, const bool colorCartridge) {
     return requested == Model::Auto ? (colorCartridge ? Model::CGBE : Model::DMGB) : requested;
 }
 
-constexpr bool IsAgb(const Model model) { return model >= Model::AGB0 && model <= Model::AGBBE; }
+constexpr bool IsAgb(const Model model) {
+    return model >= Model::AGB0 && model <= Model::AGBBE;
+}
 
-constexpr bool IsCgb(const Model model) { return (model >= Model::CGB0 && model <= Model::CGBE) || IsAgb(model); }
+constexpr bool IsCgb(const Model model) {
+    return (model >= Model::CGB0 && model <= Model::CGBE) || IsAgb(model);
+}
 
-constexpr bool IsDmg(const Model model) { return model >= Model::DMG0 && model <= Model::SGB2; }
+constexpr bool IsDmg(const Model model) {
+    return model >= Model::DMG0 && model <= Model::SGB2;
+}
 
-constexpr bool IsSgb(const Model model) { return model == Model::SGB || model == Model::SGB2; }
+constexpr bool IsSgb(const Model model) {
+    return model == Model::SGB || model == Model::SGB2;
+}
 
-constexpr bool HasEarlyCgbLengthClocking(const Model model) { return model >= Model::CGB0 && model <= Model::CGBB; }
+constexpr bool HasEarlyCgbLengthClocking(const Model model) {
+    return model >= Model::CGB0 && model <= Model::CGBB;
+}
 
-constexpr bool HasLateCgbPulseTiming(const Model model) { return model == Model::CGBD || model == Model::CGBE; }
+constexpr bool HasLateCgbPulseTiming(const Model model) {
+    return model == Model::CGBD || model == Model::CGBE;
+}
 
-constexpr bool HasEarlyCgbPulseTiming(const Model model) { return model >= Model::CGB0 && model <= Model::CGBC; }
+constexpr bool HasEarlyCgbPulseTiming(const Model model) {
+    return model >= Model::CGB0 && model <= Model::CGBC;
+}
 
-constexpr bool HasEarlyCgbPcmGlitch(const Model model) { return model >= Model::CGB0 && model <= Model::CGBC; }
+constexpr bool HasEarlyCgbPcmGlitch(const Model model) {
+    return model >= Model::CGB0 && model <= Model::CGBC;
+}
 
-constexpr bool HasIntermediateApuWrites(const Model model) { return IsDmg(model) || HasEarlyCgbPcmGlitch(model); }
+constexpr bool HasIntermediateApuWrites(const Model model) {
+    return IsDmg(model) || HasEarlyCgbPcmGlitch(model);
+}
 
-constexpr bool HasLatchedTileRow(const Model model) { return model == Model::CGBD || model == Model::CGBE || IsAgb(model); }
+constexpr bool HasLatchedTileRow(const Model model) {
+    return model == Model::CGBD || model == Model::CGBE || IsAgb(model);
+}
 
 enum class UnusableOamBehavior { Zero, EarlyCgbRam, CgbDRam, AddressPattern };
 

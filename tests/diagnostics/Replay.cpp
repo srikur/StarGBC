@@ -29,7 +29,7 @@ namespace {
         std::filesystem::create_directories(path);
         return path;
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("diagnostics: mid-frame debug checkpoints preserve pixels deferred audio and future output") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {

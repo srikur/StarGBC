@@ -22,7 +22,7 @@ namespace {
         gpu.bgpd[0][1] = {20, 20, 20};
         gpu.RebuildColorLuts();
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("diagnostics: provenance does not change pixels hardware state or timeline") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {

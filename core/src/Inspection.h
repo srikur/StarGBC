@@ -3,8 +3,8 @@
 #include <array>
 #include <cstdint>
 #include <optional>
-#include "stargbc/Common.h"
 #include "HDMA.h"
+#include "stargbc/Common.h"
 
 struct CpuInspection {
     uint16_t pc{};

@@ -22,7 +22,7 @@ namespace {
                     .no_bootrom = true,
                 }};
     }
-}  // namespace
+} // namespace
 
 TEST_CASE("models: skipping the boot ROM leaves VRAM DMA idle") {
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE, Model::AGBBE};
@@ -94,7 +94,7 @@ TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
 TEST_CASE("models: unused OAM follows revision-specific address decoding") {
     for (const auto model :
          {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
-        auto gameboy = host::load_gameboy(settings(model));  // Includes CGB hardware in DMG compatibility mode.
+        auto gameboy = host::load_gameboy(settings(model)); // Includes CGB hardware in DMG compatibility mode.
         auto& bus = gameboy.[:busMember:];
         bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
         const auto read = [&](uint16_t address) {
@@ -144,17 +144,17 @@ TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
         GPU gpu(interrupts);
         gpu.SetModel(model);
         gpu.lcdc = 0x91;
-        gpu.vram[0] = 0x55;  // row 0, low plane
-        gpu.vram[1] = 0xAA;  // row 0, high plane
-        gpu.vram[2] = 0x33;  // row 1, low plane
-        gpu.vram[3] = 0xCC;  // row 1, high plane
-        gpu.TickMode3();     // tile number and (on late CGB) row
+        gpu.vram[0] = 0x55; // row 0, low plane
+        gpu.vram[1] = 0xAA; // row 0, high plane
+        gpu.vram[2] = 0x33; // row 1, low plane
+        gpu.vram[3] = 0xCC; // row 1, high plane
+        gpu.TickMode3();    // tile number and (on late CGB) row
         gpu.scrollY = 1;
-        gpu.TickMode3();  // wait
-        gpu.TickMode3();  // low bitplane
+        gpu.TickMode3(); // wait
+        gpu.TickMode3(); // low bitplane
         gpu.scrollY = 0;
-        gpu.TickMode3();  // wait
-        gpu.TickMode3();  // high bitplane
+        gpu.TickMode3(); // wait
+        gpu.TickMode3(); // high bitplane
         const bool latched = model == Model::CGBD || model == Model::CGBE || model == Model::AGBA;
         CHECK(gpu.fetcherTileDataLow_ == (latched ? 0x55 : 0x33));
         CHECK(gpu.fetcherTileDataHigh_ == 0xAA);
@@ -166,7 +166,7 @@ TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
          {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);
-        audio.WriteByte(0xFF26, 0x80, true);  // Odd DIV-APU step.
+        audio.WriteByte(0xFF26, 0x80, true); // Odd DIV-APU step.
         audio.ch1.lengthTimer.lengthTimer = 62;
         audio.ch2.lengthTimer.lengthTimer = 62;
         audio.ch4.lengthTimer.lengthTimer = 62;

@@ -481,4 +481,4 @@ inline int ExecuteTestRoms(const int argc, char** argv) {
     }
 }
 
-#endif  // STARGBC_TESTROMS_H
+#endif // STARGBC_TESTROMS_H

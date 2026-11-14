@@ -1,6 +1,7 @@
 #include "GPU.h"
 
-void GPU::RecordSpriteCandidate(const unsigned slot, const uint8_t bit, const uint8_t color, const diagnostics::SpriteDecision decision) {
+void GPU::RecordSpriteCandidate(const unsigned slot, const uint8_t bit, const uint8_t color,
+                                const diagnostics::SpriteDecision decision) {
     auto origin = provenance->spriteFetch;
     origin.bit = bit;
     origin.color = color;
@@ -9,7 +10,8 @@ void GPU::RecordSpriteCandidate(const unsigned slot, const uint8_t bit, const ui
     provenance->sprites[(spriteArrayHead_ + slot) & 7].Merge(origin, decision);
 }
 
-diagnostics::PixelDecision GPU::ExplainSelection(const Pixel &background, const Pixel &sprite, const bool bgEnable) const {
+diagnostics::PixelDecision GPU::ExplainSelection(const Pixel& background, const Pixel& sprite,
+                                                 const bool bgEnable) const {
     using enum diagnostics::PixelDecision;
     if (!bgEnable && (IsDmg(model) || dmg_compat) && (sprite.color == 0 || !Bit<LCDC_OBJ_ENABLE>(lcdc)))
         return BackgroundDisabled;
@@ -26,7 +28,8 @@ diagnostics::PixelDecision GPU::ExplainSelection(const Pixel &background, const 
     return SpriteForeground;
 }
 
-void GPU::RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel &selected, const bool bgEnable, const uint32_t color) {
+void GPU::RecordPixel(const Pixel& background, const Pixel& sprite, const Pixel& selected, const bool bgEnable,
+                      const uint32_t color) {
     diagnostics::PixelExplanation explanation{.emission = provenance->position,
                                               .branch = provenance->branch,
                                               .x = pixelsDrawn,
@@ -61,25 +64,28 @@ void GPU::RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel 
         provenance->output(provenance->owner, explanation);
 }
 
-void GPU::RecordRecolor(const uint16_t offset, const uint16_t address, const Pixel &selected, const diagnostics::PixelDecision decision) {
+void GPU::RecordRecolor(const uint16_t offset, const uint16_t address, const Pixel& selected,
+                        const diagnostics::PixelDecision decision) {
     if (!provenance->recolor)
         return;
-    const auto source = selected.is_sprite                                           ? diagnostics::PixelSource::Sprite
-                        : decision == diagnostics::PixelDecision::BackgroundDisabled ? diagnostics::PixelSource::Backdrop
-                                                                                     : diagnostics::PixelSource::Background;
+    const auto source = selected.is_sprite ? diagnostics::PixelSource::Sprite
+                        : decision == diagnostics::PixelDecision::BackgroundDisabled
+                            ? diagnostics::PixelSource::Backdrop
+                            : diagnostics::PixelSource::Background;
     auto position = provenance->position;
     position.ly = currentLine;
     position.dot = scanlineCounter;
     position.frame = displayFrames_;
-    provenance->recolor(provenance->owner, {.position = position,
-                                            .branch = provenance->branch,
-                                            .offset = offset,
-                                            .registerAddress = address,
-                                            .registerValue = address == 0xFF40 ? lcdc : backgroundPalette,
-                                            .selectionChanged = address == 0xFF40,
-                                            .color = screenData[offset],
-                                            .selectedSource = source,
-                                            .decision = decision,
-                                            .rawColor = selected.color,
-                                            .palette = is_cgb && !dmg_compat ? selected.cgb_palette : selected.dmg_palette});
+    provenance->recolor(provenance->owner,
+                        {.position = position,
+                         .branch = provenance->branch,
+                         .offset = offset,
+                         .registerAddress = address,
+                         .registerValue = address == 0xFF40 ? lcdc : backgroundPalette,
+                         .selectionChanged = address == 0xFF40,
+                         .color = screenData[offset],
+                         .selectedSource = source,
+                         .decision = decision,
+                         .rawColor = selected.color,
+                         .palette = is_cgb && !dmg_compat ? selected.cgb_palette : selected.dmg_palette});
 }

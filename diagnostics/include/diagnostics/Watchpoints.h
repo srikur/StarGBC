@@ -9,24 +9,24 @@ namespace diagnostics {
         std::optional<uint32_t> value;
         uint32_t mask{0xFFFFFFFF};
 
-        [[nodiscard]] bool Matches(const Event &event) const noexcept {
+        [[nodiscard]] bool Matches(const Event& event) const noexcept {
             return events.Matches(event) && (!value || (event.value & mask) == (*value & mask));
         }
     };
 
     class Watchpoints {
-        ObservationContext &context_;
+        ObservationContext& context_;
         std::array<Watchpoint, 16> conditions_;
         size_t size_{};
 
-    public:
-        explicit Watchpoints(ObservationContext &context);
+       public:
+        explicit Watchpoints(ObservationContext& context);
 
         ~Watchpoints();
 
-        Watchpoints(const Watchpoints &) = delete;
+        Watchpoints(const Watchpoints&) = delete;
 
-        Watchpoints &operator=(const Watchpoints &) = delete;
+        Watchpoints& operator=(const Watchpoints&) = delete;
 
         void Add(Watchpoint condition);
 

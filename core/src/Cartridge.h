@@ -6,11 +6,11 @@
 #include "RealTimeClock.h"
 
 class Cartridge {
-public:
+   public:
     // Largest RAM any supported mapper addresses (MBC5: 16 banks x 8 KiB)
     static constexpr u32 MAX_RAM_SIZE = 0x400 * 128;
 
-    explicit Cartridge(RealTimeClock &rtc, std::vector<u8> rom);
+    explicit Cartridge(RealTimeClock& rtc, std::vector<u8> rom);
 
     static u32 GetRamSize(u8 byte);
 
@@ -18,9 +18,13 @@ public:
 
     void LoadBattery(std::span<const u8> bytes);
 
-    [[nodiscard]] bool BatterySavePending() const { return battery_save_pending; }
+    [[nodiscard]] bool BatterySavePending() const {
+        return battery_save_pending;
+    }
 
-    void AcknowledgeBatterySave() { ram_dirty = battery_save_pending = false; }
+    void AcknowledgeBatterySave() {
+        ram_dirty = battery_save_pending = false;
+    }
 
     [[nodiscard]] u8 ReadByte(uint16_t address) const;
 
@@ -32,9 +36,13 @@ public:
 
     void DebugPoke(uint16_t address, u8 value);
 
-    [[nodiscard]] std::span<const u8> rom_bytes() const { return game_rom; }
+    [[nodiscard]] std::span<const u8> rom_bytes() const {
+        return game_rom;
+    }
 
-    [[nodiscard]] std::span<const u8> ram_bytes() const { return std::span(game_ram).first(game_ram_size); }
+    [[nodiscard]] std::span<const u8> ram_bytes() const {
+        return std::span(game_ram).first(game_ram_size);
+    }
 
     void restore_ram(std::span<const u8> bytes);
 
@@ -43,11 +51,15 @@ public:
         battery_save_pending = has_battery;
     }
 
-    [[nodiscard]] uint16_t GlobalChecksum() const { return static_cast<uint16_t>(game_rom[0x14E]) << 8 | game_rom[0x14F]; }
+    [[nodiscard]] uint16_t GlobalChecksum() const {
+        return static_cast<uint16_t>(game_rom[0x14E]) << 8 | game_rom[0x14F];
+    }
 
-    [[nodiscard]] bool BankingStateValid() const { return ram_bank <= 0x0F; }
+    [[nodiscard]] bool BankingStateValid() const {
+        return ram_bank <= 0x0F;
+    }
 
-private:
+   private:
     [[nodiscard]] std::optional<size_t> DebugRamOffset(uint16_t address) const;
 
     [[nodiscard]] bool HasRtc() const;
@@ -84,7 +96,7 @@ private:
 
     enum class MBC { None, MBC1, MBC2, MBC3, MBC5 };
 
-    RealTimeClock &rtc;
+    RealTimeClock& rtc;
 
     [[=NotStateAware]] std::vector<u8> game_rom;
     std::array<u8, MAX_RAM_SIZE> game_ram{};
