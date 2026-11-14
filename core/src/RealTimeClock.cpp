@@ -5,11 +5,11 @@ u64 RealTimeClock::now_seconds() const {
 }
 
 u64 RealTimeClock::compose_seconds() const {
-    const auto days = static_cast<uint16_t>((realClock.day_upper & 0x01) << 8 | realClock.day_lower);
+    const auto days = static_cast<u16>((realClock.day_upper & 0x01) << 8 | realClock.day_lower);
     return realClock.seconds + realClock.minutes * kSecPerMin + realClock.hours * kSecPerHour + days * kSecPerDay;
 }
 
-uint64_t RealTimeClock::recalculate_zero_time() {
+u64 RealTimeClock::recalculate_zero_time() {
     zero_time = now_seconds() - compose_seconds();
     return zero_time;
 }
@@ -36,8 +36,8 @@ void RealTimeClock::LoadSaveFooter(const std::span<const u8> bytes) {
     const u64 current_time = now_seconds();
     if (save_time <= current_time) {
         advance(save_time - current_time);
-        zero_time = current_time;
     }
+    zero_time = current_time;
 }
 
 std::array<u8, RealTimeClock::kSaveFooterSize> RealTimeClock::SaveFooter() const {
@@ -77,16 +77,16 @@ void RealTimeClock::advance(const u64 ticks) {
         }
 
         if (recalcDays) {
-            const auto current_days = static_cast<uint16_t>((realClock.day_upper & 0x01) << 8 | realClock.day_lower);
-            uint64_t total_days = current_days + 1;
+            const auto current_days = static_cast<u16>((realClock.day_upper & 0x01) << 8 | realClock.day_lower);
+            u64 total_days = current_days + 1;
 
             if (total_days >= kMaxDays) {
                 realClock.day_upper |= 0x80;
                 total_days %= kMaxDays;
             }
 
-            realClock.day_lower = static_cast<uint8_t>(total_days & 0xFF);
-            realClock.day_upper = (realClock.day_upper & 0xFE) | static_cast<uint8_t>((total_days >> 8) & 0x01);
+            realClock.day_lower = static_cast<u8>(total_days & 0xFF);
+            realClock.day_upper = (realClock.day_upper & 0xFE) | static_cast<u8>((total_days >> 8) & 0x01);
         }
     }
 }
@@ -96,10 +96,10 @@ void RealTimeClock::tick() {
         return;
     }
 
-    const uint32_t elapsed_seconds = [&]() -> uint32_t {
+    const u64 elapsed_seconds = [&]() -> u64 {
         if (real_rtc) {
-            const uint64_t target_total_seconds = now_seconds() - zero_time;
-            const uint64_t current_total_seconds = compose_seconds();
+            const u64 target_total_seconds = now_seconds() - zero_time;
+            const u64 current_total_seconds = compose_seconds();
             return target_total_seconds - current_total_seconds;
         }
         return 1;
@@ -131,7 +131,7 @@ u8 RealTimeClock::read_rtc(const u16 address) const {
     }
 }
 
-void RealTimeClock::write_rtc(const uint16_t address, const uint8_t value) {
+void RealTimeClock::write_rtc(const u16 address, const u8 value) {
     switch (address) {
         case RTC_REGISTER_SECONDS:
             realClock.seconds = value & 0b111111;
