@@ -5,14 +5,14 @@
 #include <stdexcept>
 
 namespace diagnostics {
-    Watchpoints::Watchpoints(ObservationContext &context) : context_(context) {
+    Watchpoints::Watchpoints(ObservationContext& context) : context_(context) {
         if (context_.condition)
             throw std::logic_error("Observation context already has execution conditions");
         context_.conditionOwner = this;
-        context_.condition = [](void *owner, const Event &event) noexcept {
-            const auto &watchpoints = *static_cast<Watchpoints *>(owner);
+        context_.condition = [](void* owner, const Event& event) noexcept {
+            const auto& watchpoints = *static_cast<Watchpoints*>(owner);
             return std::ranges::any_of(std::span(watchpoints.conditions_).first(watchpoints.size_),
-                                       [&](const Watchpoint &condition) { return condition.Matches(event); });
+                                       [&](const Watchpoint& condition) { return condition.Matches(event); });
         };
     }
 

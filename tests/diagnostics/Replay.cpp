@@ -1,11 +1,11 @@
-#include "GameboyFiles.h"
 #include "diagnostics/Replay.h"
 #include <doctest/doctest.h>
 #include <fstream>
-#include "stargbc/EmulationSession.h"
+#include "GameboyFiles.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Trace.h"
 #include "diagnostics/Watchpoints.h"
+#include "stargbc/EmulationSession.h"
 
 namespace {
     template<class T>
@@ -16,13 +16,16 @@ namespace {
         throw "Unknown replay member";
     }
 
-    const diagnostics::InputFingerprint replayInputs{
-            .rom = "fixture-ROM", .bootrom = "skip", .configuration = "CGBC-virtual-RTC", .cartridgeSave = "absent"};
+    const diagnostics::InputFingerprint replayInputs{.rom = "fixture-ROM",
+                                                     .bootrom = "skip",
+                                                     .configuration = "CGBC-virtual-RTC",
+                                                     .cartridgeSave = "absent"};
     const diagnostics::CheckpointIdentity checkpointIdentity{.build = "test-executable", .inputs = replayInputs};
 
     std::filesystem::path replayDirectory() {
-        const auto path = std::filesystem::temp_directory_path() /
-                          ("stargbc-replay-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        const auto path =
+            std::filesystem::temp_directory_path() /
+            ("stargbc-replay-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
         std::filesystem::create_directories(path);
         return path;
     }
@@ -33,20 +36,21 @@ TEST_CASE("diagnostics: mid-frame debug checkpoints preserve pixels deferred aud
         for (const bool doubleSpeed : {false, true}) {
             if (doubleSpeed && IsDmg(model))
                 continue;
-            const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+            const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                                .emulation = {.model = model, .no_bootrom = true}};
             auto continuous = host::load_gameboy(settings);
             auto restored = host::load_gameboy(settings);
             if (doubleSpeed) {
-                for (auto *machine : {&continuous, &restored}) {
-                    auto &bus = machine->[:replayMember<Gameboy>("bus_"):];
+                for (auto* machine : {&continuous, &restored}) {
+                    auto& bus = machine->[:replayMember<Gameboy>("bus_"):];
                     bus.prepareSpeedShift = true;
                     bus.ChangeSpeed();
                 }
             }
             for (const uint64_t ticks : {1, 158, 9, 71, 671, 140001}) {
-                for (auto *machine : {&continuous, &restored}) {
+                for (auto* machine : {&continuous, &restored}) {
                     static_cast<void>(machine->AdvanceTicks(ticks));
-                    auto &audio = machine->[:replayMember<Gameboy>("audio_"):];
+                    auto& audio = machine->[:replayMember<Gameboy>("audio_"):];
                     for (unsigned i = 0; i < 7; ++i)
                         audio.Tick();
                 }
@@ -54,7 +58,7 @@ TEST_CASE("diagnostics: mid-frame debug checkpoints preserve pixels deferred aud
                 static_cast<void>(restored.AdvanceTicks(1301));
                 REQUIRE(restored.LoadDebugState(snapshot));
                 CHECK(restored.SaveDebugState() == continuous.SaveDebugState());
-                for (auto *machine : {&continuous, &restored})
+                for (auto* machine : {&continuous, &restored})
                     static_cast<void>(machine->AdvanceTicks(2003));
                 CHECK(restored.SaveState() == continuous.SaveState());
                 CHECK(std::ranges::equal(std::span(continuous.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT),
@@ -68,7 +72,8 @@ TEST_CASE("diagnostics: mid-frame debug checkpoints preserve pixels deferred aud
 }
 
 TEST_CASE("diagnostics: checkpoint files reject incompatible builds and corruption without changing the machine") {
-    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+    auto machine = host::load_gameboy(
+        {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     diagnostics::TraceRecorder recorder(32);
     machine.ObserveWith(&recorder.Context());
     const auto directory = replayDirectory();
@@ -80,7 +85,8 @@ TEST_CASE("diagnostics: checkpoint files reject incompatible builds and corrupti
     const auto before = machine.SaveDebugState();
     auto incompatible = checkpointIdentity;
     incompatible.build = "another-build";
-    CHECK_THROWS_AS(static_cast<void>(diagnostics::RestoreCheckpoint(path, machine, incompatible)), std::invalid_argument);
+    CHECK_THROWS_AS(static_cast<void>(diagnostics::RestoreCheckpoint(path, machine, incompatible)),
+                    std::invalid_argument);
     CHECK(machine.SaveDebugState() == before);
     const auto restored = diagnostics::RestoreCheckpoint(path, machine, checkpointIdentity);
     CHECK(restored.position.tick == 173);
@@ -92,13 +98,15 @@ TEST_CASE("diagnostics: checkpoint files reject incompatible builds and corrupti
         file.seekp(20);
         file.put('!');
     }
-    CHECK_THROWS_AS(static_cast<void>(diagnostics::RestoreCheckpoint(path, machine, checkpointIdentity)), std::invalid_argument);
+    CHECK_THROWS_AS(static_cast<void>(diagnostics::RestoreCheckpoint(path, machine, checkpointIdentity)),
+                    std::invalid_argument);
     CHECK(machine.SaveDebugState() == snapshot);
     std::filesystem::remove_all(directory);
 }
 
 TEST_CASE("diagnostics: replay records buttons after session overrides and restores the input cursor") {
-    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                        .emulation = {.model = Model::CGBC, .no_bootrom = true}};
     auto recorded = host::load_gameboy(settings);
     diagnostics::InputRecorder recorder(recorded, replayInputs);
     EmulationSession session(recorded);
@@ -133,7 +141,8 @@ TEST_CASE("diagnostics: replay records buttons after session overrides and resto
 }
 
 TEST_CASE("diagnostics: replay inputs can trigger safe stops and incomplete input recordings are rejected") {
-    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                        .emulation = {.model = Model::CGBC, .no_bootrom = true}};
     auto machine = host::load_gameboy(settings);
     diagnostics::InputLog log{.initial = replayInputs, .events = {{5, 0, 1}, {5, 1, 3}, {11, 2, 0}}};
     diagnostics::ReplayPlayer player(machine, log, replayInputs);
@@ -159,12 +168,13 @@ TEST_CASE("diagnostics: replay inputs can trigger safe stops and incomplete inpu
 
 TEST_CASE("diagnostics: checkpoint resumes HALT STOP speed switching DMA and pending display writes") {
     for (unsigned scenario = 0; scenario < 6; ++scenario) {
-        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                            .emulation = {.model = Model::CGBC, .no_bootrom = true}};
         auto continuous = host::load_gameboy(settings);
         auto restored = host::load_gameboy(settings);
-        for (auto *machine : {&continuous, &restored}) {
-            auto &bus = machine->[:replayMember<Gameboy>("bus_"):];
-            auto &cpu = machine->[:replayMember<Gameboy>("cpu_"):];
+        for (auto* machine : {&continuous, &restored}) {
+            auto& bus = machine->[:replayMember<Gameboy>("bus_"):];
+            auto& cpu = machine->[:replayMember<Gameboy>("cpu_"):];
             if (scenario == 0)
                 cpu.[:replayMember<CPU<Bus>>("halted_"):] = true;
             if (scenario == 1)
@@ -204,13 +214,14 @@ TEST_CASE("diagnostics: LCD palette sampling survives replay and distinguishes i
     const auto directory = replayDirectory();
     constexpr std::array sampling_values = {DmgPaletteSampling::BitwiseOr, DmgPaletteSampling::NewValue};
     for (const auto sampling : sampling_values) {
-        const host::LaunchSettings settings{.rom_path = "roms/acid/dmg-acid2.gb",
-                                            .emulation = {.model = Model::DMGB, .no_bootrom = true, .dmg_palette_sampling = sampling}};
+        const host::LaunchSettings settings{
+            .rom_path = "roms/acid/dmg-acid2.gb",
+            .emulation = {.model = Model::DMGB, .no_bootrom = true, .dmg_palette_sampling = sampling}};
         auto original = host::load_gameboy(settings);
         const auto inputs = diagnostics::IdentifyInitialInputs(original, settings);
         auto alternate_settings = settings;
         alternate_settings.emulation.dmg_palette_sampling =
-                sampling == DmgPaletteSampling::BitwiseOr ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
+            sampling == DmgPaletteSampling::BitwiseOr ? DmgPaletteSampling::NewValue : DmgPaletteSampling::BitwiseOr;
         auto alternate = host::load_gameboy(alternate_settings);
         CHECK(inputs.configuration != diagnostics::IdentifyInitialInputs(alternate, alternate_settings).configuration);
         diagnostics::InputRecorder recorder(original, inputs, 1000, settings);
@@ -236,8 +247,9 @@ TEST_CASE("diagnostics: forced CGB startup is retained by recorded inputs") {
     const auto directory = replayDirectory();
     constexpr std::array forced_values = {false, true};
     for (const auto forced : forced_values) {
-        const host::LaunchSettings settings{.rom_path = "roms/acid/dmg-acid2.gb",
-                                            .emulation = {.model = Model::CGBC, .no_bootrom = true, .force_cgb_mode = forced}};
+        const host::LaunchSettings settings{
+            .rom_path = "roms/acid/dmg-acid2.gb",
+            .emulation = {.model = Model::CGBC, .no_bootrom = true, .force_cgb_mode = forced}};
         auto original = host::load_gameboy(settings);
         const auto inputs = diagnostics::IdentifyInitialInputs(original, settings);
         auto alternate_settings = settings;

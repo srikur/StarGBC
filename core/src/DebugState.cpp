@@ -33,34 +33,34 @@ namespace {
 } // namespace
 
 AudioDebugOutput Audio::CaptureDebugOutput() const {
-    AudioDebugOutput state{
-            .sampleCount = sampleBuffer.size(),
-            .writePosition = bufferWritePos,
-            .readPosition = bufferReadPos,
-            .available = samplesAvailable,
-            .sampleAccumulator = sampleAcc_,
-            .resampler = bandLimited,
-            .highpassLeft = highpassLeft,
-            .highpassRight = highpassRight,
-            .lastMixRegisters = lastMixRegs_,
-            .lastMixOutputs = lastMixOutputs_,
-            .mixLevel = mixLevel_,
-            .mixChanges = mixLevelChanges_,
-            .pendingTicks = pendingTicks_,
-            .pendingFirstTick = pendingFirstTick_,
-            .emissionTick = emissionTick_
-    };
+    AudioDebugOutput state{.sampleCount = sampleBuffer.size(),
+                           .writePosition = bufferWritePos,
+                           .readPosition = bufferReadPos,
+                           .available = samplesAvailable,
+                           .sampleAccumulator = sampleAcc_,
+                           .resampler = bandLimited,
+                           .highpassLeft = highpassLeft,
+                           .highpassRight = highpassRight,
+                           .lastMixRegisters = lastMixRegs_,
+                           .lastMixOutputs = lastMixOutputs_,
+                           .mixLevel = mixLevel_,
+                           .mixChanges = mixLevelChanges_,
+                           .pendingTicks = pendingTicks_,
+                           .pendingFirstTick = pendingFirstTick_,
+                           .emissionTick = emissionTick_};
     std::ranges::copy(sampleBuffer, state.samples.begin());
     return state;
 }
 
-bool Audio::ValidDebugOutput(const AudioDebugOutput &state) const {
-    return state.sampleCount == sampleBuffer.size() && state.writePosition < AUDIO_BUFFER_SIZE && state.readPosition < AUDIO_BUFFER_SIZE &&
-           state.available <= AUDIO_BUFFER_SIZE && state.sampleAccumulator < APU_CLOCK_RATE_INT &&
-           std::ranges::all_of(state.resampler, [](const auto &channel) { return channel.pos >= 0 && channel.pos < BL_BUFFER_SIZE; });
+bool Audio::ValidDebugOutput(const AudioDebugOutput& state) const {
+    return state.sampleCount == sampleBuffer.size() && state.writePosition < AUDIO_BUFFER_SIZE &&
+           state.readPosition < AUDIO_BUFFER_SIZE && state.available <= AUDIO_BUFFER_SIZE &&
+           state.sampleAccumulator < APU_CLOCK_RATE_INT &&
+           std::ranges::all_of(
+               state.resampler, [](const auto& channel) { return channel.pos >= 0 && channel.pos < BL_BUFFER_SIZE; });
 }
 
-void Audio::RestoreDebugOutput(const AudioDebugOutput &state) {
+void Audio::RestoreDebugOutput(const AudioDebugOutput& state) {
     std::ranges::copy(std::span(state.samples).first(state.sampleCount), sampleBuffer.begin());
     bufferWritePos = state.writePosition;
     bufferReadPos = state.readPosition;
@@ -83,7 +83,8 @@ std::vector<std::byte> Gameboy::SaveDebugState() const {
         throw std::invalid_argument("Deterministic checkpoints require virtual RTC");
     std::vector<std::byte> output(kGameboyStateSize + SupplementSize);
     SerializeInto(*this, output.data());
-    const DebugSupplement supplement{gpu_.screenData, gpu_.frameReady, cpu_.InstructionsCompleted(), audio_.CaptureDebugOutput()};
+    const DebugSupplement supplement{gpu_.screenData, gpu_.frameReady, cpu_.InstructionsCompleted(),
+                                     audio_.CaptureDebugOutput()};
     SerializeInto(supplement, output.data() + kGameboyStateSize);
     return output;
 }

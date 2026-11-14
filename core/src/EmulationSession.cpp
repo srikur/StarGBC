@@ -2,9 +2,15 @@
 
 namespace {
     struct FlagGuard {
-        bool &flag;
-        explicit FlagGuard(bool &value) : flag(value) { flag = true; }
-        ~FlagGuard() { flag = false; }
+        bool& flag;
+
+        explicit FlagGuard(bool& value) : flag(value) {
+            flag = true;
+        }
+
+        ~FlagGuard() {
+            flag = false;
+        }
     };
 } // namespace
 
@@ -89,12 +95,14 @@ bool EmulationSession::ApplyQueuedState() {
 
 bool EmulationSession::RunFrame() {
     const auto previous_frame{frameCount_};
-    run_slice(frame_ticks_remaining_,
-              [&](const uint64_t budget) { return gameboy_.AdvanceTicks(budget, gameboy_.InitialSettings().execution_policy); });
+    run_slice(frame_ticks_remaining_, [&](const uint64_t budget) {
+        return gameboy_.AdvanceTicks(budget, gameboy_.InitialSettings().execution_policy);
+    });
     return frameCount_ != previous_frame;
 }
 
-ExecutionResult EmulationSession::run_slice(const uint64_t max_ticks, const std::function<ExecutionResult(uint64_t)> &execute) {
+ExecutionResult EmulationSession::run_slice(const uint64_t max_ticks,
+                                            const std::function<ExecutionResult(uint64_t)>& execute) {
     if (running_)
         throw std::logic_error("recursive frame execution is not allowed");
     const auto tick{gameboy_.TimelineTicks()};

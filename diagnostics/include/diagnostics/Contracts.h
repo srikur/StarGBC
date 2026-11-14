@@ -11,7 +11,15 @@ namespace diagnostics {
     inline constexpr uint64_t RunFrameTicks = 140'448;
 
     enum class Outcome { Pass, AssertionFailure, Timeout, UnsupportedConfiguration, InfrastructureError };
-    enum class Completion { Assertion, StableResult, CompletionMarker, FixedInterval, Deadline, Unsupported, Exception };
+    enum class Completion {
+        Assertion,
+        StableResult,
+        CompletionMarker,
+        FixedInterval,
+        Deadline,
+        Unsupported,
+        Exception
+    };
     enum class ExpectationStatus { Established, Disputed, InternalInvariant, ReferenceComparison, Unspecified };
 
     struct CaseIdentity {
@@ -78,8 +86,10 @@ namespace diagnostics {
         std::string details;
         std::vector<std::string> artifacts;
 
-        [[nodiscard]] bool Passed() const { return outcome == Outcome::Pass; }
+        [[nodiscard]] bool Passed() const {
+            return outcome == Outcome::Pass;
+        }
     };
 
-    [[nodiscard]] std::string StableCaseId(const CaseIdentity &test);
+    [[nodiscard]] std::string StableCaseId(const CaseIdentity& test);
 } // namespace diagnostics

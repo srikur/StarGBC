@@ -1,12 +1,11 @@
 #pragma once
 
-
 #include "Audio.h"
 #include "Interrupts.h"
 #include "Serial.h"
 
 class Timer {
-public:
+   public:
     uint8_t tma{0x00};
     uint8_t tima{0x00};
     uint8_t tac{0x00};
@@ -27,12 +26,12 @@ public:
     [[=NotStateAware]] uint16_t timerFallMask_{0};
     [[=NotStateAware]] uint16_t frameSeqBitMask_{0};
     [[=NotStateAware]] uint16_t frameSeqToggleMask_{0};
-    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
-    [[=NotStateAware]] Serial *serial{};
-    Audio &audio_;
-    Interrupts &interrupts_;
+    [[=NotStateAware]] diagnostics::ObservationContext* observations{};
+    [[=NotStateAware]] Serial* serial{};
+    Audio& audio_;
+    Interrupts& interrupts_;
 
-    explicit Timer(Audio &audio, Interrupts &interrupts) : audio_(audio), interrupts_(interrupts) {}
+    explicit Timer(Audio& audio, Interrupts& interrupts) : audio_(audio), interrupts_(interrupts) {}
 
     // Inline: runs every T-cycle (2x per dot at double speed); the masks make
     // the common case two edge tests on register-resident values
@@ -50,7 +49,8 @@ public:
         if (overflowPending && --overflowDelay == 0) {
             tima = tma;
             if (observations)
-                observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::TimerReload, 0xFF05, tima, divCounter);
+                observations->Emit(diagnostics::Component::Timer, diagnostics::EventKind::TimerReload, 0xFF05, tima,
+                                   divCounter);
             // DMG exposes IF before the request reaches the CPU wake/dispatch path
             interrupts_.set_after(InterruptType::Timer, audio_.IsDMG() ? 4 : 0, audio_.IsDMG());
             overflowPending = false;

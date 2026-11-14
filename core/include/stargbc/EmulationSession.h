@@ -8,33 +8,49 @@
 enum class SessionEvent { BeforeFrame, AfterFrame, StateLoaded };
 
 class EmulationSession {
-public:
-    explicit EmulationSession(Gameboy &gameboy) : gameboy_(gameboy) {
+   public:
+    explicit EmulationSession(Gameboy& gameboy) : gameboy_(gameboy) {
         const auto state{gameboy.SaveState()};
         startup_state_.assign(state.begin(), state.end());
     }
 
-    [[nodiscard]] Gameboy &Machine() const { return gameboy_; }
+    [[nodiscard]] Gameboy& Machine() const {
+        return gameboy_;
+    }
 
     bool RunFrame();
 
-    ExecutionResult run_slice(uint64_t max_ticks, const std::function<ExecutionResult(uint64_t)> &execute);
+    ExecutionResult run_slice(uint64_t max_ticks, const std::function<ExecutionResult(uint64_t)>& execute);
 
-    [[nodiscard]] uint64_t frame_ticks_remaining() const { return frame_ticks_remaining_; }
+    [[nodiscard]] uint64_t frame_ticks_remaining() const {
+        return frame_ticks_remaining_;
+    }
 
-    [[nodiscard]] uint64_t FrameCount() const { return frameCount_; }
+    [[nodiscard]] uint64_t FrameCount() const {
+        return frameCount_;
+    }
 
-    [[nodiscard]] uint64_t StateGeneration() const { return stateGeneration_; }
+    [[nodiscard]] uint64_t StateGeneration() const {
+        return stateGeneration_;
+    }
 
-    [[nodiscard]] bool Paused() const { return paused_; }
+    [[nodiscard]] bool Paused() const {
+        return paused_;
+    }
 
-    void SetPaused(const bool paused) { paused_ = paused; }
+    void SetPaused(const bool paused) {
+        paused_ = paused;
+    }
 
-    void SetEventHandler(std::function<void(SessionEvent, uint64_t)> handler) { handler_ = std::move(handler); }
+    void SetEventHandler(std::function<void(SessionEvent, uint64_t)> handler) {
+        handler_ = std::move(handler);
+    }
 
     void SetPhysicalButton(Keys key, bool pressed);
 
-    [[nodiscard]] uint8_t PhysicalButtons() const { return physical_; }
+    [[nodiscard]] uint8_t PhysicalButtons() const {
+        return physical_;
+    }
 
     void SetOverrides(uint8_t mask, uint8_t pressed);
 
@@ -48,16 +64,18 @@ public:
 
     void QueueState(std::span<const std::byte> state);
 
-    void CancelQueuedState() { pendingState_.clear(); }
+    void CancelQueuedState() {
+        pendingState_.clear();
+    }
 
-private:
+   private:
     void ApplyButtons() const;
 
     void Emit(SessionEvent event);
 
     bool ApplyQueuedState();
 
-    Gameboy &gameboy_;
+    Gameboy& gameboy_;
     std::function<void(SessionEvent, uint64_t)> handler_;
     std::vector<std::byte> pendingState_;
     std::vector<std::byte> startup_state_;

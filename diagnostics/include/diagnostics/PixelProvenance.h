@@ -69,10 +69,10 @@ namespace diagnostics {
         bool overflow{};
         PixelOrigin selected;
 
-        void Merge(const PixelOrigin &origin, const SpriteDecision decision) noexcept {
+        void Merge(const PixelOrigin& origin, const SpriteDecision decision) noexcept {
             const bool replace = decision == SpriteDecision::Replaced;
             if (replace) {
-                for (auto &candidate : candidates)
+                for (auto& candidate : candidates)
                     candidate.selected = false;
                 selected = origin;
             }
@@ -131,10 +131,10 @@ namespace diagnostics {
     };
 
     struct PixelProvenanceContext {
-        void *owner{};
-        void (*output)(void *, const PixelExplanation &) noexcept {};
-        void (*pipeline)(void *, const PixelPipelineEvent &) noexcept {};
-        void (*recolor)(void *, const PixelRecolor &) noexcept {};
+        void* owner{};
+        void (*output)(void*, const PixelExplanation&) noexcept {};
+        void (*pipeline)(void*, const PixelPipelineEvent&) noexcept {};
+        void (*recolor)(void*, const PixelRecolor&) noexcept {};
         ExecutionPosition position;
         uint64_t branch{};
         PixelOrigin backgroundFetch;
@@ -145,7 +145,9 @@ namespace diagnostics {
         uint8_t backgroundCount{};
         std::array<SpriteOrigins, 8> sprites;
 
-        void ClearBackground() noexcept { backgroundHead = backgroundCount = 0; }
+        void ClearBackground() noexcept {
+            backgroundHead = backgroundCount = 0;
+        }
 
         void ResetPipeline() noexcept {
             ClearBackground();
@@ -153,7 +155,7 @@ namespace diagnostics {
             sprites = {};
         }
 
-        void PushBackground(const PixelOrigin &origin, const bool front = false) noexcept {
+        void PushBackground(const PixelOrigin& origin, const bool front = false) noexcept {
             if (backgroundCount == backgroundQueue.size())
                 ClearBackground();
             if (front) {
@@ -180,7 +182,8 @@ namespace diagnostics {
             return result;
         }
 
-        void Pipeline(const uint16_t x, const uint16_t y, const PipelineReason reason, const PixelOrigin &origin = {}) const noexcept {
+        void Pipeline(const uint16_t x, const uint16_t y, const PipelineReason reason,
+                      const PixelOrigin& origin = {}) const noexcept {
             if (pipeline)
                 pipeline(owner, {position, branch, x, y, reason, origin});
         }

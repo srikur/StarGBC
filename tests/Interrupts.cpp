@@ -1,15 +1,19 @@
-#include "GameboyFiles.h"
 #include "Interrupts.h"
 #include <doctest/doctest.h>
 #include <ranges>
-#include "stargbc/Gameboy.h"
+#include "GameboyFiles.h"
 #include "TestUtilities.h"
+#include "stargbc/Gameboy.h"
 
 TEST_CASE("interrupts: simultaneous sources retain independent propagation times") {
     Interrupts interrupts;
     interrupts.interrupt_flag = 0;
-    const auto vblank = [&] { interrupts.set_after(InterruptType::VBlank, 8, true, 4); };
-    const auto stat = [&] { interrupts.set_after(InterruptType::LCDStat, 2); };
+    const auto vblank = [&] {
+        interrupts.set_after(InterruptType::VBlank, 8, true, 4);
+    };
+    const auto stat = [&] {
+        interrupts.set_after(InterruptType::LCDStat, 2);
+    };
     SUBCASE("VBlank scheduled first") {
         vblank();
         stat();
@@ -42,10 +46,11 @@ TEST_CASE("interrupts: entry writes the stack in the third and fourth machine cy
     for (const auto [model, policy] : std::views::cartesian_product(models, policies)) {
         CAPTURE(model);
         CAPTURE(policy);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
-        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto& interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
         bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
         bus.WriteByte(0xD000, 0xAA, ComponentSource::CPU);
         bus.WriteByte(0xD001, 0xBB, ComponentSource::CPU);
@@ -124,10 +129,11 @@ TEST_CASE("interrupts: vector selection sees higher-priority IF before dispatch 
     for (const auto [model, policy] : std::views::cartesian_product(models, policies)) {
         CAPTURE(model);
         CAPTURE(policy);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
-        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto& interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         cpu.pc(0xC124);
         cpu.sp(0xD002);
@@ -195,10 +201,11 @@ TEST_CASE("interrupts: clearing an IF-visible CGB LYC request prevents delayed r
         CAPTURE(double_speed);
         CAPTURE(line);
         CAPTURE(clear);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
-        auto &gpu = bus.gpu_;
-        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto& gpu = bus.gpu_;
+        auto& interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
         if (double_speed) {
             bus.prepareSpeedShift = true;
             bus.ChangeSpeed();
@@ -239,11 +246,12 @@ TEST_CASE("interrupts: a CGB LYC request on the final CPU tick waits for the nex
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
     for (const auto policy : policies) {
         CAPTURE(policy);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
-        auto &gpu = bus.gpu_;
-        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto& gpu = bus.gpu_;
+        auto& interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
         cpu.pc(0xC001);
         cpu.currentInstruction = 0;
         gameboy.DebugPoke(0xC001, 0);
@@ -303,22 +311,23 @@ TEST_CASE("interrupts: a STAT edge during acknowledgment cannot reappear after i
     }
 }
 
-
 TEST_CASE("interrupts: CGB VBlank dispatch distinguishes normal and double speed visibility") {
     constexpr std::array speeds = {false, true};
     constexpr std::array halted_values = {false, true};
     constexpr std::array clear_values = {false, true};
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
-    for (const auto [double_speed, halted, clear, policy] : std::views::cartesian_product(speeds, halted_values, clear_values, policies)) {
+    for (const auto [double_speed, halted, clear, policy] :
+         std::views::cartesian_product(speeds, halted_values, clear_values, policies)) {
         CAPTURE(halted);
 
         CAPTURE(double_speed);
         CAPTURE(clear);
         CAPTURE(policy);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
-        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& cpu = gameboy.[:get_member<Gameboy>("cpu_"):];
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto& interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
             bus.prepareSpeedShift = true;
@@ -347,13 +356,13 @@ TEST_CASE("interrupts: CGB VBlank dispatch distinguishes normal and double speed
     }
 }
 
-
 TEST_CASE("interrupts: VBlank visibility precedes dispatch and acknowledgment preserves STAT") {
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
     constexpr std::array speeds = {false, true};
     constexpr std::array optimizations = {false, true};
     constexpr std::array acknowledge_values = {false, true};
-    for (const auto [model, double_speed, optimized, acknowledge] : std::views::cartesian_product(models, speeds, optimizations, acknowledge_values)) {
+    for (const auto [model, double_speed, optimized, acknowledge] :
+         std::views::cartesian_product(models, speeds, optimizations, acknowledge_values)) {
         if (!IsCgb(model) && double_speed)
             continue;
 
@@ -393,7 +402,8 @@ TEST_CASE("interrupts: DMG LYC source precedes coincidence visibility and dispat
     constexpr std::array line153_values = {false, true};
     constexpr std::array optimizations = {false, true};
     constexpr std::array acknowledge_values = {false, true};
-    for (const auto [line153, optimized, acknowledge] : std::views::cartesian_product(line153_values, optimizations, acknowledge_values)) {
+    for (const auto [line153, optimized, acknowledge] :
+         std::views::cartesian_product(line153_values, optimizations, acknowledge_values)) {
         CAPTURE(line153);
         CAPTURE(optimized);
         CAPTURE(acknowledge);
@@ -429,7 +439,8 @@ TEST_CASE("interrupts: IF writes clear arriving LCD requests without changing ot
     constexpr std::array sources = {InterruptType::VBlank, InterruptType::LCDStat};
     constexpr std::array<uint8_t, 4> values = {0, 1, 2, 3};
     constexpr std::array<unsigned, 4> arrival_values = {0, 1, 2, 3};
-    for (const auto [double_speed, source, value, arrival] : std::views::cartesian_product(speeds, sources, values, arrival_values)) {
+    for (const auto [double_speed, source, value, arrival] :
+         std::views::cartesian_product(speeds, sources, values, arrival_values)) {
         CAPTURE(double_speed);
         CAPTURE(source);
         CAPTURE(value);
@@ -464,12 +475,13 @@ TEST_CASE("interrupts: software CGB LYC requests are readable before normal-spee
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(clear);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
         gameboy.[:get_member<Gameboy>("cpu_"):].Lock();
         static_cast<void>(gameboy.AdvanceTicks(8, policy));
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
-        auto &gpu = bus.gpu_;
-        auto &interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto& gpu = bus.gpu_;
+        auto& interrupts = gameboy.[:get_member<Gameboy>("interrupts_"):];
         gpu.InvalidateIdle();
         gpu.currentLine = 150;
         gpu.scanlineCounter = 100;

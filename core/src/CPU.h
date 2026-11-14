@@ -8,11 +8,12 @@
 
 template<BusLike BusT>
 class CPU {
-public:
+   public:
     using Self = CPU<BusT>;
 
-    explicit CPU(const Model requestedModel, const std::span<const u8> bootrom, const bool noBootrom, BusT &bus, Interrupts &interrupts,
-                 Registers &registers, const bool force_cgb_mode = false) : bus_(bus), interrupts_(interrupts), regs_(registers) {
+    explicit CPU(const Model requestedModel, const std::span<const u8> bootrom, const bool noBootrom, BusT& bus,
+                 Interrupts& interrupts, Registers& registers, const bool force_cgb_mode = false)
+        : bus_(bus), interrupts_(interrupts), regs_(registers) {
         const Model hw = ResolveModel(requestedModel, (bus.cartridge_.ReadByte(0x143) & 0x80) != 0);
         if (force_cgb_mode && (!noBootrom || !bootrom.empty() || !IsCgb(hw)))
             throw std::invalid_argument("Forcing CGB mode requires skipped boot on CGB hardware");
@@ -22,7 +23,8 @@ public:
         bus.audio_.SetModel(hw);
         const bool sgbFamily = IsSgb(hw);
         // The SGB BIOS only honors ICD2 command packets from SGB-flagged carts
-        bus.joypad_.ConfigureSgb(sgbFamily && bus.cartridge_.ReadByte(0x146) == 0x03 && bus.cartridge_.ReadByte(0x14B) == 0x33);
+        bus.joypad_.ConfigureSgb(sgbFamily && bus.cartridge_.ReadByte(0x146) == 0x03 &&
+                                 bus.cartridge_.ReadByte(0x14B) == 0x33);
         if (!bootrom.empty()) {
             // CGB bootroms run in CGB mode; KEY0 writes can drop to DMG-compat
             bus.cgbMode = IsCgb(hw);
@@ -55,27 +57,44 @@ public:
 
     void InitializeSystem();
 
-    void ExecuteMicroOp(Instructions<Self> &instructions, bool);
+    void ExecuteMicroOp(Instructions<Self>& instructions, bool);
 
-    void Lock() { locked_ = true; }
-
-    [[nodiscard]] bool locked() const { return locked_; }
-
-    [[nodiscard]] bool IsHalted() const { return halted_; }
-
-    [[nodiscard]] bool AtInstructionBoundary() const {
-        return !instrRunning && !prefixed && (interruptState == InterruptState::M1 || interruptState == InterruptState::M6);
+    void Lock() {
+        locked_ = true;
     }
 
-    [[nodiscard]] uint64_t InstructionsCompleted() const { return instructionsCompleted_; }
+    [[nodiscard]] bool locked() const {
+        return locked_;
+    }
 
-    void RestoreInstructionCount(const uint64_t count) { instructionsCompleted_ = count; }
+    [[nodiscard]] bool IsHalted() const {
+        return halted_;
+    }
 
-    [[nodiscard]] uint16_t InstructionAddress() const { return instructionAddress_; }
+    [[nodiscard]] bool AtInstructionBoundary() const {
+        return !instrRunning && !prefixed &&
+               (interruptState == InterruptState::M1 || interruptState == InterruptState::M6);
+    }
 
-    [[nodiscard]] uint16_t InstructionBank() const { return instructionBank_; }
+    [[nodiscard]] uint64_t InstructionsCompleted() const {
+        return instructionsCompleted_;
+    }
 
-    void ObserveWith(diagnostics::ObservationContext *context) { observations_ = context; }
+    void RestoreInstructionCount(const uint64_t count) {
+        instructionsCompleted_ = count;
+    }
+
+    [[nodiscard]] uint16_t InstructionAddress() const {
+        return instructionAddress_;
+    }
+
+    [[nodiscard]] uint16_t InstructionBank() const {
+        return instructionBank_;
+    }
+
+    void ObserveWith(diagnostics::ObservationContext* context) {
+        observations_ = context;
+    }
 
     [[nodiscard]] CpuInspection Inspect() const {
         return {.pc = pc_,
@@ -111,33 +130,53 @@ public:
         if (halted_ && haltPending_ && !IsCgb(bus_.gpu_.model))
             bus_.dma_.halt_step_pending = true;
         if (observations_)
-            observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, haltPending_, 1);
+            observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F,
+                                haltPending_, 1);
     }
 
     void sample_running_inputs() {
         // The DMG instruction boundary samples before this T4's peripheral edges
         runningPending_ = interrupts_.interrupt_enable & interrupts_.interrupt_flag & 0x1F;
         if (observations_)
-            observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F, runningPending_, 3);
+            observations_->Emit(diagnostics::Component::CPU, diagnostics::EventKind::InterruptSample, 0xFF0F,
+                                runningPending_, 3);
     }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() { return pc_; }
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> pc() {
+        return pc_;
+    }
 
-    void pc(const uint16_t value) { pc_ = value; }
+    void pc(const uint16_t value) {
+        pc_ = value;
+    }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> sp() { return sp_; }
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> sp() {
+        return sp_;
+    }
 
-    void sp(const uint16_t value) { sp_ = value; }
+    void sp(const uint16_t value) {
+        sp_ = value;
+    }
 
-    void icount(const uint8_t value) { icount_ = value; }
+    void icount(const uint8_t value) {
+        icount_ = value;
+    }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint8_t> mCycleCounter() { return mCycleCounter_; }
+    [[nodiscard]] std::add_lvalue_reference_t<uint8_t> mCycleCounter() {
+        return mCycleCounter_;
+    }
 
-    void mCycleCounter(const uint8_t value) { mCycleCounter_ = value; }
+    void mCycleCounter(const uint8_t value) {
+        mCycleCounter_ = value;
+    }
 
-    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> nextInstruction() { return nextInstruction_; }
+    [[nodiscard]] std::add_lvalue_reference_t<uint16_t> nextInstruction() {
+        return nextInstruction_;
+    }
 
-    void nextInstruction(const uint16_t value) { nextInstruction_ = value; }
+    void nextInstruction(const uint16_t value) {
+        nextInstruction_ = value;
+    }
 
     void halted(const bool value, const bool immediate_wake = false) {
         if (!value || !halted_)
@@ -169,23 +208,32 @@ public:
         bus_.set_cpu_halted(!pending, bus_.gpu_.doubleSpeed);
         if (!pending)
             bus_.gpu_.hdma.halt_hblank_active = speed_switch_hblank_active;
-        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC && (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
+        shortInterruptEntry_ = pending && bus_.gpu_.model <= Model::CGBC &&
+                               (interrupts_.interrupt_master_enable || interrupts_.interrupt_delay);
     }
 
-    void haltBug(const bool value) { haltBug_ = value; }
+    void haltBug(const bool value) {
+        haltBug_ = value;
+    }
 
-    void stopped(const bool value) { stopped_ = value; }
+    void stopped(const bool value) {
+        stopped_ = value;
+    }
 
-    std::add_lvalue_reference_t<bool> stopped() { return stopped_; }
+    std::add_lvalue_reference_t<bool> stopped() {
+        return stopped_;
+    }
 
-    Model model() { return bus_.gpu_.model; }
+    Model model() {
+        return bus_.gpu_.model;
+    }
 
-    BusT &bus_;
+    BusT& bus_;
     uint16_t currentInstruction{0x0000};
     bool prefixed{false};
 
-private:
-    void ExecuteMicroOpValue(Instructions<Self> &instructions, bool hdmaActive);
+   private:
+    void ExecuteMicroOpValue(Instructions<Self>& instructions, bool hdmaActive);
 
     void SetInstructionLocation(const uint16_t address) {
         instructionAddress_ = address;
@@ -197,7 +245,7 @@ private:
         }
     }
 
-    uint8_t RunInstructionCycle(Instructions<Self> &, uint8_t, bool);
+    uint8_t RunInstructionCycle(Instructions<Self>&, uint8_t, bool);
 
     [[nodiscard]] uint8_t InterruptAddress(uint8_t) const;
 
@@ -205,10 +253,10 @@ private:
 
     void BeginMCycle();
 
-    void RunPostCompletion(Instructions<Self> &);
+    void RunPostCompletion(Instructions<Self>&);
 
-    Interrupts &interrupts_;
-    Registers &regs_;
+    Interrupts& interrupts_;
+    Registers& regs_;
 
     [[=NotStateAware]] bool embeddedBootrom_{false};
 
@@ -238,7 +286,7 @@ private:
     uint8_t interruptMask{0x00};
     bool instrRunning{false};
     [[=NotStateAware]] uint64_t instructionsCompleted_{};
-    [[=NotStateAware]] diagnostics::ObservationContext *observations_{};
+    [[=NotStateAware]] diagnostics::ObservationContext* observations_{};
     uint16_t instructionAddress_{};
     uint16_t instructionBank_{};
 };

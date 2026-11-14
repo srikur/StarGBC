@@ -31,7 +31,7 @@ TEST_CASE("apu: wave RAM remains writable and retained across power cycles") {
 TEST_CASE("apu: batching preserves mixer transitions between waveform events") {
     Audio optimized, ordinary;
     ordinary.SetOptimizedExecution(false);
-    for (auto *audio : {&optimized, &ordinary}) {
+    for (auto* audio : {&optimized, &ordinary}) {
         audio->SetModel(Model::CGBC);
         audio->WriteByte(SOUND_CONTROL, 0x80, false);
         audio->WriteByte(PULSE1_ENVELOPE, 0xF3, false);
@@ -42,7 +42,7 @@ TEST_CASE("apu: batching preserves mixer transitions between waveform events") {
     }
     for (auto phase{0u}; phase < 4; ++phase) {
         CAPTURE(phase);
-        for (auto *audio : {&optimized, &ordinary}) {
+        for (auto* audio : {&optimized, &ordinary}) {
             if (phase == 1)
                 audio->WriteByte(SOUND_PANNING, 0x10, false);
             if (phase == 2)
@@ -74,8 +74,12 @@ TEST_CASE("apu: duty writes affect the next pulse step while volume changes use 
         audio.WriteByte(base + 2, 0xF0, false);
         audio.WriteByte(base + 3, 0xFE, false);
         audio.WriteByte(base + 4, 0x87, false);
-        const auto position = [&] { return second ? audio.ch2.dutyStep : audio.ch1.dutyStep; };
-        const auto sample = [&] { return (audio.ReadPCM12() >> (second ? 4 : 0)) & 0xF; };
+        const auto position = [&] {
+            return second ? audio.ch2.dutyStep : audio.ch1.dutyStep;
+        };
+        const auto sample = [&] {
+            return (audio.ReadPCM12() >> (second ? 4 : 0)) & 0xF;
+        };
         for (auto tick{0u}; tick < 100 && position() != 3; ++tick) {
             audio.Tick();
             audio.CatchUp();
@@ -103,7 +107,8 @@ TEST_CASE("apu: length expiration clears NR52 independently of the waveform phas
     constexpr std::array optimizations = {false, true};
     constexpr std::array<unsigned, 4> phases = {0, 1, 2, 3};
     constexpr std::array<uint8_t, 16> length_mask_values = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    for (const auto [model, optimized, phase, length_mask] : std::views::cartesian_product(models, optimizations, phases, length_mask_values)) {
+    for (const auto [model, optimized, phase, length_mask] :
+         std::views::cartesian_product(models, optimizations, phases, length_mask_values)) {
         CAPTURE(ModelName(model));
         CAPTURE(optimized);
         CAPTURE(phase);
@@ -122,7 +127,8 @@ TEST_CASE("apu: length expiration clears NR52 independently of the waveform phas
         audio.WriteByte(PULSE2_ENVELOPE, 0xF0, false);
         audio.WriteByte(WAVE_DAC_ENABLE, 0x80, false);
         audio.WriteByte(NOISE_ENVELOPE, 0xF0, false);
-        constexpr std::array triggers = {PULSE1_FREQUENCY_HIGH, PULSE2_FREQUENCY_HIGH, WAVE_FREQUENCY_HIGH, NOISE_CONTROL};
+        constexpr std::array triggers = {PULSE1_FREQUENCY_HIGH, PULSE2_FREQUENCY_HIGH, WAVE_FREQUENCY_HIGH,
+                                         NOISE_CONTROL};
         for (auto channel{0u}; channel < triggers.size(); ++channel) {
             audio.WriteByte(triggers[channel], 0x80 | ((length_mask >> channel & 1) << 6), false);
         }
@@ -141,7 +147,8 @@ TEST_CASE("apu: trigger reloads take precedence over adjacent sequencer clocks")
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
     constexpr std::array optimizations = {false, true};
     constexpr std::array after_reload_values = {false, true};
-    for (const auto [model, optimized, after_reload] : std::views::cartesian_product(models, optimizations, after_reload_values)) {
+    for (const auto [model, optimized, after_reload] :
+         std::views::cartesian_product(models, optimizations, after_reload_values)) {
         CAPTURE(ModelName(model));
         CAPTURE(optimized);
         CAPTURE(after_reload);

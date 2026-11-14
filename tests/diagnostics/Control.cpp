@@ -1,10 +1,11 @@
-#include "GameboyFiles.h"
 #include <doctest/doctest.h>
-#include "stargbc/Gameboy.h"
+#include "GameboyFiles.h"
 #include "diagnostics/Watchpoints.h"
+#include "stargbc/Gameboy.h"
 
 TEST_CASE("diagnostics: watchpoint stops retain trigger and safe positions and resume without changing hardware") {
-    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                        .emulation = {.model = Model::CGBC, .no_bootrom = true}};
     auto controlled = host::load_gameboy(settings);
     auto continuous = host::load_gameboy(settings);
     diagnostics::TraceRecorder recorder(32);
@@ -33,7 +34,8 @@ TEST_CASE("diagnostics: watchpoint stops retain trigger and safe positions and r
 }
 
 TEST_CASE("diagnostics: bank aware PC breakpoints and instruction deadlines remain bounded") {
-    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                        .emulation = {.model = Model::CGBC, .no_bootrom = true}};
     for (const uint16_t bank : {0, 1}) {
         auto machine = host::load_gameboy(settings);
         diagnostics::TraceRecorder recorder(32);
@@ -55,7 +57,8 @@ TEST_CASE("diagnostics: bank aware PC breakpoints and instruction deadlines rema
 }
 
 TEST_CASE("diagnostics: declarative conditions inspect PPU and register changes without overshooting deadlines") {
-    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+    auto machine = host::load_gameboy(
+        {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     const std::array unchanged{RunCondition{ConditionKind::RegisterChange, 0xFF04}};
     const auto result = machine.RunUntil(unchanged, 1024);
     CHECK(result.execution.reason == ExecutionStopReason::Condition);

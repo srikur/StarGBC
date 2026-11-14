@@ -26,11 +26,11 @@ namespace diagnostics {
         std::ofstream stream_;
         std::mutex mutex_;
 
-    public:
-        explicit Report(const std::filesystem::path &path, const RunIdentity &run);
+       public:
+        explicit Report(const std::filesystem::path& path, const RunIdentity& run);
 
         template<class T>
-        void Write(const T &value) {
+        void Write(const T& value) {
             const std::scoped_lock lock(mutex_);
             WriteJson(stream_, value);
             stream_ << '\n';

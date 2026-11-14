@@ -1,7 +1,7 @@
 #pragma once
-#include "stargbc/Common.h"
 #include <functional>
 #include <span>
+#include "stargbc/Common.h"
 
 class RealTimeClock {
     static constexpr u64 kSecPerMin = 60;
@@ -11,6 +11,12 @@ class RealTimeClock {
     static constexpr u64 kHourPerDay = 24;
     static constexpr u64 kMaxDays = 511;
     static constexpr u64 kHoursPerDay = 24;
+
+    static constexpr u8 RTC_REGISTER_SECONDS = 0x08;
+    static constexpr u8 RTC_REGISTER_MINUTES = 0x09;
+    static constexpr u8 RTC_REGISTER_HOURS = 0x0A;
+    static constexpr u8 RTC_REGISTER_DAY_LOWER = 0x0B;
+    static constexpr u8 RTC_REGISTER_DAY_UPPER = 0x0C;
 
     [[nodiscard]] u64 now_seconds() const;
 
@@ -28,14 +34,15 @@ class RealTimeClock {
         u8 day_upper{0x00};
     };
 
-public:
+   public:
     static constexpr size_t kSaveFooterSize = 48;
     static constexpr size_t kSaveFooterMinSize = 44;
     static constexpr u64 RTC_TICKS_PER_SECOND = 4194304;
 
     using TimeSource = std::function<u64()>;
 
-    explicit RealTimeClock(const bool real, TimeSource time_source = {}) : real_rtc(real), time_source_(std::move(time_source)) {
+    explicit RealTimeClock(const bool real, TimeSource time_source = {})
+        : real_rtc(real), time_source_(std::move(time_source)) {
         if (real && !time_source_)
             throw std::invalid_argument("Real RTC requires a host clock");
     }
@@ -48,8 +55,8 @@ public:
 
     u64 recalculate_zero_time();
 
-    // Called every T-cycle; inline so the idle path is a counter bump.
-    // Rolls the rtc over every emulated second
+    void advance(u64);
+
     void Update() {
         if (!halted)
             counter++;
@@ -68,6 +75,6 @@ public:
     [[=NotStateAware]] bool real_rtc{false};
     u64 counter{0};
 
-private:
+   private:
     [[=NotStateAware]] TimeSource time_source_;
 };

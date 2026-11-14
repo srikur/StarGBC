@@ -6,10 +6,10 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <stdexcept>
 #include <memory>
 #include <meta>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -121,11 +121,21 @@ static constexpr u8 LCDC_OBJ_SIZE = 2;
 static constexpr u8 LCDC_OBJ_ENABLE = 1;
 static constexpr u8 LCDC_BG_WINDOW_ENABLE = 0;
 
-constexpr u8 operator""_u8(const unsigned long long value) { return static_cast<u8>(value); }
+constexpr u8 operator""_u8(const unsigned long long value) {
+    return static_cast<u8>(value);
+}
 
-constexpr u16 operator""_u16(const unsigned long long value) { return static_cast<u16>(value); }
+constexpr u16 operator""_u16(const unsigned long long value) {
+    return static_cast<u16>(value);
+}
 
-constexpr u32 operator""_u32(const unsigned long long value) { return static_cast<u32>(value); }
+constexpr u32 operator""_u32(const unsigned long long value) {
+    return static_cast<u32>(value);
+}
+
+constexpr u64 operator""_u64(const unsigned long long value) {
+    return static_cast<u64>(value);
+}
 
 template<uint8_t bit>
 static constexpr bool Bit(const u8 value) {
@@ -166,16 +176,16 @@ concept BusLike = requires(T bus, u16 addr, u8 val, ComponentSource source) {
 
 // Core exceptions carry diagnostics; applications decide how to report them.
 class GameboyException : public std::runtime_error {
-public:
+   public:
     using std::runtime_error::runtime_error;
 };
 
 class UnreachableCodeException final : public GameboyException {
-public:
+   public:
     using GameboyException::GameboyException;
 };
 
 class FatalErrorException final : public GameboyException {
-public:
+   public:
     using GameboyException::GameboyException;
 };

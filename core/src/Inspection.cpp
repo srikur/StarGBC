@@ -1,6 +1,8 @@
 #include "stargbc/Gameboy.h"
 
-GraphicsInspection Gameboy::inspect_graphics() const { return gpu_.inspect_graphics(bus_.cgbMode); }
+GraphicsInspection Gameboy::inspect_graphics() const {
+    return gpu_.inspect_graphics(bus_.cgbMode);
+}
 
 GraphicsInspection GPU::inspect_graphics(const bool cgb_mode) const {
     GraphicsInspection result{.vram = vram,
@@ -15,9 +17,10 @@ GraphicsInspection GPU::inspect_graphics(const bool cgb_mode) const {
     constexpr std::array colors{0_u8, 1_u8, 2_u8, 3_u8};
     for (const auto [palette, color] : std::views::cartesian_product(palettes, colors)) {
         const auto index{palette * 4 + color};
-        const auto &background{bgpd[palette][color]};
-        const auto &object{obpd[palette][color]};
-        result.background_rgb15[index] = (background[0] & 31) | ((background[1] & 31) << 5) | ((background[2] & 31) << 10);
+        const auto& background{bgpd[palette][color]};
+        const auto& object{obpd[palette][color]};
+        result.background_rgb15[index] =
+            (background[0] & 31) | ((background[1] & 31) << 5) | ((background[2] & 31) << 10);
         result.object_rgb15[index] = (object[0] & 31) | ((object[1] & 31) << 5) | ((object[2] & 31) << 10);
         result.background_colors[index] = GetBackgroundColor(color, palette);
         result.object_colors[index] = GetSpriteColor(color, cgb_mode ? palette : palette & 1);
@@ -26,8 +29,8 @@ GraphicsInspection GPU::inspect_graphics(const bool cgb_mode) const {
 }
 
 AudioInspection Audio::Inspect() const {
-    const auto channels = [](const Audio &audio) {
-        const auto channel = [](const auto &value) -> AudioChannelInspection {
+    const auto channels = [](const Audio& audio) {
+        const auto channel = [](const auto& value) -> AudioChannelInspection {
             return {value.enabled, value.dacEnabled, value.GetDigitalOutput(), value.currentOutput};
         };
         return std::array{channel(audio.ch1), channel(audio.ch2), channel(audio.ch3), channel(audio.ch4)};
@@ -84,7 +87,8 @@ RegisterInspection Gameboy::InspectRegister(const uint16_t address) const {
         case 0xFF07:
             return simple(timer_.tac, timer_.ReadByte(address));
         case 0xFF0F:
-            return simple(interrupts_.interrupt_flag, interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0);
+            return simple(interrupts_.interrupt_flag,
+                          interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0);
         case 0xFFFF:
             return simple(interrupts_.interrupt_enable, interrupts_.interrupt_enable);
         case 0xFF40:
@@ -124,7 +128,9 @@ RegisterInspection Gameboy::InspectRegister(const uint16_t address) const {
         case 0xFF4B:
             return delayed(gpu_.windowX, gpu_.wxPending, gpu_.wxWriteStage);
         case 0xFF4D:
-            return simple(bus_.prepareSpeedShift, bus_.cgbMode ? 0x7E | (bus_.speed == Speed::Double ? 0x80 : 0) | bus_.prepareSpeedShift : 0xFF);
+            return simple(
+                bus_.prepareSpeedShift,
+                bus_.cgbMode ? 0x7E | (bus_.speed == Speed::Double ? 0x80 : 0) | bus_.prepareSpeedShift : 0xFF);
         case 0xFF4F:
             return simple(gpu_.vramBank, gpu_.ReadRegisters(address));
         case 0xFF51 ... 0xFF55: {
@@ -171,61 +177,62 @@ RegisterInspection Gameboy::InspectRegister(const uint16_t address) const {
 
 MachineInspection Gameboy::Inspect() const {
     MachineInspection result{
-            .tick = timelineTicks_,
-            .model = GetModel(),
-            .speed = bus_.speed,
-            .cgbMode = bus_.cgbMode,
-            .bootromRunning = bus_.bootromRunning,
-            .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3),
-            .cpu = cpu_.Inspect(),
-            .interrupts = {.enable = interrupts_.interrupt_enable,
-                           .storedFlags = interrupts_.interrupt_flag,
-                           .cpuVisibleFlags = static_cast<uint8_t>(interrupts_.interrupt_flag | interrupts_.interrupt_visible_pending | 0xE0),
-                           .delayedRequests = interrupts_.interrupt_flag_delayed,
-                           .visiblePending = interrupts_.interrupt_visible_pending,
-                           .requestDelays = interrupts_.interrupt_set_delays,
-                           .visibilityDelays = interrupts_.interrupt_visible_delays,
-                           .masterEnable = interrupts_.interrupt_master_enable,
-                           .enablePending = interrupts_.interrupt_delay},
-            .timer = {.divider = timer_.divCounter,
-                      .tima = timer_.tima,
-                      .tma = timer_.tma,
-                      .tac = timer_.tac,
-                      .reloadDelay = timer_.overflowDelay,
-                      .apuEventDelay = timer_.apuEventDelay,
-                      .overflowPending = timer_.overflowPending,
-                      .reloadActive = timer_.reloadActive,
-                      .apuEventSecondary = timer_.apuEventSecondary},
-            .dma = {.source = dma_.startAddress,
-                    .destinationOffset = dma_.currentByte,
-                    .busLatch = bus_.dmaReadByte,
-                    .cpuPhase = dma_.dmaTickCounter,
-                    .cycles = dma_.ticks,
-                    .pendingSource = dma_.pendingStart,
-                    .restartCountdown = dma_.restartCountdown,
-                    .active = dma_.transferActive,
-                    .complete = dma_.transferComplete,
-                    .restartPending = dma_.restartPending,
-                    .hdma = gpu_.hdma},
-            .ppu = {.mode = gpu_.stat.mode,
-                    .ly = gpu_.currentLine,
-                    .dot = gpu_.scanlineCounter,
-                    .pixelsDrawn = gpu_.pixelsDrawn,
-                    .backgroundQueueSize = static_cast<uint8_t>(gpu_.backgroundQueue.size()),
-                    .spriteQueueSize = static_cast<uint8_t>(gpu_.spriteFetchQueue.size()),
-                    .fetcherState = gpu_.fetcherState_,
-                    .fetchAddress = gpu_.lastAddress_,
-                    .tile = gpu_.fetcherTileNum_,
-                    .tileRow = gpu_.fetcherTileRow_,
-                    .lowPlane = gpu_.fetcherTileDataLow_,
-                    .highPlane = gpu_.fetcherTileDataHigh_,
-                    .scrollDiscard = gpu_.initialScrollXDiscard_,
-                    .windowLine = gpu_.windowLineCounter_,
-                    .fetchingWindow = gpu_.isFetchingWindow_,
-                    .fetchingSprite = gpu_.spriteFetchActive_,
-                    .windowTriggered = gpu_.windowTriggeredThisFrame,
-                    .statRequestLine = gpu_.statTriggered},
-            .audio = audio_.Inspect()};
+        .tick = timelineTicks_,
+        .model = GetModel(),
+        .speed = bus_.speed,
+        .cgbMode = bus_.cgbMode,
+        .bootromRunning = bus_.bootromRunning,
+        .cpuPhase = static_cast<uint8_t>(cpuTickPhase_ & 3),
+        .cpu = cpu_.Inspect(),
+        .interrupts = {.enable = interrupts_.interrupt_enable,
+                       .storedFlags = interrupts_.interrupt_flag,
+                       .cpuVisibleFlags = static_cast<uint8_t>(interrupts_.interrupt_flag |
+                                                               interrupts_.interrupt_visible_pending | 0xE0),
+                       .delayedRequests = interrupts_.interrupt_flag_delayed,
+                       .visiblePending = interrupts_.interrupt_visible_pending,
+                       .requestDelays = interrupts_.interrupt_set_delays,
+                       .visibilityDelays = interrupts_.interrupt_visible_delays,
+                       .masterEnable = interrupts_.interrupt_master_enable,
+                       .enablePending = interrupts_.interrupt_delay},
+        .timer = {.divider = timer_.divCounter,
+                  .tima = timer_.tima,
+                  .tma = timer_.tma,
+                  .tac = timer_.tac,
+                  .reloadDelay = timer_.overflowDelay,
+                  .apuEventDelay = timer_.apuEventDelay,
+                  .overflowPending = timer_.overflowPending,
+                  .reloadActive = timer_.reloadActive,
+                  .apuEventSecondary = timer_.apuEventSecondary},
+        .dma = {.source = dma_.startAddress,
+                .destinationOffset = dma_.currentByte,
+                .busLatch = bus_.dmaReadByte,
+                .cpuPhase = dma_.dmaTickCounter,
+                .cycles = dma_.ticks,
+                .pendingSource = dma_.pendingStart,
+                .restartCountdown = dma_.restartCountdown,
+                .active = dma_.transferActive,
+                .complete = dma_.transferComplete,
+                .restartPending = dma_.restartPending,
+                .hdma = gpu_.hdma},
+        .ppu = {.mode = gpu_.stat.mode,
+                .ly = gpu_.currentLine,
+                .dot = gpu_.scanlineCounter,
+                .pixelsDrawn = gpu_.pixelsDrawn,
+                .backgroundQueueSize = static_cast<uint8_t>(gpu_.backgroundQueue.size()),
+                .spriteQueueSize = static_cast<uint8_t>(gpu_.spriteFetchQueue.size()),
+                .fetcherState = gpu_.fetcherState_,
+                .fetchAddress = gpu_.lastAddress_,
+                .tile = gpu_.fetcherTileNum_,
+                .tileRow = gpu_.fetcherTileRow_,
+                .lowPlane = gpu_.fetcherTileDataLow_,
+                .highPlane = gpu_.fetcherTileDataHigh_,
+                .scrollDiscard = gpu_.initialScrollXDiscard_,
+                .windowLine = gpu_.windowLineCounter_,
+                .fetchingWindow = gpu_.isFetchingWindow_,
+                .fetchingSprite = gpu_.spriteFetchActive_,
+                .windowTriggered = gpu_.windowTriggeredThisFrame,
+                .statRequestLine = gpu_.statTriggered},
+        .audio = audio_.Inspect()};
     constexpr std::array<uint16_t, 9> addresses{0xFF40, 0xFF41, 0xFF42, 0xFF43, 0xFF44, 0xFF47, 0xFF48, 0xFF49, 0xFF4B};
     for (size_t i = 0; i < addresses.size(); ++i)
         result.ppu.registers[i] = InspectRegister(addresses[i]);

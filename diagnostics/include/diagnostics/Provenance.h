@@ -13,7 +13,7 @@ namespace diagnostics {
         Range<uint64_t> frames;
         Range<uint64_t> ticks;
 
-        [[nodiscard]] bool Contains(const ExecutionPosition &position, uint16_t px, uint16_t py) const noexcept;
+        [[nodiscard]] bool Contains(const ExecutionPosition& position, uint16_t px, uint16_t py) const noexcept;
     };
 
     struct ProvenanceMetadata {
@@ -41,20 +41,22 @@ namespace diagnostics {
         std::string build_;
         std::string romHash_;
 
-        void Output(const PixelExplanation &pixel) noexcept;
+        void Output(const PixelExplanation& pixel) noexcept;
 
-        void Pipeline(const PixelPipelineEvent &event) noexcept;
+        void Pipeline(const PixelPipelineEvent& event) noexcept;
 
-        void Recolor(const PixelRecolor &event) noexcept;
+        void Recolor(const PixelRecolor& event) noexcept;
 
-    public:
+       public:
         explicit ProvenanceRecorder(PixelRegion region = {}, size_t pixelCapacity = 160, size_t eventCapacity = 4096);
 
-        ProvenanceRecorder(const ProvenanceRecorder &) = delete;
+        ProvenanceRecorder(const ProvenanceRecorder&) = delete;
 
-        ProvenanceRecorder &operator=(const ProvenanceRecorder &) = delete;
+        ProvenanceRecorder& operator=(const ProvenanceRecorder&) = delete;
 
-        [[nodiscard]] PixelProvenanceContext &Context() { return context_; }
+        [[nodiscard]] PixelProvenanceContext& Context() {
+            return context_;
+        }
 
         void Identify(std::string build, std::string romHash);
 
@@ -69,6 +71,6 @@ namespace diagnostics {
         [[nodiscard]] std::optional<PixelExplanation> Query(uint16_t x, uint16_t y, std::optional<uint64_t> frame = {},
                                                             std::optional<uint64_t> branch = {}) const;
 
-        void WriteJson(const std::filesystem::path &path) const;
+        void WriteJson(const std::filesystem::path& path) const;
     };
 } // namespace diagnostics

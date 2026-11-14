@@ -9,24 +9,29 @@ namespace {
     constexpr size_t kMaxSourceBytes = 1024 * 1024;
     constexpr int kHookInterval = 1000;
 
-    std::string ErrorMessage(lua_State *state, const char *fallback) {
+    std::string ErrorMessage(lua_State* state, const char* fallback) {
         if (lua_type(state, -1) != LUA_TSTRING)
             return fallback;
         size_t length;
-        const char *message = lua_tolstring(state, -1, &length);
+        const char* message = lua_tolstring(state, -1, &length);
         return {message, std::min(length, size_t{4096})};
     }
 } // namespace
 
-LuaRuntime::Impl::Impl(EmulationSession &host, const LuaLimits configuration, Logger output) :
-    session(host), limits(configuration), logger(std::move(output)) {
-    if (!limits.instructionsPerFrame || limits.instructionsPerFrame > std::numeric_limits<uint64_t>::max() / 10 || !limits.memoryBytes)
+LuaRuntime::Impl::Impl(EmulationSession& host, const LuaLimits configuration, Logger output)
+    : session(host), limits(configuration), logger(std::move(output)) {
+    if (!limits.instructionsPerFrame || limits.instructionsPerFrame > std::numeric_limits<uint64_t>::max() / 10 ||
+        !limits.memoryBytes)
         throw std::invalid_argument("Lua limits must be positive and instruction budget must not overflow");
     if (!logger)
-        logger = [](std::string_view message) { std::cerr << message << '\n'; };
+        logger = [](std::string_view message) {
+            std::cerr << message << '\n';
+        };
 }
 
-LuaRuntime::Impl::~Impl() { Close(); }
+LuaRuntime::Impl::~Impl() {
+    Close();
+}
 
 void LuaRuntime::Impl::Deactivate() {
     active = false;
@@ -67,10 +72,12 @@ void LuaRuntime::Impl::Log(const std::string_view message) {
     logger("[Lua " + name + "] " + std::string(message.substr(0, size)));
 }
 
-LuaRuntime::Impl &LuaRuntime::Impl::Self(lua_State *state) { return **static_cast<Impl **>(lua_getextraspace(state)); }
+LuaRuntime::Impl& LuaRuntime::Impl::Self(lua_State* state) {
+    return **static_cast<Impl**>(lua_getextraspace(state));
+}
 
-void *LuaRuntime::Impl::Allocate(void *context, void *pointer, const size_t oldSize, const size_t newSize) {
-    auto &self = *static_cast<Impl *>(context);
+void* LuaRuntime::Impl::Allocate(void* context, void* pointer, const size_t oldSize, const size_t newSize) {
+    auto& self = *static_cast<Impl*>(context);
     const size_t previous = pointer ? oldSize : 0;
     if (!newSize) {
         std::free(pointer);
@@ -81,7 +88,7 @@ void *LuaRuntime::Impl::Allocate(void *context, void *pointer, const size_t oldS
         self.memoryFault = true;
         return nullptr;
     }
-    void *result = std::realloc(pointer, newSize);
+    void* result = std::realloc(pointer, newSize);
     if (!result) {
         self.memoryFault = true;
         return nullptr;
@@ -91,8 +98,8 @@ void *LuaRuntime::Impl::Allocate(void *context, void *pointer, const size_t oldS
     return result;
 }
 
-void LuaRuntime::Impl::Hook(lua_State *state, lua_Debug *) {
-    auto &self = Self(state);
+void LuaRuntime::Impl::Hook(lua_State* state, lua_Debug*) {
+    auto& self = Self(state);
     if (self.memoryFault)
         luaL_error(state, "Lua memory limit exceeded");
     if (self.instructionFault || self.remaining <= kHookInterval) {
@@ -102,8 +109,8 @@ void LuaRuntime::Impl::Hook(lua_State *state, lua_Debug *) {
     self.remaining -= kHookInterval;
 }
 
-int LuaRuntime::Impl::Traceback(lua_State *state) {
-    const char *message = lua_tostring(state, 1);
+int LuaRuntime::Impl::Traceback(lua_State* state) {
+    const char* message = lua_tostring(state, 1);
     luaL_traceback(state, state, message ? message : "non-string Lua error", 1);
     return 1;
 }
@@ -123,7 +130,7 @@ bool LuaRuntime::Impl::Load(const std::string_view source, const std::string_vie
         Fail("cannot allocate Lua environment within the memory limit");
         return false;
     }
-    *static_cast<Impl **>(lua_getextraspace(lua)) = this;
+    *static_cast<Impl**>(lua_getextraspace(lua)) = this;
     lua_sethook(lua, Hook, LUA_MASKCOUNT, kHookInterval);
     phase = Phase::Loading;
     lua_pushcfunction(lua, Initialize);
@@ -136,7 +143,9 @@ bool LuaRuntime::Impl::Load(const std::string_view source, const std::string_vie
     }
     phase = Phase::Idle;
     if (status != LUA_OK || memoryFault || instructionFault) {
-        Fail(memoryFault ? "Lua memory limit exceeded" : instructionFault ? "Lua instruction budget exceeded" : ErrorMessage(lua, "Lua load failed"));
+        Fail(memoryFault        ? "Lua memory limit exceeded"
+             : instructionFault ? "Lua instruction budget exceeded"
+                                : ErrorMessage(lua, "Lua load failed"));
         Close();
         return false;
     }
@@ -154,7 +163,9 @@ void LuaRuntime::Impl::Dispatch(const SessionEvent event, const uint64_t frame) 
     const int ref = handlers[static_cast<size_t>(event)];
     if (ref == LUA_NOREF)
         return;
-    phase = event == SessionEvent::BeforeFrame ? Phase::BeforeFrame : event == SessionEvent::AfterFrame ? Phase::AfterFrame : Phase::StateLoaded;
+    phase = event == SessionEvent::BeforeFrame  ? Phase::BeforeFrame
+            : event == SessionEvent::AfterFrame ? Phase::AfterFrame
+                                                : Phase::StateLoaded;
     lua_pushcfunction(lua, Traceback);
     lua_rawgeti(lua, LUA_REGISTRYINDEX, ref);
     const int arguments = event == SessionEvent::StateLoaded ? 0 : 1;
@@ -172,14 +183,16 @@ void LuaRuntime::Impl::Dispatch(const SessionEvent event, const uint64_t frame) 
         Close();
 }
 
-LuaRuntime::LuaRuntime(EmulationSession &session, const LuaLimits limits, Logger logger) :
-    impl_(std::make_unique<Impl>(session, limits, std::move(logger))) {}
+LuaRuntime::LuaRuntime(EmulationSession& session, const LuaLimits limits, Logger logger)
+    : impl_(std::make_unique<Impl>(session, limits, std::move(logger))) {}
 
 LuaRuntime::~LuaRuntime() = default;
 
-bool LuaRuntime::LoadString(const std::string_view source, const std::string_view name) const { return impl_->Load(source, name); }
+bool LuaRuntime::LoadString(const std::string_view source, const std::string_view name) const {
+    return impl_->Load(source, name);
+}
 
-bool LuaRuntime::LoadFile(const std::string &path) const {
+bool LuaRuntime::LoadFile(const std::string& path) const {
     std::ifstream stream(path, std::ios::binary | std::ios::ate);
     if (!stream || stream.tellg() < 0 || stream.tellg() > static_cast<std::streamoff>(kMaxSourceBytes)) {
         impl_->Close();
@@ -198,12 +211,22 @@ bool LuaRuntime::LoadFile(const std::string &path) const {
     return impl_->Load(source, "@" + path);
 }
 
-void LuaRuntime::Stop() const { impl_->Close(); }
+void LuaRuntime::Stop() const {
+    impl_->Close();
+}
 
-bool LuaRuntime::Active() const { return impl_->active; }
+bool LuaRuntime::Active() const {
+    return impl_->active;
+}
 
-const std::string &LuaRuntime::LastError() const { return impl_->error; }
+const std::string& LuaRuntime::LastError() const {
+    return impl_->error;
+}
 
-size_t LuaRuntime::MemoryUsed() const { return impl_->used; }
+size_t LuaRuntime::MemoryUsed() const {
+    return impl_->used;
+}
 
-size_t LuaRuntime::PeakMemoryUsed() const { return impl_->peak; }
+size_t LuaRuntime::PeakMemoryUsed() const {
+    return impl_->peak;
+}

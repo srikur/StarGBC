@@ -69,5 +69,5 @@ namespace diagnostics {
         uint64_t events{};
     };
 
-    [[nodiscard]] ExperimentResult RunExperiment(Scenario scenario, const std::filesystem::path &directory);
+    [[nodiscard]] ExperimentResult RunExperiment(Scenario scenario, const std::filesystem::path& directory);
 } // namespace diagnostics

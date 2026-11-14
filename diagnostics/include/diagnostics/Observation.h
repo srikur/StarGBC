@@ -52,7 +52,15 @@ namespace diagnostics {
         FramebufferClear
     };
 
-    enum class FetchStage : uint8_t { Map, Attributes, BackgroundLow, BackgroundHigh, SpriteOam, SpriteLow, SpriteHigh };
+    enum class FetchStage : uint8_t {
+        Map,
+        Attributes,
+        BackgroundLow,
+        BackgroundHigh,
+        SpriteOam,
+        SpriteLow,
+        SpriteHigh
+    };
 
     enum class StallReason : uint8_t { FifoStarvation, SpriteFetch, SpriteAlignment, WindowFetch };
 
@@ -79,17 +87,17 @@ namespace diagnostics {
     };
 
     struct ObservationContext {
-        using Callback = void (*)(void *, const Event &) noexcept;
-        void *owner{};
+        using Callback = void (*)(void*, const Event&) noexcept;
+        void* owner{};
         Callback callback{};
         ExecutionPosition position;
         uint16_t pc{};
         uint16_t pcBank{};
         uint64_t sequence{};
         uint64_t branch{};
-        void *conditionOwner{};
+        void* conditionOwner{};
 
-        bool (*condition)(void *, const Event &) noexcept {};
+        bool (*condition)(void*, const Event&) noexcept {};
 
         std::optional<Event> stopEvent;
 
@@ -101,8 +109,9 @@ namespace diagnostics {
                 stopEvent = event;
         }
 
-        void Emit(const Component component, const EventKind kind, const uint16_t address = 0, const uint32_t value = 0, const uint32_t detail = 0,
-                  const Initiator initiator = Initiator::Peripheral, const bool blocked = false, const uint16_t bank = 0) noexcept {
+        void Emit(const Component component, const EventKind kind, const uint16_t address = 0, const uint32_t value = 0,
+                  const uint32_t detail = 0, const Initiator initiator = Initiator::Peripheral,
+                  const bool blocked = false, const uint16_t bank = 0) noexcept {
             if (callback || condition)
                 Dispatch({.position = position,
                           .branch = branch,
@@ -121,18 +130,20 @@ namespace diagnostics {
         void EmitDeferred(const uint64_t tick, const Component component, const EventKind kind, const uint32_t value,
                           const uint32_t detail = 0) noexcept {
             if (callback || condition)
-                Dispatch({.position = {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
-                          .branch = branch,
-                          .pc = UINT16_MAX,
-                          .pcBank = UINT16_MAX,
-                          .component = component,
-                          .kind = kind,
-                          .initiator = Initiator::Peripheral,
-                          .value = value,
-                          .detail = detail});
+                Dispatch(
+                    {.position =
+                         {.tick = tick, .frame = UINT64_MAX, .dot = UINT16_MAX, .ly = UINT8_MAX, .cpuPhase = UINT8_MAX},
+                     .branch = branch,
+                     .pc = UINT16_MAX,
+                     .pcBank = UINT16_MAX,
+                     .component = component,
+                     .kind = kind,
+                     .initiator = Initiator::Peripheral,
+                     .value = value,
+                     .detail = detail});
         }
 
-        void Restore(const ExecutionPosition &restored) noexcept {
+        void Restore(const ExecutionPosition& restored) noexcept {
             stopEvent.reset();
             const auto parent = branch++;
             const auto previousTick = position.tick;

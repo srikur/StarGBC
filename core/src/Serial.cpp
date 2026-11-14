@@ -29,7 +29,9 @@ void Serial::write_serial(const uint16_t address, const uint8_t value, const boo
     }
 }
 
-void Serial::shift_one_bit() { data = static_cast<uint8_t>(data << 1 | 0x01); }
+void Serial::shift_one_bit() {
+    data = static_cast<uint8_t>(data << 1 | 0x01);
+}
 
 void Serial::clock_edge() {
     clock_high = !clock_high;

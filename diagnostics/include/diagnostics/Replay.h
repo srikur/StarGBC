@@ -3,8 +3,8 @@
 
 #include <filesystem>
 #include "Checkpoint.h"
-#include "stargbc/Gameboy.h"
 #include "ReplayInput.h"
+#include "stargbc/Gameboy.h"
 
 namespace diagnostics {
     struct InputLog {
@@ -16,34 +16,35 @@ namespace diagnostics {
     };
 
     class InputRecorder {
-        Gameboy &machine_;
+        Gameboy& machine_;
         InputLog log_;
         InputSink sink_;
         size_t capacity_{};
         bool overflow_{};
 
-    public:
-        InputRecorder(Gameboy &machine, InputFingerprint initial, size_t capacity = 65536, std::optional<host::LaunchSettings> settings = {});
+       public:
+        InputRecorder(Gameboy& machine, InputFingerprint initial, size_t capacity = 65536,
+                      std::optional<host::LaunchSettings> settings = {});
 
         ~InputRecorder();
 
-        InputRecorder(const InputRecorder &) = delete;
+        InputRecorder(const InputRecorder&) = delete;
 
-        InputRecorder &operator=(const InputRecorder &) = delete;
+        InputRecorder& operator=(const InputRecorder&) = delete;
 
-        [[nodiscard]] const InputLog &Log() const;
+        [[nodiscard]] const InputLog& Log() const;
     };
 
-    [[nodiscard]] InputFingerprint IdentifyInitialInputs(const Gameboy &machine, const host::LaunchSettings &settings);
+    [[nodiscard]] InputFingerprint IdentifyInitialInputs(const Gameboy& machine, const host::LaunchSettings& settings);
 
-    void WriteInputLog(const std::filesystem::path &path, const InputLog &log);
+    void WriteInputLog(const std::filesystem::path& path, const InputLog& log);
 
-    [[nodiscard]] InputLog ReadInputLog(const std::filesystem::path &path);
+    [[nodiscard]] InputLog ReadInputLog(const std::filesystem::path& path);
 
-    [[nodiscard]] std::string InputLogHash(const InputLog &log);
+    [[nodiscard]] std::string InputLogHash(const InputLog& log);
 
     class ReplayPlayer {
-        Gameboy &machine_;
+        Gameboy& machine_;
         InputLog log_;
         size_t cursor_{};
 
@@ -51,10 +52,12 @@ namespace diagnostics {
 
         [[nodiscard]] uint64_t NextTick(uint64_t deadline) const;
 
-    public:
-        ReplayPlayer(Gameboy &machine, InputLog log, const InputFingerprint &initial);
+       public:
+        ReplayPlayer(Gameboy& machine, InputLog log, const InputFingerprint& initial);
 
-        [[nodiscard]] size_t Cursor() const { return cursor_; }
+        [[nodiscard]] size_t Cursor() const {
+            return cursor_;
+        }
 
         [[nodiscard]] ExecutionResult AdvanceTicks(uint64_t ticks, ExecutionPolicy policy = ExecutionPolicy::Ordinary);
 
@@ -62,8 +65,8 @@ namespace diagnostics {
 
         [[nodiscard]] ConditionalExecutionResult RunUntil(std::span<const RunCondition> conditions, uint64_t maxTicks);
 
-        void SaveCheckpoint(const std::filesystem::path &path, CheckpointIdentity identity) const;
+        void SaveCheckpoint(const std::filesystem::path& path, CheckpointIdentity identity) const;
 
-        void RestoreCheckpoint(const std::filesystem::path &path, CheckpointIdentity compatible);
+        void RestoreCheckpoint(const std::filesystem::path& path, CheckpointIdentity compatible);
     };
 } // namespace diagnostics

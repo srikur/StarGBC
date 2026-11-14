@@ -9,7 +9,7 @@ namespace {
             sizes[opcode] = disassemble(0, {static_cast<uint8_t>(opcode), 0, 0}).size;
         return sizes;
     }()};
-}
+} // namespace
 
 std::string_view CodeListing::source_label(const CodeSource source) {
     switch (source) {
@@ -42,8 +42,9 @@ uint32_t CodeListing::segment_end(const uint32_t offset) const {
     if (source_ == CodeSource::Bios && offset < BOOT_ROM_LOW_END)
         end = std::min<uint32_t>(end, BOOT_ROM_LOW_END);
     if (source_ == CodeSource::Mapped) {
-        constexpr std::array boundaries{uint32_t{BOOT_ROM_LOW_END}, uint32_t{BOOT_ROM_HIGH_BEGIN}, uint32_t{ROM_BANK_SIZE},  uint32_t{VRAM_BEGIN},
-                                        uint32_t{WRAM_BEGIN},       uint32_t{OAM_BEGIN},           uint32_t{HIGH_RAM_BEGIN}, 0x10000u};
+        constexpr std::array boundaries{
+            uint32_t{BOOT_ROM_LOW_END}, uint32_t{BOOT_ROM_HIGH_BEGIN}, uint32_t{ROM_BANK_SIZE},  uint32_t{VRAM_BEGIN},
+            uint32_t{WRAM_BEGIN},       uint32_t{OAM_BEGIN},           uint32_t{HIGH_RAM_BEGIN}, 0x10000u};
         for (const auto boundary : boundaries)
             if (offset < boundary)
                 end = std::min(end, boundary);
@@ -54,7 +55,7 @@ uint32_t CodeListing::segment_end(const uint32_t offset) const {
     return end;
 }
 
-const std::vector<uint32_t> &CodeListing::offsets() const {
+const std::vector<uint32_t>& CodeListing::offsets() const {
     switch (source_) {
         case CodeSource::Cartridge:
             return rom_offsets_;
@@ -66,7 +67,7 @@ const std::vector<uint32_t> &CodeListing::offsets() const {
     return mapped_offsets_;
 }
 
-void CodeListing::index(std::vector<uint32_t> &output) {
+void CodeListing::index(std::vector<uint32_t>& output) {
     output.clear();
     const auto data{bytes()};
     for (auto offset{0u}; offset < data.size();) {
@@ -92,9 +93,10 @@ void CodeListing::update(const CodeSource source, const std::optional<uint32_t> 
         index(bios_offsets_);
     anchored_offsets_.clear();
     anchor_begin_ = anchor_end_ = 0;
-    if (!anchor || *anchor >= bytes().size() || (source == CodeSource::Bios && *anchor >= BOOT_ROM_LOW_END && *anchor < BOOT_ROM_HIGH_BEGIN))
+    if (!anchor || *anchor >= bytes().size() ||
+        (source == CodeSource::Bios && *anchor >= BOOT_ROM_LOW_END && *anchor < BOOT_ROM_HIGH_BEGIN))
         return;
-    const auto &rows{offsets()};
+    const auto& rows{offsets()};
     anchor_begin_ = anchor_end_ = std::ranges::lower_bound(rows, *anchor) - rows.begin();
     auto offset{*anchor};
     while (offset < bytes().size() && (anchor_end_ == rows.size() || rows[anchor_end_] != offset)) {
@@ -108,14 +110,18 @@ void CodeListing::update(const CodeSource source, const std::optional<uint32_t> 
     }
 }
 
-size_t CodeListing::size() const { return offsets().size() - (anchor_end_ - anchor_begin_) + anchored_offsets_.size(); }
+size_t CodeListing::size() const {
+    return offsets().size() - (anchor_end_ - anchor_begin_) + anchored_offsets_.size();
+}
 
 size_t CodeListing::find_row(const uint32_t offset) const {
     if (!size())
         return 0;
-    const auto &rows{offsets()};
-    if (!anchored_offsets_.empty() && offset >= anchored_offsets_.front() && (anchor_end_ == rows.size() || offset < rows[anchor_end_]))
-        return std::min(anchor_begin_ + static_cast<size_t>(std::ranges::lower_bound(anchored_offsets_, offset) - anchored_offsets_.begin()),
+    const auto& rows{offsets()};
+    if (!anchored_offsets_.empty() && offset >= anchored_offsets_.front() &&
+        (anchor_end_ == rows.size() || offset < rows[anchor_end_]))
+        return std::min(anchor_begin_ + static_cast<size_t>(std::ranges::lower_bound(anchored_offsets_, offset) -
+                                                            anchored_offsets_.begin()),
                         size() - 1);
     auto row{static_cast<size_t>(std::ranges::lower_bound(rows, offset) - rows.begin())};
     if (row >= anchor_end_)
@@ -126,9 +132,10 @@ size_t CodeListing::find_row(const uint32_t offset) const {
 CodeEntry CodeListing::entry(const size_t row) const {
     if (row >= size())
         throw std::out_of_range("disassembly row outside ROM");
-    const auto offset{row < anchor_begin_                              ? offsets()[row]
-                      : row < anchor_begin_ + anchored_offsets_.size() ? anchored_offsets_[row - anchor_begin_]
-                                                                       : offsets()[row - anchored_offsets_.size() + (anchor_end_ - anchor_begin_)]};
+    const auto offset{row < anchor_begin_ ? offsets()[row]
+                      : row < anchor_begin_ + anchored_offsets_.size()
+                          ? anchored_offsets_[row - anchor_begin_]
+                          : offsets()[row - anchored_offsets_.size() + (anchor_end_ - anchor_begin_)]};
     auto origin{source_};
     auto address{static_cast<uint16_t>(offset)};
     auto bank{BOOT_ROM_BANK};
@@ -168,7 +175,7 @@ uint32_t CodeListing::execution_offset() const {
     return machine_.debug_instruction_address();
 }
 
-bool CodeListing::is_current(const CodeEntry &entry) const {
+bool CodeListing::is_current(const CodeEntry& entry) const {
     return entry.source == execution_source() && entry.bank == machine_.debug_instruction_bank() &&
            entry.instruction.address == machine_.debug_instruction_address();
 }

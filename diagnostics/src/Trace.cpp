@@ -7,21 +7,25 @@
 #include "diagnostics/Json.h"
 
 namespace diagnostics {
-    bool EventFilter::Matches(const Event &event) const noexcept {
+    bool EventFilter::Matches(const Event& event) const noexcept {
         return (components & (uint64_t{1} << static_cast<unsigned>(event.component))) &&
                (kinds & (uint64_t{1} << static_cast<unsigned>(event.kind))) && ticks.Contains(event.position.tick) &&
-               (!addresses || addresses->Contains(event.address)) && (!pcs || pcs->Contains(event.pc)) && (!pcBank || *pcBank == event.pcBank) &&
-               (!lines || lines->Contains(event.position.ly)) && (!dots || dots->Contains(event.position.dot));
+               (!addresses || addresses->Contains(event.address)) && (!pcs || pcs->Contains(event.pc)) &&
+               (!pcBank || *pcBank == event.pcBank) && (!lines || lines->Contains(event.position.ly)) &&
+               (!dots || dots->Contains(event.position.dot));
     }
 
-    TraceRecorder::TraceRecorder(const size_t capacity, EventFilter filter) : events_(capacity), filter_(std::move(filter)) {
+    TraceRecorder::TraceRecorder(const size_t capacity, EventFilter filter)
+        : events_(capacity), filter_(std::move(filter)) {
         if (!capacity)
             throw std::invalid_argument("Trace capacity must be positive");
         context_.owner = this;
-        context_.callback = [](void *owner, const Event &event) noexcept { static_cast<TraceRecorder *>(owner)->Record(event); };
+        context_.callback = [](void* owner, const Event& event) noexcept {
+            static_cast<TraceRecorder*>(owner)->Record(event);
+        };
     }
 
-    void TraceRecorder::Record(const Event &event) noexcept {
+    void TraceRecorder::Record(const Event& event) noexcept {
         ++observed_;
         if (!enabled_ || captureComplete_)
             return;
@@ -39,7 +43,7 @@ namespace diagnostics {
             captureComplete_ = true;
     }
 
-    void TraceRecorder::Append(const Event &event, const size_t limit) noexcept {
+    void TraceRecorder::Append(const Event& event, const size_t limit) noexcept {
         if (!limit) {
             ++overwritten_;
             return;
@@ -56,7 +60,8 @@ namespace diagnostics {
     void TraceRecorder::Arm(CaptureTrigger trigger) {
         if (observed_)
             throw std::logic_error("Arm a trigger before recording");
-        if (trigger.historyEvents >= events_.size() || trigger.followingEvents > events_.size() - trigger.historyEvents - 1)
+        if (trigger.historyEvents >= events_.size() ||
+            trigger.followingEvents > events_.size() - trigger.historyEvents - 1)
             throw std::invalid_argument("Trace capacity must hold history, trigger and following events");
         trigger_ = std::move(trigger);
     }
@@ -97,19 +102,19 @@ namespace diagnostics {
         return result;
     }
 
-    void TraceRecorder::WriteJsonLines(const std::filesystem::path &path) const {
+    void TraceRecorder::WriteJsonLines(const std::filesystem::path& path) const {
         std::ofstream output;
         output.exceptions(std::ios::failbit | std::ios::badbit);
         output.open(path);
         WriteJson(output, Metadata());
         output << '\n';
-        for (const auto &event : Events()) {
+        for (const auto& event : Events()) {
             WriteJson(output, event);
             output << '\n';
         }
     }
 
-    void TraceRecorder::WriteBinary(const std::filesystem::path &path) const {
+    void TraceRecorder::WriteBinary(const std::filesystem::path& path) const {
         std::ofstream output;
         output.exceptions(std::ios::failbit | std::ios::badbit);
         output.open(path, std::ios::binary);
@@ -128,7 +133,7 @@ namespace diagnostics {
         write(metadata.size(), 4);
         write(events.size(), 8);
         output << metadata;
-        for (const auto &event : events) {
+        for (const auto& event : events) {
             write(event.position.tick, 8);
             write(event.position.frame, 8);
             write(event.position.dot, 2);

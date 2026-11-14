@@ -1,10 +1,10 @@
-#include "GameboyFiles.h"
 #include "Serial.h"
 #include <doctest/doctest.h>
 #include "Audio.h"
-#include "stargbc/Gameboy.h"
+#include "GameboyFiles.h"
 #include "TestUtilities.h"
 #include "Timer.h"
+#include "stargbc/Gameboy.h"
 
 TEST_CASE("Internal serial clocks use divider edges at both serial rates") {
     for (const bool fast : {false, true}) {
@@ -66,8 +66,9 @@ TEST_CASE("Clearing serial start or selecting an external clock cancels internal
 TEST_CASE("Serial clock phase survives restoring a state during a transfer") {
     for (const bool fast : {false, true}) {
         CAPTURE(fast);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
         gameboy.[:get_member<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(0xFF04, 0, ComponentSource::CPU);
         bus.WriteByte(SERIAL_TRANSFER_DATA, 0, ComponentSource::CPU);

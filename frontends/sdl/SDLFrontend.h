@@ -17,26 +17,26 @@
 #endif
 
 class SDLFrontend {
-public:
+   public:
     SDLFrontend() = default;
 
     ~SDLFrontend();
 
-    SDLFrontend(const SDLFrontend &) = delete;
+    SDLFrontend(const SDLFrontend&) = delete;
 
-    SDLFrontend(SDLFrontend &&) = delete;
+    SDLFrontend(SDLFrontend&&) = delete;
 
-    SDLFrontend &operator=(const SDLFrontend &) = delete;
+    SDLFrontend& operator=(const SDLFrontend&) = delete;
 
-    SDLFrontend &operator=(SDLFrontend &&) = delete;
+    SDLFrontend& operator=(SDLFrontend&&) = delete;
 
-    [[nodiscard]] SDL_AppResult Init(int argc, char *argv[]);
+    [[nodiscard]] SDL_AppResult Init(int argc, char* argv[]);
 
-    [[nodiscard]] SDL_AppResult HandleEvent(const SDL_Event &event);
+    [[nodiscard]] SDL_AppResult HandleEvent(const SDL_Event& event);
 
     [[nodiscard]] SDL_AppResult Iterate();
 
-private:
+   private:
     static constexpr int GB_SCREEN_W = 160;
     static constexpr int GB_SCREEN_H = 144;
     static constexpr int MAX_AUDIO_QUEUE_BYTES = AUDIO_SAMPLE_RATE * 2 * sizeof(float) / 15;
@@ -44,9 +44,9 @@ private:
 
     void UpdateWindowTitle();
 
-    SDL_AppResult HandleKeyDown(const SDL_KeyboardEvent &key);
+    SDL_AppResult HandleKeyDown(const SDL_KeyboardEvent& key);
 
-    void HandleKeyUp(const SDL_KeyboardEvent &key);
+    void HandleKeyUp(const SDL_KeyboardEvent& key);
 
     void PresentFrame() const;
 
@@ -64,10 +64,10 @@ private:
 
     void toggle_debugger();
 
-    SDL_Window *window_{nullptr};
-    SDL_Renderer *renderer_{nullptr};
-    SDL_Texture *texture_{nullptr};
-    SDL_AudioStream *audioStream_{nullptr};
+    SDL_Window* window_{nullptr};
+    SDL_Renderer* renderer_{nullptr};
+    SDL_Texture* texture_{nullptr};
+    SDL_AudioStream* audioStream_{nullptr};
     std::unique_ptr<Gameboy> gameboy_;
     std::unique_ptr<EmulationSession> session_;
 #ifdef STARGBC_ENABLE_DEBUGGER

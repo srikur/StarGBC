@@ -20,32 +20,31 @@ struct MicrotestDiagnostic {
 
 static constexpr MicrotestDiagnostic microtestDiagnostics[] = {
 
-
 #include "MicrotestCases.inc"
 };
 
 class MicrotestDiagnosticCheck {
-    const MicrotestDiagnostic &test_;
+    const MicrotestDiagnostic& test_;
     std::vector<uint32_t> screen_;
     std::array<uint8_t, 0x2000> vram_{};
 
-public:
-    explicit MicrotestDiagnosticCheck(const MicrotestDiagnostic &test, const std::string &path) : test_(test) {
+   public:
+    explicit MicrotestDiagnosticCheck(const MicrotestDiagnostic& test, const std::string& path) : test_(test) {
         if (test.output == MicrotestOutput::Screen)
             screen_ = readBinaryFile(path);
         if (test.output == MicrotestOutput::Vram) {
             std::ifstream file(path, std::ios::binary);
-            if (!file.read(reinterpret_cast<char *>(vram_.data()), vram_.size())) {
+            if (!file.read(reinterpret_cast<char*>(vram_.data()), vram_.size())) {
                 throw std::runtime_error("Could not read complete VRAM reference: " + path);
             }
         }
     }
 
-    bool passed(Gameboy &gameboy, std::ostream &details) const {
-        auto &bus = gameboy.[:testGameboyMember("bus_"):];
-        const auto &gpu = gameboy.[:testGameboyMember("gpu_"):];
-        auto &cpu = gameboy.[:testGameboyMember("cpu_"):];
-        const auto &regs = gameboy.[:testGameboyMember("registers_"):];
+    bool passed(Gameboy& gameboy, std::ostream& details) const {
+        auto& bus = gameboy.[:testGameboyMember("bus_"):];
+        const auto& gpu = gameboy.[:testGameboyMember("gpu_"):];
+        auto& cpu = gameboy.[:testGameboyMember("cpu_"):];
+        const auto& regs = gameboy.[:testGameboyMember("registers_"):];
         details << std::hex << " PC=" << cpu.pc();
         if (bus.bootromRunning)
             return false;
@@ -62,11 +61,13 @@ public:
                 return std::ranges::equal(std::span(gameboy.GetScreenData(), screen_.size()), screen_);
             case MicrotestOutput::Dma:
                 details << " OAM copy from 8000-809F";
-                return cpu.pc() >= 0xFF82 && cpu.pc() <= 0xFF84 && !gpu.oam_dma_active && gpu.vram[0] == 0xFF && gpu.vram[0x9F] == 0xFF &&
+                return cpu.pc() >= 0xFF82 && cpu.pc() <= 0xFF84 && !gpu.oam_dma_active && gpu.vram[0] == 0xFF &&
+                       gpu.vram[0x9F] == 0xFF &&
                        std::ranges::equal(gpu.oam, std::span(gpu.vram.data(), gpu.oam.size()));
             case MicrotestOutput::Vram:
                 details << " BC=" << regs.GetBC() << " HL=" << regs.GetHL() << " VRAM contents";
-                return regs.GetBC() == 0x2000 && regs.GetHL() == 0xA000 && std::ranges::equal(vram_, std::span(gpu.vram.data(), vram_.size()));
+                return regs.GetBC() == 0x2000 && regs.GetHL() == 0xA000 &&
+                       std::ranges::equal(vram_, std::span(gpu.vram.data(), vram_.size()));
             case MicrotestOutput::Audio: {
                 constexpr std::array<uint8_t, 6> expected{0xF0, 0x5F, 0x77, 0xFF, 0xF9, 0xBF};
                 constexpr std::array<uint16_t, 6> addresses{0xFF21, 0xFF22, 0xFF24, 0xFF25, 0xFF26, 0xFF23};
@@ -80,7 +81,8 @@ public:
             }
             case MicrotestOutput::LcdOff:
                 details << " LCDC=" << +gpu.lcdc << " LY=" << +gpu.currentLine << " dot=" << gpu.scanlineCounter;
-                return cpu.pc() >= 0x01A0 && cpu.pc() <= 0x01A2 && gpu.LCDDisabled() && gpu.currentLine == 0 && gpu.scanlineCounter == 0;
+                return cpu.pc() >= 0x01A0 && cpu.pc() <= 0x01A2 && gpu.LCDDisabled() && gpu.currentLine == 0 &&
+                       gpu.scanlineCounter == 0;
             case MicrotestOutput::Lockup:
                 // temp has one NOP and no terminator. Execution falls through
                 // the ROM into the boot logo tile data at 8014 (an illegal opcode).

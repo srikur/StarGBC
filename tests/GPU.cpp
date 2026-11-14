@@ -1,13 +1,13 @@
 #include "GPU.h"
+#include <doctest/doctest.h>
 #include <algorithm>
 #include <array>
-#include <doctest/doctest.h>
 #include <iterator>
 #include <string_view>
 #include "diagnostics/Provenance.h"
 
 namespace {
-    void prime_dmg_oam_scan(GPU &gpu) {
+    void prime_dmg_oam_scan(GPU& gpu) {
         if (gpu.is_cgb)
             return;
         const auto saved_stat = gpu.stat;
@@ -27,7 +27,8 @@ namespace {
         uint32_t pixel;
     };
 
-    LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions, uint8_t windowX = 0, uint8_t scroll_x = 0) {
+    LineResult renderLine(Model model, bool objects, std::initializer_list<uint8_t> positions, uint8_t windowX = 0,
+                          uint8_t scroll_x = 0) {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
@@ -81,8 +82,9 @@ namespace {
         uint8_t flags{0};
     };
 
-    void checkObjectOverlap(Model model, bool coordinatePriority, std::initializer_list<ObjectPixels> objects, unsigned startX,
-                            std::string_view expected, diagnostics::PixelProvenanceContext *provenance = nullptr) {
+    void checkObjectOverlap(Model model, bool coordinatePriority, std::initializer_list<ObjectPixels> objects,
+                            unsigned startX, std::string_view expected,
+                            diagnostics::PixelProvenanceContext* provenance = nullptr) {
         CAPTURE(ModelName(model));
         CAPTURE(coordinatePriority);
         Interrupts interrupts;
@@ -102,7 +104,7 @@ namespace {
             gpu.vram[row * 2] = gpu.vram[row * 2 + 1] = 0xFF;
         }
         auto index{0u};
-        for (const auto &object : objects) {
+        for (const auto& object : objects) {
             REQUIRE(object.colors.size() == 8);
             const unsigned tile = index + 1;
             gpu.oam[index * 4] = 26;
@@ -121,7 +123,8 @@ namespace {
         prime_dmg_oam_scan(gpu);
         for (auto dot{0u}; dot < 456 && gpu.pixelsDrawn < SCREEN_WIDTH; ++dot) {
             if (provenance)
-                provenance->position = {.tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
+                provenance->position = {
+                    .tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
             gpu.Update();
         }
         REQUIRE(gpu.pixelsDrawn == SCREEN_WIDTH);
@@ -135,7 +138,7 @@ namespace {
     }
 
     unsigned checkWindowLine(Model model, bool doubleSpeed, bool compatibility, uint8_t wx, uint8_t scx,
-                             diagnostics::PixelProvenanceContext *provenance = nullptr) {
+                             diagnostics::PixelProvenanceContext* provenance = nullptr) {
         CAPTURE(ModelName(model));
         CAPTURE(doubleSpeed);
         CAPTURE(compatibility);
@@ -172,7 +175,8 @@ namespace {
             gpu.vram[0x1C00 + tile] = 1 + tile % 2;
         for (auto dot{0u}; dot < 456; ++dot) {
             if (provenance)
-                provenance->position = {.tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
+                provenance->position = {
+                    .tick = dot * 2, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
             gpu.Update();
             if (gpu.stat.mode == GPUMode::MODE_0)
                 break;
@@ -203,7 +207,7 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                 GPU written(writtenInterrupts), control(controlInterrupts);
                 const uint8_t line = mode == GPUMode::MODE_1 ? 0x97 : 0x44;
                 const unsigned dot = mode == GPUMode::MODE_0 ? 400 : mode == GPUMode::MODE_3 ? 184 : 32;
-                for (auto *gpu : {&written, &control}) {
+                for (auto* gpu : {&written, &control}) {
                     gpu->SetModel(model);
                     gpu->lcdc = 0x91;
                     gpu->currentLine = gpu->lyc = line;
@@ -226,7 +230,8 @@ TEST_CASE("ppu: writes to LY preserve scanline progression and STAT coincidence"
                     CHECK(written.ReadRegisters(0xFF41) == control.ReadRegisters(0xFF41));
                     CHECK(writtenInterrupts.interrupt_flag == controlInterrupts.interrupt_flag);
                 }
-                CHECK(std::equal(written.GetScreenData(), written.GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT, control.GetScreenData()));
+                CHECK(std::equal(written.GetScreenData(), written.GetScreenData() + SCREEN_WIDTH * SCREEN_HEIGHT,
+                                 control.GetScreenData()));
             }
         }
     }
@@ -284,7 +289,8 @@ TEST_CASE("ppu: OBJ ordering follows OAM or coordinate priority with OAM breakin
     for (const auto model : {Model::DMGB, Model::CGBB, Model::CGBC, Model::CGBE, Model::AGBB}) {
         for (const bool coordinatePriority : {false, true}) {
             const bool byX = !IsCgb(model) || coordinatePriority;
-            checkObjectOverlap(model, coordinatePriority, {{24, "11111111"}, {20, "22222222"}}, 12, byX ? "222222221111" : "222211111111");
+            checkObjectOverlap(model, coordinatePriority, {{24, "11111111"}, {20, "22222222"}}, 12,
+                               byX ? "222222221111" : "222211111111");
             checkObjectOverlap(model, coordinatePriority, {{20, "10101010"}, {20, "22222222"}}, 12, "12121212");
         }
     }
@@ -324,7 +330,8 @@ TEST_CASE("ppu: compatibility windows clip by WX and preserve the WX zero scroll
 
 TEST_CASE("diagnostics: Crystal sprite overlap provenance identifies transparent priority candidates") {
     diagnostics::ProvenanceRecorder recorder({.y = {10, 10}});
-    checkObjectOverlap(Model::CGBC, false, {{24, "10101010"}, {20, "22222222"}}, 12, "222212121010", &recorder.Context());
+    checkObjectOverlap(Model::CGBC, false, {{24, "10101010"}, {20, "22222222"}}, 12, "222212121010",
+                       &recorder.Context());
     const auto pixel = recorder.Query(17, 10);
     REQUIRE(pixel);
     REQUIRE(pixel->selected.valid);
@@ -332,9 +339,11 @@ TEST_CASE("diagnostics: Crystal sprite overlap provenance identifies transparent
     CHECK(pixel->selected.oamIndex == 1);
     CHECK(pixel->selected.color == 2);
     REQUIRE(pixel->sprites.count == 2);
-    CHECK(std::ranges::any_of(std::span(pixel->sprites.candidates).first(pixel->sprites.count), [](const auto &candidate) {
-        return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 && candidate.decision == diagnostics::SpriteDecision::Transparent;
-    }));
+    CHECK(std::ranges::any_of(std::span(pixel->sprites.candidates).first(pixel->sprites.count),
+                              [](const auto& candidate) {
+                                  return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 &&
+                                         candidate.decision == diagnostics::SpriteDecision::Transparent;
+                              }));
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick <= pixel->emission.tick);
     CHECK(pixel->selected.lowRead == 0);
@@ -355,7 +364,9 @@ TEST_CASE("diagnostics: Crystal window provenance explains clipped window pixels
     CHECK(pixel->selected.bit == 5);
     CHECK(pixel->selected.color == 2);
     const auto events = recorder.PipelineEvents();
-    CHECK(std::ranges::count_if(events, [](const auto &event) { return event.reason == diagnostics::PipelineReason::WindowClipping; }) == 2);
+    CHECK(std::ranges::count_if(events, [](const auto& event) {
+              return event.reason == diagnostics::PipelineReason::WindowClipping;
+          }) == 2);
     CHECK(pixel->selected.lowTick < pixel->selected.highTick);
     CHECK(pixel->selected.highTick < pixel->emission.tick);
 }
@@ -425,7 +436,7 @@ TEST_CASE("ppu: VBlank idle optimization processes each new line before skipping
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         Interrupts optimizedInterrupts, ordinaryInterrupts;
         GPU optimized(optimizedInterrupts), ordinary(ordinaryInterrupts);
-        for (auto *gpu : {&optimized, &ordinary}) {
+        for (auto* gpu : {&optimized, &ordinary}) {
             gpu->SetModel(model);
             gpu->lcdc = 0x91;
             gpu->currentLine = 150;
@@ -453,7 +464,7 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         Interrupts optimizedInterrupts, ordinaryInterrupts;
         GPU optimized(optimizedInterrupts), ordinary(ordinaryInterrupts);
-        for (auto *gpu : {&optimized, &ordinary}) {
+        for (auto* gpu : {&optimized, &ordinary}) {
             gpu->SetModel(model);
             gpu->lcdc = 0x91;
             gpu->currentLine = 10;
@@ -469,7 +480,7 @@ TEST_CASE("ppu: OAM scan shortcut preserves the falling STAT request edge") {
             CHECK(optimized.statTriggered == ordinary.statTriggered);
             CHECK(optimizedInterrupts.interrupt_flag == ordinaryInterrupts.interrupt_flag);
             if (dot == 7) {
-                for (auto *gpu : {&optimized, &ordinary}) {
+                for (auto* gpu : {&optimized, &ordinary}) {
                     gpu->WriteRegisters(0xFF45, 10);
                     gpu->WriteRegisters(0xFF41, 0x60);
                 }
@@ -483,7 +494,8 @@ TEST_CASE("ppu: window enable qualifies the retained WY match") {
     constexpr std::array optimizeds = {false, true};
     constexpr std::array speeds = {false, true};
     constexpr std::array<u32, 2> enable_dots = {450, 452};
-    for (const auto [model, optimized, speed, enable_dot] : std::views::cartesian_product(models, optimizeds, speeds, enable_dots)) {
+    for (const auto [model, optimized, speed, enable_dot] :
+         std::views::cartesian_product(models, optimizeds, speeds, enable_dots)) {
         if (IsDmg(model) && speed)
             continue;
         CAPTURE(ModelName(model));
@@ -517,7 +529,8 @@ TEST_CASE("ppu: blocked CGB palette writes preserve RAM and advance the address"
     constexpr std::array speeds = {false, true};
     constexpr std::array optimizeds = {false, true};
     constexpr std::array<u16, 2> addresses = {BACKGROUND_PALETTE_INDEX, OBJ_PALETTE_INDEX};
-    for (const auto [model, speed, optimized, address] : std::views::cartesian_product(models, speeds, optimizeds, addresses)) {
+    for (const auto [model, speed, optimized, address] :
+         std::views::cartesian_product(models, speeds, optimizeds, addresses)) {
         CAPTURE(ModelName(model));
         CAPTURE(speed);
         CAPTURE(optimized);
@@ -557,7 +570,6 @@ TEST_CASE("ppu: blocked CGB palette writes preserve RAM and advance the address"
     }
 }
 
-
 TEST_CASE("ppu: sprite groups share background alignment without starving a completed tile") {
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
     for (const auto model : models) {
@@ -573,7 +585,8 @@ TEST_CASE("ppu: first-line CGB WY retention samples after the frame boundary") {
     constexpr std::array optimizations = {false, true};
     constexpr std::array speeds = {false, true};
     constexpr std::array<unsigned, 2> write_dot_values = {2, 4};
-    for (const auto [model, optimized, double_speed, write_dot] : std::views::cartesian_product(models, optimizations, speeds, write_dot_values)) {
+    for (const auto [model, optimized, double_speed, write_dot] :
+         std::views::cartesian_product(models, optimizations, speeds, write_dot_values)) {
         CAPTURE(ModelName(model));
         CAPTURE(optimized);
         CAPTURE(double_speed);
@@ -657,7 +670,8 @@ TEST_CASE("ppu: disabling a CGB window fetch resumes its retained background pix
     constexpr std::array models = {Model::CGBC, Model::CGBE};
     constexpr std::array observed_values = {false, true};
     constexpr std::array objects_values = {false, true};
-    for (const auto [model, observed, objects] : std::views::cartesian_product(models, observed_values, objects_values)) {
+    for (const auto [model, observed, objects] :
+         std::views::cartesian_product(models, observed_values, objects_values)) {
 
         CAPTURE(model);
         CAPTURE(observed);
@@ -698,7 +712,8 @@ TEST_CASE("ppu: disabling a CGB window fetch resumes its retained background pix
         CHECK(gpu.scanlineCounter == renderLine(model, false, {}).rendered + (objects ? 17u : 3u));
         for (auto x{0u}; x < SCREEN_WIDTH; ++x) {
             CAPTURE(x);
-            CHECK(gpu.GetScreenData()[10 * SCREEN_WIDTH + x] == (x >= (objects ? 16u : 8u) && x < (objects ? 24u : 16u) ? 0xFF848484 : 0xFF424242));
+            CHECK(gpu.GetScreenData()[10 * SCREEN_WIDTH + x] ==
+                  (x >= (objects ? 16u : 8u) && x < (objects ? 24u : 16u) ? 0xFF848484 : 0xFF424242));
         }
         if (observed) {
             const auto pixel = recorder.Query(0, 10);
@@ -714,7 +729,8 @@ TEST_CASE("ppu: DMG right-edge windows retain their trigger and count each activ
     constexpr std::array fine_values = {0, 3, 7};
     constexpr std::array reenable_values = {false, true};
     constexpr std::array optimizations = {false, true};
-    for (const auto [model, fine, reenable, optimized] : std::views::cartesian_product(models, fine_values, reenable_values, optimizations)) {
+    for (const auto [model, fine, reenable, optimized] :
+         std::views::cartesian_product(models, fine_values, reenable_values, optimizations)) {
         CAPTURE(model);
         CAPTURE(fine);
         CAPTURE(reenable);
@@ -848,7 +864,8 @@ TEST_CASE("ppu: HBlank interrupts retain STAT and LYC values captured before lat
     constexpr std::array fine_values = {0u, 4u};
     constexpr std::array disable_lyc_values = {false, true};
     constexpr std::array early_values = {false, true};
-    for (const auto [double_speed, fine, disable_lyc, early] : std::views::cartesian_product(speeds, fine_values, disable_lyc_values, early_values)) {
+    for (const auto [double_speed, fine, disable_lyc, early] :
+         std::views::cartesian_product(speeds, fine_values, disable_lyc_values, early_values)) {
         CAPTURE(double_speed);
         CAPTURE(fine);
         CAPTURE(disable_lyc);
@@ -936,7 +953,8 @@ TEST_CASE("ppu: sprite fetch alignment follows the window tile origin independen
     constexpr std::array<uint8_t, 6> window_x_values = {1, 4, 7, 8, 15, 166};
     constexpr std::array<uint8_t, 3> scroll_x_values = {0, 3, 7};
     constexpr std::array<uint8_t, 8> offset_values = {0, 1, 2, 3, 4, 5, 6, 7};
-    for (const auto [model, window_x, scroll_x, offset] : std::views::cartesian_product(models, window_x_values, scroll_x_values, offset_values)) {
+    for (const auto [model, window_x, scroll_x, offset] :
+         std::views::cartesian_product(models, window_x_values, scroll_x_values, offset_values)) {
         if (model == Model::DMGB && window_x == 166)
             continue;
 
@@ -952,7 +970,6 @@ TEST_CASE("ppu: sprite fetch alignment follows the window tile origin independen
         CHECK(object.rendered - baseline.rendered == stall);
         if (window_x == 166)
             break;
-
     }
 }
 
@@ -990,7 +1007,8 @@ TEST_CASE("ppu: DMG object disable releases alignment and active fetch stalls") 
     constexpr std::array models = {Model::DMGB, Model::CGBC};
     constexpr std::array optimizations = {false, true};
     constexpr std::array<unsigned, 3> disable_dot_values = {108, 112, 116};
-    for (const auto [model, optimized, disable_dot] : std::views::cartesian_product(models, optimizations, disable_dot_values)) {
+    for (const auto [model, optimized, disable_dot] :
+         std::views::cartesian_product(models, optimizations, disable_dot_values)) {
         CAPTURE(model);
         CAPTURE(optimized);
         CAPTURE(disable_dot);
@@ -1019,7 +1037,8 @@ TEST_CASE("ppu: CGB OAM selection combines both object-size samples") {
     constexpr std::array<unsigned, 3> index_values = {0, 1, 39};
     constexpr std::array<int, 3> offset_values = {-2, 0, 2};
     constexpr std::array initially_large_values = {false, true};
-    for (const auto [double_speed, optimized, index, offset, initially_large] : std::views::cartesian_product(speeds, optimizations, index_values, offset_values, initially_large_values)) {
+    for (const auto [double_speed, optimized, index, offset, initially_large] :
+         std::views::cartesian_product(speeds, optimizations, index_values, offset_values, initially_large_values)) {
         CAPTURE(double_speed);
         CAPTURE(optimized);
         CAPTURE(index);
@@ -1052,7 +1071,8 @@ TEST_CASE("ppu: DMG OAM selection uses the second object-size sample across the 
     constexpr std::array<unsigned, 3> index_values = {0, 1, 39};
     constexpr std::array<int, 3> offset_values = {-1, 0, 1};
     constexpr std::array initially_large_values = {false, true};
-    for (const auto [optimized, index, offset, initially_large] : std::views::cartesian_product(optimizations, index_values, offset_values, initially_large_values)) {
+    for (const auto [optimized, index, offset, initially_large] :
+         std::views::cartesian_product(optimizations, index_values, offset_values, initially_large_values)) {
         CAPTURE(optimized);
         CAPTURE(index);
         CAPTURE(offset);
@@ -1081,7 +1101,6 @@ TEST_CASE("ppu: DMG OAM selection uses the second object-size sample across the 
     }
 }
 
-
 TEST_CASE("ppu: disabled LCD retains the readable comparison for STAT write interrupts") {
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
     constexpr std::array optimizations = {false, true};
@@ -1089,8 +1108,8 @@ TEST_CASE("ppu: disabled LCD retains the readable comparison for STAT write inte
     constexpr std::array previously_enabled_values = {false, true};
     constexpr std::array enable_values = {false, true};
     constexpr std::array<uint8_t, 2> new_lyc_values = {0, 0xFF};
-    for (const auto [model, optimized, match, previously_enabled, enable, new_lyc] :
-         std::views::cartesian_product(models, optimizations, match_values, previously_enabled_values, enable_values, new_lyc_values)) {
+    for (const auto [model, optimized, match, previously_enabled, enable, new_lyc] : std::views::cartesian_product(
+             models, optimizations, match_values, previously_enabled_values, enable_values, new_lyc_values)) {
         CAPTURE(model);
         CAPTURE(optimized);
         CAPTURE(match);
@@ -1136,13 +1155,13 @@ TEST_CASE("ppu: disabled LCD retains the readable comparison for STAT write inte
     }
 }
 
-
 TEST_CASE("ppu: CGB LYC comparisons retain sampled STAT enable and blocking inputs") {
     constexpr std::array speeds = {false, true};
     constexpr std::array optimizations = {false, true};
     constexpr std::array<unsigned, 3> change_values = {0u, 1u, 2u};
     constexpr std::array<unsigned, 4> lead_values = {0u, 1u, 2u, 3u};
-    for (const auto [double_speed, optimized, change, lead] : std::views::cartesian_product(speeds, optimizations, change_values, lead_values)) {
+    for (const auto [double_speed, optimized, change, lead] :
+         std::views::cartesian_product(speeds, optimizations, change_values, lead_values)) {
         CAPTURE(double_speed);
         CAPTURE(optimized);
         CAPTURE(change);
@@ -1171,12 +1190,12 @@ TEST_CASE("ppu: CGB LYC comparisons retain sampled STAT enable and blocking inpu
     }
 }
 
-
 TEST_CASE("ppu: CGB LYC cancellation and mode-2 blocking use separate capture intervals") {
     constexpr std::array speeds = {false, true};
     constexpr std::array optimizations = {false, true};
     constexpr std::array mode2_values = {false, true};
-    for (const auto [double_speed, optimized, mode2] : std::views::cartesian_product(speeds, optimizations, mode2_values)) {
+    for (const auto [double_speed, optimized, mode2] :
+         std::views::cartesian_product(speeds, optimizations, mode2_values)) {
         for (auto write_dot{450u}; write_dot <= 457; ++write_dot) {
             CAPTURE(double_speed);
             CAPTURE(optimized);
@@ -1208,13 +1227,13 @@ TEST_CASE("ppu: CGB LYC cancellation and mode-2 blocking use separate capture in
     }
 }
 
-
 TEST_CASE("ppu: DMG mode-1 entry has independent mode-source blocking") {
     constexpr std::array models = {Model::DMGB, Model::DMGC};
     constexpr std::array optimizations = {false, true};
     constexpr std::array match_values = {false, true};
     constexpr std::array<unsigned, 8> enables_values = {0, 1, 2, 3, 4, 5, 6, 7};
-    for (const auto [model, optimized, match, enables] : std::views::cartesian_product(models, optimizations, match_values, enables_values)) {
+    for (const auto [model, optimized, match, enables] :
+         std::views::cartesian_product(models, optimizations, match_values, enables_values)) {
         CAPTURE(model);
         CAPTURE(optimized);
         CAPTURE(match);
@@ -1235,7 +1254,8 @@ TEST_CASE("ppu: DMG mode-1 entry has independent mode-source blocking") {
         gpu.lycInterruptLine_ = match;
         gpu.stat.coincidence_flag = match;
         gpu.m2IrqRaisedEarly = gpu.stat.enable_m2_interrupt;
-        gpu.statTriggered = gpu.stat.enable_m0_interrupt || gpu.m2IrqRaisedEarly || (match && gpu.stat.enable_ly_interrupt);
+        gpu.statTriggered =
+            gpu.stat.enable_m0_interrupt || gpu.m2IrqRaisedEarly || (match && gpu.stat.enable_ly_interrupt);
         interrupts.interrupt_flag = 0;
         while (gpu.currentLine == 143)
             gpu.Update();
@@ -1255,7 +1275,9 @@ TEST_CASE("ppu: LCD startup retains the qualified window match before WY changes
     constexpr std::array<uint8_t, 2> initial_wy_values = {0, 1};
     constexpr std::array initially_enabled_values = {false, true};
     constexpr std::array previous_match_values = {false, true};
-    for (const auto [model, double_speed, optimized, initial_wy, initially_enabled, previous_match] : std::views::cartesian_product(models, speeds, optimizations, initial_wy_values, initially_enabled_values, previous_match_values)) {
+    for (const auto [model, double_speed, optimized, initial_wy, initially_enabled, previous_match] :
+         std::views::cartesian_product(models, speeds, optimizations, initial_wy_values, initially_enabled_values,
+                                       previous_match_values)) {
         if (IsDmg(model) && double_speed)
             continue;
 
@@ -1304,7 +1326,8 @@ TEST_CASE("ppu: LCD palette sampling changes the transient shade without shiftin
     constexpr std::array sampling_values = {DmgPaletteSampling::BitwiseOr, DmgPaletteSampling::NewValue};
     constexpr std::array optimizations = {false, true};
     constexpr std::array<uint16_t, 3> addresses = {DMG_BACKGROUND_PALETTE, DMG_OBJ_PALETTE_0, DMG_OBJ_PALETTE_1};
-    for (const auto [sampling, optimized, address] : std::views::cartesian_product(sampling_values, optimizations, addresses)) {
+    for (const auto [sampling, optimized, address] :
+         std::views::cartesian_product(sampling_values, optimizations, addresses)) {
         CAPTURE(sampling);
         CAPTURE(optimized);
         CAPTURE(address);
@@ -1322,9 +1345,11 @@ TEST_CASE("ppu: LCD palette sampling changes the transient shade without shiftin
         for (auto pixel{0u}; pixel < 8; ++pixel) {
             gpu.backgroundQueue.push_back(Pixel{.color = 1});
             gpu.spriteArray[pixel] = address == DMG_BACKGROUND_PALETTE
-                                            ? Pixel{.is_placeholder = true}
-                                            : Pixel{.color = 1, .dmg_palette = static_cast<uint8_t>(address == DMG_OBJ_PALETTE_1),
-                                                    .is_sprite = true, .is_placeholder = false};
+                                         ? Pixel{.is_placeholder = true}
+                                         : Pixel{.color = 1,
+                                                 .dmg_palette = static_cast<uint8_t>(address == DMG_OBJ_PALETTE_1),
+                                                 .is_sprite = true,
+                                                 .is_placeholder = false};
         }
         gpu.WriteRegisters(address, 0xAA);
         for (auto dot{0u}; dot < 3; ++dot) {
@@ -1337,7 +1362,6 @@ TEST_CASE("ppu: LCD palette sampling changes the transient shade without shiftin
         CHECK(gpu.GetScreenData()[42] == 0xFF606060u);
     }
 }
-
 
 TEST_CASE("ppu: sprite tile reads drive the position bus retained during OAM DMA") {
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
@@ -1372,7 +1396,7 @@ TEST_CASE("ppu: sprite tile reads drive the position bus retained during OAM DMA
             gpu.Update();
         REQUIRE(elapsed < 456);
         CHECK(gpu.spriteBuffer.size() == (tile == 27 ? 10u : 0u));
-        for (const auto &sprite : gpu.spriteBuffer)
+        for (const auto& sprite : gpu.spriteBuffer)
             CHECK(sprite.y == 11);
     }
 }

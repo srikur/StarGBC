@@ -34,7 +34,7 @@ namespace diagnostics {
         };
     } // namespace
 
-    CanonicalObservation CaptureObservation(Gameboy &machine) {
+    CanonicalObservation CaptureObservation(Gameboy& machine) {
         if (machine.UsesRealRTC())
             throw std::invalid_argument("Differential observations require virtual RTC");
         CanonicalObservation result{.position = machine.ExecutionPosition(), .machine = machine.Inspect()};
@@ -44,23 +44,25 @@ namespace diagnostics {
         for (uint32_t address = 0x8000; address <= 0xFFFF; ++address)
             memory[address - 0x8000] = machine.InspectCpuRead(address);
         result.memoryHash = Sha256(std::as_bytes(std::span(memory)));
-        result.framebufferHash = Sha256(std::as_bytes(std::span(machine.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
+        result.framebufferHash =
+            Sha256(std::as_bytes(std::span(machine.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
         std::vector<float> samples(machine.GetAudioSamplesAvailable() * 2);
         result.audioSamples = machine.ReadAudioSamples(samples.data(), samples.size() / 2);
         result.audioHash = Sha256(std::as_bytes(std::span(samples).first(result.audioSamples * 2)));
         return result;
     }
 
-    void WriteObservations(const std::filesystem::path &path, Gameboy &machine, ReplayPlayer *replay, const InputFingerprint &initial,
-                           std::string replayHash, const ObservationPlan &plan) {
+    void WriteObservations(const std::filesystem::path& path, Gameboy& machine, ReplayPlayer* replay,
+                           const InputFingerprint& initial, std::string replayHash, const ObservationPlan& plan) {
         if (machine.TimelineTicks() || !plan.sampleTicks || plan.beginTick > plan.endTick || machine.Observations() ||
             (plan.eventDetails && !plan.events))
-            throw std::invalid_argument("Observation capture requires initial conditions and an ordered bounded sampling plan");
+            throw std::invalid_argument(
+                "Observation capture requires initial conditions and an ordered bounded sampling plan");
         if (plan.sampleTicks > 140'448 || plan.endTick - plan.beginTick > plan.sampleTicks * uint64_t{1'000'000})
             throw std::invalid_argument("Observation capture exceeds the sample or interval limit");
         std::ofstream output(path);
         output.exceptions(std::ios::failbit | std::ios::badbit);
-        const auto write = [&](const auto &value) {
+        const auto write = [&](const auto& value) {
             WriteJson(output, value);
             output << '\n';
         };
@@ -86,12 +88,14 @@ namespace diagnostics {
                 ObservationSample sample{.state = CaptureObservation(machine)};
                 if (trace) {
                     if (trace->Metadata().overwritten)
-                        throw std::runtime_error("Observation event capture overflowed; reduce the sampling interval or increase capacity");
+                        throw std::runtime_error(
+                            "Observation event capture overflowed; reduce the sampling interval or increase capacity");
                     auto events = trace->Events();
-                    std::ranges::stable_sort(events, [](const Event &left, const Event &right) {
-                        return std::tie(left.position.tick, left.component) < std::tie(right.position.tick, right.component);
+                    std::ranges::stable_sort(events, [](const Event& left, const Event& right) {
+                        return std::tie(left.position.tick, left.component) <
+                               std::tie(right.position.tick, right.component);
                     });
-                    for (auto &event : events)
+                    for (auto& event : events)
                         event.sequence = 0;
                     std::ostringstream encoded;
                     WriteJson(encoded, events);

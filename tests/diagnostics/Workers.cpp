@@ -1,5 +1,5 @@
-#include <atomic>
 #include <doctest/doctest.h>
+#include <atomic>
 #include <latch>
 #include "ThreadContext.h"
 

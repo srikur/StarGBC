@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
-#include "stargbc/Common.h"
 #include "diagnostics/Observation.h"
+#include "stargbc/Common.h"
 
 struct Interrupts {
     u8 interrupt_enable{0x00};
@@ -20,13 +20,15 @@ struct Interrupts {
     // True whenever any entry of the two delay arrays is nonzero, so the
     // per-dot Tick can skip the scan in the (overwhelmingly common) idle case
     [[=NotStateAware]] bool delays_pending{false};
-    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
+    [[=NotStateAware]] diagnostics::ObservationContext* observations{};
 
     void acknowledge(uint8_t mask, bool cgb);
 
     void write_flag(uint8_t value, bool double_speed);
 
-    [[nodiscard]] uint8_t blocked_requests() const { return acknowledge_mask | lcd_write_mask; }
+    [[nodiscard]] uint8_t blocked_requests() const {
+        return acknowledge_mask | lcd_write_mask;
+    }
 
     void tick_cpu() {
         if (acknowledge_cycles && --acknowledge_cycles == 0) {

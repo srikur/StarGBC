@@ -3,7 +3,7 @@
 #include <chrono>
 
 namespace diagnostics {
-    Report::Report(const std::filesystem::path &path, const RunIdentity &run) {
+    Report::Report(const std::filesystem::path& path, const RunIdentity& run) {
         if (path.has_parent_path())
             std::filesystem::create_directories(path.parent_path());
         stream_.exceptions(std::ios::failbit | std::ios::badbit);

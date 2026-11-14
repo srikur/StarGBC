@@ -1,9 +1,9 @@
 #pragma once
-#include "stargbc/Common.h"
 #include "FixedContainers.h"
 #include "HDMA.h"
 #include "Interrupts.h"
 #include "diagnostics/PixelProvenance.h"
+#include "stargbc/Common.h"
 
 struct Pixel {
     uint8_t color{0x00};
@@ -32,7 +32,9 @@ struct Sprite {
     Attributes attributes{};
     bool processed{false};
 
-    bool operator<(const Sprite &s) const { return x < s.x || (x == s.x && sprite_num < s.sprite_num); }
+    bool operator<(const Sprite& s) const {
+        return x < s.x || (x == s.x && sprite_num < s.sprite_num);
+    }
 };
 
 // State for the pixel fetcher
@@ -66,23 +68,24 @@ struct Stat {
     GPUMode mode{GPUMode::MODE_2};
 
     [[nodiscard]] uint8_t value() const {
-        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 | enable_m0_interrupt << 3 |
-               coincidence_flag << 2 | static_cast<uint8_t>(mode);
+        return 0x80 | enable_ly_interrupt << 6 | enable_m2_interrupt << 5 | enable_m1_interrupt << 4 |
+               enable_m0_interrupt << 3 | coincidence_flag << 2 | static_cast<uint8_t>(mode);
     }
 };
 
 struct GraphicsInspection;
 
 class GPU {
-public:
+   public:
     [[nodiscard]] GraphicsInspection inspect_graphics(bool cgb_mode) const;
 
-    explicit GPU(Interrupts &interrupts, const bool colorCorrection = true) : color_correction(colorCorrection), interrupts_(interrupts) {
+    explicit GPU(Interrupts& interrupts, const bool colorCorrection = true)
+        : color_correction(colorCorrection), interrupts_(interrupts) {
         screenData.fill(LCD_OFF_COLOR);
     }
 
-    [[=NotStateAware]] diagnostics::ObservationContext *observations{};
-    [[=NotStateAware]] diagnostics::PixelProvenanceContext *provenance{};
+    [[=NotStateAware]] diagnostics::ObservationContext* observations{};
+    [[=NotStateAware]] diagnostics::PixelProvenanceContext* provenance{};
     [[=NotStateAware]] bool optimized_execution{true};
 
     void set_mode(GPUMode mode);
@@ -93,26 +96,29 @@ public:
 
     void initialize_post_boot();
 
-    void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0, uint16_t bank = 0) const;
+    void Observe(diagnostics::EventKind kind, uint16_t address = 0, uint32_t value = 0, uint32_t detail = 0,
+                 uint16_t bank = 0) const;
 
     void ObserveStall(diagnostics::StallReason reason) const;
 
     void RecordSpriteCandidate(unsigned slot, uint8_t bit, uint8_t color, diagnostics::SpriteDecision decision);
 
-    [[nodiscard]] diagnostics::PixelDecision ExplainSelection(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+    [[nodiscard]] diagnostics::PixelDecision ExplainSelection(const Pixel& background, const Pixel& sprite,
+                                                              bool bgEnable) const;
 
-    void RecordPixel(const Pixel &background, const Pixel &sprite, const Pixel &selected, bool bgEnable, uint32_t color);
+    void RecordPixel(const Pixel& background, const Pixel& sprite, const Pixel& selected, bool bgEnable,
+                     uint32_t color);
 
-    void RecordRecolor(uint16_t offset, uint16_t address, const Pixel &selected, diagnostics::PixelDecision decision);
+    void RecordRecolor(uint16_t offset, uint16_t address, const Pixel& selected, diagnostics::PixelDecision decision);
 
     // little-things/firstwhite.gb — first frame is blank/white on all except SGB/SGB2
     static constexpr uint32_t LCD_OFF_COLOR = 0xFFFFFFFFu;
 
     static constexpr uint32_t DMG_SHADE[4] = {
-            0xFFFFFFFFu, // FF FF FF FF
-            0xFFC0C0C0u, // C0 C0 C0 FF
-            0xFF606060u, // 60 60 60 FF
-            0xFF000000u // 00 00 00 FF
+        0xFFFFFFFFu, // FF FF FF FF
+        0xFFC0C0C0u, // C0 C0 C0 FF
+        0xFF606060u, // 60 60 60 FF
+        0xFF000000u  // 00 00 00 FF
     };
 
     FixedDeque<Pixel, 16> backgroundQueue;
@@ -137,10 +143,10 @@ public:
     bool spriteFetchActive_{false};
     bool isFetchingWindow_{false};
     uint8_t fetcherDelay_{0};
-    uint8_t fetcherTileX_ = 0; // Current tile X-coordinate in the BG/Win map (0-31).
-    uint8_t fetcherTileRow_{0}; // CGB-D and later latch Y during the tile-map fetch
-    uint8_t fetcherTileNum_ = 0; // The tile ID read from VRAM.
-    uint8_t fetcherTileDataLow_ = 0; // The low byte of tile pixel data.
+    uint8_t fetcherTileX_ = 0;        // Current tile X-coordinate in the BG/Win map (0-31).
+    uint8_t fetcherTileRow_{0};       // CGB-D and later latch Y during the tile-map fetch
+    uint8_t fetcherTileNum_ = 0;      // The tile ID read from VRAM.
+    uint8_t fetcherTileDataLow_ = 0;  // The low byte of tile pixel data.
     uint8_t fetcherTileDataHigh_ = 0; // The high byte of tile pixel data.
 
     // Dots until a pending sprite fetch may take over the fetcher, and the
@@ -190,20 +196,20 @@ public:
     [[=NotStateAware]] std::array<uint32_t, SCREEN_HEIGHT * SCREEN_WIDTH * 3> screenData{};
     std::array<uint8_t, 0xA0> oam{};
     std::array<uint8_t, 0x60> extraOam{}; // CGB 0-D RAM behind FEA0-FEFF
-    uint8_t lyc = 0; // 0xFF45
+    uint8_t lyc = 0;                      // 0xFF45
 
     std::pair<bool, uint8_t> priority_[160];
     uint8_t lcdc = 0;
-    Stat stat{}; // 0xFF41
-    uint8_t currentLine = 0; // 0xFF44
-    uint8_t windowX = 0; // 0xFF4B
-    uint8_t windowY = 0; // 0xFF4A
+    Stat stat{};                   // 0xFF41
+    uint8_t currentLine = 0;       // 0xFF44
+    uint8_t windowX = 0;           // 0xFF4B
+    uint8_t windowY = 0;           // 0xFF4A
     uint8_t backgroundPalette = 0; // 0xFF47
-    uint8_t obp0Palette = 0xFF; // 0xFF48
-    uint8_t obp1Palette = 0xFF; // 0xFF49
+    uint8_t obp0Palette = 0xFF;    // 0xFF48
+    uint8_t obp1Palette = 0xFF;    // 0xFF49
 
-    uint8_t scrollX{}; // 0xFF43
-    uint8_t scrollY{}; // 0xFF42
+    uint8_t scrollX{};            // 0xFF43
+    uint8_t scrollY{};            // 0xFF42
     uint32_t scanlineCounter = 0; // current dot in scanline
 
     bool vblank = false;
@@ -327,7 +333,7 @@ public:
         uint8_t n = 0;
         spriteXBits_ = {};
         spriteNegX_ = false;
-        for (const auto &s : spriteBuffer) {
+        for (const auto& s : spriteBuffer) {
             n += !s.processed;
             if (s.x < 0)
                 spriteNegX_ = true;
@@ -373,12 +379,12 @@ public:
 
     void WriteRegisters(uint16_t address, uint8_t value);
 
-    const uint32_t *GetScreenData() const;
+    const uint32_t* GetScreenData() const;
 
     [[nodiscard]] bool LCDDisabled() const;
 
-private:
-    Interrupts &interrupts_;
+   private:
+    Interrupts& interrupts_;
 
     [[nodiscard]] bool StatLineHigh(bool register_write = false, bool previous = false) const;
 
@@ -392,11 +398,11 @@ private:
 
     void ClearFramebuffer();
 
-    [[nodiscard]] Pixel SelectPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+    [[nodiscard]] Pixel SelectPixel(const Pixel& background, const Pixel& sprite, bool bgEnable) const;
 
-    [[nodiscard]] uint32_t ResolveColor(const Pixel &finalPixel) const;
+    [[nodiscard]] uint32_t ResolveColor(const Pixel& finalPixel) const;
 
-    [[nodiscard]] uint32_t MixPixel(const Pixel &background, const Pixel &sprite, bool bgEnable) const;
+    [[nodiscard]] uint32_t MixPixel(const Pixel& background, const Pixel& sprite, bool bgEnable) const;
 
     [[nodiscard]] uint16_t CalculateBGTileMapAddress() const;
 
@@ -404,7 +410,7 @@ private:
 
     uint8_t ReadBackgroundTileData(bool high);
 
-    uint16_t CalculateSpriteDataAddress(const Sprite &sprite);
+    uint16_t CalculateSpriteDataAddress(const Sprite& sprite);
 
     [[nodiscard]] uint8_t sample_dmg_palette(const uint8_t previous, const uint8_t next) const {
         return dmg_palette_sampling == DmgPaletteSampling::BitwiseOr ? previous | next : next;
@@ -422,7 +428,7 @@ private:
 
     static Attributes GetAttrsFrom(uint8_t byte);
 
-    static uint8_t ReadGpi(const Gpi &gpi);
+    static uint8_t ReadGpi(const Gpi& gpi);
 
-    static void WriteGpi(Gpi &gpi, uint8_t value);
+    static void WriteGpi(Gpi& gpi, uint8_t value);
 };

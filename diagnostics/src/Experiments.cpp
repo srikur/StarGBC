@@ -5,12 +5,12 @@
 #include <format>
 #include <fstream>
 #include <sstream>
-#include "stargbc/Gameboy.h"
 #include "diagnostics/Artifacts.h"
 #include "diagnostics/Hash.h"
 #include "diagnostics/Json.h"
 #include "diagnostics/Provenance.h"
 #include "diagnostics/Watchpoints.h"
+#include "stargbc/Gameboy.h"
 
 namespace diagnostics {
     namespace {
@@ -23,7 +23,7 @@ namespace diagnostics {
         }
 
         template<class T>
-        void writeJson(const std::filesystem::path &path, const T &value) {
+        void writeJson(const std::filesystem::path& path, const T& value) {
             std::ofstream stream;
             stream.exceptions(std::ios::badbit | std::ios::failbit);
             stream.open(path);
@@ -41,8 +41,15 @@ namespace diagnostics {
         struct Program {
             uint16_t origin{0x150};
             std::vector<uint8_t> bytes;
-            [[nodiscard]] uint16_t Address() const { return origin + bytes.size(); }
-            void Emit(const std::initializer_list<uint8_t> values) { bytes.insert(bytes.end(), values); }
+
+            [[nodiscard]] uint16_t Address() const {
+                return origin + bytes.size();
+            }
+
+            void Emit(const std::initializer_list<uint8_t> values) {
+                bytes.insert(bytes.end(), values);
+            }
+
             void Write(const uint16_t address, const uint8_t value) {
                 Emit({0x3E, value});
                 if (address >= 0xFF00)
@@ -50,6 +57,7 @@ namespace diagnostics {
                 else
                     Emit({0xEA, static_cast<uint8_t>(address), static_cast<uint8_t>(address >> 8)});
             }
+
             void Delay(unsigned cycles) {
                 while (cycles >= 5) {
                     const auto count = std::min(255u, (cycles - 1) / 4);
@@ -59,10 +67,13 @@ namespace diagnostics {
                 while (cycles--)
                     Emit({0});
             }
-            void WaitLine(const uint8_t line) { Emit({0xF0, 0x44, 0xFE, line, 0x20, 0xFA}); }
+
+            void WaitLine(const uint8_t line) {
+                Emit({0xF0, 0x44, 0xFE, line, 0x20, 0xFA});
+            }
         };
 
-        std::vector<uint8_t> makeRom(const Scenario &scenario, ExperimentResult &result) {
+        std::vector<uint8_t> makeRom(const Scenario& scenario, ExperimentResult& result) {
             const uint64_t cycle = scenario.doubleSpeed ? 4 : 8;
             Program program;
             program.Emit({0xF3, 0x31, 0xFE, 0xFF});
@@ -74,7 +85,9 @@ namespace diagnostics {
             }
             for (const auto value : scenario.noise)
                 program.Write(0xFF84, value);
-            const auto anchor = [&] { program.Write(0xFF80, 0xA5); };
+            const auto anchor = [&] {
+                program.Write(0xFF80, 0xA5);
+            };
             const auto action = [&](const unsigned delay, const uint16_t address, const uint8_t value) {
                 program.Delay(delay);
                 const auto pc = static_cast<uint16_t>(program.Address() + 2);
@@ -91,7 +104,8 @@ namespace diagnostics {
                 program.Emit({0xF0, 0x05, 0xE0, 0x82});
                 program.Delay(16);
             } else if (scenario.family == ExperimentFamily::Dma) {
-                program.Emit({0x21, 0x00, 0xC0, 0x06, 0xA0, 0x3E, seededByte(scenario.seed), 0x22, 0x3C, 0x05, 0x20, 0xFB});
+                program.Emit(
+                    {0x21, 0x00, 0xC0, 0x06, 0xA0, 0x3E, seededByte(scenario.seed), 0x22, 0x3C, 0x05, 0x20, 0xFB});
                 Program routine{.origin = 0xFF90};
                 routine.Write(0xFF80, 0xA5);
                 routine.Write(0xFF46, 0xC0);
@@ -174,7 +188,7 @@ namespace diagnostics {
             return rom;
         }
 
-        void configureGpu(GPU &gpu, const Scenario &scenario) {
+        void configureGpu(GPU& gpu, const Scenario& scenario) {
             gpu.SetModel(scenario.model);
             gpu.doubleSpeed = scenario.doubleSpeed;
             gpu.optimized_execution = false;
@@ -205,12 +219,14 @@ namespace diagnostics {
         }
     } // namespace
 
-    ExperimentResult RunExperiment(Scenario scenario, const std::filesystem::path &directory) {
-        if (scenario.schemaVersion != 1 || scenario.model == Model::Auto || scenario.phase < -4 || scenario.phase > 64 ||
-            scenario.spriteOffset < -7 || scenario.spriteOffset > 7 || scenario.spriteX + scenario.spriteOffset < 0 ||
-            scenario.spriteX + scenario.spriteOffset > 255 || scenario.noise.size() > 64 || scenario.budgetTicks > 1'000'000 ||
+    ExperimentResult RunExperiment(Scenario scenario, const std::filesystem::path& directory) {
+        if (scenario.schemaVersion != 1 || scenario.model == Model::Auto || scenario.phase < -4 ||
+            scenario.phase > 64 || scenario.spriteOffset < -7 || scenario.spriteOffset > 7 ||
+            scenario.spriteX + scenario.spriteOffset < 0 || scenario.spriteX + scenario.spriteOffset > 255 ||
+            scenario.noise.size() > 64 || scenario.budgetTicks > 1'000'000 ||
             (scenario.doubleSpeed && !IsCgb(scenario.model)) ||
-            ((scenario.basis == ExperimentBasis::HardwareMeasurement || scenario.basis == ExperimentBasis::ReferenceComparison) &&
+            ((scenario.basis == ExperimentBasis::HardwareMeasurement ||
+              scenario.basis == ExperimentBasis::ReferenceComparison) &&
              scenario.basisEvidence.empty()))
             throw std::invalid_argument("Unsupported scenario version, model, phase, budget or expectation evidence");
         const uint64_t tcycle = scenario.doubleSpeed ? 1 : 2;
@@ -219,19 +235,22 @@ namespace diagnostics {
                                    : scenario.family == ExperimentFamily::TimerReload ? 16 * tcycle
                                    : scenario.family == ExperimentFamily::Dma         ? 680 * tcycle
                                                                                       : 912;
-        const auto componentStep = scenario.family == ExperimentFamily::TimerReload || scenario.family == ExperimentFamily::Dma ? tcycle : 2;
+        const auto componentStep =
+            scenario.family == ExperimentFamily::TimerReload || scenario.family == ExperimentFamily::Dma ? tcycle : 2;
         if (scenario.mode == ExperimentMode::Component && scenario.budgetTicks % componentStep)
             throw std::invalid_argument("Component budget must end on a component tick boundary");
         if (!std::filesystem::create_directories(directory))
             throw std::invalid_argument("Experiment output directory already exists");
-        ExperimentResult result{.scenario = scenario,
-                                .build = std::string(Gameboy::CoreBuildIdentity()),
-                                .completionContract = scenario.mode == ExperimentMode::WholeMachine ? "CpuCompletionMarker:FF81=5A"
-                                                                                                    : "ComponentBudgetAndRequiredObservations",
-                                .phaseUnit = scenario.mode == ExperimentMode::WholeMachine ? "CpuMachineCycles"
-                                             : scenario.family == ExperimentFamily::TimerReload || scenario.family == ExperimentFamily::Dma
-                                                     ? "CpuTCycles"
-                                                     : "PpuDots"};
+        ExperimentResult result{
+            .scenario = scenario,
+            .build = std::string(Gameboy::CoreBuildIdentity()),
+            .completionContract = scenario.mode == ExperimentMode::WholeMachine
+                                      ? "CpuCompletionMarker:FF81=5A"
+                                      : "ComponentBudgetAndRequiredObservations",
+            .phaseUnit = scenario.mode == ExperimentMode::WholeMachine ? "CpuMachineCycles"
+                         : scenario.family == ExperimentFamily::TimerReload || scenario.family == ExperimentFamily::Dma
+                             ? "CpuTCycles"
+                             : "PpuDots"};
         TraceRecorder trace(262144);
         if (scenario.mode == ExperimentMode::Component) {
             trace.Context().pc = trace.Context().pcBank = UINT16_MAX;
@@ -239,7 +258,7 @@ namespace diagnostics {
         }
         ProvenanceRecorder provenance({.y = {1, 1}}, 160, 8192);
         std::vector<uint32_t> pixels(160 * 144);
-        const auto check = [&](const std::string &name, const bool passed, const std::string &evidence) {
+        const auto check = [&](const std::string& name, const bool passed, const std::string& evidence) {
             result.checks.push_back({name, passed, evidence});
         };
         bool completed{};
@@ -247,17 +266,21 @@ namespace diagnostics {
             const auto rom = makeRom(scenario, result);
             const auto path = directory / "scenario.gb";
             std::ofstream file(path, std::ios::binary);
-            file.write(reinterpret_cast<const char *>(rom.data()), rom.size());
+            file.write(reinterpret_cast<const char*>(rom.data()), rom.size());
             file.close();
             result.romHash = FileHash(path);
-            Gameboy machine({.model = scenario.model, .no_bootrom = true, .color_correction = false, .execution_policy = ExecutionPolicy::Ordinary},
+            Gameboy machine({.model = scenario.model,
+                             .no_bootrom = true,
+                             .color_correction = false,
+                             .execution_policy = ExecutionPolicy::Ordinary},
                             {.rom = rom});
             writeJson(directory / "initial.json", machine.Inspect());
             machine.ObserveWith(&trace.Context());
             machine.RecordPixelsWith(&provenance.Context());
             Watchpoints watchpoints(trace.Context());
-            watchpoints.Add(
-                    {.events = {.kinds = uint64_t{1} << static_cast<unsigned>(EventKind::BusWrite), .addresses = {{0xFF81, 0xFF81}}}, .value = 0x5A});
+            watchpoints.Add({.events = {.kinds = uint64_t{1} << static_cast<unsigned>(EventKind::BusWrite),
+                                        .addresses = {{0xFF81, 0xFF81}}},
+                             .value = 0x5A});
             const auto stopped = machine.RunUntil({}, scenario.budgetTicks);
             completed = stopped.trigger.has_value();
             result.completedTick = machine.TimelineTicks();
@@ -275,24 +298,30 @@ namespace diagnostics {
             timer.divCounter = 15;
             timer.observations = &trace.Context();
             for (const auto value : scenario.noise) {
-                trace.Context().Emit(Component::Control, EventKind::RegisterWrite, 0xFF06, value, 0, Initiator::Debugger);
+                trace.Context().Emit(Component::Control, EventKind::RegisterWrite, 0xFF06, value, 0,
+                                     Initiator::Debugger);
                 timer.WriteByte(0xFF06, value, scenario.doubleSpeed ? Speed::Double : Speed::Regular);
             }
             timer.tma = 37;
+
             struct TimerSetup {
                 uint16_t divCounter;
                 uint8_t tima, tma, tac;
                 uint64_t ticksPerTCycle;
             };
-            writeJson(directory / "initial.json", TimerSetup{timer.divCounter, timer.tima, timer.tma, timer.tac, tcycle});
+
+            writeJson(directory / "initial.json",
+                      TimerSetup{timer.divCounter, timer.tima, timer.tma, timer.tac, tcycle});
             interrupts.observations = &trace.Context();
             const auto actionTick = (4 + scenario.phase) * tcycle;
             result.actions.push_back({"ComponentWriteBeforeTick", actionTick, 0xFF05, seededByte(scenario.seed)});
             for (uint64_t tick = 0; tick < scenario.budgetTicks; tick += tcycle) {
                 trace.Context().position.tick = tick;
                 if (tick == actionTick) {
-                    trace.Context().Emit(Component::Control, EventKind::RegisterWrite, 0xFF05, seededByte(scenario.seed), 0, Initiator::Debugger);
-                    timer.WriteByte(0xFF05, seededByte(scenario.seed), scenario.doubleSpeed ? Speed::Double : Speed::Regular);
+                    trace.Context().Emit(Component::Control, EventKind::RegisterWrite, 0xFF05,
+                                         seededByte(scenario.seed), 0, Initiator::Debugger);
+                    timer.WriteByte(0xFF05, seededByte(scenario.seed),
+                                    scenario.doubleSpeed ? Speed::Double : Speed::Regular);
                     result.probeValue = timer.tima;
                 }
                 timer.Tick(scenario.doubleSpeed ? Speed::Double : Speed::Regular);
@@ -309,11 +338,11 @@ namespace diagnostics {
             result.actions.clear();
             const auto path = directory / "fixture.gb";
             std::ofstream file(path, std::ios::binary);
-            file.write(reinterpret_cast<const char *>(rom.data()), rom.size());
+            file.write(reinterpret_cast<const char*>(rom.data()), rom.size());
             file.close();
             result.romHash = FileHash(path);
             Gameboy machine({.model = scenario.model, .no_bootrom = true}, {.rom = rom});
-            auto &bus = machine.[:member<Gameboy>("bus_"):];
+            auto& bus = machine.[:member<Gameboy>("bus_"):];
             bus.speed = scenario.doubleSpeed ? Speed::Double : Speed::Regular;
             bus.gpu_.doubleSpeed = scenario.doubleSpeed;
             for (unsigned i = 0; i < 160; ++i)
@@ -331,34 +360,39 @@ namespace diagnostics {
                 trace.Context().position.tick = tick;
                 if (tick == probeTick) {
                     result.probeValue = bus.InspectRead(0xC000, ComponentSource::CPU);
-                    trace.Context().Emit(Component::Control, EventKind::BusRead, 0xC000, result.probeValue, 0, Initiator::Debugger,
-                                         bus.AccessBlocked(0xC000, ComponentSource::CPU, false));
+                    trace.Context().Emit(Component::Control, EventKind::BusRead, 0xC000, result.probeValue, 0,
+                                         Initiator::Debugger, bus.AccessBlocked(0xC000, ComponentSource::CPU, false));
                 }
                 bus.UpdateDMA();
             }
             result.completedTick = scenario.budgetTicks;
             completed = probeTick < scenario.budgetTicks && !bus.dma_.transferActive;
             check("dma-copy",
-                  std::ranges::equal(
-                          bus.gpu_.oam, std::views::iota(0, 160),
-                          [&](const auto value, const auto index) { return value == static_cast<uint8_t>(seededByte(scenario.seed) + index); }),
+                  std::ranges::equal(bus.gpu_.oam, std::views::iota(0, 160),
+                                     [&](const auto value, const auto index) {
+                                         return value == static_cast<uint8_t>(seededByte(scenario.seed) + index);
+                                     }),
                   "All 160 OAM bytes equal the seeded WRAM source");
         } else {
             Interrupts interrupts;
             GPU gpu(interrupts);
             configureGpu(gpu, scenario);
+
             struct PpuSetup {
                 uint8_t lcdc, ly, scx, wx;
                 bool doubleSpeed;
                 std::string vramHash, oamHash;
             };
-            writeJson(directory / "initial.json", PpuSetup{gpu.lcdc, gpu.currentLine, gpu.scrollX, gpu.windowX, gpu.doubleSpeed,
-                                                           Sha256(std::as_bytes(std::span(gpu.vram))), Sha256(std::as_bytes(std::span(gpu.oam)))});
+
+            writeJson(directory / "initial.json",
+                      PpuSetup{gpu.lcdc, gpu.currentLine, gpu.scrollX, gpu.windowX, gpu.doubleSpeed,
+                               Sha256(std::as_bytes(std::span(gpu.vram))), Sha256(std::as_bytes(std::span(gpu.oam)))});
             gpu.observations = &trace.Context();
             gpu.provenance = &provenance.Context();
             interrupts.observations = &trace.Context();
             for (const auto value : scenario.noise) {
-                trace.Context().Emit(Component::Control, EventKind::RegisterWrite, 0xFF42, value, 0, Initiator::Debugger);
+                trace.Context().Emit(Component::Control, EventKind::RegisterWrite, 0xFF42, value, 0,
+                                     Initiator::Debugger);
                 gpu.WriteRegisters(0xFF42, value);
             }
             if (scenario.family == ExperimentFamily::Stat) {
@@ -382,43 +416,51 @@ namespace diagnostics {
                                             .cpuPhase = UINT8_MAX};
                 provenance.Context().position = trace.Context().position;
                 if (tick == actionTick) {
-                    trace.Context().Emit(Component::Control, EventKind::RegisterWrite, address, value, 0, Initiator::Debugger);
+                    trace.Context().Emit(Component::Control, EventKind::RegisterWrite, address, value, 0,
+                                         Initiator::Debugger);
                     gpu.WriteRegisters(address, value);
                 }
                 gpu.Update();
             }
             completed = provenance.Pixels().size() == 160 && actionTick < scenario.budgetTicks;
             result.completedTick = scenario.budgetTicks;
-            result.probeValue = scenario.family == ExperimentFamily::Stat ? interrupts.interrupt_flag & 2 : gpu.ReadRegisters(address);
+            result.probeValue =
+                scenario.family == ExperimentFamily::Stat ? interrupts.interrupt_flag & 2 : gpu.ReadRegisters(address);
             std::ranges::copy(std::span(gpu.GetScreenData(), pixels.size()), pixels.begin());
         }
         const auto events = trace.Events();
         const auto captured = provenance.Pixels();
         if (scenario.mode == ExperimentMode::WholeMachine) {
-            const auto anchor = std::ranges::find_if(
-                    events, [](const Event &event) { return event.kind == EventKind::BusWrite && event.address == 0xFF80 && event.value == 0xA5; });
+            const auto anchor = std::ranges::find_if(events, [](const Event& event) {
+                return event.kind == EventKind::BusWrite && event.address == 0xFF80 && event.value == 0xA5;
+            });
             if (anchor != events.end())
                 result.anchorTick = anchor->position.tick;
             check("cpu-anchor", anchor != events.end(), "CPU wrote the experiment anchor to FF80");
-            for (const auto &action : result.actions) {
-                const auto event = std::ranges::find_if(events, [&](const Event &candidate) {
-                    return candidate.kind == (action.operation == "CpuRead" ? EventKind::BusRead : EventKind::BusWrite) &&
+            for (const auto& action : result.actions) {
+                const auto event = std::ranges::find_if(events, [&](const Event& candidate) {
+                    return candidate.kind ==
+                               (action.operation == "CpuRead" ? EventKind::BusRead : EventKind::BusWrite) &&
                            candidate.address == action.address && candidate.pc == action.instructionAddress &&
                            candidate.position.tick >= result.anchorTick;
                 });
-                check("cpu-action-timing", event != events.end() && event->position.tick == result.anchorTick + action.offsetTicks,
-                      std::format("Address {:04X}: expected tick {}, observed {}", action.address, result.anchorTick + action.offsetTicks,
+                check("cpu-action-timing",
+                      event != events.end() && event->position.tick == result.anchorTick + action.offsetTicks,
+                      std::format("Address {:04X}: expected tick {}, observed {}", action.address,
+                                  result.anchorTick + action.offsetTicks,
                                   event == events.end() ? UINT64_MAX : event->position.tick));
                 check("cpu-action-value",
-                      event != events.end() && event->initiator == Initiator::CPU && (action.operation == "CpuRead" || event->value == action.value),
+                      event != events.end() && event->initiator == Initiator::CPU &&
+                          (action.operation == "CpuRead" || event->value == action.value),
                       "The planned operation is a CPU bus event with the requested write value");
             }
         } else {
-            for (const auto &action : result.actions)
+            for (const auto& action : result.actions)
                 check("component-action-timing",
                       std::ranges::any_of(events,
-                                          [&](const Event &event) {
-                                              return event.initiator == Initiator::Debugger && event.address == action.address &&
+                                          [&](const Event& event) {
+                                              return event.initiator == Initiator::Debugger &&
+                                                     event.address == action.address &&
                                                      event.position.tick == action.offsetTicks;
                                           }),
                       "Component stimulus uses the declared before-tick boundary");
@@ -426,63 +468,75 @@ namespace diagnostics {
         if (scenario.family == ExperimentFamily::Window || scenario.family == ExperimentFamily::Sprites) {
             check("rendered-line", captured.size() == 160, "Every pixel of line 1 has a captured emission");
             check("opaque-object-selection",
-                  std::ranges::all_of(
-                          captured,
-                          [](const PixelExplanation &pixel) { return pixel.selected.source != PixelSource::Sprite || pixel.selected.color != 0; }),
+                  std::ranges::all_of(captured,
+                                      [](const PixelExplanation& pixel) {
+                                          return pixel.selected.source != PixelSource::Sprite ||
+                                                 pixel.selected.color != 0;
+                                      }),
                   "A transparent object cannot be the selected source");
-            check("pixel-output-order", std::ranges::is_sorted(captured, {}, [](const PixelExplanation &pixel) { return pixel.emission.tick; }),
-                  "Captured pixel emission times are ordered");
+            check(
+                "pixel-output-order",
+                std::ranges::is_sorted(captured, {}, [](const PixelExplanation& pixel) { return pixel.emission.tick; }),
+                "Captured pixel emission times are ordered");
         }
         if (scenario.family == ExperimentFamily::Window && scenario.wx < 166)
             check("window-activation",
                   std::ranges::any_of(captured,
-                                      [](const PixelExplanation &pixel) {
+                                      [](const PixelExplanation& pixel) {
                                           return pixel.background.source == PixelSource::Window ||
                                                  pixel.background.source == PixelSource::WindowGlitch;
                                       }),
                   "Visible window pixels have captured window origins");
-        if (scenario.family == ExperimentFamily::Sprites && scenario.spriteX >= 8 && scenario.spriteX <= 160 && scenario.spriteOffset == 0) {
+        if (scenario.family == ExperimentFamily::Sprites && scenario.spriteX >= 8 && scenario.spriteX <= 160 &&
+            scenario.spriteOffset == 0) {
             check("transparent-sprite-fallback",
-                  std::ranges::any_of(captured,
-                                      [](const PixelExplanation &pixel) {
-                                          return pixel.selected.source == PixelSource::Sprite && pixel.selected.oamIndex == 1 &&
-                                                 std::ranges::any_of(std::span(pixel.sprites.candidates).first(pixel.sprites.count),
-                                                                     [](const SpriteCandidate &candidate) {
-                                                                         return candidate.origin.oamIndex == 0 && candidate.origin.color == 0 &&
-                                                                                candidate.decision == SpriteDecision::Transparent;
-                                                                     });
-                                      }),
+                  std::ranges::any_of(
+                      captured,
+                      [](const PixelExplanation& pixel) {
+                          return pixel.selected.source == PixelSource::Sprite && pixel.selected.oamIndex == 1 &&
+                                 std::ranges::any_of(std::span(pixel.sprites.candidates).first(pixel.sprites.count),
+                                                     [](const SpriteCandidate& candidate) {
+                                                         return candidate.origin.oamIndex == 0 &&
+                                                                candidate.origin.color == 0 &&
+                                                                candidate.decision == SpriteDecision::Transparent;
+                                                     });
+                      }),
                   "A transparent earlier sprite exposes the opaque overlapping sprite");
         }
         if (scenario.family == ExperimentFamily::Stat) {
-            const auto request =
-                    std::ranges::find_if(events, [](const Event &event) { return event.kind == EventKind::InterruptRequest && event.value == 2; });
+            const auto request = std::ranges::find_if(events, [](const Event& event) {
+                return event.kind == EventKind::InterruptRequest && event.value == 2;
+            });
             check("stat-request", request != events.end(), "STAT generated a recorded interrupt request");
             if (scenario.mode == ExperimentMode::WholeMachine) {
-                const auto accept =
-                        std::ranges::find_if(events, [](const Event &event) { return event.kind == EventKind::InterruptAccept && event.value == 2; });
+                const auto accept = std::ranges::find_if(events, [](const Event& event) {
+                    return event.kind == EventKind::InterruptAccept && event.value == 2;
+                });
                 check("stat-request-before-acceptance",
-                      request != events.end() && accept != events.end() && request->position.tick <= accept->position.tick,
+                      request != events.end() && accept != events.end() &&
+                          request->position.tick <= accept->position.tick,
                       "The CPU accepts the recorded STAT request after it exists");
             }
         }
         if (scenario.family == ExperimentFamily::Dma) {
-            check("dma-transfers", std::ranges::count(events, EventKind::DmaTransfer, &Event::kind) == 160, "Exactly 160 OAM bytes transferred");
+            check("dma-transfers", std::ranges::count(events, EventKind::DmaTransfer, &Event::kind) == 160,
+                  "Exactly 160 OAM bytes transferred");
             unsigned index{};
             bool valuesMatch{true};
-            for (const auto &event : events)
+            for (const auto& event : events)
                 if (event.kind == EventKind::DmaTransfer) {
                     valuesMatch &= event.address == 0xFE00 + index && event.detail == 0xC000 + index &&
                                    event.value == static_cast<uint8_t>(seededByte(scenario.seed) + index);
                     ++index;
                 }
-            check("dma-transfer-values", valuesMatch, "Transfer order, source addresses and seeded values match the complete OAM copy");
+            check("dma-transfer-values", valuesMatch,
+                  "Transfer order, source addresses and seeded values match the complete OAM copy");
         }
         if (scenario.expectedValue)
             check("probe-value", result.probeValue == *scenario.expectedValue,
                   std::format("Sample {} expected {}", result.probeValue, *scenario.expectedValue));
         result.outcome = completed ? Outcome::Pass : Outcome::Timeout;
-        for (const auto &invariant : result.checks)
+        for (const auto& invariant : result.checks)
             if (!invariant.passed && completed) {
                 result.outcome = Outcome::AssertionFailure;
                 if (result.failureSignature.empty()) {
@@ -491,7 +545,8 @@ namespace diagnostics {
                         result.failureSignature += std::format(":{}!={}", result.probeValue, *scenario.expectedValue);
                 }
             }
-        if (trace.Metadata().overwritten || provenance.Metadata().overwrittenEvents || provenance.Metadata().overwrittenPixels) {
+        if (trace.Metadata().overwritten || provenance.Metadata().overwrittenEvents ||
+            provenance.Metadata().overwrittenPixels) {
             result.outcome = Outcome::InfrastructureError;
             result.details = "Experiment capture overflowed";
         }

@@ -1,16 +1,18 @@
-#include "GameboyFiles.h"
 #include "diagnostics/Provenance.h"
 #include <doctest/doctest.h>
+#include "GameboyFiles.h"
 #include "stargbc/Gameboy.h"
 
 namespace {
-    void tickPixel(GPU &gpu, diagnostics::ProvenanceRecorder &recorder, const uint64_t tick) {
-        recorder.Context().position = {
-                .tick = tick, .frame = gpu.displayFrames_, .dot = static_cast<uint16_t>(gpu.scanlineCounter), .ly = gpu.currentLine};
+    void tickPixel(GPU& gpu, diagnostics::ProvenanceRecorder& recorder, const uint64_t tick) {
+        recorder.Context().position = {.tick = tick,
+                                       .frame = gpu.displayFrames_,
+                                       .dot = static_cast<uint16_t>(gpu.scanlineCounter),
+                                       .ly = gpu.currentLine};
         gpu.Update();
     }
 
-    void configurePixelLine(GPU &gpu) {
+    void configurePixelLine(GPU& gpu) {
         gpu.SetModel(Model::CGBC);
         gpu.lcdc = 0x91;
         gpu.backgroundPalette = 0xE4;
@@ -24,7 +26,8 @@ namespace {
 
 TEST_CASE("diagnostics: provenance does not change pixels hardware state or timeline") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
-        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                            .emulation = {.model = model, .no_bootrom = true}};
         auto continuous = host::load_gameboy(settings);
         auto observed = host::load_gameboy(settings);
         diagnostics::ProvenanceRecorder recorder({.y = {.first = 10, .last = 10}});
@@ -104,7 +107,8 @@ TEST_CASE("diagnostics: post-output palette changes retain both emitted and fina
 }
 
 TEST_CASE("diagnostics: restoring without provenance history marks a new branch with unknown in-flight origins") {
-    auto machine = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+    auto machine = host::load_gameboy(
+        {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     diagnostics::ProvenanceRecorder recorder({.y = {.first = 10, .last = 10}});
     machine.RecordPixelsWith(&recorder.Context());
     for (auto interval{0uz}; interval < 60 && !recorder.Query(20, 10); ++interval) {
