@@ -1,12 +1,13 @@
-#include "GameboyFiles.h"
 #include "diagnostics/Trace.h"
 #include <doctest/doctest.h>
-#include "stargbc/Gameboy.h"
+#include "GameboyFiles.h"
 #include "TestUtilities.h"
+#include "stargbc/Gameboy.h"
 
 TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardware and pixels") {
     for (const auto model : {Model::DMGB, Model::CGBC}) {
-        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                            .emulation = {.model = model, .no_bootrom = true}};
         auto disabled = host::load_gameboy(settings);
         auto observed = host::load_gameboy(settings);
         auto captured = host::load_gameboy(settings);
@@ -32,18 +33,20 @@ TEST_CASE("diagnostics: tracing disabled observed and captured preserves hardwar
         CHECK(events.front().kind == diagnostics::EventKind::Overflow);
         for (size_t i = 1; i < events.size(); ++i) {
             CHECK(events[i - 1].sequence < events[i].sequence);
-            if (events[i - 1].kind != diagnostics::EventKind::AudioMix && events[i].kind != diagnostics::EventKind::AudioMix)
+            if (events[i - 1].kind != diagnostics::EventKind::AudioMix &&
+                events[i].kind != diagnostics::EventKind::AudioMix)
                 CHECK(events[i - 1].position.tick <= events[i].position.tick);
         }
     }
 }
 
 TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and retain banks") {
-    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+    auto gameboy = host::load_gameboy(
+        {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     diagnostics::TraceRecorder recorder(64);
     gameboy.ObserveWith(&recorder.Context());
-    auto &gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
-    auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+    auto& gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
+    auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
     gpu.vramBank = 1;
     gpu.vram[0x2000] = 0xFF;
     gpu.lcdc = 0;
@@ -65,9 +68,10 @@ TEST_CASE("diagnostics: bus records distinguish blocked reads from stored FF and
 
 TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and restore branches retain time") {
     for (const bool doubleSpeed : {false, true}) {
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
         if (doubleSpeed) {
-            auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+            auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
             bus.prepareSpeedShift = true;
             bus.ChangeSpeed();
             REQUIRE(gameboy.Inspect().speed == Speed::Double);
@@ -77,7 +81,7 @@ TEST_CASE("diagnostics: interrupt sampling uses CPU phases at both speeds and re
         const auto checkpoint = gameboy.SaveState();
         static_cast<void>(gameboy.AdvanceTicks(8));
         std::vector<diagnostics::Event> samples;
-        for (const auto &event : recorder.Events())
+        for (const auto& event : recorder.Events())
             if (event.kind == diagnostics::EventKind::InterruptSample)
                 samples.push_back(event);
         REQUIRE(samples.size() == (doubleSpeed ? 4u : 2u));
@@ -122,9 +126,10 @@ TEST_CASE("diagnostics: trace filters combine component kind address PC bank lin
 }
 
 TEST_CASE("diagnostics: palette bus restrictions are observable without applying blocked writes") {
-    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-    auto &gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
-    auto &bus = gameboy.[:get_member<Gameboy>("bus_"):];
+    auto gameboy = host::load_gameboy(
+        {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+    auto& gpu = gameboy.[:get_member<Gameboy>("gpu_"):];
+    auto& bus = gameboy.[:get_member<Gameboy>("bus_"):];
     gpu.lcdc = 0;
     bus.WriteByte(BACKGROUND_PALETTE_INDEX, 0x80, ComponentSource::CPU);
     gpu.lcdc = 0x91;
@@ -140,7 +145,7 @@ TEST_CASE("diagnostics: palette bus restrictions are observable without applying
     CHECK(events[0].kind == diagnostics::EventKind::BusRead);
     CHECK(events[1].kind == diagnostics::EventKind::BusWrite);
     CHECK(events[2].kind == diagnostics::EventKind::RegisterWrite);
-    CHECK(std::ranges::all_of(events, [](const auto &event) { return event.blocked; }));
+    CHECK(std::ranges::all_of(events, [](const auto& event) { return event.blocked; }));
     CHECK((bus.InspectRead(BACKGROUND_PALETTE_INDEX, ComponentSource::CPU) & 0x3F) == 1);
     CHECK(bus.InspectRead(BACKGROUND_PALETTE_DATA, ComponentSource::CPU) == 0xFF);
     CHECK(recorder.Events().size() == 3);

@@ -3,22 +3,30 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include "stargbc/Common.h"
 #include "Instructions.h"
+#include "stargbc/Common.h"
 
 struct MockBus {
-    uint8_t ReadByte(const uint16_t address, const ComponentSource source) { return memory_.contains(address) ? memory_[address] : 0x00; }
+    uint8_t ReadByte(const uint16_t address, const ComponentSource source) {
+        return memory_.contains(address) ? memory_[address] : 0x00;
+    }
 
-    void WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) { memory_[address] = value; }
+    void WriteByte(const uint16_t address, const uint8_t value, const ComponentSource source) {
+        memory_[address] = value;
+    }
 
-    void ChangeSpeed() { prepareSpeedShift = false; }
+    void ChangeSpeed() {
+        prepareSpeedShift = false;
+    }
 
-    void HandleOAMCorruption(const uint16_t location, const CorruptionType type) const { return; }
+    void HandleOAMCorruption(const uint16_t location, const CorruptionType type) const {
+        return;
+    }
 
     bool prepareSpeedShift{false};
 
-private:
+   private:
     std::unordered_map<uint16_t, uint8_t> memory_{};
 };
 
-#endif // STARGBC_MOCKBUS_H
+#endif  // STARGBC_MOCKBUS_H

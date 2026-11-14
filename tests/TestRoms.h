@@ -2,7 +2,6 @@
 #ifndef STARGBC_TESTROMS_H
 #define STARGBC_TESTROMS_H
 
-#include "stargbc/Gameboy.h"
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -15,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "stargbc/Gameboy.h"
 
 #include <doctest/doctest.h>
 #include "ThreadContext.h"
@@ -27,16 +27,16 @@
 #include "diagnostics/Trace.h"
 
 struct Bootroms {
-    const char *dmg0Bootrom = "roms/dmg0_boot.bin";
-    const char *dmgBootrom = "roms/dmg_boot.bin";
-    const char *mgbBootrom = "roms/mgb_boot.bin";
-    const char *cgb0Bootrom = "roms/cgb0_boot.bin";
-    const char *cgbEBootrom = "roms/cgbE_boot.bin";
-    const char *cgbBootrom = "roms/cgb_boot.bin";
-    const char *cgbAGBBootrom = "roms/cgb_agb_boot.bin";
-    const char *cgbAGB0Bootrom = "roms/cgb_agb0_boot.bin";
-    const char *sgbBootrom = "roms/sgb_boot.bin";
-    const char *sgb2Bootrom = "roms/sgb2_boot.bin";
+    const char* dmg0Bootrom = "roms/dmg0_boot.bin";
+    const char* dmgBootrom = "roms/dmg_boot.bin";
+    const char* mgbBootrom = "roms/mgb_boot.bin";
+    const char* cgb0Bootrom = "roms/cgb0_boot.bin";
+    const char* cgbEBootrom = "roms/cgbE_boot.bin";
+    const char* cgbBootrom = "roms/cgb_boot.bin";
+    const char* cgbAGBBootrom = "roms/cgb_agb_boot.bin";
+    const char* cgbAGB0Bootrom = "roms/cgb_agb0_boot.bin";
+    const char* sgbBootrom = "roms/sgb_boot.bin";
+    const char* sgb2Bootrom = "roms/sgb2_boot.bin";
 };
 
 static constexpr Bootroms bootroms{};
@@ -56,12 +56,12 @@ static std::optional<uint8_t> testProvenanceLine;
 
 class TestObservationSession {
     std::optional<diagnostics::TraceRecorder> recorder_;
-    Gameboy *machine_{};
+    Gameboy* machine_{};
     diagnostics::InputFingerprint checkpointInputs_;
     std::optional<diagnostics::ProvenanceRecorder> provenance_;
 
-public:
-    void Attach(Gameboy &gameboy, const host::LaunchSettings &settings) {
+   public:
+    void Attach(Gameboy& gameboy, const host::LaunchSettings& settings) {
         machine_ = &gameboy;
         if (testCheckpointFailures)
             checkpointInputs_ = diagnostics::IdentifyInitialInputs(gameboy, settings);
@@ -79,14 +79,15 @@ public:
         gameboy.ObserveWith(&recorder_->Context());
     }
 
-    void Export(const std::filesystem::path &directory, const diagnostics::Result &result) {
+    void Export(const std::filesystem::path& directory, const diagnostics::Result& result) {
         if (provenance_) {
             provenance_->Identify(std::string(Gameboy::CoreBuildIdentity()), result.inputs.rom);
             provenance_->WriteJson(directory / "provenance.json");
         }
         if (testCheckpointFailures && machine_)
-            diagnostics::WriteCheckpoint(directory / "terminal.checkpoint", *machine_,
-                                         {.build = std::string(Gameboy::CoreBuildIdentity()), .inputs = checkpointInputs_});
+            diagnostics::WriteCheckpoint(
+                directory / "terminal.checkpoint", *machine_,
+                {.build = std::string(Gameboy::CoreBuildIdentity()), .inputs = checkpointInputs_});
         if (recorder_ && testObservationMode == TestObservationMode::Capture) {
             recorder_->Identify(testExecutableHash, result.inputs.rom, result.inputs.configuration);
             recorder_->WriteJsonLines(directory / "events.jsonl");
@@ -101,7 +102,9 @@ struct CatalogSelection {
     std::string subsystem;
     std::set<std::string> suites;
 
-    [[nodiscard]] bool Active() const { return !ids.empty() || model.has_value() || !subsystem.empty(); }
+    [[nodiscard]] bool Active() const {
+        return !ids.empty() || model.has_value() || !subsystem.empty();
+    }
 };
 
 static CatalogSelection catalogSelection;
@@ -115,12 +118,12 @@ static consteval std::meta::info testGameboyMember(const std::string_view name) 
     throw std::out_of_range("Gameboy member not found");
 }
 
-static bool mooneyePassed(const Gameboy &gameboy) {
-    const auto &regs = gameboy.[:testGameboyMember("registers_"):];
+static bool mooneyePassed(const Gameboy& gameboy) {
+    const auto& regs = gameboy.[:testGameboyMember("registers_"):];
     return regs.GetBC() == 0x0305 && regs.GetDE() == 0x080D && regs.GetHL() == 0x1522;
 }
 
-static diagnostics::TerminalState terminalState(const Gameboy &gameboy) {
+static diagnostics::TerminalState terminalState(const Gameboy& gameboy) {
     const auto state = gameboy.Inspect();
     return {.pc = state.cpu.pc,
             .sp = state.cpu.sp,
@@ -138,41 +141,52 @@ static diagnostics::TerminalState terminalState(const Gameboy &gameboy) {
             .locked = state.cpu.locked};
 }
 
-static const doctest::TestCaseData *currentTestCase = nullptr;
+static const doctest::TestCaseData* currentTestCase = nullptr;
 
 struct CurrentTestCaseListener : doctest::IReporter {
     unsigned cases_{};
     unsigned failed_{};
-    explicit CurrentTestCaseListener(const doctest::ContextOptions &) {}
-    void test_case_start(const doctest::TestCaseData &tc) override { currentTestCase = &tc; }
-    void report_query(const doctest::QueryData &) override {}
+
+    explicit CurrentTestCaseListener(const doctest::ContextOptions&) {}
+
+    void test_case_start(const doctest::TestCaseData& tc) override {
+        currentTestCase = &tc;
+    }
+
+    void report_query(const doctest::QueryData&) override {}
+
     void test_run_start() override {}
 
-    void test_run_end(const doctest::TestRunStats &) override {
+    void test_run_end(const doctest::TestRunStats&) override {
         if (testReport)
             testReport->Write(diagnostics::RunCompletion{.cases = cases_, .failed = failed_});
     }
 
-    void test_case_reenter(const doctest::TestCaseData &) override {}
+    void test_case_reenter(const doctest::TestCaseData&) override {}
 
-    void test_case_end(const doctest::CurrentTestCaseStats &stats) override {
+    void test_case_end(const doctest::CurrentTestCaseStats& stats) override {
         ++cases_;
         failed_ += !stats.testCaseSuccess;
         if (testReport)
-            testReport->Write(diagnostics::AssertionResult{.name = currentTestCase->m_name,
-                                                           .suite = currentTestCase->m_test_suite,
-                                                           .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass
-                                                                                            : diagnostics::Outcome::AssertionFailure,
-                                                           .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
-                                                           .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)});
+            testReport->Write(diagnostics::AssertionResult{
+                .name = currentTestCase->m_name,
+                .suite = currentTestCase->m_test_suite,
+                .outcome = stats.testCaseSuccess ? diagnostics::Outcome::Pass : diagnostics::Outcome::AssertionFailure,
+                .assertions = static_cast<unsigned>(stats.numAssertsCurrentTest),
+                .failures = static_cast<unsigned>(stats.numAssertsFailedCurrentTest)});
     }
 
-    void test_case_exception(const doctest::TestCaseException &) override {}
-    void subcase_start(const doctest::SubcaseSignature &) override {}
+    void test_case_exception(const doctest::TestCaseException&) override {}
+
+    void subcase_start(const doctest::SubcaseSignature&) override {}
+
     void subcase_end() override {}
-    void log_assert(const doctest::AssertData &) override {}
-    void log_message(const doctest::MessageData &) override {}
-    void test_case_skipped(const doctest::TestCaseData &) override {}
+
+    void log_assert(const doctest::AssertData&) override {}
+
+    void log_message(const doctest::MessageData&) override {}
+
+    void test_case_skipped(const doctest::TestCaseData&) override {}
 };
 
 DOCTEST_REGISTER_LISTENER("current-test-case", 0, CurrentTestCaseListener);
@@ -180,7 +194,7 @@ DOCTEST_REGISTER_LISTENER("current-test-case", 0, CurrentTestCaseListener);
 struct SelectedCasesReporter : CurrentTestCaseListener {
     using CurrentTestCaseListener::CurrentTestCaseListener;
 
-    void report_query(const doctest::QueryData &query) override {
+    void report_query(const doctest::QueryData& query) override {
         for (unsigned i = 0; i < query.num_data; ++i)
             selectedTestNames.emplace(query.data[i]->m_name);
     }
@@ -188,26 +202,27 @@ struct SelectedCasesReporter : CurrentTestCaseListener {
 
 DOCTEST_REGISTER_REPORTER("diagnostics-selection", 0, SelectedCasesReporter);
 
-template<const auto &Cases, auto Check>
-static bool registerTableCases(const char *file, const char *suite) {
+template<const auto& Cases, auto Check>
+static bool registerTableCases(const char* file, const char* suite) {
     const auto run = [] {
-        const auto entry = std::ranges::find(Cases, currentTestCase->m_line, [](const auto &tc) { return tc.line; });
+        const auto entry = std::ranges::find(Cases, currentTestCase->m_line, [](const auto& tc) { return tc.line; });
         Check(static_cast<size_t>(entry - std::ranges::begin(Cases)));
     };
-    for (const auto &tc : Cases) {
-        doctest::detail::regTest(doctest::detail::TestCase(run, file, tc.line, doctest::detail::TestSuite() * suite) * tc.name);
+    for (const auto& tc : Cases) {
+        doctest::detail::regTest(doctest::detail::TestCase(run, file, tc.line, doctest::detail::TestSuite() * suite) *
+                                 tc.name);
     }
     return true;
 }
 
-static std::vector<uint32_t> readBinaryFile(const std::string &path) {
+static std::vector<uint32_t> readBinaryFile(const std::string& path) {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs.is_open()) {
         throw std::runtime_error("Could not open file " + path);
     }
     constexpr int SCREEN_SIZE = 160 * 144;
     std::vector<uint32_t> result(SCREEN_SIZE);
-    ifs.read(reinterpret_cast<char *>(result.data()), SCREEN_SIZE * sizeof(uint32_t));
+    ifs.read(reinterpret_cast<char*>(result.data()), SCREEN_SIZE * sizeof(uint32_t));
     if (!ifs)
         throw std::runtime_error("Incomplete screen file " + path);
     return result;
@@ -221,14 +236,14 @@ static std::optional<Model> ModelFromName(const std::string_view name) {
     return std::nullopt;
 }
 
-static int runBenchmark(const std::string &rom, const Model model, const unsigned frames) {
+static int runBenchmark(const std::string& rom, const Model model, const unsigned frames) {
     try {
         TestObservationSession observations;
         const host::LaunchSettings launch_settings{.rom_path = rom,
                                                    .bios_path = "",
                                                    .emulation = {
-                                                           .model = model,
-                                                           .execution_policy = testExecutionPolicy,
+                                                       .model = model,
+                                                       .execution_policy = testExecutionPolicy,
                                                    }};
         const auto gameboy = host::init_gameboy(launch_settings);
         observations.Attach(*gameboy, launch_settings);
@@ -239,17 +254,17 @@ static int runBenchmark(const std::string &rom, const Model model, const unsigne
         }
         const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - start;
         const double fps = frames * 1000.0 / elapsed.count();
-        std::cout << rom << " [" << ModelName(model) << "] " << frames << " frames in " << elapsed.count() << " ms | " << fps << " fps | "
-                  << fps / kGbFrameHz << "x realtime" << std::endl;
+        std::cout << rom << " [" << ModelName(model) << "] " << frames << " frames in " << elapsed.count() << " ms | "
+                  << fps << " fps | " << fps / kGbFrameHz << "x realtime" << std::endl;
         return EXIT_SUCCESS;
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         std::cerr << "Benchmark failed for " << rom << ": " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 }
 
-inline int ExecuteTestRoms(const int argc, char **argv) {
-    std::vector<char *> doctest_args;
+inline int ExecuteTestRoms(const int argc, char** argv) {
+    std::vector<char*> doctest_args;
     doctest_args.reserve(argc);
     doctest_args.push_back(argv[0]);
 
@@ -258,18 +273,19 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     std::filesystem::path reportPath;
 
     static constexpr std::array<std::pair<std::string_view, std::string_view>, 5> kSuiteFlags{{
-            {"--acid", "acid"},
-            {"--roms", "rom"},
-            {"--age", "age"},
-            {"--gbmicrotest", "gbmicrotest"},
-            {"--gambatte", "gambatte"},
+        {"--acid", "acid"},
+        {"--roms", "rom"},
+        {"--age", "age"},
+        {"--gbmicrotest", "gbmicrotest"},
+        {"--gambatte", "gambatte"},
     }};
     std::string suites;
     bool suiteFilterGiven = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        if (const auto suite = std::ranges::find(kSuiteFlags, arg, &std::pair<std::string_view, std::string_view>::first);
+        if (const auto suite =
+                std::ranges::find(kSuiteFlags, arg, &std::pair<std::string_view, std::string_view>::first);
             suite != kSuiteFlags.end()) {
             if (!suites.empty()) {
                 suites += ',';
@@ -393,8 +409,8 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
                 return EXIT_FAILURE;
             }
         } else {
-            suiteFilterGiven |=
-                    arg.starts_with("--test-suite=") || arg.starts_with("-ts=") || arg.starts_with("--dt-test-suite=") || arg.starts_with("--dt-ts=");
+            suiteFilterGiven |= arg.starts_with("--test-suite=") || arg.starts_with("-ts=") ||
+                                arg.starts_with("--dt-test-suite=") || arg.starts_with("--dt-ts=");
             doctest_args.push_back(argv[i]);
         }
     }
@@ -415,14 +431,18 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
     }
     const std::string suiteFilter = "--test-suite=" + suites;
     if (!suites.empty()) {
-        doctest_args.push_back(const_cast<char *>(suiteFilter.c_str()));
+        doctest_args.push_back(const_cast<char*>(suiteFilter.c_str()));
     }
 
     doctest::Context ctx;
     ctx.applyCommandLine(static_cast<int>(doctest_args.size()), doctest_args.data());
+
     struct WorkerScope {
-        ~WorkerScope() { testWorkers.reset(); }
+        ~WorkerScope() {
+            testWorkers.reset();
+        }
     } workerScope;
+
     try {
         if (!ctx.shouldExit()) {
             if (!catalogSelection.Active()) {
@@ -440,10 +460,10 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             failureDirectory = reportPath.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
             testReport = std::make_unique<diagnostics::Report>(
-                    reportPath, diagnostics::RunIdentity{.executable = argv[0],
-                                                         .executableHash = testExecutableHash,
-                                                         .compiler = __VERSION__,
-                                                         .arguments = std::vector<std::string>(argv + 1, argv + argc)});
+                reportPath, diagnostics::RunIdentity{.executable = argv[0],
+                                                     .executableHash = testExecutableHash,
+                                                     .compiler = __VERSION__,
+                                                     .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             std::cerr << "Diagnostics results: " << reportPath << '\n';
             testWorkers = std::make_unique<TestWorkers>(maxThreads);
         }
@@ -455,10 +475,10 @@ inline int ExecuteTestRoms(const int argc, char **argv) {
             return runCatalogSelection();
         }
         return ctx.run();
-    } catch (const std::exception &error) {
+    } catch (const std::exception& error) {
         std::cerr << "Diagnostics infrastructure error: " << error.what() << '\n';
         return EXIT_FAILURE;
     }
 }
 
-#endif // STARGBC_TESTROMS_H
+#endif  // STARGBC_TESTROMS_H

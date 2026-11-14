@@ -1,5 +1,5 @@
-#include "GameboyFiles.h"
 #include <doctest/doctest.h>
+#include "GameboyFiles.h"
 #include "stargbc/Gameboy.h"
 
 namespace {
@@ -18,11 +18,11 @@ namespace {
     host::LaunchSettings settings(const Model model, const bool color = false) {
         return {.rom_path = color ? "roms/acid/cgb-acid2.gbc" : "roms/mooneye/acceptance/boot_regs-dmgABC.gb",
                 .emulation = {
-                        .model = model,
-                        .no_bootrom = true,
+                    .model = model,
+                    .no_bootrom = true,
                 }};
     }
-} // namespace
+}  // namespace
 
 TEST_CASE("models: skipping the boot ROM leaves VRAM DMA idle") {
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE, Model::AGBBE};
@@ -34,7 +34,7 @@ TEST_CASE("models: skipping the boot ROM leaves VRAM DMA idle") {
         CAPTURE(color);
         CAPTURE(policy);
         auto gameboy = host::load_gameboy(settings(model, color));
-        auto &bus = gameboy.[:busMember:];
+        auto& bus = gameboy.[:busMember:];
         CHECK(gameboy.InspectCpuRead(0xFF55) == 0xFF);
         CHECK_FALSE(gameboy.Inspect().dma.hdma.hdmaActive);
 
@@ -52,9 +52,9 @@ TEST_CASE("cpu: illegal opcodes lock execution while peripherals keep running") 
     for (const uint8_t opcode : {0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD}) {
         CAPTURE(opcode);
         auto gameboy = host::load_gameboy(settings(Model::DMGB));
-        auto &cpu = gameboy.[:member<Gameboy>("cpu_"):];
-        auto &bus = gameboy.[:busMember:];
-        auto &interrupts = gameboy.[:member<Gameboy>("interrupts_"):];
+        auto& cpu = gameboy.[:member<Gameboy>("cpu_"):];
+        auto& bus = gameboy.[:busMember:];
+        auto& interrupts = gameboy.[:member<Gameboy>("interrupts_"):];
         bus.WriteByte(0xC000, opcode, ComponentSource::CPU);
         cpu.pc(0xC001);
         cpu.currentInstruction = opcode;
@@ -92,12 +92,17 @@ TEST_CASE("models: cartridge compatibility preserves the silicon revision") {
 }
 
 TEST_CASE("models: unused OAM follows revision-specific address decoding") {
-    for (const auto model : {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
-        auto gameboy = host::load_gameboy(settings(model)); // Includes CGB hardware in DMG compatibility mode.
-        auto &bus = gameboy.[:busMember:];
+    for (const auto model :
+         {Model::DMGB, Model::MGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
+        auto gameboy = host::load_gameboy(settings(model));  // Includes CGB hardware in DMG compatibility mode.
+        auto& bus = gameboy.[:busMember:];
         bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
-        const auto read = [&](uint16_t address) { return bus.ReadByte(address, ComponentSource::CPU); };
-        const auto write = [&](uint16_t address, uint8_t value) { bus.WriteByte(address, value, ComponentSource::CPU); };
+        const auto read = [&](uint16_t address) {
+            return bus.ReadByte(address, ComponentSource::CPU);
+        };
+        const auto write = [&](uint16_t address, uint8_t value) {
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        };
         write(0xFEA0, 0x12);
         write(0xFEB8, 0x34);
         write(0xFEC0, 0x56);
@@ -133,22 +138,23 @@ TEST_CASE("models: unused OAM follows revision-specific address decoding") {
 }
 
 TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
-    for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
+    for (const auto model :
+         {Model::DMGB, Model::CGB0, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Interrupts interrupts;
         GPU gpu(interrupts);
         gpu.SetModel(model);
         gpu.lcdc = 0x91;
-        gpu.vram[0] = 0x55; // row 0, low plane
-        gpu.vram[1] = 0xAA; // row 0, high plane
-        gpu.vram[2] = 0x33; // row 1, low plane
-        gpu.vram[3] = 0xCC; // row 1, high plane
-        gpu.TickMode3(); // tile number and (on late CGB) row
+        gpu.vram[0] = 0x55;  // row 0, low plane
+        gpu.vram[1] = 0xAA;  // row 0, high plane
+        gpu.vram[2] = 0x33;  // row 1, low plane
+        gpu.vram[3] = 0xCC;  // row 1, high plane
+        gpu.TickMode3();     // tile number and (on late CGB) row
         gpu.scrollY = 1;
-        gpu.TickMode3(); // wait
-        gpu.TickMode3(); // low bitplane
+        gpu.TickMode3();  // wait
+        gpu.TickMode3();  // low bitplane
         gpu.scrollY = 0;
-        gpu.TickMode3(); // wait
-        gpu.TickMode3(); // high bitplane
+        gpu.TickMode3();  // wait
+        gpu.TickMode3();  // high bitplane
         const bool latched = model == Model::CGBD || model == Model::CGBE || model == Model::AGBA;
         CHECK(gpu.fetcherTileDataLow_ == (latched ? 0x55 : 0x33));
         CHECK(gpu.fetcherTileDataHigh_ == 0xAA);
@@ -156,10 +162,11 @@ TEST_CASE("models: CGB-D latches the background row across both bitplanes") {
 }
 
 TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
-    for (const auto model : {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
+    for (const auto model :
+         {Model::DMGB, Model::CGB0, Model::CGBA, Model::CGBB, Model::CGBC, Model::CGBD, Model::CGBE, Model::AGBA}) {
         Audio audio;
         audio.SetModel(model);
-        audio.WriteByte(0xFF26, 0x80, true); // Odd DIV-APU step.
+        audio.WriteByte(0xFF26, 0x80, true);  // Odd DIV-APU step.
         audio.ch1.lengthTimer.lengthTimer = 62;
         audio.ch2.lengthTimer.lengthTimer = 62;
         audio.ch4.lengthTimer.lengthTimer = 62;
@@ -178,7 +185,7 @@ TEST_CASE("models: early CGB length writes differ from CGB-C and later") {
 TEST_CASE("models: save states retain extra OAM and reject a different revision") {
     auto early = host::load_gameboy(settings(Model::CGBB));
     auto late = host::load_gameboy(settings(Model::CGBE));
-    auto &bus = early.[:busMember:];
+    auto& bus = early.[:busMember:];
     bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
     bus.WriteByte(0xFEA0, 0x65, ComponentSource::CPU);
     const auto state = early.SaveState();
@@ -196,7 +203,7 @@ TEST_CASE("models: early CGB envelope writes pass through an intermediate value"
         Audio audio;
         audio.SetModel(model);
         audio.WriteByte(0xFF26, 0x80, false);
-        const auto prepare = [](auto &channel) {
+        const auto prepare = [](auto& channel) {
             channel.enabled = true;
             channel.envelope.Write(0x20);
             channel.envelope.currentVolume = 2;
@@ -219,17 +226,24 @@ TEST_CASE("apu: NR52 power-on captures the divider phase at its startup edge") {
         int offset;
         bool high;
     };
+
     constexpr std::array<StartupPhase, 8> phases{{
-            {1, -5, false}, {1, -4, true}, {1, -1, true}, {1, 0, true},
-            {2, -5, true}, {2, -4, false}, {2, -1, false}, {2, 0, false},
+        {1, -5, false},
+        {1, -4, true},
+        {1, -1, true},
+        {1, 0, true},
+        {2, -5, true},
+        {2, -4, false},
+        {2, -1, false},
+        {2, 0, false},
     }};
     constexpr std::array models = {Model::DMGB, Model::CGBC, Model::CGBE};
     constexpr std::array speed_values = {Speed::Regular, Speed::Double};
     constexpr std::array optimizations = {false, true};
-    for (const auto [model, speed, optimized, phase] : std::views::cartesian_product(models, speed_values, optimizations, phases)) {
+    for (const auto [model, speed, optimized, phase] :
+         std::views::cartesian_product(models, speed_values, optimizations, phases)) {
         if (IsDmg(model) && speed == Speed::Double)
             continue;
-
 
         CAPTURE(ModelName(model));
         CAPTURE(speed);
@@ -237,11 +251,15 @@ TEST_CASE("apu: NR52 power-on captures the divider phase at its startup edge") {
         CAPTURE(phase.boundary);
         CAPTURE(phase.offset);
         auto gameboy = host::load_gameboy(settings(model, IsCgb(model)));
-        auto &bus = gameboy.[:busMember:];
+        auto& bus = gameboy.[:busMember:];
         bus.speed = speed;
         bus.audio_.SetOptimizedExecution(optimized);
-        const auto write = [&](uint16_t address, uint8_t value) { bus.WriteByte(address, value, ComponentSource::CPU); };
-        const auto read_control = [&] { return bus.ReadByte(SOUND_CONTROL, ComponentSource::CPU); };
+        const auto write = [&](uint16_t address, uint8_t value) {
+            bus.WriteByte(address, value, ComponentSource::CPU);
+        };
+        const auto read_control = [&] {
+            return bus.ReadByte(SOUND_CONTROL, ComponentSource::CPU);
+        };
         write(SOUND_CONTROL, 0);
         const unsigned divider_bit = speed == Speed::Double ? 0x2000 : 0x1000;
         const uint16_t divider = phase.boundary * divider_bit + phase.offset;
@@ -269,9 +287,10 @@ TEST_CASE("models: forced CGB startup preserves the ROM header and enables nativ
     for (const auto [model, forced] : std::views::cartesian_product(models, forced_values)) {
         CAPTURE(model);
         CAPTURE(forced);
-        auto gameboy = host::load_gameboy(
-                {.rom_path = "roms/acid/dmg-acid2.gb", .emulation = {.model = model, .no_bootrom = true, .force_cgb_mode = forced}});
-        auto &bus = gameboy.[:busMember:];
+        auto gameboy =
+            host::load_gameboy({.rom_path = "roms/acid/dmg-acid2.gb",
+                                .emulation = {.model = model, .no_bootrom = true, .force_cgb_mode = forced}});
+        auto& bus = gameboy.[:busMember:];
         CHECK(gameboy.GetModel() == model);
         CHECK(gameboy.IsInCgbMode() == forced);
         CHECK(bus.gpu_.dmg_compat == !forced);
@@ -283,8 +302,9 @@ TEST_CASE("models: forced CGB startup preserves the ROM header and enables nativ
     }
     constexpr std::array invalid_models = {Model::DMGB, Model::CGBC};
     for (const auto model : invalid_models) {
-        host::LaunchSettings invalid{.rom_path = "roms/acid/dmg-acid2.gb",
-                                     .emulation = {.model = model, .no_bootrom = model == Model::DMGB, .force_cgb_mode = true}};
+        host::LaunchSettings invalid{
+            .rom_path = "roms/acid/dmg-acid2.gb",
+            .emulation = {.model = model, .no_bootrom = model == Model::DMGB, .force_cgb_mode = true}};
         CHECK_THROWS_AS(static_cast<void>(host::load_gameboy(invalid)), std::invalid_argument);
     }
 }

@@ -1,7 +1,7 @@
-#include "GameboyFiles.h"
 #include <doctest/doctest.h>
-#include "stargbc/Gameboy.h"
+#include "GameboyFiles.h"
 #include "diagnostics/Trace.h"
+#include "stargbc/Gameboy.h"
 
 namespace {
     template<class T>
@@ -11,7 +11,7 @@ namespace {
                 return member;
         throw std::out_of_range("Unknown DMA test member");
     }
-} // namespace
+}  // namespace
 
 TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
@@ -21,10 +21,11 @@ TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
         CAPTURE(policy);
         CAPTURE(doubleSpeed);
         CAPTURE(masterPhase);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
-        auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
-        auto &registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto& cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
+        auto& registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
         bus.WriteByte(0xFF40, 0, ComponentSource::CPU);
         if (doubleSpeed) {
             bus.prepareSpeedShift = true;
@@ -35,15 +36,16 @@ TEST_CASE("GDMA preserves the opcode prefetched before overwriting VRAM") {
         cpu.currentInstruction = 0;
         cpu.pc(0x8000);
 
-        gameboy.DebugPoke(0x8000, 0xE0); // LDH ($55), A: copy C000..C00F to VRAM
+        gameboy.DebugPoke(0x8000, 0xE0);  // LDH ($55), A: copy C000..C00F to VRAM
         gameboy.DebugPoke(0x8001, 0x55);
-        gameboy.DebugPoke(0x8002, 0x04); // INC B must already be prefetched when DMA starts
-        gameboy.DebugPoke(0x8003, 0x76); // HALT
+        gameboy.DebugPoke(0x8002, 0x04);  // INC B must already be prefetched when DMA starts
+        gameboy.DebugPoke(0x8003, 0x76);  // HALT
         for (uint16_t i = 0; i < 16; ++i)
             gameboy.DebugPoke(0xC000 + i, 0);
-        gameboy.DebugPoke(0xC002, 0x0C); // INC C replaces INC B in memory, but must not execute
+        gameboy.DebugPoke(0xC002, 0x0C);  // INC C replaces INC B in memory, but must not execute
         gameboy.DebugPoke(0xC003, 0x76);
-        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 4>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}}})
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 4>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
 
         static_cast<void>(gameboy.AdvanceTicks(200, policy));
@@ -60,8 +62,9 @@ TEST_CASE("Disabling the LCD during VBlank transfers one pending HDMA block") {
     for (const auto [policy, doubleSpeed] : std::views::cartesian_product(policies, speeds)) {
         CAPTURE(policy);
         CAPTURE(doubleSpeed);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
@@ -75,8 +78,8 @@ TEST_CASE("Disabling the LCD during VBlank transfers one pending HDMA block") {
             gameboy.DebugPoke(0xC000 + i, i + 1);
             gameboy.DebugPoke(0x8000 + i, 0);
         }
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0x81}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{
+                 {{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0x81}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         static_cast<void>(gameboy.AdvanceTicks(40, policy));
         CHECK(gameboy.DebugPeek(0x8000) == 0);
@@ -109,8 +112,9 @@ TEST_CASE("An HDMA block started at the end of HBlank completes in the next scan
     for (const auto [policy, doubleSpeed] : std::views::cartesian_product(policies, speeds)) {
         CAPTURE(policy);
         CAPTURE(doubleSpeed);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
@@ -130,8 +134,8 @@ TEST_CASE("An HDMA block started at the end of HBlank completes in the next scan
         REQUIRE(bus.gpu_.currentLine == 1);
         REQUIRE(bus.gpu_.scanlineCounter == 452);
         REQUIRE(bus.gpu_.hblank);
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0x81}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{
+                 {{0xFF51, 0xC0}, {0xFF52, 0}, {0xFF53, 0}, {0xFF54, 0}, {0xFF55, 0x81}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
 
         static_cast<void>(gameboy.AdvanceTicks(128, policy));
@@ -154,8 +158,9 @@ TEST_CASE("An accepted HDMA request survives cancellation and waits for the inst
     constexpr std::array speeds = {false, true};
     for (const auto double_speed : speeds) {
         CAPTURE(double_speed);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
             bus.prepareSpeedShift = true;
@@ -165,8 +170,11 @@ TEST_CASE("An accepted HDMA request survives cancellation and waits for the inst
             gameboy.DebugPoke(WRAM_BEGIN + offset, offset + 1);
             gameboy.DebugPoke(VRAM_BEGIN + offset, 0);
         }
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x81}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                                                        {HDMA_SOURCE_LOW, 0},
+                                                                                        {HDMA_DESTINATION_HIGH, 0},
+                                                                                        {HDMA_DESTINATION_LOW, 0},
+                                                                                        {HDMA_CONTROL, 0x81}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         for (auto dot{0u}; dot < 8; ++dot)
             bus.RunHDMA(false);
@@ -197,11 +205,12 @@ TEST_CASE("HALT suspends HBlank DMA until the CPU wakes") {
     for (const auto [policy, double_speed] : std::views::cartesian_product(policies, speeds)) {
         CAPTURE(policy);
         CAPTURE(double_speed);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
-        auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
-        auto &registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
-        auto &interrupts = gameboy.[:dmaTestMember<Gameboy>("interrupts_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto& cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
+        auto& registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
+        auto& interrupts = gameboy.[:dmaTestMember<Gameboy>("interrupts_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
             bus.prepareSpeedShift = true;
@@ -218,8 +227,11 @@ TEST_CASE("HALT suspends HBlank DMA until the CPU wakes") {
             gameboy.DebugPoke(VRAM_BEGIN + offset, 0);
         }
         bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                                                        {HDMA_SOURCE_LOW, 0},
+                                                                                        {HDMA_DESTINATION_HIGH, 0},
+                                                                                        {HDMA_DESTINATION_LOW, 0},
+                                                                                        {HDMA_CONTROL, 0x80}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         interrupts.interrupt_enable = 1;
         interrupts.interrupt_flag = 0;
@@ -246,15 +258,17 @@ TEST_CASE("dma: VRAM address wrapping retains the selected bank and full destina
     constexpr std::array modes = {HDMAMode::GDMA, HDMAMode::HDMA};
     constexpr std::array<uint8_t, 2> bank_values = {0, 1};
     constexpr std::array<uint16_t, 4> start_values = {0x1FF0, 0x9FF0, 0xDFF0, 0xFFF0};
-    for (const auto [policy, double_speed, mode, bank, start] : std::views::cartesian_product(policies, speeds, modes, bank_values, start_values)) {
+    for (const auto [policy, double_speed, mode, bank, start] :
+         std::views::cartesian_product(policies, speeds, modes, bank_values, start_values)) {
         CAPTURE(policy);
         CAPTURE(double_speed);
         CAPTURE(mode);
         CAPTURE(bank);
         CAPTURE(start);
         const unsigned length = start == 0xFFF0 ? 16 : 32;
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
@@ -267,14 +281,16 @@ TEST_CASE("dma: VRAM address wrapping retains the selected bank and full destina
             gameboy.DebugPoke(WRAM_BEGIN + i, i + 1);
         if (mode == HDMAMode::HDMA)
             bus.WriteByte(LCD_CONTROL_BIT, 0x91, ComponentSource::CPU);
-        diagnostics::TraceRecorder recorder(64, {
-            .components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::DMA),
-            .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::DmaTransfer)
-        });
+        diagnostics::TraceRecorder recorder(
+            64, {.components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::DMA),
+                 .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::DmaTransfer)});
         gameboy.ObserveWith(&recorder.Context());
-        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{
-                 {HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, static_cast<uint8_t>(start >> 8)}, {HDMA_DESTINATION_LOW, 0xF0},
-                 {HDMA_CONTROL, mode == HDMAMode::HDMA ? 0x81 : 0x01}}})
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                          {HDMA_SOURCE_LOW, 0},
+                                                          {HDMA_DESTINATION_HIGH, static_cast<uint8_t>(start >> 8)},
+                                                          {HDMA_DESTINATION_LOW, 0xF0},
+                                                          {HDMA_CONTROL, mode == HDMAMode::HDMA ? 0x81 : 0x01}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         static_cast<void>(gameboy.AdvanceTicks(3 * 912, policy));
         REQUIRE_FALSE(bus.gpu_.hdma.hdmaActive);
@@ -306,16 +322,18 @@ TEST_CASE("STOP retains the HDMA inputs sampled before speed-switch completion")
     enum class Arrival { BeforeStop, BeforeT2, BeforeT4, OnFinalCycle };
     constexpr std::array models = {Model::CGBC, Model::CGBE};
     constexpr std::array speeds = {false, true};
-    constexpr std::array arrival_values = {Arrival::BeforeStop, Arrival::BeforeT2, Arrival::BeforeT4, Arrival::OnFinalCycle};
+    constexpr std::array arrival_values = {Arrival::BeforeStop, Arrival::BeforeT2, Arrival::BeforeT4,
+                                           Arrival::OnFinalCycle};
     for (const auto [model, double_speed, arrival] : std::views::cartesian_product(models, speeds, arrival_values)) {
         CAPTURE(ModelName(model));
         CAPTURE(double_speed);
         CAPTURE(arrival);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
-        auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
-        auto &gpu = bus.gpu_;
-        auto &hdma = gpu.hdma;
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto& cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
+        auto& gpu = bus.gpu_;
+        auto& hdma = gpu.hdma;
         bus.speed = double_speed ? Speed::Double : Speed::Regular;
         gpu.doubleSpeed = double_speed;
         gpu.hblank = gpu.vblank = false;
@@ -372,13 +390,15 @@ TEST_CASE("dma: overlapping transfers share addresses and data while retaining i
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
     constexpr std::array speeds = {false, true};
     constexpr std::array modes = {HDMAMode::GDMA, HDMAMode::HDMA};
-    for (const auto [model, policy, double_speed, mode] : std::views::cartesian_product(models, policies, speeds, modes)) {
+    for (const auto [model, policy, double_speed, mode] :
+         std::views::cartesian_product(models, policies, speeds, modes)) {
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(double_speed);
         CAPTURE(mode);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
@@ -394,14 +414,16 @@ TEST_CASE("dma: overlapping transfers share addresses and data while retaining i
         bus.WriteByte(OAM_DMA_TRANSFER_REG, 0xC1, ComponentSource::CPU);
         static_cast<void>(gameboy.AdvanceTicks(double_speed ? 8 : 16, policy));
         REQUIRE(bus.dma_.currentByte == 1);
-        diagnostics::TraceRecorder recorder(128, {
-            .components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::DMA),
-            .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::DmaTransfer)
-        });
+        diagnostics::TraceRecorder recorder(
+            128, {.components = uint64_t{1} << static_cast<unsigned>(diagnostics::Component::DMA),
+                  .kinds = uint64_t{1} << static_cast<unsigned>(diagnostics::EventKind::DmaTransfer)});
         gameboy.ObserveWith(&recorder.Context());
-        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{
-                 {HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0x40}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0},
-                 {HDMA_CONTROL, mode == HDMAMode::HDMA ? 0x80 : 0}}})
+        for (const auto [address, value] :
+             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                          {HDMA_SOURCE_LOW, 0x40},
+                                                          {HDMA_DESTINATION_HIGH, 0},
+                                                          {HDMA_DESTINATION_LOW, 0},
+                                                          {HDMA_CONTROL, mode == HDMAMode::HDMA ? 0x80 : 0}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         static_cast<void>(gameboy.AdvanceTicks(200, policy));
         CHECK(bus.dma_.currentByte == (double_speed ? 51 : 26));
@@ -409,7 +431,7 @@ TEST_CASE("dma: overlapping transfers share addresses and data while retaining i
         CHECK(bus.gpu_.hdma.hdmaDestination == 0x10);
         CHECK_FALSE(bus.gpu_.hdma.ShouldHaltCPU());
         unsigned shared_writes = 0;
-        for (const auto &event : recorder.Events()) {
+        for (const auto& event : recorder.Events()) {
             if (event.initiator != diagnostics::Initiator::DMA)
                 continue;
             if (event.detail >= 0xC040 && event.detail < 0xC050) {
@@ -429,19 +451,20 @@ TEST_CASE("dma: overlapping transfers share addresses and data while retaining i
     }
 }
 
-
 TEST_CASE("A late HDMA enable waits for the next HBlank without losing its block") {
     constexpr std::array models = {Model::CGBC, Model::CGBE};
     constexpr std::array policies = {ExecutionPolicy::Ordinary, ExecutionPolicy::Optimized};
     constexpr std::array speeds = {false, true};
     constexpr std::array late_values = {false, true};
-    for (const auto [model, policy, double_speed, late] : std::views::cartesian_product(models, policies, speeds, late_values)) {
+    for (const auto [model, policy, double_speed, late] :
+         std::views::cartesian_product(models, policies, speeds, late_values)) {
         CAPTURE(ModelName(model));
         CAPTURE(policy);
         CAPTURE(double_speed);
         CAPTURE(late);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
@@ -454,13 +477,17 @@ TEST_CASE("A late HDMA enable waits for the next HBlank without losing its block
             gameboy.DebugPoke(VRAM_BEGIN + i, 0);
         }
         const unsigned write_dot = 452 + double_speed + late;
-        for (auto elapsed{0u}; elapsed < 912 && !(bus.gpu_.currentLine == 1 && bus.gpu_.scanlineCounter == write_dot); ++elapsed)
+        for (auto elapsed{0u}; elapsed < 912 && !(bus.gpu_.currentLine == 1 && bus.gpu_.scanlineCounter == write_dot);
+             ++elapsed)
             static_cast<void>(gameboy.AdvanceTicks(2, policy));
         REQUIRE(bus.gpu_.currentLine == 1);
         REQUIRE(bus.gpu_.scanlineCounter == write_dot);
         REQUIRE(bus.gpu_.hblank);
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                                                        {HDMA_SOURCE_LOW, 0},
+                                                                                        {HDMA_DESTINATION_HIGH, 0},
+                                                                                        {HDMA_DESTINATION_LOW, 0},
+                                                                                        {HDMA_CONTROL, 0x80}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         static_cast<void>(gameboy.AdvanceTicks(128, policy));
         REQUIRE(bus.gpu_.currentLine == 2);
@@ -483,9 +510,10 @@ TEST_CASE("dma: a block crossing HBlank retains its sixteen-byte length") {
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(double_speed);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
-        auto &gpu = bus.gpu_;
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto& gpu = bus.gpu_;
         gameboy.[:dmaTestMember<Gameboy>("cpu_"):].Lock();
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
@@ -502,8 +530,11 @@ TEST_CASE("dma: a block crossing HBlank retains its sixteen-byte length") {
         REQUIRE(gpu.currentLine == 1);
         REQUIRE(gpu.scanlineCounter == 240);
         REQUIRE(gpu.stat.mode == GPUMode::MODE_3);
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                                                        {HDMA_SOURCE_LOW, 0},
+                                                                                        {HDMA_DESTINATION_HIGH, 0},
+                                                                                        {HDMA_DESTINATION_LOW, 0},
+                                                                                        {HDMA_CONTROL, 0x80}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         gpu.hdma.block_requested = true;
         static_cast<void>(gameboy.AdvanceTicks(160, policy));
@@ -526,12 +557,13 @@ TEST_CASE("dma: a HALT-retained instruction completes before interrupt entry") {
         CAPTURE(model);
         CAPTURE(policy);
         CAPTURE(double_speed);
-        auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
-        auto &bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
-        auto &cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
-        auto &instructions = gameboy.[:dmaTestMember<Gameboy>("instructions_"):];
-        auto &interrupts = gameboy.[:dmaTestMember<Gameboy>("interrupts_"):];
-        auto &registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
+        auto gameboy = host::load_gameboy(
+            {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}});
+        auto& bus = gameboy.[:dmaTestMember<Gameboy>("bus_"):];
+        auto& cpu = gameboy.[:dmaTestMember<Gameboy>("cpu_"):];
+        auto& instructions = gameboy.[:dmaTestMember<Gameboy>("instructions_"):];
+        auto& interrupts = gameboy.[:dmaTestMember<Gameboy>("interrupts_"):];
+        auto& registers = gameboy.[:dmaTestMember<Gameboy>("registers_"):];
         bus.WriteByte(LCD_CONTROL_BIT, 0, ComponentSource::CPU);
         if (double_speed) {
             bus.prepareSpeedShift = true;
@@ -549,8 +581,11 @@ TEST_CASE("dma: a HALT-retained instruction completes before interrupt entry") {
             gameboy.DebugPoke(WRAM_BEGIN + offset, offset + 1);
             gameboy.DebugPoke(VRAM_BEGIN + offset, 0);
         }
-        for (const auto [address, value] :
-             std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0}, {HDMA_SOURCE_LOW, 0}, {HDMA_DESTINATION_HIGH, 0}, {HDMA_DESTINATION_LOW, 0}, {HDMA_CONTROL, 0x80}}})
+        for (const auto [address, value] : std::array<std::pair<uint16_t, uint8_t>, 5>{{{HDMA_SOURCE_HIGH, 0xC0},
+                                                                                        {HDMA_SOURCE_LOW, 0},
+                                                                                        {HDMA_DESTINATION_HIGH, 0},
+                                                                                        {HDMA_DESTINATION_LOW, 0},
+                                                                                        {HDMA_CONTROL, 0x80}}})
             bus.WriteByte(address, value, ComponentSource::CPU);
         bus.gpu_.hdma.block_requested = true;
         interrupts.interrupt_enable = 1;
@@ -560,7 +595,8 @@ TEST_CASE("dma: a HALT-retained instruction completes before interrupt entry") {
         REQUIRE(cpu.IsHalted());
         REQUIRE(bus.gpu_.hdma.halt_request_pending);
         interrupts.set(InterruptType::VBlank, false);
-        for (auto tick{0u}; tick < 400 && cpu.[:dmaTestMember<CPU<Bus>>("interruptState"):] == InterruptState::M1; ++tick)
+        for (auto tick{0u}; tick < 400 && cpu.[:dmaTestMember<CPU<Bus>>("interruptState"):] == InterruptState::M1;
+                                              ++tick)
             static_cast<void>(gameboy.AdvanceTicks(1, policy));
         REQUIRE(cpu.[:dmaTestMember<CPU<Bus>>("interruptState"):] == InterruptState::M2);
         CHECK(gameboy.DebugPeek(0xC0EA) == 0x5A);

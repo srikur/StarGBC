@@ -1,6 +1,6 @@
-#include "GameboyFiles.h"
 #include <doctest/doctest.h>
 #include <limits>
+#include "GameboyFiles.h"
 #include "stargbc/Gameboy.h"
 
 namespace {
@@ -12,25 +12,26 @@ namespace {
         throw "Unknown execution test member";
     }
 
-    void checkMachineAgreement(const Gameboy &left, const Gameboy &right) {
+    void checkMachineAgreement(const Gameboy& left, const Gameboy& right) {
         CHECK(left.SaveState() == right.SaveState());
         CHECK(std::ranges::equal(std::span(left.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT),
                                  std::span(right.GetScreenData(), SCREEN_WIDTH * SCREEN_HEIGHT)));
         CHECK(left.GetAudioSamplesAvailable() == right.GetAudioSamplesAvailable());
     }
-} // namespace
+}  // namespace
 
 TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted execution at both speeds") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         for (const bool doubleSpeed : {false, true}) {
             if (doubleSpeed && IsDmg(model))
                 continue;
-            const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+            const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                                .emulation = {.model = model, .no_bootrom = true}};
             auto uninterrupted = host::load_gameboy(settings);
             auto stepped = host::load_gameboy(settings);
             if (doubleSpeed) {
-                for (auto *machine : {&uninterrupted, &stepped}) {
-                    auto &bus = machine->[:executionTestMember<Gameboy>("bus_"):];
+                for (auto* machine : {&uninterrupted, &stepped}) {
+                    auto& bus = machine->[:executionTestMember<Gameboy>("bus_"):];
                     bus.prepareSpeedShift = true;
                     bus.ChangeSpeed();
                     REQUIRE(machine->Inspect().speed == Speed::Double);
@@ -54,8 +55,9 @@ TEST_CASE("diagnostics: arbitrary bounded stepping matches uninterrupted executi
 }
 
 TEST_CASE("diagnostics: instruction stepping treats CB opcodes as one instruction and bounds idle CPUs") {
-    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/dmg-acid2.gb", .emulation = {.model = Model::DMGB, .no_bootrom = true}});
-    auto &cpu = gameboy.[:executionTestMember<Gameboy>("cpu_"):];
+    auto gameboy = host::load_gameboy(
+        {.rom_path = "roms/acid/dmg-acid2.gb", .emulation = {.model = Model::DMGB, .no_bootrom = true}});
+    auto& cpu = gameboy.[:executionTestMember<Gameboy>("cpu_"):];
     cpu.pc(0xC001);
     cpu.currentInstruction = 0;
     gameboy.DebugPoke(0xC001, 0xCB);
@@ -83,7 +85,8 @@ TEST_CASE("diagnostics: instruction stepping treats CB opcodes as one instructio
 }
 
 TEST_CASE("diagnostics: timeline survives scheduler wrap and rejects overflowing deadlines") {
-    auto gameboy = host::load_gameboy({.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
+    auto gameboy = host::load_gameboy(
+        {.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}});
     gameboy.[:executionTestMember<Gameboy>("masterCycles"):] = Gameboy::CGB_CYCLES_PER_SECOND - 2;
     gameboy.[:executionTestMember<Gameboy>("timelineTicks_"):] = uint64_t{1} << 32;
     CHECK(gameboy.AdvanceTicks(19).stopTick == (uint64_t{1} << 32) + 19);

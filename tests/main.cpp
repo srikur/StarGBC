@@ -7,19 +7,20 @@
 static int runSelectedCatalogCases() {
     std::vector<std::function<diagnostics::Result()>> selected;
     auto unmatched = catalogSelection.ids;
-    const auto accept = [&](const auto &test, const std::string_view suite) {
+    const auto accept = [&](const auto& test, const std::string_view suite) {
         unmatched.erase(test.id);
         return (catalogSelection.ids.empty() || catalogSelection.ids.contains(test.id)) &&
                (!catalogSelection.model || test.model == *catalogSelection.model) &&
                (catalogSelection.subsystem.empty() ||
-                std::ranges::any_of(std::string_view(test.subsystem) | std::views::split(','),
-                                    [&](const auto tag) { return std::ranges::equal(tag, catalogSelection.subsystem); })) &&
+                std::ranges::any_of(
+                    std::string_view(test.subsystem) | std::views::split(','),
+                    [&](const auto tag) { return std::ranges::equal(tag, catalogSelection.subsystem); })) &&
                (catalogSelection.suites.empty() || catalogSelection.suites.contains(std::string(suite)));
     };
-    for (const auto &test : gambatteCases)
+    for (const auto& test : gambatteCases)
         if (accept(test, "gambatte"))
             selected.emplace_back([test] { return runGambatteTest(test); });
-    for (const auto &test : catalogCases)
+    for (const auto& test : catalogCases)
         if (accept(test, test.suite))
             selected.emplace_back([test] { return runCatalogTest(test); });
     if (!unmatched.empty())
@@ -27,11 +28,11 @@ static int runSelectedCatalogCases() {
     if (selected.empty())
         throw std::invalid_argument("No catalog cases matched the selection");
     std::vector<std::shared_future<diagnostics::Result>> results;
-    for (auto &run : selected)
+    for (auto& run : selected)
         results.push_back(testWorkers->Submit(std::move(run)));
     unsigned failed{};
-    for (auto &future : results) {
-        const auto &result = future.get();
+    for (auto& future : results) {
+        const auto& result = future.get();
         testReport->Write(result);
         failed += !result.Passed();
     }
@@ -40,12 +41,13 @@ static int runSelectedCatalogCases() {
     return failed ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-int main(const int argc, char **argv) {
+int main(const int argc, char** argv) {
     if (argc > 1 && std::string_view(argv[1]) == "--reproduce-catalog") {
         try {
             if (argc != 14)
-                throw std::invalid_argument("Expected catalog reproduction inputs, interval contract and capture settings");
-            const auto number = [](const char *argument) {
+                throw std::invalid_argument(
+                    "Expected catalog reproduction inputs, interval contract and capture settings");
+            const auto number = [](const char* argument) {
                 const std::string text(argument);
                 size_t consumed{};
                 const auto value = std::stoull(text, &consumed);
@@ -82,10 +84,10 @@ int main(const int argc, char **argv) {
             failureDirectory = path.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
             testReport = std::make_unique<diagnostics::Report>(
-                    path, diagnostics::RunIdentity{.executable = argv[0],
-                                                   .executableHash = testExecutableHash,
-                                                   .compiler = __VERSION__,
-                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)});
+                path, diagnostics::RunIdentity{.executable = argv[0],
+                                               .executableHash = testExecutableHash,
+                                               .compiler = __VERSION__,
+                                               .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             auto save = std::filesystem::path(test.rom);
             save.replace_extension(".sav");
             if ((std::filesystem::exists(save) ? diagnostics::FileHash(save) : "absent") != argv[7])
@@ -94,7 +96,7 @@ int main(const int argc, char **argv) {
             testReport->Write(result);
             testReport->Write(diagnostics::RunCompletion{.cases = 1, .failed = result.Passed() ? 0u : 1u});
             return result.Passed() ? EXIT_SUCCESS : EXIT_FAILURE;
-        } catch (const std::exception &error) {
+        } catch (const std::exception& error) {
             std::cerr << "Reproduction infrastructure error: " << error.what() << '\n';
             return 2;
         }
@@ -121,13 +123,14 @@ int main(const int argc, char **argv) {
             --input_count;
         }
         if (input_count != 8 && input_count != 11 && input_count != 12) {
-            std::cerr << "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH [TRACE_CAPACITY TRACE_BEGIN TRACE_END "
+            std::cerr << "Expected --reproduce-gambatte ROM MODEL EXPECTATION CASE_ID RESULTS INPUT_SAVE_HASH "
+                         "[TRACE_CAPACITY TRACE_BEGIN TRACE_END "
                          "[PROVENANCE_LINE]]\n";
             return EXIT_FAILURE;
         }
         try {
             if (input_count >= 11) {
-                const auto number = [](const char *argument) {
+                const auto number = [](const char* argument) {
                     const std::string text(argument);
                     size_t consumed{};
                     const auto value = std::stoull(text, &consumed);
@@ -137,7 +140,8 @@ int main(const int argc, char **argv) {
                 };
                 testTraceCapacity = number(argv[8]);
                 testTraceFilter.ticks = {number(argv[9]), number(argv[10])};
-                if (!testTraceCapacity || testTraceCapacity > 1'000'000 || testTraceFilter.ticks.first > testTraceFilter.ticks.last)
+                if (!testTraceCapacity || testTraceCapacity > 1'000'000 ||
+                    testTraceFilter.ticks.first > testTraceFilter.ticks.last)
                     throw std::invalid_argument("Invalid reproduction trace capacity or interval");
                 testObservationMode = TestObservationMode::Capture;
                 if (input_count == 12) {
@@ -155,21 +159,22 @@ int main(const int argc, char **argv) {
             failureDirectory = path.parent_path() / "failures";
             testExecutableHash = diagnostics::FileHash(argv[0]);
             testReport = std::make_unique<diagnostics::Report>(
-                    path, diagnostics::RunIdentity{.executable = argv[0],
-                                                   .executableHash = testExecutableHash,
-                                                   .compiler = __VERSION__,
-                                                   .arguments = std::vector<std::string>(argv + 1, argv + argc)});
+                path, diagnostics::RunIdentity{.executable = argv[0],
+                                               .executableHash = testExecutableHash,
+                                               .compiler = __VERSION__,
+                                               .arguments = std::vector<std::string>(argv + 1, argv + argc)});
             auto save = std::filesystem::path(argv[2]);
             save.replace_extension(".sav");
             const auto saveHash = std::filesystem::exists(save) ? diagnostics::FileHash(save) : "absent";
             if (saveHash != argv[7])
                 throw std::invalid_argument("Reproduction cartridge save changed");
-            const auto result = runGambatteTest({argv[5], argv[2], argv[4], *model, "reproduction", 1, "reproduction"}, palette_sampling, force_cgb_mode);
+            const auto result = runGambatteTest({argv[5], argv[2], argv[4], *model, "reproduction", 1, "reproduction"},
+                                                palette_sampling, force_cgb_mode);
             testReport->Write(result);
             testReport->Write(diagnostics::RunCompletion{.cases = 1, .failed = result.Passed() ? 0u : 1u});
             std::cout << result.details << '\n';
             return result.Passed() ? EXIT_SUCCESS : EXIT_FAILURE;
-        } catch (const std::exception &error) {
+        } catch (const std::exception& error) {
             std::cerr << "Reproduction infrastructure error: " << error.what() << '\n';
             return 2;
         }

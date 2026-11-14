@@ -1,6 +1,6 @@
 #include "diagnostics/Artifacts.h"
-#include <array>
 #include <doctest/doctest.h>
+#include <array>
 
 TEST_CASE("diagnostics: pixel differences retain the first mismatch and inclusive bounds") {
     constexpr std::array<uint32_t, 6> actual{0, 1, 2, 3, 4, 5};

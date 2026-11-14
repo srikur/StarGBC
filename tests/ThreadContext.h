@@ -16,8 +16,13 @@ inline std::shared_ptr<std::counting_semaphore<>> threadSemaphore;
 inline std::set<std::string, std::less<>> selectedTestNames;
 
 struct ThreadPermit {
-    ThreadPermit() { threadSemaphore->acquire(); }
-    ~ThreadPermit() { threadSemaphore->release(); }
+    ThreadPermit() {
+        threadSemaphore->acquire();
+    }
+
+    ~ThreadPermit() {
+        threadSemaphore->release();
+    }
 };
 
 class TestWorkers {
@@ -27,7 +32,7 @@ class TestWorkers {
     bool stopping_{};
     std::vector<std::jthread> threads_;
 
-public:
+   public:
     explicit TestWorkers(const size_t count) {
         if (!count)
             throw std::invalid_argument("Worker count must be positive");
@@ -68,7 +73,7 @@ public:
     }
 
     template<class F>
-    auto Submit(F &&function) {
+    auto Submit(F&& function) {
         std::packaged_task<std::invoke_result_t<F>()> task(std::forward<F>(function));
         auto result = task.get_future().share();
         {

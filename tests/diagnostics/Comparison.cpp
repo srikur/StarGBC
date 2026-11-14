@@ -1,23 +1,24 @@
-#include "GameboyFiles.h"
 #include "diagnostics/Comparison.h"
 #include <doctest/doctest.h>
 #include <fstream>
 #include <sstream>
+#include "GameboyFiles.h"
 #include "diagnostics/Json.h"
 
 namespace {
     template<class T>
-    std::string comparisonJson(const T &value) {
+    std::string comparisonJson(const T& value) {
         std::ostringstream output;
         diagnostics::WriteJson(output, value);
         return output.str();
     }
-} // namespace
+}  // namespace
 
 TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sampled outputs") {
     for (const auto model : {Model::DMGB, Model::CGBC, Model::CGBE}) {
         CAPTURE(model);
-        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = model, .no_bootrom = true}};
+        const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                            .emulation = {.model = model, .no_bootrom = true}};
         auto optimized = host::load_gameboy(settings);
         auto ordinary = host::load_gameboy(settings);
         for (unsigned interval = 0; interval < 30; ++interval) {
@@ -25,7 +26,8 @@ TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sa
             const auto ticks = interval % 2 ? 140'449 : 140'447;
             static_cast<void>(optimized.AdvanceTicks(ticks, ExecutionPolicy::Optimized));
             static_cast<void>(ordinary.AdvanceTicks(ticks, ExecutionPolicy::Ordinary));
-            const auto left = diagnostics::CaptureObservation(optimized), right = diagnostics::CaptureObservation(ordinary);
+            const auto left = diagnostics::CaptureObservation(optimized),
+                       right = diagnostics::CaptureObservation(ordinary);
             CHECK(left.hardwareHash == right.hardwareHash);
             CHECK(left.memoryHash == right.memoryHash);
             CHECK(left.framebufferHash == right.framebufferHash);
@@ -37,17 +39,21 @@ TEST_CASE("diagnostics: optimized execution agrees with ordinary hardware and sa
 }
 
 TEST_CASE("diagnostics: ordered observation capture bounds events and rejects incomplete plans") {
-    const auto directory = std::filesystem::temp_directory_path() /
-                           ("stargbc-comparison-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto directory =
+        std::filesystem::temp_directory_path() /
+        ("stargbc-comparison-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(directory);
-    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc", .emulation = {.model = Model::CGBC, .no_bootrom = true}};
+    const host::LaunchSettings settings{.rom_path = "roms/acid/cgb-acid2.gbc",
+                                        .emulation = {.model = Model::CGBC, .no_bootrom = true}};
     auto machine = host::load_gameboy(settings);
     const auto initial = diagnostics::IdentifyInitialInputs(machine, settings);
-    CHECK_THROWS_AS(diagnostics::WriteObservations(directory / "invalid", machine, nullptr, initial, {}, {.endTick = 17, .sampleTicks = 0}),
+    CHECK_THROWS_AS(diagnostics::WriteObservations(directory / "invalid", machine, nullptr, initial, {},
+                                                   {.endTick = 17, .sampleTicks = 0}),
                     std::invalid_argument);
     REQUIRE(machine.TimelineTicks() == 0);
-    diagnostics::WriteObservations(directory / "complete", machine, nullptr, initial, {},
-                                   {.beginTick = 7, .endTick = 49, .sampleTicks = 11, .events = true, .eventDetails = true});
+    diagnostics::WriteObservations(
+        directory / "complete", machine, nullptr, initial, {},
+        {.beginTick = 7, .endTick = 49, .sampleTicks = 11, .events = true, .eventDetails = true});
     CHECK(machine.TimelineTicks() == 49);
     CHECK(machine.Observations() == nullptr);
     std::ifstream input(directory / "complete");
