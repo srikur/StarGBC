@@ -32,12 +32,16 @@ void RealTimeClock::LoadSaveFooter(const std::span<const u8> bytes) {
     }
     halted = realClock.day_upper & 0x40;
     counter = 0;
-    const u64 save_time = readRegister() << 32 | readRegister();
-    const u64 current_time = now_seconds();
-    if (save_time <= current_time) {
-        advance(save_time - current_time);
+
+    u64 save_time{};
+    for (auto i{0uz}; offset + i < bytes.size(); ++i) {
+        save_time |= static_cast<u64>(bytes[offset + i]) << (8 * i);
     }
-    zero_time = current_time;
+    const u64 current_time = now_seconds();
+    if (!halted && save_time != 0 && current_time > save_time) {
+        advance(current_time - save_time);
+    }
+    recalculate_zero_time();
 }
 
 std::array<u8, RealTimeClock::kSaveFooterSize> RealTimeClock::SaveFooter() const {
@@ -59,36 +63,22 @@ std::array<u8, RealTimeClock::kSaveFooterSize> RealTimeClock::SaveFooter() const
 }
 
 void RealTimeClock::advance(const u64 ticks) {
-    for (auto i{0_u64}; i < ticks; i++) {
-        realClock.seconds++;
-        if (realClock.seconds == 60)
-            realClock.seconds = 0;
-        bool recalcDays = false;
-        if (realClock.seconds == 0) {
-            realClock.minutes++;
-            if (realClock.minutes == 60) {
-                realClock.minutes = 0;
-                realClock.hours++;
-                if (realClock.hours == 24) {
-                    realClock.hours = 0;
-                    recalcDays = true;
-                }
-            }
-        }
+    u64 total = compose_seconds() + ticks;
 
-        if (recalcDays) {
-            const auto current_days = static_cast<u16>((realClock.day_upper & 0x01) << 8 | realClock.day_lower);
-            u64 total_days = current_days + 1;
+    realClock.seconds = static_cast<u8>(total % 60);
+    total /= 60;
+    realClock.minutes = static_cast<u8>(total % 60);
+    total /= 60;
+    realClock.hours = static_cast<u8>(total % 24);
+    total /= 24;
 
-            if (total_days >= kMaxDays) {
-                realClock.day_upper |= 0x80;
-                total_days %= kMaxDays;
-            }
-
-            realClock.day_lower = static_cast<u8>(total_days & 0xFF);
-            realClock.day_upper = (realClock.day_upper & 0xFE) | static_cast<u8>((total_days >> 8) & 0x01);
-        }
+    if (total > 0x1FF) {
+        realClock.day_upper |= 0x80;
     }
+    total &= 0x1FF;
+
+    realClock.day_lower = static_cast<u8>(total);
+    realClock.day_upper = static_cast<u8>((realClock.day_upper & 0xFE) | (total >> 8));
 }
 
 void RealTimeClock::tick() {
@@ -100,6 +90,10 @@ void RealTimeClock::tick() {
         if (real_rtc) {
             const u64 target_total_seconds = now_seconds() - zero_time;
             const u64 current_total_seconds = compose_seconds();
+            if (target_total_seconds < current_total_seconds) {
+                recalculate_zero_time();
+                return 0;
+            }
             return target_total_seconds - current_total_seconds;
         }
         return 1;
